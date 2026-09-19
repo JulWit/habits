@@ -1,0 +1,30 @@
+# Dependabot verfolgt die Go-Abhängigkeiten und meldet neue Versionen als Pull
+# Request. Ein PR statt einer bloßen Benachrichtigung, weil er die Änderung
+# gleich mitbringt: go.mod und go.sum sind schon angepasst, es bleibt das Lesen
+# und das Mergen.
+version: 2
+
+updates:
+  - package-ecosystem: gomod
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "07:00"
+      timezone: Europe/Berlin
+
+    # Ein PR für alle Go-Updates statt zehn einzelner. Die indirekten
+    # Abhängigkeiten stammen bis auf golang.org/x/sys alle aus dem
+    # Abhängigkeitsbaum von modernc.org/sqlite und bewegen sich im
+    # Gleichschritt; getrennte PRs wären zehnmal dieselbe Arbeit.
+    groups:
+      go:
+        patterns:
+          - "*"
+
+    # Mit Gruppierung steht ohnehin meist nur ein PR offen. Das Limit greift
+    # erst, wenn ein Update hängen bleibt und die nächste Woche schon da ist.
+    open-pull-requests-limit: 3
+
+    commit-message:
+      prefix: deps

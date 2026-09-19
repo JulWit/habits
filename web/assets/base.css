@@ -1,0 +1,665 @@
+/* Design tokens.
+
+   Every colour is written once, with its light and its dark value side by side;
+   light-dark() picks between them from the element's color-scheme. The theme
+   setting therefore only has to choose a color-scheme: "system" leaves it at
+   "light dark" and follows the desktop, the two explicit values pin it.
+
+   Pinning color-scheme rather than only swapping colours is also what tells the
+   browser how to paint scrollbars and native controls — letting the OS decide
+   those would clash with a light page on a dark desktop.
+
+   The dark palette is a pure black ground with grey elements and no blue cast.
+   On black a drop shadow is invisible, so cards are separated by their own
+   lighter fill and border instead — which is why the surfaces step up in even
+   increments rather than being near-black themselves.
+
+   [data-theme] is matched without an html prefix so a theme can be scoped to a
+   subtree: that is what lets the styleguide put light and dark next to each
+   other. On the page itself only <html> ever carries it. */
+:root {
+  color-scheme: light dark;
+
+  --bg: light-dark(#f4f5f7, #000000);
+  --surface: light-dark(#ffffff, #131313);
+  /* The title bar, and the search field inside it. In the light theme the bar
+     is a white surface and the field takes the colour the bar used to have, so
+     the two still tell each other apart; in the dark theme both stay as they
+     were. Written out rather than mixed from --bg and --surface: those are
+     light-dark() values themselves, and one inside another does not resolve.
+     The alpha is what the backdrop blur needs something to work on. */
+  --topbar-base: light-dark(#ffffff, #000000);
+  --topbar-bg: color-mix(in srgb, var(--topbar-base) 88%, transparent);
+  --search-bg: light-dark(#f4f5f7, #131313);
+  --surface-2: light-dark(#eceef2, #1f1f1f);
+  --border: light-dark(#dcdfe6, #2b2b2b);
+  --border-strong: light-dark(#c3c8d2, #3f3f3f);
+  /* The dark text is not pure white: at full contrast on black, light type
+     haloes on an LCD. */
+  --text: light-dark(#1b1d21, #ececec);
+  --text-muted: light-dark(#6b7280, #a3a3a3);
+  --text-faint: light-dark(#9aa1ad, #7a7a7a);
+  /* The interface carries no accent hue of its own: emphasis is a near-neutral
+     ink on light and a near-neutral chalk on dark, and the only colour on
+     screen belongs to the habits themselves. --primary fills anything that is
+     chosen or acted on — the main buttons, a selected weekday, the checkbox,
+     and the focus ring.
+
+     Both values stop short of the ends of the scale: pure black on a near-white
+     page is the harshest pairing there is, and pure white glares on black.
+     Stepping in a little takes the edge off a filled button without making it
+     look disabled. */
+  --primary: light-dark(#24262b, #e3e3e3);
+  --primary-text: light-dark(#ffffff, #121212);
+  /* Hover goes the natural direction in both: darker on a light page, brighter
+     on a dark one. */
+  --primary-hover: light-dark(#15161a, #f4f4f4);
+  --danger: light-dark(#c0392b, #e5645a);
+  /* Reserved for one thing only: a day, or a category's day, that is complete.
+     Green because that is what a finished thing is called everywhere. */
+  --done: light-dark(#16a34a, #22c55e);
+  /* The today band: the page colour taken a step towards the text. Far enough
+     to be a marking at full strength - the band is drawn on the cards, which
+     are lighter than the page in the light theme, and a step measured against
+     the page all but vanished on them. The slider takes it back down for whoever
+     wants a whisper. */
+  --today-neutral: light-dark(#c2c7d1, #3d3d3d);
+  --today: var(--today-neutral);
+  /* How strongly the marking is drawn. Written by the shell and the script like
+     the background's knobs; --today-shown is what everything actually paints,
+     so the colour and its strength stay one decision. */
+  --today-opacity: 100%;
+  --today-shown: color-mix(in srgb, var(--today) var(--today-opacity), transparent);
+  /* light-dark() takes a colour, not a whole shadow, so the two layers keep
+     their colours in tokens of their own and --shadow assembles them. */
+  --shadow-near: light-dark(rgba(16, 18, 22, .08), rgba(0, 0, 0, .6));
+  --shadow-far: light-dark(rgba(16, 18, 22, .06), rgba(0, 0, 0, .5));
+  --shadow: 0 1px 2px var(--shadow-near), 0 8px 24px var(--shadow-far);
+  --radius: 12px;
+  --radius-sm: 8px;
+  /* A category card's padding. Wider at the sides than at the ends on purpose:
+     it is what keeps the day columns - and the today band drawn behind one of
+     them - clear of the card's rounded corners, so the band can end square.
+     The side padding is in px like --cell and --label-min: the board reads it
+     to work out how many day columns fit, and a rem would be read there as a
+     bare number. */
+  --block-pad: .35rem;
+  --block-pad-x: 12px;
+  /* Wide enough for one handle; the arrows of the button mode need room for
+     two, so that mode widens it below. In px like --cell and --label-min: the
+     board reads these tokens to work out how many day columns fit, and a rem
+     would be read there as a bare number. */
+  --tools-col: 32px;
+  /* Two distances derived from it: how far the heading's content stops short of
+     the row, and how far the card's surface does - the latter is one card
+     padding further, because it is measured from the padding box. Both are zero
+     when there are no handles, which is why they are set again down there
+     rather than computed from a --tools-col of zero. */
+  --tools-inset: calc(var(--tools-col) + 2px);
+  --tools-outset: calc(var(--tools-inset) + var(--block-pad-x));
+  /* What the grid reserves for the handles: the column, the card's side padding
+     and the gap in front of it. The padding rides along with the column so that
+     the last day still ends a padding short of the card's edge - otherwise the
+     handles would eat exactly the air the today band needs to stay clear of the
+     rounded corner. */
+  --tools-track: calc(var(--tools-col) + var(--block-pad-x) + 2px);
+  --cell: 40px;
+  /* The year grid's day squares. One token rather than a number repeated in the
+     grid template, the month row and the square itself: those three have to
+     agree exactly, or the captions drift off their columns. */
+  --heat-cell: 15px;
+  --heat-gap: 4px;
+  /* Thickness of every ring the app draws: the progress mark on a day cell and
+     the weekday buttons in the editor. One token, so the two cannot drift apart
+     and the circles read as the same family of control. */
+  --ring: 3px;
+  /* Height of the sticky topbar, so the day header can park beneath it. */
+  --topbar-h: calc(3.5rem + 1px);
+  /* Width of the habit-name column. The JS that decides how many day columns
+     fit reads this token, so the constant lives in exactly one place.
+
+     Sized from the second line rather than the first: a habit name is usually
+     short, but "streak, target, frequency" runs to about 200px, and at 148 that
+     line was cut off on most habits. Each 42px here costs one day column, so
+     this is the point where the common case fits and the rare one — archived,
+     with a streak and a list of weekdays — still ends in an ellipsis.
+
+     Grew by 12px when the interface moved from the system font to Inter, which
+     sets the same sentence about six percent wider. At the usual window that
+     costs no day column: 29 either way.
+
+     costs no day column: 29 either way. */
+  --label-min: 212px;
+  --label-col: minmax(var(--label-min), 1fr);
+  /* The exact width a board with --days columns occupies: the name column, one
+     cell plus its 2px gap per day, and the card's padding and border on both
+     sides. Derived rather than measured, so the header can match the board
+     without JavaScript reaching across the two. */
+  --board-width: calc(
+    var(--label-min) + var(--days, 7) * (var(--cell) + 2px)
+    + var(--tools-track) + 2px + 2 * (var(--block-pad-x) + 1px)
+  );
+  /* The typeface is a setting: the server writes the chosen key onto <html> as
+     data-font, and the rules below swap this token. The system stack always
+     stays behind the chosen family as a net — if a font file ever fails to
+     load, the app stays legible instead of dropping to a serif default. */
+  --font-system: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font: "Inter", var(--font-system);
+}
+
+/* The theme setting only picks a color-scheme; the colours above follow it. */
+[data-theme="system"] { color-scheme: light dark; }
+[data-theme="light"] { color-scheme: light; }
+[data-theme="dark"] { color-scheme: dark; }
+
+/* One rule per key in store.Fonts. "system" needs none of its own — it is the
+   fallback stack on its own, which is exactly what the token holds without a
+   family in front of it. */
+html[data-font="system"] { --font: var(--font-system); }
+html[data-font="inter"] { --font: "Inter", var(--font-system); }
+html[data-font="roboto"] { --font: "Roboto", var(--font-system); }
+html[data-font="geist"] { --font: "Geist", var(--font-system); }
+html[data-font="opensans"] { --font: "Open Sans", var(--font-system); }
+html[data-font="montserrat"] { --font: "Montserrat", var(--font-system); }
+html[data-font="poppins"] { --font: "Poppins", var(--font-system); }
+html[data-font="lato"] { --font: "Lato", var(--font-system); }
+
+/* Two arrows side by side instead of one handle. */
+html[data-reorder="buttons"] { --tools-col: 64px; }
+
+/* ---------- the today band in a habit colour ----------
+
+   The same twelve shades the editor offers, muted: a sixth of the colour over
+   the page in the light theme, a quarter of it over the neutral band in the
+   dark one. Mixed in oklab rather than sRGB, so the twelve land at a similar weight
+   instead of yellow shouting while indigo sinks into the background.
+
+   The hexes mirror domain.DefaultColors; the server validates a choice against
+   that same list. */
+html[data-band="#dc2626"] { --band-ink: #dc2626; }
+html[data-band="#ea580c"] { --band-ink: #ea580c; }
+html[data-band="#eab308"] { --band-ink: #eab308; }
+html[data-band="#65a30d"] { --band-ink: #65a30d; }
+html[data-band="#16a34a"] { --band-ink: #16a34a; }
+html[data-band="#0d9488"] { --band-ink: #0d9488; }
+html[data-band="#0284c7"] { --band-ink: #0284c7; }
+html[data-band="#2563eb"] { --band-ink: #2563eb; }
+html[data-band="#4f46e5"] { --band-ink: #4f46e5; }
+html[data-band="#7c3aed"] { --band-ink: #7c3aed; }
+html[data-band="#db2777"] { --band-ink: #db2777; }
+html[data-band="#64748b"] { --band-ink: #64748b; }
+
+html[data-band]:not([data-band="neutral"]) {
+  /* The bases are written out rather than taken from --bg and --today-neutral:
+     those are light-dark() values themselves, and a light-dark() inside a
+     color-mix() inside another light-dark() does not resolve. */
+  --today: light-dark(
+    color-mix(in oklab, var(--band-ink) 34%, #f4f5f7),
+    color-mix(in oklab, var(--band-ink) 42%, #2a2a2a)
+  );
+}
+
+/* ---------- background patterns ----------
+
+   Drawn with gradients rather than images: a repeating texture costs a few
+   lines here and nothing in the binary, and it follows the theme because the
+   ink is mixed from the text colour. Deliberately faint — this sits behind a
+   board people read every day, and anything louder would compete with it. */
+:root {
+  --pattern-ink: color-mix(in srgb, var(--text) 11%, transparent);
+  --pattern-image: none;
+  --pattern-size: auto;
+}
+
+html[data-pattern="dots"] {
+  --pattern-image: radial-gradient(var(--pattern-ink) 1.1px, transparent 1.2px);
+  --pattern-size: 22px 22px;
+}
+
+html[data-pattern="grid"] {
+  --pattern-image:
+    linear-gradient(var(--pattern-ink) 1px, transparent 1px),
+    linear-gradient(90deg, var(--pattern-ink) 1px, transparent 1px);
+  --pattern-size: 26px 26px;
+}
+
+html[data-pattern="diagonal"] {
+  --pattern-image:
+    repeating-linear-gradient(45deg, var(--pattern-ink) 0 1px, transparent 1px 11px);
+}
+
+html[data-pattern="cross"] {
+  --pattern-image:
+    repeating-linear-gradient(45deg, var(--pattern-ink) 0 1px, transparent 1px 14px),
+    repeating-linear-gradient(-45deg, var(--pattern-ink) 0 1px, transparent 1px 14px);
+}
+
+/* ---------- the uploaded background ----------
+
+   A photograph, which is a different thing from a texture: it has its own
+   colours, its own contrast and its own idea of where the eye should go, and
+   the board has to stay readable over it. Two knobs settle that, both stored
+   per user: a veil in the page colour, and a blur.
+
+   The URL carries no version here. The answer is sent with an ETag and
+   revalidated on every load, so a new picture arrives by itself; within a
+   session the script appends the hash after an upload, which is the one moment
+   the browser would otherwise keep showing the old one. */
+html[data-pattern="image"] {
+  --pattern-image: url("/api/background");
+  --pattern-size: cover;
+}
+
+:root {
+  /* Both are written by the shell and again by the script, so the first paint
+     is already the chosen one. */
+  --bg-dim: 55%;
+  --bg-blur: 0px;
+  /* Black, in both themes. The veil was the page colour at first, which is
+     almost white in the light one - so the control called "Abdunklung" made the
+     picture brighter the further it was pushed. What it says is what it does
+     now: darker, whichever theme the page is in. */
+  --bg-veil: rgb(0 0 0 / var(--bg-dim));
+  /* What sits on the picture: the cards, the bars, the panels. Written by the
+     shell and the script like the two above. */
+  --surface-opacity: 88%;
+  --surface-blur: 12px;
+  --surface-veil: color-mix(in srgb, var(--surface) var(--surface-opacity), transparent);
+}
+
+/* One fixed layer behind everything, rather than a background on the body: the
+   page scrolls, and a texture that slides under the cards draws the eye to the
+   scrolling instead of to the board. Behind the content, above the page
+   colour, and out of reach of the pointer. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image: var(--pattern-image);
+  background-size: var(--pattern-size);
+}
+
+/* The picture, veiled and blurred. The veil is a second background layer rather
+   than a second element: it has to be blurred with the picture, or its edges
+   would stand as a sharp frame around a soft image.
+
+   And the layer reaches past the viewport by twice the blur radius, because a
+   blur pulls transparency in from beyond the edge - without it the picture
+   would fade out along all four sides. */
+html[data-pattern="image"] body::before {
+  inset: calc(-2 * var(--bg-blur));
+  background-image: linear-gradient(var(--bg-veil), var(--bg-veil)), var(--pattern-image);
+  background-size: auto, cover;
+  background-position: center, center;
+  background-repeat: no-repeat, no-repeat;
+  filter: blur(var(--bg-blur));
+}
+
+/* ---------- surfaces over a picture ----------
+
+   Only here: over a flat page or a drawn texture there is nothing to show
+   through, and a translucent card would only cost contrast for no gain.
+
+   Each surface is the same two things - a tint of its own colour, and a blur of
+   whatever is behind it. The blur is what keeps text readable when the card is
+   thin: a photograph reduced to soft colour is a background, a sharp one is a
+   competitor. */
+html[data-pattern="image"] {
+  --topbar-bg: color-mix(in srgb, var(--topbar-base) var(--surface-opacity), transparent);
+}
+
+html[data-pattern="image"] .topbar,
+html[data-pattern="image"] .block::after,
+html[data-pattern="image"] .panel,
+html[data-pattern="image"] .stat {
+  backdrop-filter: blur(var(--surface-blur));
+}
+
+html[data-pattern="image"] .block::after,
+html[data-pattern="image"] .panel,
+html[data-pattern="image"] .stat {
+  background: var(--surface-veil);
+}
+
+/* The knockout that turns the progress disc into a ring is the card's own
+   colour; on a glass card it has to be glass too, or every day cell would sit
+   there as an opaque dot. */
+html[data-pattern="image"] .mark::after {
+  background: var(--surface-veil);
+}
+
+/* The sticky day header carries the pattern so it does not slide over the
+   texture as a blank strip. A photograph is another matter: it would show up
+   there unveiled and unblurred, a sharp cut-out over a soft page - and a strip
+   of plain page colour over it is a black bar.
+
+   So over a picture the header is simply not there: nothing of its own, the
+   page showing through exactly as it does beside it. Which leaves the one job
+   the opaque colour did - hiding the rows that slide underneath - and that is
+   only a job while the page is actually scrolled. The script says when; until
+   then the dates sit on the picture and nothing else. */
+html[data-pattern="image"] .day-header {
+  background-image: none;
+  background-color: transparent;
+}
+
+/* The dates sit directly on the picture, where the faint grey they wear over a
+   plain page is a guess rather than a date. Over a picture every line in the
+   header moves up the text scale - and takes its colour from the veil rather
+   than from the theme.
+
+   The reason is that the strip behind them is not the page: it is the picture,
+   darkened by however much the veil says. At a heavy veil it is nearly black
+   whatever the theme is, and the light theme's own near-black text disappears
+   into it. So the ink is mixed towards white by the veil's own amount, steeply
+   enough to be white well before the veil is: mixed rather than switched, so
+   there is no setting at which the colour jumps.
+
+   Scrolled is the other way round again - the header is then a pane of page
+   colour, and page colour wants the theme's own ink back. */
+html[data-pattern="image"] .day-header {
+  --header-ink: var(--text);
+}
+
+html[data-pattern="image"]:not([data-scrolled="on"]) .day-header {
+  --header-ink: color-mix(in srgb, #fff min(100%, calc(var(--bg-dim) * 1.6)), var(--text));
+}
+
+html[data-pattern="image"] .grid-head,
+html[data-pattern="image"] .grid-head.is-today,
+html[data-pattern="image"] .month-label {
+  color: var(--header-ink);
+}
+
+html[data-pattern="image"] .grid-head .dom,
+html[data-pattern="image"] .grid-head.is-today .dom {
+  color: var(--header-ink);
+}
+
+/* The paging arrows sit in the same strip and on the same picture, so they take
+   the same ink. Their own muted grey was chosen against the page, and next to
+   dates that have gone white it read as a different family of control. */
+html[data-pattern="image"] .day-nav .icon-button,
+html[data-pattern="image"] .day-nav .icon-button:hover:not(:disabled) {
+  color: var(--header-ink);
+}
+
+/* Disabled stays a step back, as it is everywhere else - the opacity does that
+   without needing a colour of its own. */
+html[data-pattern="image"] .day-nav .icon-button:disabled {
+  color: var(--header-ink);
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 15px;
+  line-height: 1.45;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* The page colour sits on the root, not on the body: the pattern layer is a
+   body pseudo-element behind its own content, and a background on the body
+   would paint straight over it. */
+html { background-color: var(--bg); }
+
+body {
+  min-height: 100dvh;
+  padding-bottom: 5rem;
+  background: transparent;
+}
+
+h1, h2, h3 { margin: 0; font-weight: 650; letter-spacing: -.01em; }
+
+button, input, textarea, select { font: inherit; color: inherit; }
+
+:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+[hidden] { display: none !important; }
+
+/* ---------- layout ---------- */
+
+/* The reordering mode is a state of the whole board, so the button that holds
+   it looks held down rather than merely hovered. */
+.icon-button[aria-pressed="true"] {
+  background: var(--primary);
+  color: var(--primary-text);
+}
+
+.icon-button[aria-pressed="true"]:hover { background: var(--primary-hover); }
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: var(--topbar-bg);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--border);
+}
+
+/* The shell width. Header and view always share it, so their edges line up.
+   Note the root font-size is 15px, so 100rem is 1500px, not 1600.
+
+   The board needs the room: 30 day columns plus the name column come to
+   1452px including padding, which is why the overview is this wide. */
+.topbar-inner,
+.view {
+  max-width: 100rem;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+/* The detail view is a page of panels and prose, not a grid, and gains nothing
+   from the extra width. Header and view narrow together so they stay aligned. */
+html.route-detail .topbar-inner,
+html.route-detail .view {
+  max-width: 82rem;
+}
+
+/* Three tracks: brand, search, buttons. */
+.topbar-inner {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 1rem;
+  min-height: 3.5rem;
+  position: relative;
+  /* A query container, because the bar is not as wide as the window: it is
+     capped to the board, so at seven day columns it is a few hundred pixels
+     wide on the largest monitor. What fits in it therefore has to be asked of
+     the bar itself - a window-width media query would put the full brand, a
+     centred search and four controls into a bar half their width. */
+  container: topbar / inline-size;
+}
+
+/* Each of the three named explicitly, because one of them leaves the flow on a
+   wide screen: with automatic placement the buttons would slide into the column
+   the search just vacated and end up in the middle of the bar. */
+.topbar-inner .brand { grid-column: 1; }
+.topbar-inner .board-filter { grid-column: 2; }
+
+.topbar-inner .topbar-actions {
+  grid-column: 3;
+  justify-self: end;
+}
+
+/* Wide enough to be sure nothing collides: the search leaves the grid and is
+   centred on the bar itself. In the grid it would sit between the brand and the
+   buttons, and those two are not the same width - the middle column lands a
+   few pixels off the middle of the bar, which is exactly where the eye notices
+   it. Below this width the grid keeps it, because there the columns are what
+   stops the three from overlapping.
+
+   A centred field needs room for the wider of the two sides twice over: the
+   controls measure 117px once the caption is gone, the field 210px, plus the
+   two gaps - 476px, rounded up for air. */
+@container topbar (min-width: 490px) {
+  .topbar-inner .board-filter {
+    position: absolute;
+    /* Spanning every column on purpose: an absolutely positioned grid item is
+       placed against its own grid area, so pinned to column two it would be
+       centred on that column rather than on the bar. Across all three the area
+       is the bar, which is what 50% should mean here. */
+    grid-column: 1 / -1;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+}
+
+.view { padding-top: 1.25rem; }
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  font-size: 1.15rem;
+}
+
+.brand-mark {
+  width: 1.5rem;
+  height: 1.5rem;
+  color: var(--text);
+}
+
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+}
+
+/* ---------- buttons ---------- */
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .4rem;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  border-radius: var(--radius-sm);
+  padding: .45rem .8rem;
+  cursor: pointer;
+  font-weight: 550;
+  white-space: nowrap;
+  transition: background .12s ease, border-color .12s ease, transform .06s ease;
+}
+
+.button:hover { background: var(--surface-2); }
+.button:active { transform: translateY(1px); }
+
+.button.primary {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--primary-text);
+}
+
+/* An explicit hover colour, not a brightness filter: pure black and pure white
+   are already at the ends of the scale, so a filter would do nothing. */
+.button.primary:hover {
+  background: var(--primary-hover);
+  border-color: var(--primary-hover);
+}
+
+.button.ghost {
+  background: transparent;
+  border-color: transparent;
+  color: var(--text-muted);
+}
+
+.button.ghost:hover { background: var(--surface-2); color: var(--text); }
+
+.button.danger { color: var(--danger); border-color: var(--border); }
+.button.danger:hover { background: color-mix(in srgb, var(--danger) 12%, var(--surface)); }
+
+.button.round {
+  width: 2.6rem;
+  height: 2.6rem;
+  padding: 0;
+  border-radius: 50%;
+  font-size: 1.25rem;
+}
+
+
+/* Buttons that carry an icon next to their caption. The .button flex row
+   already supplies the gap; the SVG only needs a size, since it has none of
+   its own, and must not shrink when the caption is long. */
+.button svg {
+  width: 1.05rem;
+  height: 1.05rem;
+  flex: none;
+}
+
+.icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  cursor: pointer;
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.icon-button:hover { background: var(--surface-2); }
+
+/* Icon buttons hold either a text glyph or an inline SVG; the SVG needs an
+   explicit size because it has no intrinsic one. */
+.icon-button svg { width: 1.15rem; height: 1.15rem; display: block; }
+
+/* Back is the one navigation control on the detail view, so it is drawn a size
+   up from the administrative icons around it. */
+.icon-button.is-back { width: 2.5rem; height: 2.5rem; }
+.icon-button.is-back svg { width: 1.45rem; height: 1.45rem; }
+
+/* ---------- misc text ---------- */
+
+.field-hint {
+  color: var(--text-faint);
+  font-size: .8rem;
+  margin: .75rem .25rem 0;
+}
+
+/* A hint in the middle of a field explains the control above it; without this
+   it would sit straight on the next one. */
+.field-hint:not(:last-child) { margin-bottom: .9rem; }
+
+.error {
+  color: var(--danger);
+  font-size: .85rem;
+  margin: .5rem 0 0;
+}
+
+.empty {
+  text-align: center;
+  padding: 4rem 1rem;
+  color: var(--text-muted);
+}
+
+.empty h2 { color: var(--text); margin-bottom: .5rem; }
+.empty p { margin: 0 0 1.25rem; }
+
+/* Present to a screen reader, absent from the page. Used by the live region
+   that reports what a tap on the board just changed: the board itself carries
+   no aria-live, because it is rebuilt whole on every render and would be read
+   out from the top each time. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

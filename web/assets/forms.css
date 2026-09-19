@@ -1,0 +1,520 @@
+/* ---------- dialogs ---------- */
+
+.dialog {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  padding: 0;
+  width: min(34rem, calc(100vw - 2rem));
+  box-shadow: var(--shadow);
+}
+
+.dialog.compact { width: min(20rem, calc(100vw - 2rem)); }
+/* Neutral, so the dark theme stays free of a blue cast behind its dialogs. */
+.dialog::backdrop { background: rgba(0, 0, 0, .55); }
+
+.dialog-head {
+  padding: 1rem 1.15rem .25rem;
+  font-size: 1.05rem;
+  font-weight: 650;
+}
+
+.dialog-body {
+  padding: .75rem 1.15rem;
+  max-height: min(70dvh, 40rem);
+  overflow-y: auto;
+}
+
+.dialog-foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: .5rem;
+  padding: .85rem 1.15rem 1.1rem;
+  border-top: 1px solid var(--border);
+}
+
+.dialog.compact .dialog-foot { border-top: none; }
+
+/* ---------- dialog tabs ---------- */
+
+/* Sits between the dialog's heading and its body, carrying the line that
+   separates them: the strip is part of the frame, not of the scrolling
+   content. */
+.tabs {
+  display: flex;
+  gap: .15rem;
+  padding: 0 1.15rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.tab {
+  appearance: none;
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: .86rem;
+  font-weight: 550;
+  padding: .55rem .7rem;
+  cursor: pointer;
+  /* The underline of the open tab sits on the strip's own border, so the two
+     never add up to a double line. */
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+
+.tab:hover { color: var(--text); }
+
+.tab[aria-selected="true"] {
+  color: var(--text);
+  border-bottom-color: var(--primary);
+}
+
+.tab[hidden] { display: none; }
+
+/* ---------- form fields ---------- */
+
+/* One setting, one question, one field - and they are read one at a time, so
+   they stand well apart. Far enough that a hint under a control still reads as
+   belonging to it rather than to the label below. */
+.field {
+  display: block;
+  border: none;
+  margin: 0 0 1.75rem;
+  padding: 0;
+  min-width: 0;
+}
+
+.field.row,
+/* Two inputs side by side inside a block that also carries a hint below. */
+.field-row { display: flex; gap: .75rem; }
+.field .grow { flex: 1; min-width: 0; }
+
+.field-label {
+  display: block;
+  font-size: .78rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: .3rem;
+  padding: 0;
+}
+
+.field-optional { font-weight: 400; color: var(--text-faint); }
+
+.field input[type="text"],
+.field input[type="number"],
+.field input[type="date"],
+.field textarea {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  padding: .5rem .6rem;
+  resize: vertical;
+}
+
+.field input:focus,
+.field textarea:focus {
+  border-color: var(--primary);
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 22%, transparent);
+}
+
+/* ---------- segmented control ---------- */
+
+.segmented {
+  display: flex;
+  gap: 2px;
+  background: var(--surface-2);
+  border-radius: var(--radius-sm);
+  padding: 2px;
+}
+
+.segmented.wrap { flex-wrap: wrap; }
+
+.segmented label {
+  flex: 1 1 auto;
+  min-width: fit-content;
+}
+
+.segmented input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.segmented span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: .35rem;
+  padding: .4rem .6rem;
+  border-radius: calc(var(--radius-sm) - 2px);
+  font-size: .85rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.segmented input:checked + span {
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .12);
+}
+
+.segmented span svg { width: .95rem; height: .95rem; flex: none; }
+
+.segmented input:focus-visible + span { outline: 2px solid var(--primary); outline-offset: 1px; }
+
+/* ---------- colour swatches ---------- */
+
+.swatches { display: flex; flex-wrap: wrap; gap: .4rem; }
+
+.swatch {
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  padding: 0;
+  background-clip: content-box;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .12);
+}
+
+.swatch[aria-checked="true"] {
+  border-color: var(--text);
+  transform: scale(1.06);
+}
+
+/* ---------- weekday picker ---------- */
+
+.weekdays { display: flex; gap: .3rem; flex-wrap: wrap; }
+
+.weekday {
+  width: 2.4rem;
+  height: 2.4rem;
+  border-radius: 50%;
+  /* Same ring thickness as the marks on the board, from the same token. */
+  border: var(--ring) solid var(--border-strong);
+  background: var(--surface);
+  cursor: pointer;
+  font-size: .8rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.weekday[aria-pressed="true"] {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--primary-text);
+}
+
+/* A dropdown, styled like the text fields around it. The arrow is the browser's
+   own: color-scheme is pinned per theme, so the control and its popup are drawn
+   dark on the dark theme without any of this having to know about it. */
+.select {
+  width: 100%;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  padding: .5rem .6rem;
+  cursor: pointer;
+}
+
+.select:focus {
+  border-color: var(--primary);
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 22%, transparent);
+}
+
+/* Closed, the field shows the chosen face; open, each entry is set in the one
+   it stands for, so the choice can be made by looking rather than by knowing
+   what the names mean. */
+#settings-font { font-family: var(--font); }
+#settings-font option[value="system"] { font-family: var(--font-system); }
+#settings-font option[value="inter"] { font-family: "Inter", var(--font-system); }
+#settings-font option[value="roboto"] { font-family: "Roboto", var(--font-system); }
+#settings-font option[value="geist"] { font-family: "Geist", var(--font-system); }
+#settings-font option[value="opensans"] { font-family: "Open Sans", var(--font-system); }
+#settings-font option[value="montserrat"] { font-family: "Montserrat", var(--font-system); }
+#settings-font option[value="poppins"] { font-family: "Poppins", var(--font-system); }
+#settings-font option[value="lato"] { font-family: "Lato", var(--font-system); }
+
+/* ---------- stepper ---------- */
+
+.stepper {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  padding: 1rem 1.15rem .25rem;
+}
+
+.stepper input {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+  font-size: 1.4rem;
+  font-weight: 650;
+  background: var(--bg);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  padding: .4rem;
+}
+
+/* Fixed jumps for counting habits, below the stepper: 30 push-ups should be
+   three taps, not thirty. Equal columns so the four labels line up whatever
+   their width. */
+.quick-steps {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: .4rem;
+  padding: .7rem 1.15rem 0;
+}
+
+.quick-steps .button {
+  padding-inline: .2rem;
+  font-variant-numeric: tabular-nums;
+}
+
+#value-hint { padding: 0 1.15rem; margin-top: .4rem; }
+
+/* ---------- narrow screens ---------- */
+
+/* Long before a phone the bar runs out of room - and it runs out of its own
+   room, not the window's: it is capped to the board, so seven day columns give
+   it about 530px whatever the monitor does. Below the width where a centred
+   field still clears both sides (the controls are 248px wide with the caption,
+   so twice that plus the 210px field plus two gaps: 739px) the bar keeps the
+   marks and drops the words - the logo without the name, the plus without its
+   caption. Nothing is lost to a screen reader: the button has its aria-label,
+   and the heading keeps its text, just not on the screen. */
+@container topbar (max-width: 750px) {
+  .brand-text {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .button-label { display: none; }
+}
+
+/* Narrower still, and there is no room for a field at all: what is left after
+   the logo, the four controls and the two gaps would be a slot a couple of
+   characters wide. It goes away rather than shrink into uselessness - a board
+   this narrow shows a handful of habits, which one reads rather than searches,
+   and the open-only filter beside it still narrows the list. The field keeps
+   its value while hidden, so nothing is lost by turning the phone sideways.
+
+   The threshold is what the row needs with a field worth typing in: 19px logo,
+   117px controls, two 16px gaps - and about 190px left for the field itself. */
+@container topbar (max-width: 360px) {
+  .board-filter { display: none; }
+}
+
+@media (max-width: 40rem) {
+  /* The name column grows far less here than on the desktop: past about 106px
+     the seventh day column no longer fits, and a full week is worth more on a
+     phone than an untruncated second line. */
+  :root { --cell: 34px; --label-min: 104px; --topbar-h: calc(3.1rem + 1px); }
+
+  /* Two pixels less card padding than the desktop, which is a whole day column
+     here: at 12px the sixth day no longer fits on a 375px screen. Ten is the
+     least it may be - the today band ends a padding plus a grid gap short of
+     the card's inner edge, and that has to clear the corner radius. */
+  :root { --block-pad-x: 10px; }
+
+  /* Three paging buttons have to share a name column half the desktop width,
+     so they keep the size they had before the desktop ones grew. */
+  .day-nav .icon-button { width: 1.8rem; height: 1.8rem; }
+  .day-nav .icon-button svg { width: 1.05rem; height: 1.05rem; }
+
+  /* One row, here as everywhere: the field shares the line while it still fits
+     and is hidden once it does not. A row of its own for the search would cost
+     more height than it is worth on a screen this size - and --topbar-h, which
+     the day header sticks to, assumes the bar is one row tall. */
+  .topbar-inner { min-height: 3.1rem; }
+  .board-filter .search { width: auto; }
+  .brand { font-size: 1.05rem; }
+  .field.row,
+  .field-row { flex-direction: column; gap: 1rem; }
+
+  /* Three captioned buttons do not fit next to the habit name on a phone.
+     The icons carry the meaning; each button keeps its aria-label. */
+  .detail-head .button .label { display: none; }
+  .detail-head .button { padding-inline: .6rem; }
+}
+
+/* ---------- category picker ---------- */
+
+/* The field itself: looks like an input, behaves like a button that opens the
+   chooser dialog. */
+.picker {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  width: 100%;
+  text-align: left;
+  background: var(--bg);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  padding: .5rem .6rem;
+  cursor: pointer;
+}
+
+.picker:hover { border-color: var(--text-faint); }
+
+.picker-value { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.picker-value.is-empty { color: var(--text-faint); }
+.picker-caret { display: flex; color: var(--text-faint); }
+.picker-caret svg { width: 1rem; height: 1rem; }
+
+/* The chooser's list of categories. */
+.picker-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 15rem;
+  overflow-y: auto;
+  margin-bottom: .85rem;
+}
+
+.picker-option {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  text-align: left;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-sm);
+  padding: .5rem .6rem;
+  cursor: pointer;
+}
+
+.picker-option:hover { background: var(--surface-2); }
+.picker-option[aria-selected="true"] { color: var(--text); font-weight: 600; }
+.picker-option.is-stale { color: var(--text-faint); font-style: italic; }
+
+.picker-option-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.picker-option-mark { display: flex; color: var(--text); }
+.picker-option-mark svg { width: 1rem; height: 1rem; }
+
+/* Creating a category without leaving the chooser. */
+.picker-create {
+  display: flex;
+  gap: .5rem;
+  border-top: 1px solid var(--border);
+  padding-top: .85rem;
+}
+
+.picker-create input {
+  flex: 1;
+  min-width: 0;
+  background: var(--bg);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  padding: .45rem .6rem;
+}
+
+.picker-create input:focus {
+  border-color: var(--primary);
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 22%, transparent);
+}
+
+/* A labelled checkbox row, for the settings that are simply on or off. */
+.switch {
+  display: flex;
+  align-items: center;
+  gap: .55rem;
+  cursor: pointer;
+}
+
+.switch input {
+  width: 1.05rem;
+  height: 1.05rem;
+  accent-color: var(--primary);
+  cursor: pointer;
+  flex: none;
+}
+
+/* ---------- the uploaded background ----------
+
+   A row: what is there now, and what can be done about it. The preview is a
+   thumbnail of the picture itself rather than a file name - a name says which
+   file was chosen, a thumbnail says what the board will look like. */
+.upload {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+}
+
+.upload-preview {
+  width: 5.5rem;
+  height: 3.4rem;
+  flex: none;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background-color: var(--surface-2);
+  background-size: cover;
+  background-position: center;
+}
+
+/* Nothing uploaded: a plain field rather than a broken picture. */
+.upload-preview.is-empty { background-image: none; }
+
+.upload-actions {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  flex-wrap: wrap;
+}
+
+/* The file input is hidden and its label carries the button look, because the
+   browsers each draw the control itself differently and none of them the way
+   the rest of this dialog looks. */
+.upload-actions .button { cursor: pointer; }
+
+/* A knob and its reading, side by side: the number belongs to the slider, and
+   putting it under the label would leave the eye travelling. */
+.slider {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: .2rem .6rem;
+  margin-top: .9rem;
+}
+
+.slider .field-label { grid-column: 1; margin: 0; }
+
+.slider output {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  min-width: 3.2rem;
+  text-align: right;
+  color: var(--text-muted);
+  font-size: .82rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.slider input[type="range"] {
+  grid-column: 1;
+  width: 100%;
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+
+/* A caption over a group of sliders. Not a field label: the fields are the
+   sliders themselves, and this only says which of them belong together. */
+.knob-group {
+  margin: 1.1rem 0 0;
+  color: var(--text-muted);
+  font-size: .78rem;
+  font-weight: 600;
+}
+
+.knob-group + .slider { margin-top: .5rem; }

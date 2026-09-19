@@ -1,0 +1,1240 @@
+/* The filter bar, in the middle of the title bar. Kept narrow on purpose: the
+   title bar is only as wide as the board, and a centred bar has to leave the
+   same room on both sides - so its width is capped by whichever of the two,
+   brand or buttons, is the wider one. */
+.board-filter {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  min-width: 0;
+}
+
+/* The magnifier sits in the field rather than beside it: it labels the box, and
+   a box that says what it is needs no caption next to it. */
+.board-filter { position: relative; }
+
+.search-icon {
+  position: absolute;
+  left: .6rem;
+  display: flex;
+  color: var(--text-faint);
+  pointer-events: none;
+}
+
+.search-icon svg { width: 1rem; height: 1rem; }
+
+.board-filter .search {
+  flex: 1;
+  min-width: 0;
+  width: 14rem;
+  background: var(--search-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: .45rem .7rem .45rem 2.1rem;
+  color: inherit;
+}
+
+.board-filter .search::placeholder { color: var(--text-faint); }
+.board-filter .search:focus { outline: none; border-color: var(--border-strong); }
+
+/* ---------- overview board ----------
+   The board is a stack of cards, one per category. The day header is rendered
+   once above them all rather than repeated in every card.
+
+   Alignment across the cards is structural, not measured: the header and every
+   card's row area use the same grid template, and the header carries a
+   transparent 1px border plus the card's own padding so its content box starts
+   at exactly the same x as theirs. */
+
+/* The board is always exactly as wide as its columns. The name column is a
+   fixed track rather than 1fr, because a 1fr track swallows every leftover
+   pixel: choosing 7 days would look like nothing happened, and in automatic
+   mode the gap between the habit name and the first day would grow with the
+   window. Shrinking to content and centring is the same in both modes, so
+   automatic and an explicit count of the same size render identically. */
+.board {
+  display: flex;
+  flex-direction: column;
+  gap: .85rem;
+  /* A stacking context, so the cards' own layers stay contained. */
+  position: relative;
+  isolation: isolate;
+  /* The air under a category heading. Named because the today band starts at
+     that line and has to follow it. */
+  --head-gap: .3rem;
+  /* Where the today column starts, measured from the padding edge of the card
+     the band is drawn in: past the card padding, the name column, the gap
+     after it, and the columns before today. */
+  --today-x: calc(var(--block-pad-x) + var(--label-col) + 2px + var(--today-col) * (var(--cell) + 2px));
+  --label-col: var(--label-min);
+  width: max-content;
+  max-width: 100%;
+  /* Centred rather than left-aligned: a narrow board pinned to the left edge of
+     a wide window reads as a layout accident. */
+  margin-inline: auto;
+}
+
+/* The header spans exactly the board. Its content box has to equal the board
+   width, and the 1rem of padding on each side is outside that box — hence the
+   +2rem. Both are centred on the page, so matching widths means matching edges.
+   On the detail view there are no day columns to match, so it is excluded. */
+html:not(.route-detail):not(.route-styleguide) .topbar-inner {
+  max-width: calc(var(--board-width) + 2rem);
+}
+
+/* Header and habit rows share the template, not the grid: every track is a
+   fixed width — the name column and the day cells both — so each row computes
+   the same columns on its own and they line up without being in one box.
+   That is what lets a row be dragged: it is an element, not a run of cells
+   scattered through a single grid. */
+.day-header,
+.habit-row {
+  display: grid;
+  /* A track of its own for the reordering handle, at the far right of every
+     row: the same place for a habit as for a category, and the easiest corner
+     of the screen to reach with a thumb. A column rather than something
+     floating over the last days, because on a touch device the handles are
+     always visible and would sit on top of today. */
+  grid-template-columns: var(--label-col) repeat(var(--days, 7), var(--cell)) var(--tools-track);
+  gap: 2px;
+  align-items: stretch;
+}
+
+/* The rows themselves are a plain stack. */
+.block-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  /* What the today band is measured against. */
+  position: relative;
+}
+
+/* Today runs as one band through the rows of each card: a single column is
+   easier to follow down a list than a highlight repeated in every row. It
+   leaves the heading alone and runs from the line below it to the bottom edge
+   of the card - square at both ends, which the card's side padding earns: the
+   last column stops far enough from the corner that no curve cuts into it.
+
+   Behind the rows and above the card's surface, which is why the card is a
+   stacking context of its own. */
+.board.has-today .block-rows::before {
+  content: "";
+  position: absolute;
+  /* Out of the rows box at both ends: up to the line under the heading, down
+     through the card's bottom padding - but stopping one pixel short of the
+     card's edge, which is where its own border is drawn. Running the full way
+     would paint over that line and leave the card looking cut open. */
+  top: calc(-1 * var(--head-gap));
+  bottom: calc(1px - var(--block-pad));
+  /* --today-x is measured from the card's padding edge, the rows start one
+     card padding further in. */
+  left: calc(var(--today-x) - var(--block-pad-x));
+  width: var(--cell);
+  background: var(--today-shown);
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* No gap between the month row and the dates: the divider is a border on both,
+   and two pixels of air would break the line in half. The label carries a
+   little bottom padding of its own, so the rows do not touch visually. */
+.day-header { row-gap: 0; }
+
+.day-header {
+  border: 1px solid transparent;
+  /* Round below, square above: while the page is scrolled the strip is parked
+     against the title bar, and two rounded corners between them would read as a
+     gap that is not there. */
+  border-radius: 0 0 var(--radius) var(--radius);
+  /* The cards' own padding, and a transparent border to match theirs: the
+     header has no card of its own, so it has to imitate one, or its columns
+     stop sitting over the days below.
+
+     Plus a little air above the month name. It is there at every scroll
+     position rather than only where it is needed - parked under the title bar -
+     because a padding that appears on scrolling would push the whole board down
+     by its own height the moment the page moves. */
+  padding: .4rem var(--block-pad-x) 0;
+  /* Sticky so the dates stay readable while scrolling past several blocks. */
+  position: sticky;
+  top: var(--topbar-h);
+  z-index: 5;
+  /* Opaque, so rows passing underneath do not show through - but carrying the
+     background pattern as well, or the header would slide over the texture as
+     a blank strip. Anchored to the viewport like the pattern layer itself, so
+     the two line up whatever the scroll position. */
+  background-color: var(--bg);
+  background-image: var(--pattern-image);
+  background-size: var(--pattern-size);
+  background-attachment: fixed;
+}
+
+/* The card's surface is drawn by a pseudo-element, not by the block itself: it
+   has to stop before the handle column while the rows run past it. Sizing the
+   block down instead would only make the board wider, because everything here
+   is measured from its content.
+
+   The handles then stand beside the card, on the page. They are not part of a
+   category - they are what one takes hold of to move it. Outside the reordering
+   mode the column is zero wide and the surface reaches the full width, as
+   before. */
+.block {
+  padding: var(--block-pad) var(--block-pad-x);
+  border: 1px solid transparent;
+  /* A stacking context of its own, so the surface drawn below stays behind the
+     card's rows and still above the page. */
+  position: relative;
+  z-index: 1;
+}
+
+.block::after {
+  content: "";
+  position: absolute;
+  /* Everything but the handle column and the gap in front of it. Measured from
+     the padding box, so the card's own padding counts towards the distance -
+     without it the surface would reach a few pixels under the handles. */
+  inset: 0 var(--tools-outset) 0 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  z-index: -2;
+  pointer-events: none;
+}
+
+.block-head {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  /* A margin, not padding: the heading carries the line that separates it from
+     the rows, and a border is drawn across the whole box. With padding the line
+     would run out past the card and across the handles; with a margin the box
+     itself ends where the card's surface does. The handles get that space back
+     below. */
+  padding: .4rem 0 .5rem .55rem;
+  margin-right: var(--tools-inset);
+  /* Separates the heading from the rows below. Inset by the card's own padding
+     rather than bleeding to the edges, so it sits inside the rounded corners
+     instead of running into them. */
+  border-bottom: 1px solid var(--border);
+  margin-bottom: var(--head-gap);
+}
+
+.block-title {
+  font-size: .92rem;
+  font-weight: 650;
+  letter-spacing: .01em;
+  /* Takes the free space so the tools sit at the right edge. Truncating a long
+     name is the link's job, not this box's: the link reaches past this edge by
+     its own padding, and a clip here would cut the corner off its hover fill.
+     The only title without a link is the fixed "Ohne Kategorie", which has
+     nothing to truncate. */
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+/* Bare icons, like the handles in the rows below. They once had a raised bar of
+   their own, to lift them off the band that ran down the card; there is nothing
+   left out here to lift them off.
+
+   Pulled back out of the heading, into the column the row handles stand in. The
+   negative block margin keeps them out of the heading's height: a 30px button
+   is taller than the title beside it, and without this the whole heading would
+   grow by a couple of pixels the moment the mode is switched on. */
+.block-tools {
+  display: flex;
+  align-items: center;
+  gap: .1rem;
+  margin-right: calc(-1 * var(--tools-inset));
+  margin-block: -2px;
+}
+
+.block:hover .block-tools,
+.block:focus-within .block-tools { opacity: 1; }
+
+/* The same size and the same tone as the handles in the rows below: they stand
+   in one column now, where a brighter icon at the top would read as a different
+   control rather than the same one. */
+.block-tools .icon-button {
+  width: 2rem;
+  height: 2rem;
+  color: var(--text-muted);
+}
+.block-tools .icon-button svg { width: 1.2rem; height: 1.2rem; }
+
+/* The category heading opens its own screen, and says so the way a habit name
+   does: no underline, the same quiet fill under the pointer, in the same shape
+   - .habit-main's padding and radius to the pixel.
+
+   The negative margins give that padding back to the layout: the fill draws
+   larger, but the text stays where it sat and the heading keeps its height. */
+.block-link {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: .5rem .4rem;
+  margin-inline: -.4rem;
+  margin-block: -.25rem;
+  border-radius: var(--radius-sm);
+  transition: background .12s ease;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.block-link:hover { background: var(--surface-2); }
+
+/* ---------- category screen ---------- */
+
+.cat-habits { display: flex; flex-direction: column; }
+
+.cat-habit {
+  display: flex;
+  align-items: center;
+  gap: .7rem;
+  width: 100%;
+  padding: .6rem .5rem;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.cat-habit + .cat-habit { border-top: 1px solid var(--border); border-radius: 0; }
+.cat-habit:hover { background: var(--surface-2); }
+
+.cat-habit .dot {
+  width: .7rem;
+  height: .7rem;
+  border-radius: 50%;
+  background: var(--habit-color);
+  flex: none;
+}
+
+.cat-habit-text {
+  display: flex;
+  flex-direction: column;
+  gap: .1rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.cat-habit-streak {
+  color: var(--text-muted);
+  font-size: .82rem;
+  font-variant-numeric: tabular-nums;
+  flex: none;
+}
+
+/* How much of the block is done today, beside the heading: the bar first, the
+   numbers after it. The bar alone would be decoration - "3/5" is the fact, the
+   bar only makes it graspable without reading. */
+.block-progress {
+  display: flex;
+  align-items: center;
+  gap: .45rem;
+  flex: none;
+  /* The same indent the title keeps on the left, so the bar sits inside the
+     card rather than against its edge. In the edit mode the tools take over
+     that job and this only widens the gap to them, which is harmless. */
+  margin-right: .55rem;
+  color: var(--text-muted);
+  font-size: .78rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.block-progress-count { white-space: nowrap; }
+
+/* One tick per habit, so the bar can be counted as well as read. The width
+   follows the number of habits until the cap, after which the ticks shrink
+   evenly - a category with a dozen habits must not push the heading around. */
+.block-progress-track {
+  display: flex;
+  gap: .15rem;
+  flex: none;
+  width: calc(var(--segments) * .7rem);
+  max-width: 6rem;
+}
+
+.block-progress-seg {
+  flex: 1 1 0;
+  min-width: 0;
+  height: .3rem;
+  border-radius: 999px;
+  background: var(--surface-2);
+}
+
+.block-progress-seg.is-done { background: var(--text-faint); }
+
+/* Everything due today is done: the one state worth a colour of its own. */
+.block-progress.is-complete { color: var(--text); }
+.block-progress.is-complete .block-progress-seg.is-done { background: var(--done); }
+
+.block-empty {
+  margin: 0;
+  padding: .35rem .55rem .8rem;
+  color: var(--text-faint);
+  font-size: .82rem;
+}
+
+/* Inline naming and renaming of a category, in place of the element it
+   replaces, so the block does not jump while typing. */
+.inline-input {
+  font: inherit;
+  font-size: .92rem;
+  font-weight: 650;
+  background: var(--bg);
+  border: 1px solid var(--primary);
+  border-radius: var(--radius-sm);
+  padding: .2rem .45rem;
+  min-width: 12rem;
+  max-width: 100%;
+}
+
+/* The month a run of columns belongs to, on the row above the dates. The board
+   shows only day numbers, which say nothing about the month once it can be
+   paged back — and even at today's window, a range of four weeks usually spans
+   two months. */
+.month-label {
+  align-self: end;
+  padding: 0 .3rem .15rem;
+  font-size: .68rem;
+  font-weight: 600;
+  letter-spacing: .04em;
+  color: var(--text-muted);
+  /* A long name in a short run is clipped rather than pushing the grid wider. */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Where one month gives way to the next, drawn down both rows of the header:
+   once beside the month name, once beside the date below it. The first label
+   needs none — the board edge is already its boundary. */
+.month-label.has-divider {
+  border-left: 1px solid var(--border);
+  /* A little more air than the plain padding, so the name is not pressed
+     against the line. Only where there is a line to keep away from: the
+     leftmost label has none and keeps its own indent. */
+  padding-left: .55rem;
+}
+
+/* The date cell cannot use a border for its half of the line: the cell is
+   rounded so the today marker can sit in it, and a rounded border curves away
+   from the corners — which is exactly where the line has to meet the segment
+   above. A drawn strip ignores the radius and stays straight from edge to
+   edge. */
+.grid-head.is-month-start { position: relative; }
+
+.grid-head.is-month-start::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--border);
+}
+
+/* The paging controls, in the header cell above the habit names. Sized down
+   from the regular icon buttons so all three fit the narrow name column even on
+   a phone, and pushed to the left edge so they line up with the names. */
+.day-nav {
+  display: flex;
+  /* Centred on the date row, so the arrows sit level with the day numbers
+     rather than with the header block as a whole. */
+  align-items: center;
+  gap: .15rem;
+  /* The date cell carries more padding below its text than above it, so the
+     text block sits a hair above the middle of the row. The same offset here
+     puts the arrows on the text's centre line rather than the row's. */
+  padding: 0 0 .15rem .3rem;
+}
+
+.day-nav .icon-button {
+  width: 2.15rem;
+  height: 2.15rem;
+  /* The same ink as the weekday labels beside them. The arrows belong to the
+     header's lettering, not to the data in it: at the day numbers' tone they
+     were the loudest thing in a strip whose job is to label the columns. */
+  color: var(--text-faint);
+}
+
+.day-nav .icon-button:hover:not(:disabled) { color: var(--text); }
+.day-nav .icon-button svg { width: 1.3rem; height: 1.3rem; }
+
+.day-nav .icon-button:disabled {
+  color: var(--text-faint);
+  opacity: .45;
+  cursor: default;
+  background: transparent;
+}
+
+.grid-head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: .35rem 0 .5rem;
+  border-radius: var(--radius-sm);
+  color: var(--text-faint);
+  font-size: .7rem;
+  /* A step above regular, weekday and number alike: at this size the dates are
+     the smallest lettering on the board, and the extra weight is what keeps
+     them legible - over a photograph as much as over a plain page. Mondays and
+     today go further still, in the rules below. */
+  font-weight: 500;
+  line-height: 1.25;
+}
+
+/* Scrolled, the header is no longer part of the page but a strip lying over it:
+   it takes the title bar's own colour and blur - the two are parked against
+   each other up there and should read as one piece - and a shadow, because a
+   strip that lies over something casts one. The same shadow the cards use, so
+   the board keeps one light source.
+
+   In components rather than in base, so it lands after the rule that leaves the
+   header transparent over a picture: same specificity, and this one has to win
+   the moment the page moves. */
+html[data-scrolled="on"] .day-header {
+  background-color: var(--topbar-bg);
+  backdrop-filter: blur(10px);
+  box-shadow: var(--shadow);
+}
+
+/* Over a picture the blur follows the surfaces knob, exactly as the title bar's
+   does. */
+html[data-pattern="image"][data-scrolled="on"] .day-header {
+  backdrop-filter: blur(var(--surface-blur));
+}
+
+/* Today is marked on the date itself: a disc behind the weekday and the number,
+   and nothing below. A band drawn down the whole board turned out to be more
+   present than the thing it was pointing at.
+
+   Isolated, so the disc can sit behind the two lines with a negative z-index
+   without falling behind the header's own opaque background as well. */
+.grid-head.is-today {
+  position: relative;
+  isolation: isolate;
+  color: var(--text);
+  font-weight: 650;
+}
+
+.grid-head.is-today::before {
+  content: "";
+  position: absolute;
+  /* A little wider than the column, and as tall - a circle, not a rounded box.
+     The extra covers the two-pixel gaps beside the column, which is as far as
+     it can grow without reaching under the neighbouring dates. Centred on the
+     text rather than on the cell: the cell carries more padding below its lines
+     than above, and the disc has to follow the lines. */
+  width: calc(var(--cell) + 4px);
+  aspect-ratio: 1;
+  left: 50%;
+  top: calc(50% - .075rem);
+  translate: -50% -50%;
+  border-radius: 50%;
+  background: var(--today-shown);
+  z-index: -1;
+  pointer-events: none;
+}
+
+.grid-head .dow { text-transform: uppercase; letter-spacing: .04em; }
+.grid-head .dom { font-size: .85rem; color: var(--text-muted); }
+.grid-head.is-today .dom { color: var(--text); }
+
+/* Mondays start the week and are set in bold — weekday and date both, so the
+   whole column reads as the marker. No colour: the interface carries no hue of
+   its own, and weight alone is enough to count weeks across a wide row.
+
+   Placed after the today rule so a Monday that is also today keeps its
+   background; a fill and a weight do not fight over the same cell. */
+.grid-head.is-week-start .dow,
+.grid-head.is-week-start .dom {
+  font-weight: 700;
+}
+
+/* The name column of a row: the label fills it, the arrows lie on top of its
+   right end. Absolute rather than in the flow, so a row is exactly as tall and
+   the second line exactly as wide as before the arrows existed. */
+.habit-cell {
+  position: relative;
+  display: flex;
+  min-width: 0;
+}
+
+.habit-cell .habit-main { flex: 1; min-width: 0; }
+
+.habit-tools {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: .1rem;
+}
+
+/* Reordering is a mode, not something that appears under the pointer. Outside
+   it the handles are gone and their column has no width, which gives the days
+   the space back - on a phone that is a whole extra day. */
+html:not([data-edit="on"]) .habit-tools,
+html:not([data-edit="on"]) .block-tools,
+html[data-filtering="on"] .habit-tools,
+html[data-filtering="on"] .block-tools { display: none; }
+
+html:not([data-edit="on"]),
+html[data-filtering="on"] {
+  --tools-col: 0px;
+  --tools-track: 0px;
+  --tools-inset: 0px;
+  --tools-outset: 0px;
+}
+
+/* Matching the row's own hover fill, so the strip does not show as a lighter
+   patch while the mouse is on the row. */
+.habit-tools .icon-button {
+  width: 2rem;
+  height: 2rem;
+  color: var(--text-muted);
+}
+
+.habit-tools .icon-button svg { width: 1.2rem; height: 1.2rem; }
+
+/* A step darker than the row, not the same tone.
+   These buttons only appear while the row is hovered, and a hovered row is
+   already --surface-2 — the usual hover fill would land on the same colour
+   as the ground beneath it and leave no way to tell which button the pointer
+   is on. --border is the next step in both themes: darker on the light one,
+   lighter on the dark one. */
+.habit-tools .icon-button:hover:not(:disabled) {
+  background: var(--border);
+  color: var(--text);
+}
+
+/* Pressed reads as one step further still. */
+.habit-tools .icon-button:active:not(:disabled) {
+  background: var(--border-strong);
+}
+
+.habit-tools .icon-button:disabled {
+  color: var(--text-faint);
+  opacity: .4;
+  cursor: default;
+  background: transparent;
+}
+
+.habit-main {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: .1rem;
+  min-width: 0;
+  text-align: left;
+  /* Tighter at the sides than a button would normally be: every pixel here is
+     one the second line does not get. */
+  padding: .5rem .4rem;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  cursor: pointer;
+}
+
+.habit-cell:hover .habit-main { background: var(--surface-2); }
+
+.habit-name {
+  font-weight: 550;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.habit-meta {
+  color: var(--text-faint);
+  font-size: .74rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.habit-main.is-archived .habit-name { color: var(--text-faint); font-style: italic; }
+
+/* ---------- day cells ---------- */
+
+.cell {
+  display: grid;
+  place-items: center;
+  /* min-height, not height: a fixed height would stop the cell from stretching
+     to the row, and the mark would then sit at the top edge instead of level
+     with the two-line habit label beside it. */
+  min-height: 3rem;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.cell:hover:not(:disabled) { background: var(--surface-2); }
+
+/* The day cells themselves stay transparent on the today column - the band
+   behind them is the marker. Only the hover needs saying, so that a cell under
+   the pointer still answers. */
+.cell.is-today:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--today-shown) 88%, var(--text));
+}
+.cell:disabled { cursor: default; }
+
+/* The mark is a ring whose fill shows progress towards the day's target. A
+   conic gradient handles every partial state with one element, so counters and
+   durations need no extra markup compared with a yes/no habit. */
+.mark {
+  --p: 0;
+  position: relative;
+  width: 1.65rem;
+  height: 1.65rem;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: .7rem;
+  font-weight: 650;
+  color: var(--text-muted);
+  background:
+    conic-gradient(var(--habit-color) calc(var(--p) * 360deg), transparent 0);
+  box-shadow: inset 0 0 0 var(--ring) color-mix(in srgb, var(--habit-color) 45%, transparent);
+}
+
+.mark::after {
+  content: "";
+  position: absolute;
+  /* This inset, not the box-shadow above, is what sets the visible ring width:
+     the pseudo-element knocks the middle back out of the conic gradient. The
+     shadow that draws the unfilled track has to match it. */
+  inset: calc(var(--ring) + 1px);
+  border-radius: 50%;
+  background: var(--surface);
+}
+
+
+/* Inside the ring the knockout has to be what surrounds the mark, which on the
+   today column is the band rather than the card.
+
+   Mixed with the card rather than with transparency, unlike the band itself:
+   the knockout's job is hiding the middle of the progress disc, and a
+   see-through one would let it through as a filled circle. Over an opaque card
+   the mix is exactly what the band looks like there - the same share of colour
+   over the card either way - so the ring's middle matches its surroundings at
+   every setting. */
+.cell.is-today .mark::after {
+  background: color-mix(in srgb, var(--today) var(--today-opacity), var(--surface));
+}
+
+.mark > * { position: relative; z-index: 1; }
+
+/* Centred on the figures, not on the line box. A line box carries the font's
+   ascent and descent, which are asymmetric and differ per family — centring
+   that box puts the digits slightly off in a way that changes with the chosen
+   typeface (the system font sits about 0.7px low at this size, Montserrat
+   0.1px). text-box trims the box to cap height and baseline, so what gets
+   centred is exactly the ink of the digits. Browsers that do not know the
+   property keep the old centring. */
+.mark-value {
+  color: var(--habit-color);
+  font-variant-numeric: tabular-nums;
+  text-box: trim-both cap alphabetic;
+}
+.mark-value.is-small { font-size: .62rem; }
+.mark-value.is-tiny { font-size: .54rem; letter-spacing: -.02em; }
+.mark.is-complete .mark-value { color: #fff; }
+
+.mark.is-complete {
+  background: var(--habit-color);
+  box-shadow: none;
+  color: #fff;
+}
+
+.mark.is-complete::after { display: none; }
+
+.mark.is-complete svg { width: .95rem; height: .95rem; }
+
+/* Days the habit is not due on stay visible but recede, so a Mon/Wed/Fri habit
+   reads as a rhythm rather than as a row full of misses. */
+.mark.is-off {
+  background: none;
+  box-shadow: none;
+  width: .35rem;
+  height: .35rem;
+  background-color: var(--border-strong);
+}
+
+/* A day that has not happened yet: the mark recedes, and a reached target is
+   hatched rather than solid, so a plan is never mistaken for a record. */
+.mark.is-future { opacity: .6; }
+
+/* Planned and already at the target: the fill stays the habit's colour, but
+   striped, so it never reads as a day that was actually done. */
+.mark.is-future.is-complete {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    color-mix(in srgb, var(--surface) 70%, transparent) 0 2px,
+    transparent 2px 5px
+  );
+}
+
+/* ---------- detail view ---------- */
+
+.detail-head {
+  display: flex;
+  align-items: flex-start;
+  gap: .75rem;
+  margin-bottom: 1.25rem;
+}
+
+.detail-title { display: flex; flex-direction: column; gap: .15rem; flex: 1; min-width: 0; }
+.detail-title h2 { font-size: 1.4rem; display: flex; align-items: center; gap: .5rem; }
+.detail-title .dot { width: .7rem; height: .7rem; border-radius: 50%; background: var(--habit-color); flex: none; }
+.detail-title .sub { color: var(--text-muted); font-size: .85rem; }
+
+.stat-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+  gap: .75rem;
+  margin-bottom: 1.5rem;
+}
+
+.stat {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: .8rem .9rem;
+}
+
+.stat .value { font-size: 1.5rem; font-weight: 650; letter-spacing: -.02em; }
+.stat .label { color: var(--text-faint); font-size: .74rem; text-transform: uppercase; letter-spacing: .05em; }
+
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem;
+  margin-bottom: 1.25rem;
+  box-shadow: var(--shadow);
+}
+
+.panel h3 { font-size: .9rem; color: var(--text-muted); margin-bottom: .85rem; }
+
+/* ---------- heatmap ---------- */
+
+.heatmap-scroll { overflow-x: auto; padding-bottom: .35rem; }
+
+/* A whole year is around 37 columns, wider than the panel on a phone. The body
+   sizes to its content so the month row and the grid scroll together as one. */
+.heatmap-body { width: max-content; }
+
+.heatmap-months {
+  display: grid;
+  grid-template-columns: repeat(var(--weeks), var(--heat-cell));
+  gap: var(--heat-gap);
+  margin-bottom: .25rem;
+  height: .9rem;
+  color: var(--text-faint);
+  font-size: .68rem;
+  line-height: 1;
+}
+
+/* A caption is wider than the single column it is anchored to and is allowed to
+   spill to the right; months are four to five columns apart, so they never
+   collide. */
+.heatmap-months span { white-space: nowrap; }
+
+.heatmap {
+  display: grid;
+  grid-auto-flow: column;
+  grid-template-rows: repeat(7, var(--heat-cell));
+  gap: var(--heat-gap);
+  width: max-content;
+}
+
+.heat {
+  width: var(--heat-cell);
+  height: var(--heat-cell);
+  border-radius: 4px;
+  background: var(--surface-2);
+}
+
+.heat[data-level="0"] { background: var(--surface-2); }
+.heat[data-level="1"] { background: color-mix(in srgb, var(--habit-color) 28%, var(--surface-2)); }
+.heat[data-level="2"] { background: color-mix(in srgb, var(--habit-color) 55%, var(--surface-2)); }
+.heat[data-level="3"] { background: color-mix(in srgb, var(--habit-color) 78%, var(--surface-2)); }
+.heat[data-level="4"] { background: var(--habit-color); }
+.heat.is-off { background: transparent; box-shadow: inset 0 0 0 1px var(--border); }
+/* Future days, and the tail of the previous year in the first column: they
+   hold their square so the rows stay aligned, but show nothing. */
+.heat.is-future,
+.heat.is-outside { visibility: hidden; }
+
+.heatmap-legend {
+  display: flex;
+  align-items: center;
+  gap: .35rem;
+  margin-top: .6rem;
+  color: var(--text-faint);
+  font-size: .72rem;
+}
+
+
+/* Tooltip for the year grid. position: fixed rather than absolute because the
+   grid lives in a horizontally scrolling box, which would clip anything
+   positioned inside it. */
+/* Shared by the heatmap and the cumulative chart. */
+.chart-tooltip {
+  position: fixed;
+  z-index: 70;
+  /* Never steals the hover from the square underneath it. */
+  pointer-events: none;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow);
+  padding: .4rem .6rem;
+  font-size: .78rem;
+  line-height: 1.35;
+  white-space: nowrap;
+}
+
+.chart-tooltip .tip-date { font-weight: 600; }
+.chart-tooltip .tip-status { color: var(--text-muted); }
+
+/* A day square and a bar are hover targets, so they say so. */
+.heat[data-date],
+.cum-col[data-tip] { cursor: default; }
+
+/* ---------- toasts ---------- */
+
+.toasts {
+  position: fixed;
+  left: 50%;
+  bottom: 1.25rem;
+  transform: translateX(-50%);
+  z-index: 60;
+  display: flex;
+  flex-direction: column-reverse;
+  gap: .5rem;
+  width: min(28rem, calc(100vw - 2rem));
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: .6rem .6rem .6rem .9rem;
+  animation: toast-in .16s ease-out;
+}
+
+.toast .text { flex: 1; min-width: 0; font-size: .88rem; }
+.toast.is-error { border-color: var(--danger); }
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(.5rem); }
+  to   { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast { animation: none; }
+  .button:active { transform: none; }
+}
+
+/* ---------- styleguide ----------
+   Only ever seen on #/styleguide. Its own prefix, so nothing here can reach
+   into the app by accident. */
+
+.sg-head { padding: .5rem 0 1.5rem; }
+.sg-head h1 { font-size: 1.5rem; }
+
+.sg-note {
+  margin: .35rem 0 0;
+  color: var(--text-muted);
+  font-size: .85rem;
+  max-width: 46rem;
+}
+
+/* Two columns on a wide screen, stacked on a narrow one. Each panel paints its
+   own background, because the page behind it can only have one theme. */
+.sg-themes {
+  display: grid;
+  gap: 1.25rem;
+  grid-template-columns: repeat(auto-fit, minmax(28rem, 1fr));
+  align-items: start;
+}
+
+.sg-theme {
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem 1.15rem 1.5rem;
+}
+
+.sg-theme-title {
+  font-size: .8rem;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--text-muted);
+  padding-bottom: .75rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.sg-section { padding-top: 1.5rem; }
+.sg-title { font-size: 1rem; }
+
+/* Specimens wrap and sit on a baseline of their own, so a row of buttons and a
+   row of day cells line up the same way. */
+.sg-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 1rem .9rem;
+  margin-top: .9rem;
+}
+
+.sg-row.is-block { display: block; }
+
+.sg-specimen {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: .3rem;
+  min-width: 0;
+}
+
+.sg-label {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: .68rem;
+  color: var(--text-faint);
+}
+
+/* The day cells need the grid the board gives them; here a plain row does. */
+.sg-cells { display: flex; gap: 2px; }
+.sg-cells .cell { width: var(--cell); }
+
+.heatmap-sample { display: flex; gap: var(--heat-gap); }
+
+/* A .field is a label in the editor's column layout; here it must not stretch
+   across the whole panel. */
+.sg-row .field { min-width: 14rem; max-width: 20rem; padding: 0; }
+
+.sg-tokens {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: .3rem .6rem;
+  font-size: .78rem;
+}
+
+.sg-token { display: contents; }
+
+.sg-chip {
+  width: 1.4rem;
+  height: 1.4rem;
+  border-radius: 5px;
+  border: 1px solid var(--border-strong);
+}
+
+.sg-chip.is-empty { visibility: hidden; }
+
+.sg-token-name { color: var(--text); font-size: .74rem; }
+.sg-token-value { color: var(--text-muted); font-variant-numeric: tabular-nums; }
+
+/* ---------- cumulative chart ----------
+   One bar per month, each as tall as the running total at the end of that
+   month. Plain elements rather than an SVG: the labels then keep the page's own
+   font sizes instead of being scaled by a viewBox, and the bars inherit the
+   habit's colour like every other part of the detail view. */
+
+.cum-summary {
+  margin: -.35rem 0 1rem;
+  color: var(--text-muted);
+  font-size: .85rem;
+}
+
+.cum-summary strong { color: var(--text); font-weight: 650; }
+
+.cum-empty { margin: 0; color: var(--text-faint); font-size: .85rem; }
+
+.cum-chart { --cols: 12; }
+
+/* The tallest bar is by definition the year's total, so the line it reaches is
+   the only scale the chart needs. */
+.cum-scale {
+  text-align: right;
+  font-size: .72rem;
+  color: var(--text-faint);
+  padding-bottom: .2rem;
+  border-bottom: 1px dashed var(--border);
+}
+
+.cum-bars {
+  display: grid;
+  grid-template-columns: repeat(var(--cols), 1fr);
+  gap: .3rem;
+  align-items: end;
+  height: 9rem;
+}
+
+.cum-col { height: 100%; display: flex; align-items: flex-end; }
+
+.cum-bar {
+  width: 100%;
+  /* The part carried over from earlier months, held back so the newest slice
+     reads as the growth rather than as more of the same. */
+  background: color-mix(in srgb, var(--habit-color) 28%, transparent);
+  border-radius: 4px 4px 0 0;
+  display: flex;
+  flex-direction: column;
+  /* The gain is the first child and belongs at the top of the bar. */
+  justify-content: flex-start;
+  min-height: 2px;
+}
+
+/* Nothing yet is nothing, not a sliver. */
+.cum-bar.is-zero { min-height: 0; }
+
+.cum-gain {
+  background: var(--habit-color);
+  border-radius: 4px 4px 0 0;
+  min-height: 2px;
+}
+
+.cum-months {
+  display: grid;
+  grid-template-columns: repeat(var(--cols), 1fr);
+  gap: .3rem;
+  margin-top: .4rem;
+  font-size: .68rem;
+  color: var(--text-faint);
+  text-align: center;
+}
+
+/* Title and grain switch share a line; the switch shrinks to its content
+   instead of stretching the way it does in a form. */
+.cum-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: .85rem;
+  flex-wrap: wrap;
+}
+
+.cum-head h3 { margin-bottom: 0; }
+
+.segmented.cum-grain { width: auto; flex: none; }
+.segmented.cum-grain span { padding: .25rem .7rem; font-size: .78rem; }
+
+/* Nine monthly bars can afford the wide gap; thirty daily ones cannot, or the
+   gaps take more room than the bars. */
+.cum-chart.is-fine .cum-bars { column-gap: 2px; }
+.cum-chart.is-fine .cum-months { column-gap: 2px; }
+
+/* A year of daily bars is several times wider than the panel, so the bars and
+   their labels scroll sideways together — the same arrangement the heatmap
+   above uses. The track stretches to the panel when there is room to spare, so
+   a handful of monthly bars still fill the width instead of huddling left. */
+.cum-scroll { overflow-x: auto; padding-bottom: .35rem; }
+
+.cum-track { min-width: 100%; width: max-content; }
+
+/* The bars alone decide how wide the track is. */
+.cum-bars {
+  grid-template-columns: repeat(var(--cols), minmax(var(--bar-min, 24px), 1fr));
+}
+
+/* The labels take the same columns, and must not widen them: a caption like
+   "17.9." is wider than a daily bar, and a grid track sized to its content
+   would stretch every bar in the chart to the width of a date.
+   Hence the caption is taken out of the flow and centred over its own cell —
+   an absolutely positioned child contributes nothing to track sizing. */
+.cum-months {
+  grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
+}
+
+.cum-months span { position: relative; height: 1em; }
+
+.cum-months i {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  font-style: normal;
+  white-space: nowrap;
+}
+
+/* ---------- drag to reorder ---------- */
+
+/* The handle is the one control that starts a drag, so it says so — and
+   touch-action: none keeps a finger on it from scrolling the page instead.
+   Only on the handle: everywhere else the page still scrolls normally. */
+.drag-handle {
+  cursor: grab;
+  touch-action: none;
+}
+
+.drag-handle:active { cursor: grabbing; }
+
+/* The block being dragged rides above its neighbours and casts a heavier
+   shadow, so it reads as picked up rather than as part of the stack. */
+.block.is-dragging {
+  position: relative;
+  z-index: 15;
+  cursor: grabbing;
+}
+
+.block.is-dragging::after { box-shadow: 0 12px 30px rgba(0, 0, 0, .35); }
+
+/* The class sits on whichever list is being rearranged — the board for blocks,
+   a single block's rows for habits — so these rules address its children
+   rather than naming either one. */
+.is-reordering > :not(.is-dragging) {
+  transition: transform .14s ease;
+}
+
+/* Nothing reacts to hover during a drag: the pointer is busy, and a row
+   lighting up under the one being carried is noise. */
+.is-reordering .habit-main:hover,
+.is-reordering .cell:hover:not(:disabled) { background: transparent; }
+
+/* The administrative controls step back, except on the element in hand — it
+   keeps its handle, which is what the pointer is holding. */
+.is-reordering .block-tools,
+.is-reordering .habit-tools { opacity: 0; }
+
+.is-dragging .block-tools,
+.is-dragging .habit-tools { opacity: 1; }
+
+/* Text selection during a drag would leave half the board highlighted. */
+.is-reordering { user-select: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .is-reordering > :not(.is-dragging) { transition: none; }
+}
+
+
+/* A dragged row needs a ground of its own: rows are transparent, and without
+   one the row underneath would show through the one being carried. */
+.habit-row.is-dragging {
+  position: relative;
+  z-index: 5;
+  background: var(--surface);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, .28);
+}

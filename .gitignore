@@ -1,0 +1,7 @@
+/habits
+/habits.exe
+*.db
+*.db-shm
+*.db-wal
+/dist/
+/.claude/

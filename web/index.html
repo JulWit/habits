@@ -1,0 +1,419 @@
+<!doctype html>
+<html lang="de" data-theme="{{.Theme}}" data-font="{{.Font}}" data-pattern="{{.Pattern}}" data-band="{{.BandColor}}" style="--today-opacity: {{.BandOp}}%; --bg-dim: {{.Dim}}%; --bg-blur: {{.Blur}}px; --surface-opacity: {{.SurfaceOp}}%; --surface-blur: {{.SurfaceBlr}}px">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Habits</title>
+<link rel="icon" href="/assets/icon.svg" type="image/svg+xml">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/assets/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Habits">
+<!-- Two of them: the browser picks the one matching the scheme in use, so the
+     system bars follow the app instead of standing out above it. -->
+<meta name="theme-color" content="#f4f5f7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+<link rel="stylesheet" href="/assets/fonts.css">
+<link rel="stylesheet" href="/assets/base.css">
+<link rel="stylesheet" href="/assets/components.css">
+<link rel="stylesheet" href="/assets/forms.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <h1 class="brand">
+      <!-- A tick in a ring, drawn like the marks on the board: the stroke is the
+           same share of the circle there (3px on a 24.75px mark, 2.4 on a 19.2
+           one), so the logo reads as one of them rather than as a sign of its
+           own. currentColor, so it follows the theme like every other stroke.
+
+           The ring is cut open four times along the bottom, which leaves three
+           bars there - the same three a category's progress shows. The ring's
+           ends are square rather than round: a round cap adds half a stroke at
+           each end, which is more than the gaps are wide, and the four openings
+           would close up again.
+
+           The ring keeps its distance from the edge of the box: an SVG clips at
+           its viewBox, and a stroke that ends a fraction of a pixel short of it
+           loses its outermost antialiased row at the four extremes - which is
+           exactly where a circle is judged to be round. -->
+      <svg class="brand-mark" viewBox="0 0 24 24" aria-hidden="true"
+           fill="none" stroke="currentColor" stroke-width="2.4">
+        <path d="M2.98 15.28A9.6 9.6 0 1 1 21.02 15.28"/>
+        <path d="M20.14 17.09A9.6 9.6 0 0 1 16.41 20.53"/>
+        <path d="M14.54 21.26A9.6 9.6 0 0 1 9.46 21.26"/>
+        <path d="M7.59 20.53A9.6 9.6 0 0 1 3.86 17.09"/>
+        <path d="M8 12.3 10.9 15.2 16.1 9.2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span class="brand-text">Habits</span>
+    </h1>
+    <div class="board-filter" id="board-filter">
+      <span class="search-icon" data-icon="search" aria-hidden="true"></span>
+      <input id="habit-search" class="search" type="search" placeholder="Suchen…"
+             autocomplete="off" spellcheck="false" aria-label="Gewohnheiten durchsuchen">
+    </div>
+    <div class="topbar-actions">
+      <button id="filter-open" class="icon-button" type="button" title="Nur offene zeigen" aria-label="Nur offene zeigen" aria-pressed="false"></button>
+      <button id="open-settings" class="icon-button" type="button" title="Einstellungen" aria-label="Einstellungen" aria-haspopup="dialog"></button>
+      <button id="add-habit" class="button primary" type="button" aria-label="Neue Gewohnheit">
+        <span aria-hidden="true">+</span><span class="button-label">Neue Gewohnheit</span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main id="view-overview" class="view">
+  <!-- No aria-live here: the board is rebuilt from scratch on every render, so
+       a live region around it would read the whole grid out again on each
+       change. What changed is announced through #board-status instead. -->
+  <div id="overview-grid" class="board"></div>
+  <p id="no-match" class="empty" hidden>Keine Gewohnheit passt zur Suche.</p>
+  <div id="empty-state" class="empty" hidden>
+    <h2>Noch keine Gewohnheiten</h2>
+    <p>Lege deine erste Gewohnheit an — täglich, an bestimmten Wochentagen oder alle paar Tage.</p>
+    <button class="button primary" type="button" data-action="add-first">Erste Gewohnheit anlegen</button>
+  </div>
+</main>
+
+<main id="view-detail" class="view" hidden></main>
+
+<main id="view-category" class="view" hidden></main>
+
+<!-- Reached only by typing #/styleguide; deliberately linked from nowhere. -->
+<main id="view-styleguide" class="view" hidden></main>
+
+<dialog id="editor" class="dialog">
+  <form id="editor-form" method="dialog">
+    <header class="dialog-head">
+      <h2 id="editor-title">Neue Gewohnheit</h2>
+    </header>
+
+    <div class="dialog-body">
+      <label class="field">
+        <span class="field-label">Name</span>
+        <input name="name" type="text" maxlength="80" required autocomplete="off" placeholder="z. B. Wasser trinken">
+      </label>
+
+      <fieldset class="field">
+        <legend class="field-label">Farbe</legend>
+        <div id="color-choices" class="swatches" role="radiogroup" aria-label="Farbe"></div>
+      </fieldset>
+
+      <div class="field">
+        <span class="field-label">Kategorie</span>
+        <button type="button" class="picker" id="category-picker" aria-haspopup="dialog">
+          <span class="picker-value"></span>
+        </button>
+      </div>
+
+      <fieldset class="field">
+        <legend class="field-label">Typ</legend>
+        <div class="segmented" role="radiogroup" aria-label="Typ">
+          <label><input type="radio" name="kind" value="check" checked><span data-icon="check">Haken</span></label>
+          <label><input type="radio" name="kind" value="count"><span data-icon="calculator">Anzahl</span></label>
+          <label><input type="radio" name="kind" value="time"><span data-icon="clock">Zeit</span></label>
+          <label><input type="radio" name="kind" value="distance"><span data-icon="navigation">Distanz</span></label>
+        </div>
+      </fieldset>
+
+      <div class="field row" data-when-kind="count" hidden>
+        <label class="grow">
+          <span class="field-label">Tagesziel</span>
+          <input name="targetCount" type="number" min="0.1" max="1000" step="any" value="8" inputmode="decimal">
+        </label>
+        <label class="grow">
+          <span class="field-label">Einheit</span>
+          <input name="unit" type="text" maxlength="16" placeholder="z. B. Gläser" autocomplete="off">
+        </label>
+      </div>
+
+      <div class="field" data-when-kind="count" hidden>
+        <label>
+          <span class="field-label">Schrittweite</span>
+          <input name="stepCount" type="number" min="0.1" max="1000" step="any" placeholder="z. B. 1" inputmode="decimal">
+        </label>
+        <p class="field-hint">Um diesen Wert ändert ein Klick auf einen Tag den Eintrag.</p>
+      </div>
+
+      <div class="field" data-when-kind="time" hidden>
+        <div class="field-row">
+          <label class="grow">
+            <span class="field-label">Tagesziel in Minuten</span>
+            <input name="targetTime" type="number" min="0.1" max="1440" step="any" value="20" inputmode="decimal">
+          </label>
+          <label class="grow">
+            <span class="field-label">Schrittweite in Minuten</span>
+            <input name="stepTime" type="number" min="0.1" max="1440" step="any" placeholder="z. B. 5" inputmode="decimal">
+          </label>
+        </div>
+        <p class="field-hint">Um diesen Wert ändert ein Klick auf einen Tag den Eintrag.</p>
+      </div>
+
+      <div class="field" data-when-kind="distance" hidden>
+        <!-- step="any": kilometres are stored as metres, so 0,25 is a perfectly
+             good value and the browser must not reject it for missing a tenth. -->
+        <div class="field-row">
+          <label class="grow">
+            <span class="field-label">Tagesziel in km</span>
+            <input name="targetDistance" type="number" min="0.001" max="200" step="any" value="5" inputmode="decimal">
+          </label>
+          <label class="grow">
+            <span class="field-label">Schrittweite in km</span>
+            <input name="stepDistance" type="number" min="0.001" max="200" step="any" placeholder="z. B. 0,5" inputmode="decimal">
+          </label>
+        </div>
+        <p class="field-hint">Um diesen Wert ändert ein Klick auf einen Tag den Eintrag.</p>
+      </div>
+
+      <fieldset class="field">
+        <legend class="field-label">Frequenz</legend>
+        <div class="segmented wrap" role="radiogroup" aria-label="Frequenz">
+          <label><input type="radio" name="freq" value="daily" checked><span>Täglich</span></label>
+          <label><input type="radio" name="freq" value="times_per_week"><span>x pro Woche</span></label>
+          <label><input type="radio" name="freq" value="weekdays"><span>Wochentage</span></label>
+          <label><input type="radio" name="freq" value="every_n_days"><span>Alle n Tage</span></label>
+        </div>
+      </fieldset>
+
+      <div class="field" data-when-freq="times_per_week" hidden>
+        <label>
+          <span class="field-label">Wie oft pro Woche</span>
+          <input name="timesPerWeek" type="number" min="1" max="7" step="1" value="3" inputmode="numeric">
+        </label>
+        <p class="field-hint">Die Woche beginnt am Montag. Welche Tage du wählst, ist dir überlassen.</p>
+      </div>
+
+      <div class="field" data-when-freq="weekdays" hidden>
+        <span class="field-label">An diesen Tagen</span>
+        <div id="weekday-choices" class="weekdays"></div>
+      </div>
+
+      <div class="field row" data-when-freq="every_n_days" hidden>
+        <label class="grow">
+          <span class="field-label">Alle … Tage</span>
+          <input name="intervalDays" type="number" min="1" max="365" step="1" value="3" inputmode="numeric">
+        </label>
+        <label class="grow">
+          <span class="field-label">Beginnend am</span>
+          <input name="anchorDate" type="date">
+        </label>
+      </div>
+
+      <p id="editor-error" class="error" hidden></p>
+    </div>
+
+    <footer class="dialog-foot">
+      <button type="button" class="button ghost" data-action="cancel">Abbrechen</button>
+      <button type="submit" class="button primary" id="editor-submit">Anlegen</button>
+    </footer>
+  </form>
+</dialog>
+
+<dialog id="settings-dialog" class="dialog">
+  <header class="dialog-head">
+    <h2>Einstellungen</h2>
+  </header>
+
+  <div class="tabs" role="tablist" aria-label="Einstellungsbereiche">
+    <button type="button" class="tab" role="tab" id="tab-look"
+            aria-controls="panel-look" aria-selected="true">Darstellung</button>
+    <button type="button" class="tab" role="tab" id="tab-board"
+            aria-controls="panel-board" aria-selected="false" tabindex="-1">Übersicht</button>
+    <button type="button" class="tab" role="tab" id="tab-archive"
+            aria-controls="panel-archive" aria-selected="false" tabindex="-1">Archiv</button>
+  </div>
+
+  <div class="dialog-body">
+    <div id="panel-look" class="tab-panel" role="tabpanel" aria-labelledby="tab-look">
+    <fieldset class="field">
+      <legend class="field-label">Design</legend>
+      <div class="segmented" role="radiogroup" aria-label="Design">
+        <label><input type="radio" name="settings-theme" value="system" autocomplete="off"><span data-icon="display">System</span></label>
+        <label><input type="radio" name="settings-theme" value="light" autocomplete="off"><span data-icon="sun">Hell</span></label>
+        <label><input type="radio" name="settings-theme" value="dark" autocomplete="off"><span data-icon="moon">Dunkel</span></label>
+      </div>
+    </fieldset>
+
+    <label class="field">
+      <span class="field-label">Schriftart</span>
+      <!-- autocomplete="off": the browser restores form values after a reload,
+           and a restored value fires change — which would write a stale choice
+           back over the one the server holds. -->
+      <select id="settings-font" class="select" autocomplete="off">
+        <option value="system">System</option>
+        <option value="inter">Inter</option>
+        <option value="roboto">Roboto</option>
+        <option value="geist">Geist</option>
+        <option value="opensans">Open Sans</option>
+        <option value="montserrat">Montserrat</option>
+        <option value="poppins">Poppins</option>
+        <option value="lato">Lato</option>
+      </select>
+    </label>
+
+    <fieldset class="field">
+      <legend class="field-label">Markierung für heute</legend>
+      <div id="band-choices" class="swatches" role="radiogroup" aria-label="Farbe der Tagesmarkierung"></div>
+      <label class="slider">
+        <span class="field-label">Deckkraft</span>
+        <input type="range" id="band-opacity" min="0" max="100" step="5" autocomplete="off">
+        <output id="band-opacity-out"></output>
+      </label>
+    </fieldset>
+
+    <label class="field">
+      <span class="field-label">Hintergrundmuster</span>
+      <select id="settings-pattern" class="select" autocomplete="off">
+        <option value="none">Einfarbig</option>
+        <option value="dots">Punkte</option>
+        <option value="grid">Raster</option>
+        <option value="diagonal">Diagonal</option>
+        <option value="cross">Kreuzschraffur</option>
+        <!-- Only offered once a picture has been uploaded; the script turns it
+             on and off with the upload. -->
+        <option value="image" id="pattern-image-option" disabled>Eigenes Bild</option>
+      </select>
+    </label>
+
+    <fieldset class="field">
+      <legend class="field-label">Hintergrundbild</legend>
+      <div class="upload">
+        <span class="upload-preview" id="bg-preview" aria-hidden="true"></span>
+        <div class="upload-actions">
+          <!-- A label, not a button: it is the file input, which is hidden
+               because no two browsers draw it the same way. -->
+          <label class="button">
+            <input type="file" id="bg-file" accept="image/jpeg,image/png" hidden>
+            Bild wählen
+          </label>
+          <button type="button" class="button ghost" id="bg-remove" hidden>Entfernen</button>
+        </div>
+      </div>
+      <p class="field-hint" id="bg-hint">JPEG oder PNG, höchstens 12 MB. Das Bild wird unverändert gespeichert.</p>
+
+      <div id="bg-knobs" hidden>
+        <p class="knob-group">Bild</p>
+        <label class="slider">
+          <span class="field-label">Abdunklung</span>
+          <input type="range" id="bg-dim" min="0" max="100" step="5" autocomplete="off">
+          <output id="bg-dim-out"></output>
+        </label>
+        <label class="slider">
+          <span class="field-label">Weichzeichnen</span>
+          <input type="range" id="bg-blur" min="0" max="100" step="5" autocomplete="off">
+          <output id="bg-blur-out"></output>
+        </label>
+
+        <p class="knob-group">Flächen — Titelleiste, Karten, Tafeln</p>
+        <label class="slider">
+          <span class="field-label">Deckkraft</span>
+          <input type="range" id="surface-opacity" min="20" max="100" step="5" autocomplete="off">
+          <output id="surface-opacity-out"></output>
+        </label>
+        <label class="slider">
+          <span class="field-label">Weichzeichnen</span>
+          <input type="range" id="surface-blur" min="0" max="100" step="5" autocomplete="off">
+          <output id="surface-blur-out"></output>
+        </label>
+      </div>
+    </fieldset>
+
+    </div>
+
+    <div id="panel-board" class="tab-panel" role="tabpanel" aria-labelledby="tab-board" hidden>
+    <fieldset class="field">
+      <legend class="field-label">Sortieren</legend>
+      <label class="switch">
+        <input type="checkbox" id="settings-edit" autocomplete="off">
+        <span>Anordnen</span>
+      </label>
+      <p class="field-hint">Blendet die Griffe zum Verschieben von Gewohnheiten und Kategorien ein. Gilt bis zum nächsten Laden der Seite.</p>
+      <div class="segmented" role="radiogroup" aria-label="Sortieren">
+        <label><input type="radio" name="settings-reorder" value="drag" autocomplete="off"><span data-icon="grip">Ziehen</span></label>
+        <label><input type="radio" name="settings-reorder" value="buttons" autocomplete="off"><span data-icon="chevronUp">Knöpfe</span></label>
+      </div>
+      <p class="field-hint" id="settings-reorder-hint"></p>
+    </fieldset>
+
+    <fieldset class="field">
+      <legend class="field-label">Tage in der Übersicht</legend>
+      <div class="segmented wrap" role="radiogroup" aria-label="Tage in der Übersicht">
+        <label><input type="radio" name="settings-days" value="0" autocomplete="off"><span>Automatisch</span></label>
+        <label><input type="radio" name="settings-days" value="7" autocomplete="off"><span>7</span></label>
+        <label><input type="radio" name="settings-days" value="14" autocomplete="off"><span>14</span></label>
+        <label><input type="radio" name="settings-days" value="21" autocomplete="off"><span>21</span></label>
+        <label><input type="radio" name="settings-days" value="28" autocomplete="off"><span>28</span></label>
+      </div>
+      <p class="field-hint" id="settings-days-hint"></p>
+      <label class="switch">
+        <input type="checkbox" id="settings-align-weeks" autocomplete="off">
+        <span>Woche am Montag beginnen</span>
+      </label>
+      <p class="field-hint" id="settings-align-hint"></p>
+    </fieldset>
+
+    </div>
+
+    <div id="panel-archive" class="tab-panel" role="tabpanel" aria-labelledby="tab-archive" hidden>
+    <fieldset class="field" id="settings-archive-field">
+      <legend class="field-label">Archiv</legend>
+      <label class="switch">
+        <input type="checkbox" id="settings-archived" autocomplete="off">
+        <span>Archivierte Gewohnheiten anzeigen</span>
+      </label>
+      <p class="field-hint" id="settings-archive-hint"></p>
+    </fieldset>
+    </div>
+
+    <p id="settings-error" class="error" hidden></p>
+  </div>
+
+  <footer class="dialog-foot">
+    <button type="button" class="button primary" data-action="close">Fertig</button>
+  </footer>
+</dialog>
+
+<dialog id="category-dialog" class="dialog compact">
+  <h2 class="dialog-head">Kategorie</h2>
+  <div class="dialog-body">
+    <div id="category-list" class="picker-list" role="listbox" aria-label="Kategorie wählen"></div>
+    <form id="category-create" class="picker-create">
+      <input name="name" type="text" maxlength="60" autocomplete="off"
+             placeholder="Neue Kategorie" aria-label="Name der neuen Kategorie">
+      <button type="submit" class="button">Anlegen</button>
+    </form>
+    <p id="category-error" class="error" hidden></p>
+  </div>
+  <footer class="dialog-foot">
+    <button type="button" class="button ghost" data-action="cancel">Abbrechen</button>
+  </footer>
+</dialog>
+
+<dialog id="value-popover" class="dialog compact">
+  <form id="value-form" method="dialog">
+    <h2 id="value-title" class="dialog-head">Wert eintragen</h2>
+    <div class="stepper">
+      <button type="button" class="button round" data-step="-1" aria-label="Weniger">−</button>
+      <input name="value" type="number" min="0" max="1440" step="1" inputmode="numeric" aria-label="Wert">
+      <button type="button" class="button round" data-step="1" aria-label="Mehr">+</button>
+    </div>
+    <!-- Filled per habit: the jumps differ by kind, so the buttons do too. -->
+    <div class="quick-steps" id="value-quick" hidden></div>
+    <p id="value-hint" class="field-hint"></p>
+    <footer class="dialog-foot">
+      <button type="button" class="button ghost" data-action="clear">Leeren</button>
+      <button type="submit" class="button primary">Speichern</button>
+    </footer>
+  </form>
+</dialog>
+
+<div id="toasts" class="toasts" role="status" aria-live="polite"></div>
+
+<!-- One line, off screen: what a tap just did. Ticking a habit deliberately
+     raises no toast, so without this a screen reader is told nothing at all. -->
+<div id="board-status" class="sr-only" role="status" aria-live="polite"></div>
+
+<script type="module" src="/assets/app.js"></script>
+</body>
+</html>

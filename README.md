@@ -68,6 +68,47 @@ next to the binary.
 `HABITS_TZ` is deliberately server-side: a self-hosted instance should have
 exactly one idea of which day is currently running.
 
+## Container
+
+Every push to `main` builds an image for `linux/amd64` and `linux/arm64` and
+puts it in the GitHub Container Registry:
+
+```bash
+docker pull ghcr.io/julwit/habits:latest
+```
+
+The package inherits the repository's visibility. While that is private,
+pulling needs a login too; a token with `read:packages` is enough.
+
+The image is `FROM scratch`: the binary and an empty `/data`, nothing else. No
+shell, no package manager — `docker exec` has nothing to do in there, and a
+`HEALTHCHECK` in the Dockerfile would have no executable to run. `/healthz`
+still answers the question, just from the outside.
+
+The process runs as UID 65532 and writes to `/data`. A named volume takes its
+ownership from the image; with a bind mount to a host directory you have to
+set it yourself (`chown 65532:65532 …`), or creating the database fails right
+at startup.
+
+```yaml
+services:
+  habits:
+    image: ghcr.io/julwit/habits:latest
+    environment:
+      HABITS_TZ: Europe/Berlin
+      HABITS_AUTH_MODE: authelia
+      HABITS_TRUSTED_PROXIES: 172.18.0.0/16
+    volumes:
+      - habits-data:/data
+    networks: [proxy]
+
+volumes:
+  habits-data:
+```
+
+Deliberately without `ports:` — see the next section: header auth does not
+survive a directly reachable port.
+
 ## Authelia
 
 The application has **no accounts of its own**. It reads the identity from the

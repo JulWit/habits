@@ -1,0 +1,18 @@
+# The build context is shipped to the daemon before anything is built. What is
+# listed here never leaves this machine in the first place.
+
+# The database holding the real entries. It is in .gitignore already, but the
+# build context does not read that file.
+*.db
+*.db-shm
+*.db-wal
+
+# Locally built binaries - the image builds its own.
+/habits
+/habits.exe
+/dist/
+
+# Useless inside the image, and by far the largest item.
+/.git
+/.github
+/.claude

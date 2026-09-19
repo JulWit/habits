@@ -1,0 +1,65 @@
+# Builds the container image and pushes it to the GitHub Container Registry.
+# The package inherits the repository's visibility, so the image is private
+# for as long as the repository is.
+name: Image
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  # JulWit/habits - metadata-action lower-cases this for the registry, because
+  # ghcr.io accepts no capitals in the path.
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  image:
+    runs-on: ubuntu-latest
+
+    # The GITHUB_TOKEN is enough for our own registry; no PAT is needed.
+    # packages:write is the only addition to reading the repository.
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v7
+
+      # buildx for the multi-platform build. No QEMU: the Dockerfile builds on
+      # the runner's architecture and cross-compiles itself.
+      - uses: docker/setup-buildx-action@v4
+
+      - uses: docker/login-action@v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          # main -> :main and :latest; a tag v1.2.3 additionally -> :1.2.3 and
+          # :1.2. The full commit hash is always there, so any running image
+          # maps to exactly one revision.
+          tags: |
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,format=long
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - uses: docker/build-push-action@v7
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          # The module download and the standard library survive between two
+          # runs this way.
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

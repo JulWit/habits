@@ -1,7 +1,7 @@
-# Dependabot tracks the Go dependencies and reports new versions as a pull
-# request. A PR rather than a bare notification, because it brings the change
-# with it: go.mod and go.sum are already adjusted, leaving the reading and the
-# merging.
+# Dependabot follows the dependencies and reports new versions as a pull
+# request. A pull request rather than a bare notification, because it carries
+# the change with it: go.mod and go.sum are already adjusted, what remains is
+# reading it and merging.
 version: 2
 
 updates:
@@ -13,18 +13,34 @@ updates:
       time: "07:00"
       timezone: Europe/Berlin
 
-    # One PR for all Go updates rather than ten separate ones. Apart from
-    # golang.org/x/sys, the indirect dependencies all come out of the
-    # dependency tree of modernc.org/sqlite and move in lockstep; separate PRs
+    # One pull request for all Go updates instead of ten separate ones. Except
+    # for golang.org/x/sys every indirect dependency comes out of the
+    # modernc.org/sqlite tree and they move in lockstep; separate pull requests
     # would be the same work ten times over.
     groups:
       go:
         patterns:
           - "*"
 
-    # With grouping there is usually only one PR open anyway. The limit only
-    # bites when an update gets stuck and the next week has already arrived.
+    # With grouping there is usually a single pull request open anyway. The
+    # limit only bites when one update stalls and the next week arrives.
     open-pull-requests-limit: 3
 
+    commit-message:
+      prefix: deps
+
+  # The action versions in the image workflow are written out in the YAML.
+  # Without this entry they quietly age while the Go side is kept current.
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "07:00"
+      timezone: Europe/Berlin
+    groups:
+      actions:
+        patterns:
+          - "*"
     commit-message:
       prefix: deps

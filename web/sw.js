@@ -15,18 +15,18 @@
 //     slower. The server already answers unchanged assets with a 304, so the
 //     network path is cheap.
 
-const CACHE = "habits-v2";
+const CACHE = "habits-v3";
 
 // Enough to draw the board offline. The rest lands in the cache as it is used -
 // precaching every module would mean touching this list on every rename.
 const SHELL = [
   "/",
-  "/assets/app.js",
-  "/assets/base.css",
-  "/assets/components.css",
-  "/assets/forms.css",
-  "/assets/fonts.css",
-  "/assets/icon.svg",
+  "/assets/js/app.js",
+  "/assets/css/base.css",
+  "/assets/css/components.css",
+  "/assets/css/forms.css",
+  "/assets/css/fonts.css",
+  "/assets/images/icon.svg",
 ];
 
 self.addEventListener("install", (event) => {

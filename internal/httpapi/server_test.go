@@ -22,7 +22,7 @@ import (
 var testWeb = fstest.MapFS{
 	"index.html": &fstest.MapFile{Data: []byte(
 		`<!doctype html><html data-theme="{{.Theme}}" data-font="{{.Font}}"></html>`)},
-	"assets/app.js": &fstest.MapFile{Data: []byte("export const x = 1;\n")},
+	"assets/js/app.js": &fstest.MapFile{Data: []byte("export const x = 1;\n")},
 }
 
 func newTestServer(t *testing.T) http.Handler {
@@ -92,7 +92,7 @@ func TestMutationsRequireTheJSONContentType(t *testing.T) {
 
 func TestSecurityHeadersAreOnEveryResponse(t *testing.T) {
 	h := newTestServer(t)
-	for _, path := range []string{"/", "/api/state", "/healthz", "/assets/app.js"} {
+	for _, path := range []string{"/", "/api/state", "/healthz", "/assets/js/app.js"} {
 		w := do(t, h, "GET", path, "", "")
 		for header, want := range map[string]string{
 			"X-Content-Type-Options": "nosniff",

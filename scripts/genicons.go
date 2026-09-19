@@ -1,5 +1,5 @@
 // Command genicons draws the app icon into the PNG sizes a web app manifest
-// needs. Run it after changing web/assets/icon.svg:
+// needs. Run it after changing web/assets/images/icon.svg:
 //
 //	go run ./scripts/genicons
 //
@@ -38,7 +38,7 @@ var (
 const sample = 4
 
 func main() {
-	out := filepath.Join("web", "assets")
+	out := filepath.Join("web", "assets", "images")
 	type job struct {
 		name     string
 		size     int

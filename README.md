@@ -255,12 +255,15 @@ internal/domain             Habits, frequencies, streaks — without I/O
 internal/store              SQLite: schema, migrations, queries
 internal/httpapi            Routing, JSON, serving the frontend
 web/                        Frontend (ES modules, no build step)
-  assets/overview.js        Board: blocks per category, shared day header
-  assets/cells.js           Habit row and day cell
-  assets/actions.js         All mutations, each with its undo step
-  assets/icons.js           Inline SVG icons for buttons
-  assets/categorypicker.js  Nested dialog for choosing a category
-  assets/settings.js        Settings dialog, writes every change immediately
+  assets/css/                 Stylesheets: tokens, components, forms, @font-face
+  assets/fonts/               Self-hosted woff2 files and their licences
+  assets/images/              App icon as SVG and the manifest's PNG sizes
+  assets/js/overview.js       Board: blocks per category, shared day header
+  assets/js/cells.js          Habit row and day cell
+  assets/js/actions.js        All mutations, each with its undo step
+  assets/js/icons.js          Inline SVG icons for buttons
+  assets/js/categorypicker.js Nested dialog for choosing a category
+  assets/js/settings.js       Settings dialog, writes every change immediately
 ```
 
 `internal/domain` knows neither database nor HTTP. The rules — when a habit is
@@ -281,8 +284,8 @@ npm, no bundler. `go build` thereby stays the only command needed for a release.
 **A new field on a habit** — the field in `domain.Habit` and its `Validate()`, a
 column by migration, reading/writing in `internal/store/habits.go`, an optional
 pointer in `habitInput` (`internal/httpapi/handlers_habits.go`), an input in
-`web/assets/editor.js`. And finally in `writableFields()` in
-`web/assets/actions.js`: PATCH reads a missing field as "unchanged", so a field
+`web/assets/js/editor.js`. And finally in `writableFields()` in
+`web/assets/js/actions.js`: PATCH reads a missing field as "unchanged", so a field
 forgotten there is not taken back by its own undo.
 
 **A new habit kind** — add it to `AllKinds` in `internal/domain/habit.go` and
@@ -293,9 +296,9 @@ editor only the input fields are added.
 **A new tool (kanban, pomodoro, to-do)** — as its own `internal/<tool>` with its
 own domain package and its own tables. What is shared is the infrastructure:
 `config`, `auth`, the store connection, the routing and the CSS tokens in
-`web/assets/base.css`.
+`web/assets/css/base.css`.
 
-**Undo for a new action** — carry the action out in `web/assets/actions.js` and
+**Undo for a new action** — carry the action out in `web/assets/js/actions.js` and
 then call `record({label, undo, redo})`. `undo` and `redo` are server calls, not
 local state changes; that is why the history stays correct even when a second
 device is writing in parallel.
@@ -349,13 +352,13 @@ settings are independent of one another.
   is the simplest correct choice; should read throughput ever become an issue,
   the answer would be a second, read-only pool — not a larger shared one.
 - The due-date logic exists twice, in `internal/domain/habit.go` and in
-  `web/assets/habit.js` — the server needs it for validation, the client in
+  `web/assets/js/habit.js` — the server needs it for validation, the client in
   order to draw a whole grid without a round trip. Changes to frequency rules
   have to be made in both places. The *numbers* per kind (scale, step size,
   ceiling), on the other hand, are no longer duplicated: they arrive as `kinds`
   with `/api/state`.
 - The lists of fonts and patterns appear in `internal/store/settings.go`, in
-  `web/assets/app.js` and in the `<option>` elements of `index.html`. A drift
+  `web/assets/js/app.js` and in the `<option>` elements of `index.html`. A drift
   here only falls back to the default rather than reading data incorrectly —
   which is why it has been left as it is so far.
 - A habit's kind can no longer be changed once days have been recorded. Every

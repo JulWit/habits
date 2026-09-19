@@ -21,9 +21,8 @@ RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH \
     go build -trimpath -ldflags="-s -w" -o /out/habits .
 
 # The data directory is created here because scratch has no mkdir and
-# store.Open does not create the path itself. Ownership travels with the COPY
-# into the second stage.
-RUN install -d -o 65532 -g 65532 /data
+# store.Open does not create the path itself.
+RUN install -d /data
 
 # No base image. The binary is statically linked, the timezone database is
 # compiled in via time/tzdata, and the application opens no outbound TLS
@@ -33,10 +32,6 @@ FROM scratch
 
 COPY --from=build /out/habits /habits
 COPY --from=build /data /data
-
-# Numeric, because scratch has no /etc/passwd in which a name could be
-# resolved.
-USER 65532:65532
 
 # The default in config.go is a relative path; inside the container it has to
 # point at the volume, or the database lands in the read-only top layer.

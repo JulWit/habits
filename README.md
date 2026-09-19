@@ -85,10 +85,10 @@ shell, no package manager — `docker exec` has nothing to do in there, and a
 `HEALTHCHECK` in the Dockerfile would have no executable to run. `/healthz`
 still answers the question, just from the outside.
 
-The process runs as UID 65532 and writes to `/data`. A named volume takes its
-ownership from the image; with a bind mount to a host directory you have to
-set it yourself (`chown 65532:65532 …`), or creating the database fails right
-at startup.
+The image sets no `USER`, so the process runs as root and writes to `/data`
+whatever that directory belongs to. To run it as somebody else, set `user:` in
+the compose file (or `--user`) — the directory has to be writable for that UID
+then, which with a bind mount to the host means a `chown` of your own.
 
 ```yaml
 services:

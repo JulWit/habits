@@ -53,7 +53,7 @@ func main() {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
-		fmt.Println("geschrieben:", j.name)
+		fmt.Println("written:", j.name)
 	}
 }
 
@@ -61,11 +61,11 @@ func write(path string, size int, maskable bool) error {
 	img := render(size, maskable)
 	f, err := os.Create(path)
 	if err != nil {
-		return fmt.Errorf("%s anlegen: %w", path, err)
+		return fmt.Errorf("creating %s: %w", path, err)
 	}
 	defer f.Close()
 	if err := png.Encode(f, img); err != nil {
-		return fmt.Errorf("%s schreiben: %w", path, err)
+		return fmt.Errorf("writing %s: %w", path, err)
 	}
 	return nil
 }

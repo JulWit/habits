@@ -111,18 +111,18 @@ func (k Kind) Step() int {
 }
 
 // Label is what the editor calls the kind. It lives here because the server
-// writes it into messages the user reads, and "distance" in a German sentence
-// about a German radio button labelled "Distanz" is a seam showing through.
+// writes it into messages the user reads, and a message naming a kind
+// differently from the radio button next to it is a seam showing through.
 func (k Kind) Label() string {
 	switch k {
 	case KindCheck:
-		return "Haken"
+		return "Check"
 	case KindCount:
-		return "Anzahl"
+		return "Count"
 	case KindTime:
-		return "Zeit"
+		return "Time"
 	case KindDistance:
-		return "Distanz"
+		return "Distance"
 	}
 	return string(k)
 }
@@ -204,7 +204,7 @@ type Habit struct {
 }
 
 var (
-	ErrValidation = errors.New("validierungsfehler")
+	ErrValidation = errors.New("validation error")
 	colorPattern  = regexp.MustCompile(`^#[0-9a-fA-F]{6}$`)
 )
 
@@ -214,15 +214,15 @@ const (
 )
 
 // The bounds messages are phrased per kind, so the reader is told about
-// minutes or metres rather than about an abstract "Zielwert".
+// minutes or metres rather than about an abstract "target".
 func minTargetMessage(k Kind) string {
 	switch k {
 	case KindTime:
-		return "Zeit muss mindestens 0,1 Minuten sein"
+		return "time must be at least 0.1 minutes"
 	case KindDistance:
-		return "Distanz muss mindestens 1 Meter sein"
+		return "distance must be at least 1 metre"
 	}
-	return "Zielwert muss mindestens 0,1 sein"
+	return "target must be at least 0.1"
 }
 
 // limitText spells a kind s ceiling the way the reader wrote it: the stored
@@ -230,9 +230,9 @@ func minTargetMessage(k Kind) string {
 func limitText(k Kind) string {
 	switch k {
 	case KindTime:
-		return fmt.Sprintf("%d Minuten", k.MaxTarget()/k.Scale())
+		return fmt.Sprintf("%d minutes", k.MaxTarget()/k.Scale())
 	case KindDistance:
-		return fmt.Sprintf("%d Kilometer", k.MaxTarget()/k.Scale())
+		return fmt.Sprintf("%d kilometres", k.MaxTarget()/k.Scale())
 	}
 	return fmt.Sprintf("%d", k.MaxTarget()/k.Scale())
 }
@@ -240,11 +240,11 @@ func limitText(k Kind) string {
 func maxTargetMessage(k Kind) string {
 	switch k {
 	case KindTime:
-		return "Zeit darf höchstens " + limitText(k) + " sein"
+		return "time may be at most " + limitText(k)
 	case KindDistance:
-		return "Distanz darf höchstens " + limitText(k) + " sein"
+		return "distance may be at most " + limitText(k)
 	}
-	return "Zielwert darf höchstens " + limitText(k) + " sein"
+	return "target may be at most " + limitText(k)
 }
 
 func invalid(format string, args ...any) error {
@@ -259,24 +259,24 @@ func (h *Habit) Validate() error {
 	h.Unit = strings.TrimSpace(h.Unit)
 
 	if h.Name == "" {
-		return invalid("Name darf nicht leer sein")
+		return invalid("name must not be empty")
 	}
 	if len([]rune(h.Name)) > MaxNameLen {
-		return invalid("Name ist länger als %d Zeichen", MaxNameLen)
+		return invalid("name is longer than %d characters", MaxNameLen)
 	}
 	if len([]rune(h.Unit)) > MaxUnitLen {
-		return invalid("Einheit ist länger als %d Zeichen", MaxUnitLen)
+		return invalid("unit is longer than %d characters", MaxUnitLen)
 	}
 	if h.Color == "" {
 		h.Color = DefaultColors[0]
 	}
 	if !colorPattern.MatchString(h.Color) {
-		return invalid("Farbe muss ein Hex-Wert wie #4caf50 sein")
+		return invalid("colour must be a hex value like #4caf50")
 	}
 	h.Color = strings.ToLower(h.Color)
 
 	if !h.Kind.Valid() {
-		return invalid("unbekannter Habit-Typ %q", h.Kind)
+		return invalid("unknown habit kind %q", h.Kind)
 	}
 	if h.Kind == KindCheck {
 		// A tick is done or it is not; there is nothing to configure.
@@ -295,7 +295,7 @@ func (h *Habit) Validate() error {
 	} else if h.StepValue < 1 {
 		h.StepValue = h.Kind.Step()
 	} else if h.StepValue > h.Kind.MaxTarget() {
-		return invalid("Schrittweite darf höchstens %s betragen", limitText(h.Kind))
+		return invalid("step may be at most %s", limitText(h.Kind))
 	}
 	// Kinds with a fixed unit own it; only a count lets the user name one.
 	if u := h.Kind.Unit(); u != "" || h.Kind == KindCheck {
@@ -308,27 +308,27 @@ func (h *Habit) Validate() error {
 func (h *Habit) normaliseFrequency() error {
 	f := &h.Frequency
 	if !f.Kind.Valid() {
-		return invalid("unbekannte Frequenz %q", f.Kind)
+		return invalid("unknown frequency %q", f.Kind)
 	}
 	switch f.Kind {
 	case FreqDaily:
 		f.TimesPerWeek, f.Weekdays, f.IntervalDays, f.AnchorDate = 0, 0, 0, Date{}
 	case FreqTimesPerWeek:
 		if f.TimesPerWeek < 1 || f.TimesPerWeek > 7 {
-			return invalid("Anzahl pro Woche muss zwischen 1 und 7 liegen")
+			return invalid("times per week must be between 1 and 7")
 		}
 		f.Weekdays, f.IntervalDays, f.AnchorDate = 0, 0, Date{}
 	case FreqWeekdays:
 		if f.Weekdays == 0 {
-			return invalid("mindestens ein Wochentag muss gewählt sein")
+			return invalid("at least one weekday must be selected")
 		}
 		if f.Weekdays > 0b1111111 {
-			return invalid("ungültige Wochentagsauswahl")
+			return invalid("invalid weekday selection")
 		}
 		f.TimesPerWeek, f.IntervalDays, f.AnchorDate = 0, 0, Date{}
 	case FreqEveryNDays:
 		if f.IntervalDays < 1 || f.IntervalDays > 365 {
-			return invalid("Intervall muss zwischen 1 und 365 Tagen liegen")
+			return invalid("interval must be between 1 and 365 days")
 		}
 		if f.AnchorDate.IsZero() {
 			f.AnchorDate = DateFromTime(h.CreatedAt)
@@ -345,13 +345,13 @@ func (h *Habit) normaliseFrequency() error {
 // value would overflow the sum in Stats.Total long before it meant anything.
 func ValidateEntryValue(k Kind, value int) error {
 	if !k.Valid() {
-		return invalid("unbekannter Habit-Typ %q", k)
+		return invalid("unknown habit kind %q", k)
 	}
 	if value < 0 {
-		return invalid("Wert darf nicht negativ sein")
+		return invalid("value must not be negative")
 	}
 	if value > k.MaxTarget() {
-		return invalid("Wert darf höchstens %s betragen", limitText(k))
+		return invalid("value may be at most %s", limitText(k))
 	}
 	return nil
 }

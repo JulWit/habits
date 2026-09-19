@@ -61,7 +61,7 @@ func TestWeeklyRateReaches100ForAPerfectUser(t *testing.T) {
 
 			st := ComputeStats(h, entries, tc.today, rateDays)
 			if st.CompletionRate != 1 {
-				t.Errorf("perfekter Nutzer: rate = %.3f (%d/%d), want 1.000",
+				t.Errorf("perfect user: rate = %.3f (%d/%d), want 1.000",
 					st.CompletionRate, st.Achieved, st.Expected)
 			}
 			if st.StreakUnit != "weeks" {
@@ -94,7 +94,7 @@ func TestWeeklyRateIgnoresWhereInTheWeekTheDaysFall(t *testing.T) {
 		t.Errorf("expected differs by placement: %d vs %d", a.Expected, b.Expected)
 	}
 	if a.CompletionRate != 1 {
-		t.Errorf("Mo/Di/Mi: rate = %.3f (%d/%d), want 1.000",
+		t.Errorf("Mon/Tue/Wed: rate = %.3f (%d/%d), want 1.000",
 			a.CompletionRate, a.Achieved, a.Expected)
 	}
 }
@@ -111,7 +111,7 @@ func TestWeeklyRateCountsAMissedWeek(t *testing.T) {
 
 	st := ComputeStats(h, entries, friday, rateDays)
 	if st.CompletionRate >= 1 {
-		t.Errorf("verpasste Woche: rate = %.3f, want < 1", st.CompletionRate)
+		t.Errorf("missed week: rate = %.3f, want < 1", st.CompletionRate)
 	}
 	if st.Achieved >= st.Expected {
 		t.Errorf("achieved %d should be below expected %d", st.Achieved, st.Expected)
@@ -140,7 +140,7 @@ func TestWeeklyStreakSurvivesAnOpenCurrentWeek(t *testing.T) {
 
 	st := ComputeStats(h, entries, friday, rateDays)
 	if st.CurrentStreak == 0 {
-		t.Error("offene laufende Woche darf die Serie nicht abreißen lassen")
+		t.Error("an open current week must not break the streak")
 	}
 }
 
@@ -174,12 +174,12 @@ func TestDailyStreakTreatsTodayAsOpen(t *testing.T) {
 		entries[d] = 1
 	}
 	if st := ComputeStats(h, entries, friday, rateDays); st.CurrentStreak != 10 {
-		t.Errorf("heute offen: currentStreak = %d, want 10", st.CurrentStreak)
+		t.Errorf("today still open: currentStreak = %d, want 10", st.CurrentStreak)
 	}
 
 	delete(entries, friday.AddDays(-1))
 	if st := ComputeStats(h, entries, friday, rateDays); st.CurrentStreak != 0 {
-		t.Errorf("gestern verpasst: currentStreak = %d, want 0", st.CurrentStreak)
+		t.Errorf("yesterday missed: currentStreak = %d, want 0", st.CurrentStreak)
 	}
 }
 
@@ -218,7 +218,7 @@ func TestTotalExcludesTheFuture(t *testing.T) {
 		friday.AddDays(300): 1,
 	}
 	if st := ComputeStats(h, entries, friday, rateDays); st.Total != 8000 {
-		t.Errorf("total = %d, want 8000 (Zukunft zählt nicht mit)", st.Total)
+		t.Errorf("total = %d, want 8000 (the future does not count)", st.Total)
 	}
 }
 
@@ -227,7 +227,7 @@ func TestEmptyHistory(t *testing.T) {
 	h := dailyHabit()
 	st := ComputeStats(h, map[Date]int{}, friday, rateDays)
 	if st.CurrentStreak != 0 || st.BestStreak != 0 || st.Total != 0 {
-		t.Errorf("leere Historie: %+v", st)
+		t.Errorf("empty history: %+v", st)
 	}
 	if st.CompletionRate != 0 {
 		t.Errorf("rate = %.3f, want 0", st.CompletionRate)
@@ -249,7 +249,7 @@ func TestHabitYoungerThanTheWindow(t *testing.T) {
 
 	st := ComputeStats(h, entries, friday, rateDays)
 	if st.Expected != 5 {
-		t.Errorf("expected = %d, want 5 — nur die Tage seit der Anlage", st.Expected)
+		t.Errorf("expected = %d, want 5 — only the days since creation", st.Expected)
 	}
 	if st.CompletionRate != 1 {
 		t.Errorf("rate = %.3f, want 1.000", st.CompletionRate)

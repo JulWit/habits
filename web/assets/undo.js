@@ -30,7 +30,7 @@ export function record(action) {
 
   if (!action.silent) {
     toast(action.toastLabel ?? action.label, {
-      actionLabel: "Rückgängig",
+      actionLabel: "Undo",
       onAction: undoLast,
     });
   }
@@ -51,7 +51,7 @@ export async function undoLast() {
     await action.undo();
     redoStack.push(action);
     await onChange();
-    toast(`Rückgängig: ${action.label}`, { actionLabel: "Wiederholen", onAction: redoLast });
+    toast(`Undone: ${action.label}`, { actionLabel: "Redo", onAction: redoLast });
   } catch (err) {
     // The action is put back so the user can try again rather than silently
     // losing a step of history.
@@ -67,7 +67,7 @@ export async function redoLast() {
     await action.redo();
     undoStack.push(action);
     await onChange();
-    toast(`Wiederholt: ${action.label}`, { actionLabel: "Rückgängig", onAction: undoLast });
+    toast(`Redone: ${action.label}`, { actionLabel: "Undo", onAction: undoLast });
   } catch (err) {
     redoStack.push(action);
     toast(errorText(err), { error: true });
@@ -75,7 +75,7 @@ export async function redoLast() {
 }
 
 export function errorText(err) {
-  return err?.message ? String(err.message) : "Unbekannter Fehler";
+  return err?.message ? String(err.message) : "Unknown error";
 }
 
 const DEFAULT_TIMEOUT = 7000;
@@ -121,7 +121,7 @@ export function toast(text, opts = {}) {
   const close = document.createElement("button");
   close.type = "button";
   close.className = "icon-button";
-  close.setAttribute("aria-label", "Schließen");
+  close.setAttribute("aria-label", "Close");
   close.textContent = "×";
   close.addEventListener("click", dismiss);
   el.append(close);

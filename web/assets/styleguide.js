@@ -24,34 +24,34 @@ function samples() {
   };
   return {
     check: {
-      ...base, id: "sg-check", name: "Meditieren", color: "#2563eb", kind: "check",
+      ...base, id: "sg-check", name: "Meditate", color: "#2563eb", kind: "check",
       targetValue: 1, frequency: freq(),
       stats: { ...base.stats, currentStreak: 6, streakUnit: "days" },
       entries: { [day(1)]: 1, [day(2)]: 1, [day(0)]: 1 },
     },
     count: {
-      ...base, id: "sg-count", name: "Wasser trinken", color: "#0d9488", kind: "count",
-      targetValue: 80, unit: "Gläser", frequency: freq(),
+      ...base, id: "sg-count", name: "Drink water", color: "#0d9488", kind: "count",
+      targetValue: 80, unit: "glasses", frequency: freq(),
       entries: { [day(0)]: 80, [day(1)]: 30, [day(2)]: 65 },
     },
     time: {
-      ...base, id: "sg-time", name: "Lesen", color: "#7c3aed", kind: "time",
+      ...base, id: "sg-time", name: "Reading", color: "#7c3aed", kind: "time",
       targetValue: 200, frequency: freq({ kind: "times_per_week", timesPerWeek: 4 }),
       stats: { ...base.stats, currentStreak: 1, streakUnit: "weeks" },
       entries: { [day(0)]: 200, [day(1)]: 125, [day(2)]: 250 },
     },
     distance: {
-      ...base, id: "sg-distance", name: "Laufen", color: "#ea580c", kind: "distance",
+      ...base, id: "sg-distance", name: "Running", color: "#ea580c", kind: "distance",
       targetValue: 5000, frequency: freq({ kind: "every_n_days", intervalDays: 3, anchorDate: day(0) }),
       entries: { [day(0)]: 5200, [day(1)]: 2400, [day(2)]: 5000 },
     },
     // Only Mondays are scheduled, so most sample days draw the "not planned" ring.
     sparse: {
-      ...base, id: "sg-sparse", name: "Wäsche", color: "#64748b", kind: "check",
+      ...base, id: "sg-sparse", name: "Laundry", color: "#64748b", kind: "check",
       targetValue: 1, frequency: freq({ kind: "weekdays", weekdays: 1 }), entries: {},
     },
     archived: {
-      ...base, id: "sg-archived", name: "Alte Gewohnheit", color: "#db2777", kind: "check",
+      ...base, id: "sg-archived", name: "Old habit", color: "#db2777", kind: "check",
       targetValue: 1, frequency: freq(), entries: {}, archivedAt: day(30),
     },
   };
@@ -107,16 +107,16 @@ function buttons() {
   };
   return section(
     "Buttons",
-    "Primär trägt die einzige Betonungsfarbe der Oberfläche: dunkles Grau auf Hell, helles auf Dunkel.",
-    specimen(".button.primary", b("button primary", "Anlegen")),
-    specimen(".button", b("button", "Abbrechen")),
-    specimen(".button.ghost", b("button ghost", "Später")),
-    specimen(".button.danger", b("button danger", "Löschen")),
-    specimen(":disabled", b("button primary", "Speichern", { disabled: true })),
+    "Primary carries the single accent colour of the interface: dark grey on light, light on dark.",
+    specimen(".button.primary", b("button primary", "Create")),
+    specimen(".button", b("button", "Cancel")),
+    specimen(".button.ghost", b("button ghost", "Later")),
+    specimen(".button.danger", b("button danger", "Delete")),
+    specimen(":disabled", b("button primary", "Save", { disabled: true })),
     specimen(".button.round", b("button round", "+")),
-    specimen(".icon-button", icon("edit", "Bearbeiten")),
+    specimen(".icon-button", icon("edit", "Edit")),
     specimen(".icon-button.is-back", (() => {
-      const node = icon("arrowLeft", "Zurück");
+      const node = icon("arrowLeft", "Back");
       node.classList.add("is-back");
       return node;
     })()),
@@ -133,15 +133,15 @@ function fields() {
   const input = (over) => Object.assign(el("input"), { type: "text", ...over });
 
   const segmented = html("div", "segmented", `
-    <label><input type="radio" name="sg-kind" value="check" checked><span data-icon="check">Haken</span></label>
-    <label><input type="radio" name="sg-kind" value="count"><span data-icon="calculator">Anzahl</span></label>
-    <label><input type="radio" name="sg-kind" value="time"><span data-icon="clock">Zeit</span></label>
-    <label><input type="radio" name="sg-kind" value="distance"><span data-icon="navigation">Distanz</span></label>`);
+    <label><input type="radio" name="sg-kind" value="check" checked><span data-icon="check">Check</span></label>
+    <label><input type="radio" name="sg-kind" value="count"><span data-icon="calculator">Count</span></label>
+    <label><input type="radio" name="sg-kind" value="time"><span data-icon="clock">Time</span></label>
+    <label><input type="radio" name="sg-kind" value="distance"><span data-icon="navigation">Distance</span></label>`);
   segmented.setAttribute("role", "radiogroup");
-  segmented.setAttribute("aria-label", "Typ");
+  segmented.setAttribute("aria-label", "Kind");
 
   const weekdays = el("div", "weekdays");
-  ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"].forEach((d, i) => {
+  ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].forEach((d, i) => {
     const w = el("button", "weekday", d);
     w.type = "button";
     w.setAttribute("aria-pressed", String(i === 0 || i === 2 || i === 4));
@@ -169,25 +169,25 @@ function fields() {
   const toggle = el("label", "switch");
   toggle.append(
     Object.assign(el("input"), { type: "checkbox", checked: true }),
-    el("span", null, "Archivierte Gewohnheiten anzeigen"),
+    el("span", null, "Show archived habits"),
   );
 
-  const picker = html("button", "picker", '<span class="picker-value">Gesundheit</span>');
+  const picker = html("button", "picker", '<span class="picker-value">Health</span>');
   picker.type = "button";
 
   return section(
-    "Formularfelder",
-    "Alles, was der Editor und die Einstellungen benutzen.",
-    field("Name", input({ placeholder: "z. B. Wasser trinken" })),
-    field("Mit Hinweis", input({ value: "5000" }), "Entspricht 5,0 km."),
-    field("Deaktiviert", input({ value: "Gesperrt", disabled: true })),
+    "Form fields",
+    "Everything the editor and the settings use.",
+    field("Name", input({ placeholder: "e.g. drink water" })),
+    field("With hint", input({ value: "5000" }), "Equals 5.0 km."),
+    field("Disabled", input({ value: "Locked", disabled: true })),
     specimen(".segmented", segmented),
     specimen(".weekdays", weekdays),
     specimen(".swatches", swatches),
     specimen(".stepper", stepper),
     specimen(".switch", toggle),
     specimen(".picker", picker),
-    specimen("p.error", el("p", "error", "Bitte mindestens einen Wochentag auswählen.")),
+    specimen("p.error", el("p", "error", "Please select at least one weekday.")),
   );
 }
 
@@ -208,15 +208,15 @@ function board(s) {
 
   return section(
     "Board",
-    "Gebaut mit denselben Funktionen wie die Übersicht — dayCell(), habitLabel(), dayEntry().",
-    specimen("dayCell: heute / Montag / normal", header),
+    "Built with the same functions as the overview — dayCell(), habitLabel(), dayEntry().",
+    specimen("dayCell: today / Monday / normal", header),
     specimen("habitLabel()", habitLabel(s.time)),
-    specimen("habitLabel(): archiviert", habitLabel(s.archived)),
-    specimen("Haken", cells(s.check, dates)),
-    specimen("Anzahl", cells(s.count, dates)),
-    specimen("Zeit", cells(s.time, dates)),
-    specimen("Distanz", cells(s.distance, dates)),
-    specimen("nicht geplant", cells(s.sparse, dates)),
+    specimen("habitLabel(): archived", habitLabel(s.archived)),
+    specimen("Check", cells(s.check, dates)),
+    specimen("Count", cells(s.count, dates)),
+    specimen("Time", cells(s.time, dates)),
+    specimen("Distance", cells(s.distance, dates)),
+    specimen("not scheduled", cells(s.sparse, dates)),
     specimen(".month-label", el("div", "month-label", "September")),
   );
 }
@@ -234,7 +234,7 @@ function heatmap() {
   }
   return section(
     "Heatmap",
-    "Stufen 0–4, dann „nicht geplant\" und Zukunft.",
+    "Levels 0–4, then \"not scheduled\" and the future.",
     specimen("data-level 0 … 4 · is-off · is-future", row),
   );
 }
@@ -244,33 +244,33 @@ function feedback() {
     const node = el("div", cls);
     node.append(el("span", "text", text));
     if (withAction) {
-      const action = el("button", "button", "Rückgängig");
+      const action = el("button", "button", "Undo");
       action.type = "button";
       node.append(action);
     }
     const close = html("button", "icon-button", "&times;");
     close.type = "button";
-    close.setAttribute("aria-label", "Schließen");
+    close.setAttribute("aria-label", "Close");
     node.append(close);
     return node;
   };
   return section(
-    "Meldungen",
-    "Toasts liegen im Betrieb unten rechts; hier stehen sie im Fluss.",
-    specimen(".toast", toast("toast", "Gewohnheit gelöscht.", true)),
-    specimen(".toast.is-error", toast("toast is-error", "Keine Verbindung zum Server.", false)),
+    "Messages",
+    "In the running app toasts sit at the bottom right; here they stand in the flow.",
+    specimen(".toast", toast("toast", "Habit deleted.", true)),
+    specimen(".toast.is-error", toast("toast is-error", "No connection to the server.", false)),
   );
 }
 
 function typography() {
   return section(
     "Text",
-    "Die Schriftgrade, die außerhalb von Bausteinen vorkommen.",
-    specimen("h2", el("h2", null, "Überschrift")),
-    specimen(".block-title", el("h2", "block-title", "Kategorie")),
-    specimen("p", el("p", null, "Fließtext, wie er in leeren Zuständen steht.")),
-    specimen(".habit-meta", el("span", "habit-meta", "🔥 12 Tage · 20 min · täglich")),
-    specimen(".field-hint", el("p", "field-hint", "Ein Hinweis unter einem Feld.")),
+    "The type sizes that appear outside the building blocks.",
+    specimen("h2", el("h2", null, "Heading")),
+    specimen(".block-title", el("h2", "block-title", "Category")),
+    specimen("p", el("p", null, "Body text, as it appears in empty states.")),
+    specimen(".habit-meta", el("span", "habit-meta", "🔥 12 days · 20 min · daily")),
+    specimen(".field-hint", el("p", "field-hint", "A hint below a field.")),
   );
 }
 
@@ -311,7 +311,7 @@ function tokens(names) {
     row.append(chip, el("code", "sg-token-name", name), el("span", "sg-token-value"));
     list.append(row);
   }
-  const s = section("Tokens", "Direkt aus dem Stylesheet gelesen, nicht hier gepflegt.", list);
+  const s = section("Tokens", "Read straight from the stylesheet, not maintained here.", list);
   s.querySelector(".sg-row").classList.add("is-block");
   return s;
 }
@@ -338,7 +338,7 @@ function fillTokenValues(panel, names) {
 function panel(theme, names) {
   const wrap = el("div", "sg-theme");
   wrap.dataset.theme = theme;
-  wrap.append(el("h2", "sg-theme-title", theme === "dark" ? "Dunkel" : "Hell"));
+  wrap.append(el("h2", "sg-theme-title", theme === "dark" ? "Dark" : "Light"));
 
   const s = samples();
   wrap.append(tokens(names), buttons(), fields(), board(s), heatmap(), feedback(), typography());
@@ -349,10 +349,10 @@ export function renderStyleguide(root) {
   const names = tokenNames();
 
   const head = el("header", "sg-head");
-  head.append(el("h1", null, "Bausteine"));
+  head.append(el("h1", null, "Building blocks"));
   head.append(el("p", "sg-note",
-    "Jeder Baustein der Anwendung, in beiden Themes nebeneinander. " +
-    "Nicht verlinkt — erreichbar über #/styleguide."));
+    "Every building block of the application, in both themes side by side. " +
+    "Not linked — reachable at #/styleguide."));
 
   const both = el("div", "sg-themes");
   const light = panel("light", names);

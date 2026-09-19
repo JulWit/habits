@@ -56,13 +56,13 @@ export function openCategoryPicker(selected) {
 }
 
 function paintList() {
-  const options = [{ id: NONE, name: "Ohne Kategorie" }, ...state.categories];
+  const options = [{ id: NONE, name: "No category" }, ...state.categories];
 
   // A habit can point at a category that was soft-deleted and is therefore not
   // in the live list. Dropping it here would silently reassign the habit on the
   // next save, so it is offered as an entry of its own.
   if (current !== NONE && !state.categories.some((c) => c.id === current)) {
-    options.push({ id: current, name: "Gelöschte Kategorie", stale: true });
+    options.push({ id: current, name: "Deleted category", stale: true });
   }
 
   list.replaceChildren(...options.map((option) => {

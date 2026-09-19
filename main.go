@@ -36,7 +36,7 @@ func main() {
 	// stream as everything else instead of going quietly nowhere.
 	slog.SetDefault(log)
 	if err := run(log); err != nil {
-		log.Error("start fehlgeschlagen", "fehler", err)
+		log.Error("startup failed", "error", err)
 		os.Exit(1)
 	}
 }
@@ -65,14 +65,14 @@ func run(log *slog.Logger) error {
 	// Habits deleted longer ago than the retention window are past any
 	// realistic undo, so their rows and entries go for good.
 	if n, err := st.PurgeDeleted(ctx, cfg.DeletedRetention); err != nil {
-		log.Warn("aufräumen gelöschter habits fehlgeschlagen", "fehler", err)
+		log.Warn("purging deleted habits failed", "error", err)
 	} else if n > 0 {
-		log.Info("endgültig gelöschte habits entfernt", "anzahl", n)
+		log.Info("permanently deleted habits removed", "count", n)
 	}
 	if n, err := st.PurgeDeletedCategories(ctx, cfg.DeletedRetention); err != nil {
-		log.Warn("aufräumen gelöschter kategorien fehlgeschlagen", "fehler", err)
+		log.Warn("purging deleted categories failed", "error", err)
 	} else if n > 0 {
-		log.Info("endgültig gelöschte kategorien entfernt", "anzahl", n)
+		log.Info("permanently deleted categories removed", "count", n)
 	}
 
 	handler, err := httpapi.New(cfg, st, log, webFS)
@@ -94,11 +94,11 @@ func run(log *slog.Logger) error {
 
 	errCh := make(chan error, 1)
 	go func() {
-		log.Info("habits gestartet",
-			"adresse", cfg.Addr,
-			"datenbank", cfg.DatabasePath,
+		log.Info("habits started",
+			"address", cfg.Addr,
+			"database", cfg.DatabasePath,
 			"auth", string(cfg.AuthMode),
-			"zeitzone", cfg.Location.String())
+			"timezone", cfg.Location.String())
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			errCh <- err
 		}
@@ -108,7 +108,7 @@ func run(log *slog.Logger) error {
 	case err := <-errCh:
 		return err
 	case <-ctx.Done():
-		log.Info("beende...")
+		log.Info("shutting down...")
 	}
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)

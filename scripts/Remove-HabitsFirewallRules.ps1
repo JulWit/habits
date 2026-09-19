@@ -1,41 +1,41 @@
 ﻿<#
 .SYNOPSIS
-    Entfernt Windows-Firewallregeln, die auf habits.exe zeigen.
+    Removes Windows firewall rules pointing at habits.exe.
 
 .DESCRIPTION
-    `go run` kompiliert bei jedem Start in ein frisches Temp-Verzeichnis
-    (...\Temp\go-buildNNNNNNNN\b001\exe\habits.exe). Firewallregeln gelten pro
-    Programmpfad, also legt Windows bei jedem Start eine neue an - nach ein paar
-    Dutzend Neustarts stehen entsprechend viele davon in der Liste, die meisten
-    auf Pfade, die es nicht mehr gibt oder nie wieder geben wird.
+    `go run` compiles into a fresh temp directory on every start
+    (...\Temp\go-buildNNNNNNNN\b001\exe\habits.exe). Firewall rules apply per
+    program path, so Windows creates a new one on every start - after a few
+    dozen restarts there are as many of them in the list, most pointing at paths
+    that no longer exist or never will again.
 
-    Das Skript sucht alle Regeln, deren Programm auf den angegebenen Dateinamen
-    endet, zeigt sie nach Herkunft aufgeschlüsselt an und entfernt sie.
+    The script finds every rule whose program ends in the given file name, shows
+    them broken down by origin, and removes them.
 
 .PARAMETER Program
-    Dateiname des Programms. Standard: habits.exe
+    File name of the program. Default: habits.exe
 
 .PARAMETER TempOnly
-    Nur Regeln entfernen, deren Programm im Temp-Verzeichnis liegt - also die
-    Wegwerf-Kompilate von `go run`. Regeln für eine fest installierte oder im
-    Projekt gebaute habits.exe bleiben dann stehen.
+    Only remove rules whose program lives in the temp directory - that is, the
+    throwaway builds from `go run`. Rules for a permanently installed habits.exe,
+    or one built in the project, are left standing.
 
 .EXAMPLE
     .\Remove-HabitsFirewallRules.ps1 -WhatIf
 
-    Zeigt, was entfernt würde, ohne etwas zu ändern.
+    Shows what would be removed without changing anything.
 
 .EXAMPLE
     .\Remove-HabitsFirewallRules.ps1 -TempOnly
 
-    Räumt nur die Regeln der Temp-Kompilate weg.
+    Clears away only the rules of the temp builds.
 
 .NOTES
-    Das Ändern von Firewallregeln erfordert Administratorrechte. Ohne sie bricht
-    das Skript ab, statt pro Regel einen Fehler zu werfen.
+    Changing firewall rules requires administrator rights. Without them the
+    script stops rather than throwing one error per rule.
 
-    Die Datei ist als UTF-8 mit BOM gespeichert: Windows PowerShell 5.1 liest
-    .ps1-Dateien ohne BOM als ANSI und zerlegt dabei jeden Umlaut.
+    The file is stored as UTF-8 with a BOM: Windows PowerShell 5.1 reads .ps1
+    files without a BOM as ANSI and mangles every non-ASCII character.
 #>
 [CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'High')]
 param(
@@ -54,18 +54,18 @@ function Test-Elevated {
 }
 
 if (-not (Test-Elevated)) {
-    Write-Warning 'Zum Entfernen von Firewallregeln werden Administratorrechte benötigt.'
-    Write-Warning 'Bitte PowerShell als Administrator starten und das Skript erneut ausführen.'
+    Write-Warning 'Removing firewall rules requires administrator rights.'
+    Write-Warning 'Please start PowerShell as administrator and run the script again.'
     return
 }
 
-Write-Host "Suche Firewallregeln für '$Program' ..."
+Write-Host "Searching for firewall rules for '$Program' ..."
 
 $tempRoot = [System.IO.Path]::GetTempPath()
 
-# Der Umweg über den Anwendungsfilter ist nötig, weil eine Regel den Programmpfad
-# nicht selbst trägt: Get-NetFirewallRule kennt Name und Richtung, der Pfad hängt
-# am zugehörigen Filterobjekt.
+# The detour through the application filter is necessary because a rule does not
+# carry the program path itself: Get-NetFirewallRule knows the name and the
+# direction, the path hangs off the associated filter object.
 $found = @(
     Get-NetFirewallApplicationFilter -ErrorAction SilentlyContinue |
         Where-Object { $_.Program -like "*\$Program" } |
@@ -84,7 +84,7 @@ $found = @(
 )
 
 if ($found.Count -eq 0) {
-    Write-Host "Keine Regeln für '$Program' gefunden." -ForegroundColor Green
+    Write-Host "No rules found for '$Program'." -ForegroundColor Green
     return
 }
 
@@ -92,11 +92,11 @@ $temp = @($found | Where-Object { $_.IsTemp })
 $other = @($found | Where-Object { -not $_.IsTemp })
 
 Write-Host ''
-Write-Host ("Gefunden: {0} Regel(n) - {1} aus dem Temp-Verzeichnis, {2} von anderen Pfaden." -f $found.Count, $temp.Count, $other.Count)
+Write-Host ("Found: {0} rule(s) - {1} from the temp directory, {2} from other paths." -f $found.Count, $temp.Count, $other.Count)
 
 if ($other.Count -gt 0) {
     Write-Host ''
-    Write-Host 'Pfade ausserhalb von Temp:'
+    Write-Host 'Paths outside of temp:'
     $other | Select-Object -ExpandProperty Path -Unique | ForEach-Object { Write-Host "  $_" }
 }
 
@@ -104,12 +104,12 @@ $targets = if ($TempOnly) { $temp } else { $found }
 
 if ($targets.Count -eq 0) {
     Write-Host ''
-    Write-Host 'Nichts zu entfernen.' -ForegroundColor Green
+    Write-Host 'Nothing to remove.' -ForegroundColor Green
     return
 }
 
 Write-Host ''
-if ($PSCmdlet.ShouldProcess(("{0} Firewallregel(n) für {1}" -f $targets.Count, $Program), 'Entfernen')) {
+if ($PSCmdlet.ShouldProcess(("{0} firewall rule(s) for {1}" -f $targets.Count, $Program), 'Remove')) {
     $removed = 0
     $failed = 0
 
@@ -119,13 +119,13 @@ if ($PSCmdlet.ShouldProcess(("{0} Firewallregel(n) für {1}" -f $targets.Count, 
             $removed++
         } catch {
             $failed++
-            Write-Warning ("Regel '{0}' ({1}) konnte nicht entfernt werden: {2}" -f $target.Name, $target.Path, $_.Exception.Message)
+            Write-Warning ("Rule '{0}' ({1}) could not be removed: {2}" -f $target.Name, $target.Path, $_.Exception.Message)
         }
     }
 
     Write-Host ''
-    Write-Host ("Entfernt: {0}" -f $removed) -ForegroundColor Green
+    Write-Host ("Removed: {0}" -f $removed) -ForegroundColor Green
     if ($failed -gt 0) {
-        Write-Host ("Fehlgeschlagen: {0}" -f $failed) -ForegroundColor Yellow
+        Write-Host ("Failed: {0}" -f $failed) -ForegroundColor Yellow
     }
 }

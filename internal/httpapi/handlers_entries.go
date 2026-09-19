@@ -32,7 +32,7 @@ func (s *Server) handleSetEntry(w http.ResponseWriter, r *http.Request) {
 	}
 	date, err := domain.ParseDate(r.PathValue("date"))
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "Ungültiges Datum, erwartet YYYY-MM-DD")
+		writeError(w, http.StatusBadRequest, "Invalid date, expected YYYY-MM-DD")
 		return
 	}
 	user := auth.MustUser(r.Context())
@@ -43,18 +43,18 @@ func (s *Server) handleSetEntry(w http.ResponseWriter, r *http.Request) {
 	// before a holiday. Only the horizon is capped, so a stray date cannot
 	// scatter entries into the next decade.
 	if date.After(today.AddDays(EntryHorizonDays)) {
-		writeError(w, http.StatusUnprocessableEntity, "Einträge sind höchstens ein Jahr im Voraus möglich")
+		writeError(w, http.StatusUnprocessableEntity, "Entries may be at most one year in the future")
 		return
 	}
 
 	previous, err := s.store.SetEntry(r.Context(), user.ID, habitID, date, body.Value)
 	if err != nil {
-		s.writeStoreError(w, err, "eintrag speichern")
+		s.writeStoreError(w, err, "saving entry")
 		return
 	}
 	view, err := s.loadView(r, user.ID, habitID)
 	if err != nil {
-		s.writeStoreError(w, err, "habit laden")
+		s.writeStoreError(w, err, "loading habit")
 		return
 	}
 
@@ -71,7 +71,7 @@ func (s *Server) handleGetSettings(w http.ResponseWriter, r *http.Request) {
 	user := auth.MustUser(r.Context())
 	settings, err := s.store.GetSettings(r.Context(), user.ID)
 	if err != nil {
-		s.writeStoreError(w, err, "einstellungen laden")
+		s.writeStoreError(w, err, "loading settings")
 		return
 	}
 	writeJSON(w, http.StatusOK, settings)
@@ -105,61 +105,61 @@ func (s *Server) handleUpdateSettings(w http.ResponseWriter, r *http.Request) {
 	// keeping it out of the transaction leaves the messages free to name the
 	// setting they are about.
 	if in.Theme != nil && !store.ValidTheme(*in.Theme) {
-		writeError(w, http.StatusUnprocessableEntity, "theme muss system, light oder dark sein")
+		writeError(w, http.StatusUnprocessableEntity, "theme must be system, light or dark")
 		return
 	}
 	if in.Font != nil && !store.ValidFont(*in.Font) {
 		writeError(w, http.StatusUnprocessableEntity,
-			fmt.Sprintf("schriftart muss eine von %v sein", store.Fonts))
+			fmt.Sprintf("font must be one of %v", store.Fonts))
 		return
 	}
 	if in.ReorderMode != nil && !store.ValidReorderMode(*in.ReorderMode) {
 		writeError(w, http.StatusUnprocessableEntity,
-			fmt.Sprintf("sortiermodus muss einer von %v sein", store.ReorderModes))
+			fmt.Sprintf("reorder mode must be one of %v", store.ReorderModes))
 		return
 	}
 	if in.Pattern != nil && !store.ValidPattern(*in.Pattern) {
 		writeError(w, http.StatusUnprocessableEntity,
-			fmt.Sprintf("hintergrundmuster muss eines von %v sein", store.Patterns))
+			fmt.Sprintf("background pattern must be one of %v", store.Patterns))
 		return
 	}
 	if in.BandColor != nil && !store.ValidBandColor(*in.BandColor) {
 		writeError(w, http.StatusUnprocessableEntity,
-			"bandfarbe muss neutral oder eine der Habit-Farben sein")
+			"band colour must be neutral or one of the habit colours")
 		return
 	}
 	if in.BandOpacity != nil && !store.ValidBandOpacity(*in.BandOpacity) {
 		writeError(w, http.StatusUnprocessableEntity,
-			fmt.Sprintf("deckkraft der tagesmarkierung muss zwischen 0 und %d liegen",
+			fmt.Sprintf("band opacity must be between 0 and %d",
 				store.MaxBandOpacity))
 		return
 	}
 	if in.OverviewDays != nil && !store.ValidOverviewDays(*in.OverviewDays) {
 		writeError(w, http.StatusUnprocessableEntity,
-			fmt.Sprintf("overviewDays muss 0 (automatisch) oder zwischen 3 und %d sein",
+			fmt.Sprintf("overviewDays must be 0 (automatic) or between 3 and %d",
 				store.MaxOverviewDays))
 		return
 	}
 	if in.BackgroundDim != nil && !store.ValidBackgroundDim(*in.BackgroundDim) {
 		writeError(w, http.StatusUnprocessableEntity,
-			fmt.Sprintf("abdunklung muss zwischen %d und %d liegen",
+			fmt.Sprintf("background dim must be between %d and %d",
 				store.MinBackgroundDim, store.MaxBackgroundDim))
 		return
 	}
 	if in.BackgroundBlur != nil && !store.ValidBackgroundBlur(*in.BackgroundBlur) {
 		writeError(w, http.StatusUnprocessableEntity,
-			fmt.Sprintf("weichzeichner muss zwischen 0 und %d liegen", store.MaxBackgroundBlur))
+			fmt.Sprintf("background blur must be between 0 and %d", store.MaxBackgroundBlur))
 		return
 	}
 	if in.SurfaceOpacity != nil && !store.ValidSurfaceOpacity(*in.SurfaceOpacity) {
 		writeError(w, http.StatusUnprocessableEntity,
-			fmt.Sprintf("deckkraft der flächen muss zwischen %d und %d liegen",
+			fmt.Sprintf("surface opacity must be between %d and %d",
 				store.MinSurfaceOpacity, store.MaxSurfaceOpacity))
 		return
 	}
 	if in.SurfaceBlur != nil && !store.ValidSurfaceBlur(*in.SurfaceBlur) {
 		writeError(w, http.StatusUnprocessableEntity,
-			fmt.Sprintf("weichzeichner der flächen muss zwischen 0 und %d liegen",
+			fmt.Sprintf("surface blur must be between 0 and %d",
 				store.MaxSurfaceBlur))
 		return
 	}
@@ -184,7 +184,7 @@ func (s *Server) handleUpdateSettings(w http.ResponseWriter, r *http.Request) {
 		return nil
 	})
 	if err != nil {
-		s.writeStoreError(w, err, "einstellungen speichern")
+		s.writeStoreError(w, err, "saving settings")
 		return
 	}
 	writeJSON(w, http.StatusOK, settings)

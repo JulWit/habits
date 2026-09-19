@@ -52,10 +52,10 @@ func Middleware(cfg config.Config, log *slog.Logger) func(http.Handler) http.Han
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			user, err := resolve(cfg, r)
 			if err != nil {
-				log.Warn("authentifizierung abgelehnt",
-					"grund", err.Error(),
+				log.Warn("authentication refused",
+					"reason", err.Error(),
 					"peer", r.RemoteAddr,
-					"pfad", r.URL.Path)
+					"path", r.URL.Path)
 				http.Error(w, err.Message, err.Status)
 				return
 			}
@@ -83,8 +83,8 @@ func resolve(cfg config.Config, r *http.Request) (User, *authError) {
 		// authenticate, it arrived from somewhere it must never arrive from.
 		return User{}, &authError{
 			Status:  http.StatusForbidden,
-			Message: "Zugriff nur über den konfigurierten Reverse Proxy",
-			Reason:  "peer ist kein vertrauenswürdiger proxy",
+			Message: "access only through the configured reverse proxy",
+			Reason:  "peer is not a trusted proxy",
 		}
 	}
 
@@ -93,7 +93,7 @@ func resolve(cfg config.Config, r *http.Request) (User, *authError) {
 		return User{}, &authError{
 			Status:  http.StatusUnauthorized,
 			Message: "Nicht angemeldet",
-			Reason:  "header " + cfg.UserHeader + " fehlt oder ist leer",
+			Reason:  "header " + cfg.UserHeader + " is missing or empty",
 		}
 	}
 

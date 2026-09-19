@@ -67,7 +67,7 @@ export function scaleOf(kind) {
 
 /** A stored number written out, with at most one decimal place. */
 function written(habit, value) {
-  return (value / scale(habit)).toLocaleString("de-DE", { maximumFractionDigits: 1 });
+  return (value / scale(habit)).toLocaleString("en-GB", { maximumFractionDigits: 1 });
 }
 
 export function target(habit) {
@@ -101,7 +101,7 @@ export function step(habit) {
  * The value a tap writes.
  *
  * Counting kinds keep going past their target: after 5 km, one more tap means
- * 5,5 km, not "start over". Overshooting the target is ordinary — the day the
+ * 5.5 km, not "start over". Overshooting the target is ordinary — the day the
  * run was longer — while wanting to wipe a day is rare, and the long press and
  * the right click set any value including zero.
  *
@@ -118,10 +118,10 @@ export function unitLabel(habit) {
   return kindInfo(habit.kind).unit || habit.unit || "";
 }
 
-/** Metres as the reader would say them: 800 m, 5 km, 12,5 km. */
+/** Metres as the reader would say them: 800 m, 5 km, 12.5 km. */
 export function formatDistance(metres) {
   if (metres < 1000) return `${metres} m`;
-  return `${(Math.round(metres / 100) / 10).toLocaleString("de-DE")} km`;
+  return `${(Math.round(metres / 100) / 10).toLocaleString("en-GB")} km`;
 }
 
 /**
@@ -130,9 +130,9 @@ export function formatDistance(metres) {
  * metres would never fit.
  */
 export function cellValue(habit, value) {
-  // A kilometre with one decimal, whatever the metres say: 5,2 fits, 5200 and
-  // 5,24 do not.
-  if (habit.kind === "distance") return (Math.round(value / 100) / 10).toLocaleString("de-DE");
+  // A kilometre with one decimal, whatever the metres say: 5.2 fits, 5200 and
+  // 5.24 do not.
+  if (habit.kind === "distance") return (Math.round(value / 100) / 10).toLocaleString("en-GB");
   return written(habit, value);
 }
 
@@ -173,7 +173,7 @@ export function formatTotal(habit, total) {
 }
 
 const formatMinutes = (minutes) =>
-  minutes.toLocaleString("de-DE", { maximumFractionDigits: 1 });
+  minutes.toLocaleString("en-GB", { maximumFractionDigits: 1 });
 
 /** Habits whose values are a quantity worth adding up. */
 export function isCountable(habit) {
@@ -256,21 +256,21 @@ export function describeFrequency(habit) {
   const f = habit.frequency;
   switch (f.kind) {
     case "daily":
-      return "täglich";
+      return "daily";
     case "times_per_week":
-      return `${f.timesPerWeek}× pro Woche`;
+      return `${f.timesPerWeek}× per week`;
     case "weekdays": {
       // Abbreviated: five spelled-out names run past the name column, and the
       // short forms are unambiguous in a line that is about a weekly rhythm.
       const days = WEEKDAY_SHORT.filter((_, i) => f.weekdays & (1 << i));
-      if (days.length === 7) return "täglich";
+      if (days.length === 7) return "daily";
       if (days.length === 5 && !(f.weekdays & (1 << 5)) && !(f.weekdays & (1 << 6))) {
-        return "Mo–Fr";
+        return "Mon–Fri";
       }
       return days.join(", ");
     }
     case "every_n_days":
-      return f.intervalDays === 1 ? "täglich" : `alle ${f.intervalDays} Tage`;
+      return f.intervalDays === 1 ? "daily" : `every ${f.intervalDays} days`;
     default:
       return "";
   }
@@ -280,10 +280,10 @@ export function describeFrequency(habit) {
 export function describeHabit(habit) {
   const parts = [];
   // Said first, because a dimmed row alone is easy to misread as merely faded.
-  if (habit.archivedAt) parts.push("Archiviert");
+  if (habit.archivedAt) parts.push("Archived");
   // No streak here for now: with the target and the frequency it made the line
   // longer than the name column, and it is still readable on the detail view
-  // under "Aktuelle Serie". The stat itself is untouched and waiting for a
+  // under "Current streak". The stat itself is untouched and waiting for a
   // better place on the board.
   // Frequency first, target second: how often is the habit's shape, the target
   // the detail of a single day — and the frequency is the shorter of the two,

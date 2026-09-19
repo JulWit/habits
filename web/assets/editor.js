@@ -51,8 +51,8 @@ function paintCategory() {
   // A soft-deleted category is still a real assignment, so it is named rather
   // than shown as "none".
   label.textContent = none
-    ? "Ohne Kategorie"
-    : categoryById(selectedCategory)?.name ?? "Gelöschte Kategorie";
+    ? "No category"
+    : categoryById(selectedCategory)?.name ?? "Deleted category";
 
   const caret = document.createElement("span");
   caret.className = "picker-caret";
@@ -90,7 +90,7 @@ function buildSwatches() {
       b.style.background = color;
       b.dataset.color = color;
       b.setAttribute("role", "radio");
-      b.setAttribute("aria-label", `Farbe ${color}`);
+      b.setAttribute("aria-label", `Colour ${color}`);
       b.addEventListener("click", () => selectColor(color));
       return b;
     }),
@@ -154,8 +154,8 @@ export function openEditor(habit, handler) {
   paintCategory();
 
   const f = form.elements;
-  titleEl.textContent = habit ? "Gewohnheit bearbeiten" : "Neue Gewohnheit";
-  submitButton.textContent = habit ? "Speichern" : "Anlegen";
+  titleEl.textContent = habit ? "Edit habit" : "New habit";
+  submitButton.textContent = habit ? "Save" : "Create";
 
   f.name.value = habit?.name ?? "";
   f.kind.value = habit?.kind ?? "check";
@@ -256,7 +256,7 @@ async function handleSubmit(event) {
 
   const input = collect();
   if (input.frequency.kind === "weekdays" && input.frequency.weekdays === 0) {
-    return showError("Bitte mindestens einen Wochentag auswählen.");
+    return showError("Please select at least one weekday.");
   }
 
   submitButton.disabled = true;

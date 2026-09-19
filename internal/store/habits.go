@@ -36,7 +36,7 @@ func scanHabit(rows interface{ Scan(...any) error }) (domain.Habit, error) {
 	h.CategoryID = categoryID.String
 	if anchor != "" {
 		if h.Frequency.AnchorDate, err = domain.ParseDate(anchor); err != nil {
-			return domain.Habit{}, fmt.Errorf("habit %s: anker-datum: %w", h.ID, err)
+			return domain.Habit{}, fmt.Errorf("habit %s: anchor date: %w", h.ID, err)
 		}
 	}
 	if h.CreatedAt, err = parseTime(created); err != nil {
@@ -64,7 +64,7 @@ func (s *Store) ListHabits(ctx context.Context, userID string, includeArchived b
 
 	rows, err := s.db.QueryContext(ctx, query, userID)
 	if err != nil {
-		return nil, fmt.Errorf("habits laden: %w", err)
+		return nil, fmt.Errorf("loading habits: %w", err)
 	}
 	defer rows.Close()
 
@@ -88,7 +88,7 @@ func (s *Store) GetHabit(ctx context.Context, userID, id string) (domain.Habit, 
 		return domain.Habit{}, ErrNotFound
 	}
 	if err != nil {
-		return domain.Habit{}, fmt.Errorf("habit laden: %w", err)
+		return domain.Habit{}, fmt.Errorf("loading habit: %w", err)
 	}
 	return h, nil
 }
@@ -105,7 +105,7 @@ func (s *Store) CreateHabit(ctx context.Context, userID string, h *domain.Habit)
 
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
-		return fmt.Errorf("transaktion starten: %w", err)
+		return fmt.Errorf("starting transaction: %w", err)
 	}
 	defer tx.Rollback()
 
@@ -113,7 +113,7 @@ func (s *Store) CreateHabit(ctx context.Context, userID string, h *domain.Habit)
 	if err := tx.QueryRowContext(ctx,
 		`SELECT MAX(position) FROM habits WHERE user_id = ? AND deleted_at IS NULL`, userID,
 	).Scan(&next); err != nil {
-		return fmt.Errorf("position bestimmen: %w", err)
+		return fmt.Errorf("determining position: %w", err)
 	}
 	h.Position = int(next.Int64) + 1
 
@@ -131,7 +131,7 @@ func (s *Store) CreateHabit(ctx context.Context, userID string, h *domain.Habit)
 		h.Frequency.IntervalDays, h.Frequency.AnchorDate.String(),
 		h.Position, formatTime(h.CreatedAt), formatTime(h.UpdatedAt), nullableID(h.CategoryID))
 	if err != nil {
-		return fmt.Errorf("habit anlegen: %w", err)
+		return fmt.Errorf("creating habit: %w", err)
 	}
 	return tx.Commit()
 }
@@ -145,7 +145,7 @@ func (s *Store) requireOwnCategory(ctx context.Context, q queryer, userID, categ
 		return err
 	}
 	if !ok {
-		return fmt.Errorf("%w: unbekannte Kategorie", domain.ErrValidation)
+		return fmt.Errorf("%w: unknown category", domain.ErrValidation)
 	}
 	return nil
 }
@@ -177,7 +177,7 @@ func (s *Store) UpdateHabit(ctx context.Context, userID string, h *domain.Habit)
 
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
-		return fmt.Errorf("transaktion starten: %w", err)
+		return fmt.Errorf("starting transaction: %w", err)
 	}
 	defer tx.Rollback()
 
@@ -201,7 +201,7 @@ func (s *Store) UpdateHabit(ctx context.Context, userID string, h *domain.Habit)
 		archived, formatTime(h.UpdatedAt), nullableID(h.CategoryID),
 		h.ID, userID)
 	if err != nil {
-		return fmt.Errorf("habit aktualisieren: %w", err)
+		return fmt.Errorf("updating habit: %w", err)
 	}
 	if err := expectOneRow(res); err != nil {
 		return err
@@ -227,7 +227,7 @@ func (s *Store) requireKindKeepsHistoryMeaningful(ctx context.Context, q queryer
 		return ErrNotFound
 	}
 	if err != nil {
-		return fmt.Errorf("bisherigen typ lesen: %w", err)
+		return fmt.Errorf("reading current kind: %w", err)
 	}
 	if current == h.Kind {
 		return nil
@@ -236,26 +236,31 @@ func (s *Store) requireKindKeepsHistoryMeaningful(ctx context.Context, q queryer
 	var entries int
 	if err := q.QueryRowContext(ctx,
 		`SELECT COUNT(*) FROM entries WHERE habit_id = ?`, h.ID).Scan(&entries); err != nil {
-		return fmt.Errorf("einträge zählen: %w", err)
+		return fmt.Errorf("counting entries: %w", err)
 	}
 	if entries > 0 {
+		// Spelled with the noun and the verb agreeing: the message is read in a
+		// dialog, where "1 days are already recorded" reads as a bug.
+		recorded := fmt.Sprintf("%d days are already recorded, and their values", entries)
+		if entries == 1 {
+			recorded = "1 day is already recorded, and its value"
+		}
 		return invalidf(
-			"Der Typ lässt sich nicht mehr ändern: es sind schon %d Tage erfasst, "+
-				"deren Werte als „%s“ etwas anderes bedeuten würden. "+
-				"Lege stattdessen eine neue Gewohnheit an.",
-			entries, h.Kind.Label())
+			"The kind can no longer be changed: %s would mean something else "+
+				"as %q. Create a new habit instead.",
+			recorded, h.Kind.Label())
 	}
 	return nil
 }
 
 // SoftDeleteHabit hides the habit but keeps the row, which is what makes the
-// "Rückgängig" toast able to bring it back with its whole history intact.
+// "Undo" toast able to bring it back with its whole history intact.
 func (s *Store) SoftDeleteHabit(ctx context.Context, userID, id string) error {
 	res, err := s.db.ExecContext(ctx,
 		`UPDATE habits SET deleted_at = ?, updated_at = ? WHERE id = ? AND user_id = ? AND deleted_at IS NULL`,
 		formatTime(time.Now()), formatTime(time.Now()), id, userID)
 	if err != nil {
-		return fmt.Errorf("habit löschen: %w", err)
+		return fmt.Errorf("deleting habit: %w", err)
 	}
 	return expectOneRow(res)
 }
@@ -265,7 +270,7 @@ func (s *Store) RestoreHabit(ctx context.Context, userID, id string) error {
 		`UPDATE habits SET deleted_at = NULL, updated_at = ? WHERE id = ? AND user_id = ? AND deleted_at IS NOT NULL`,
 		formatTime(time.Now()), id, userID)
 	if err != nil {
-		return fmt.Errorf("habit wiederherstellen: %w", err)
+		return fmt.Errorf("restoring habit: %w", err)
 	}
 	return expectOneRow(res)
 }
@@ -276,21 +281,21 @@ func (s *Store) RestoreHabit(ctx context.Context, userID, id string) error {
 func (s *Store) ReorderHabits(ctx context.Context, userID string, ids []string) error {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
-		return fmt.Errorf("transaktion starten: %w", err)
+		return fmt.Errorf("starting transaction: %w", err)
 	}
 	defer tx.Rollback()
 
 	stmt, err := tx.PrepareContext(ctx,
 		`UPDATE habits SET position = ?, updated_at = ? WHERE id = ? AND user_id = ? AND deleted_at IS NULL`)
 	if err != nil {
-		return fmt.Errorf("reihenfolge vorbereiten: %w", err)
+		return fmt.Errorf("preparing reorder: %w", err)
 	}
 	defer stmt.Close()
 
 	now := formatTime(time.Now())
 	for i, id := range ids {
 		if _, err := stmt.ExecContext(ctx, i, now, id, userID); err != nil {
-			return fmt.Errorf("reihenfolge speichern: %w", err)
+			return fmt.Errorf("saving order: %w", err)
 		}
 	}
 	return tx.Commit()
@@ -303,7 +308,7 @@ func (s *Store) PurgeDeleted(ctx context.Context, olderThan time.Duration) (int6
 	res, err := s.db.ExecContext(ctx,
 		`DELETE FROM habits WHERE deleted_at IS NOT NULL AND deleted_at < ?`, cutoff)
 	if err != nil {
-		return 0, fmt.Errorf("gelöschte habits aufräumen: %w", err)
+		return 0, fmt.Errorf("purging deleted habits: %w", err)
 	}
 	return res.RowsAffected()
 }
@@ -311,7 +316,7 @@ func (s *Store) PurgeDeleted(ctx context.Context, olderThan time.Duration) (int6
 func expectOneRow(res sql.Result) error {
 	n, err := res.RowsAffected()
 	if err != nil {
-		return fmt.Errorf("betroffene zeilen: %w", err)
+		return fmt.Errorf("affected rows: %w", err)
 	}
 	if n == 0 {
 		return ErrNotFound
@@ -329,7 +334,7 @@ func (s *Store) CountArchivedHabits(ctx context.Context, userID string) (int, er
 		 WHERE user_id = ? AND deleted_at IS NULL AND archived_at IS NOT NULL`,
 		userID).Scan(&n)
 	if err != nil {
-		return 0, fmt.Errorf("archivierte habits zählen: %w", err)
+		return 0, fmt.Errorf("counting archived habits: %w", err)
 	}
 	return n, nil
 }

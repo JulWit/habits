@@ -93,7 +93,7 @@ function numberLabel(text) {
   const el = document.createElement("span");
   // The hole inside the ring is about 17px wide, which fits two characters at
   // the base size. Longer values step down rather than spilling over the ring:
-  // three for a count like 999, four for a distance like 12,5.
+  // three for a count like 999, four for a distance like 12.5.
   el.className = text.length >= 4
     ? "mark-value is-tiny"
     : text.length === 3
@@ -105,20 +105,20 @@ function numberLabel(text) {
 
 function cellLabel(habit, iso, value, scheduled) {
   const when = formatRelative(iso, state.today);
-  // "Erledigt" would be a lie about a day that has not happened yet, so a day
+  // "Done" would be a lie about a day that has not happened yet, so a day
   // ahead reports what is planned instead.
   const ahead = iso > state.today;
   const reached = H.isComplete(habit, value);
   const status = reached && !ahead
-    ? "erledigt"
+    ? "done"
     : reached && habit.kind === "check"
-      ? "geplant"
+      ? "planned"
       : reached
-        ? `${H.formatValue(habit, value)} geplant`
+        ? `${H.formatValue(habit, value)} planned`
         : value > 0
-          ? `${H.formatValue(habit, value)} von ${H.formatValue(habit, H.target(habit))}${ahead ? " geplant" : ""}`
+          ? `${H.formatValue(habit, value)} of ${H.formatValue(habit, H.target(habit))}${ahead ? " planned" : ""}`
           : scheduled
-            ? "offen"
-            : "nicht geplant";
+            ? "open"
+            : "not scheduled";
   return `${habit.name}, ${when}: ${status}`;
 }

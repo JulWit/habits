@@ -227,7 +227,7 @@ html:not(.route-detail):not(.route-styleguide) .topbar-inner {
   /* Takes the free space so the tools sit at the right edge. Truncating a long
      name is the link's job, not this box's: the link reaches past this edge by
      its own padding, and a clip here would cut the corner off its hover fill.
-     The only title without a link is the fixed "Ohne Kategorie", which has
+     The only title without a link is the fixed "No category", which has
      nothing to truncate. */
   flex: 1;
   min-width: 0;

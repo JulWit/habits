@@ -21,10 +21,10 @@ const MaxCategoryNameLen = 60
 func (c *Category) Validate() error {
 	c.Name = strings.TrimSpace(c.Name)
 	if c.Name == "" {
-		return invalid("Name der Kategorie darf nicht leer sein")
+		return invalid("category name must not be empty")
 	}
 	if len([]rune(c.Name)) > MaxCategoryNameLen {
-		return invalid("Name der Kategorie ist länger als %d Zeichen", MaxCategoryNameLen)
+		return invalid("category name is longer than %d characters", MaxCategoryNameLen)
 	}
 	return nil
 }

@@ -61,7 +61,7 @@ func (s *Server) handleState(w http.ResponseWriter, r *http.Request) {
 	// instead of having to read the preference and then ask again.
 	settings, err := s.store.GetSettings(ctx, user.ID)
 	if err != nil {
-		s.writeStoreError(w, err, "einstellungen laden")
+		s.writeStoreError(w, err, "loading settings")
 		return
 	}
 	includeArchived := settings.ShowArchived
@@ -73,22 +73,22 @@ func (s *Server) handleState(w http.ResponseWriter, r *http.Request) {
 
 	habits, err := s.store.ListHabits(ctx, user.ID, includeArchived)
 	if err != nil {
-		s.writeStoreError(w, err, "habits laden")
+		s.writeStoreError(w, err, "loading habits")
 		return
 	}
 	entries, err := s.store.EntriesForUser(ctx, user.ID)
 	if err != nil {
-		s.writeStoreError(w, err, "einträge laden")
+		s.writeStoreError(w, err, "loading entries")
 		return
 	}
 	categories, err := s.store.ListCategories(ctx, user.ID)
 	if err != nil {
-		s.writeStoreError(w, err, "kategorien laden")
+		s.writeStoreError(w, err, "loading categories")
 		return
 	}
 	archivedCount, err := s.store.CountArchivedHabits(ctx, user.ID)
 	if err != nil {
-		s.writeStoreError(w, err, "archivierte habits zählen")
+		s.writeStoreError(w, err, "counting archived habits")
 		return
 	}
 
@@ -100,7 +100,7 @@ func (s *Server) handleState(w http.ResponseWriter, r *http.Request) {
 	if v := r.URL.Query().Get("from"); v != "" {
 		asked, err := domain.ParseDate(v)
 		if err != nil {
-			writeError(w, http.StatusBadRequest, "Ungültiges Datum, erwartet YYYY-MM-DD")
+			writeError(w, http.StatusBadRequest, "Invalid date, expected YYYY-MM-DD")
 			return
 		}
 		// Only ever widens: a `from` inside the default window would ship less
@@ -118,7 +118,7 @@ func (s *Server) handleState(w http.ResponseWriter, r *http.Request) {
 	// is fetched on every load.
 	bgVersion, err := s.store.BackgroundVersion(ctx, user.ID)
 	if err != nil {
-		s.writeStoreError(w, err, "hintergrund-version laden")
+		s.writeStoreError(w, err, "loading background version")
 		return
 	}
 
@@ -172,7 +172,7 @@ func (s *Server) handleGetHabit(w http.ResponseWriter, r *http.Request) {
 	user := auth.MustUser(r.Context())
 	view, err := s.loadView(r, user.ID, r.PathValue("id"))
 	if err != nil {
-		s.writeStoreError(w, err, "habit laden")
+		s.writeStoreError(w, err, "loading habit")
 		return
 	}
 	writeJSON(w, http.StatusOK, view)
@@ -237,7 +237,7 @@ func (s *Server) handleCreateHabit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if in.Name == nil || in.Kind == nil || in.Frequency == nil {
-		writeError(w, http.StatusBadRequest, "name, kind und frequency sind erforderlich")
+		writeError(w, http.StatusBadRequest, "name, kind and frequency are required")
 		return
 	}
 
@@ -246,7 +246,7 @@ func (s *Server) handleCreateHabit(w http.ResponseWriter, r *http.Request) {
 	in.applyTo(&h)
 
 	if err := s.store.CreateHabit(r.Context(), user.ID, &h); err != nil {
-		s.writeStoreError(w, err, "habit anlegen")
+		s.writeStoreError(w, err, "creating habit")
 		return
 	}
 	writeJSON(w, http.StatusCreated, s.viewFor(h, nil, s.today(), domain.Date{}))
@@ -261,17 +261,17 @@ func (s *Server) handleUpdateHabit(w http.ResponseWriter, r *http.Request) {
 
 	h, err := s.store.GetHabit(r.Context(), user.ID, r.PathValue("id"))
 	if err != nil {
-		s.writeStoreError(w, err, "habit laden")
+		s.writeStoreError(w, err, "loading habit")
 		return
 	}
 	in.applyTo(&h)
 	if err := s.store.UpdateHabit(r.Context(), user.ID, &h); err != nil {
-		s.writeStoreError(w, err, "habit aktualisieren")
+		s.writeStoreError(w, err, "updating habit")
 		return
 	}
 	view, err := s.loadView(r, user.ID, h.ID)
 	if err != nil {
-		s.writeStoreError(w, err, "habit laden")
+		s.writeStoreError(w, err, "loading habit")
 		return
 	}
 	writeJSON(w, http.StatusOK, view)
@@ -282,7 +282,7 @@ func (s *Server) handleUpdateHabit(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleDeleteHabit(w http.ResponseWriter, r *http.Request) {
 	user := auth.MustUser(r.Context())
 	if err := s.store.SoftDeleteHabit(r.Context(), user.ID, r.PathValue("id")); err != nil {
-		s.writeStoreError(w, err, "habit löschen")
+		s.writeStoreError(w, err, "deleting habit")
 		return
 	}
 	writeJSON(w, http.StatusNoContent, nil)
@@ -293,12 +293,12 @@ func (s *Server) handleRestoreHabit(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 
 	if err := s.store.RestoreHabit(r.Context(), user.ID, id); err != nil {
-		s.writeStoreError(w, err, "habit wiederherstellen")
+		s.writeStoreError(w, err, "restoring habit")
 		return
 	}
 	view, err := s.loadView(r, user.ID, id)
 	if err != nil {
-		s.writeStoreError(w, err, "habit laden")
+		s.writeStoreError(w, err, "loading habit")
 		return
 	}
 	writeJSON(w, http.StatusOK, view)
@@ -313,7 +313,7 @@ func (s *Server) handleReorderHabits(w http.ResponseWriter, r *http.Request) {
 	}
 	user := auth.MustUser(r.Context())
 	if err := s.store.ReorderHabits(r.Context(), user.ID, body.IDs); err != nil {
-		s.writeStoreError(w, err, "reihenfolge speichern")
+		s.writeStoreError(w, err, "saving order")
 		return
 	}
 	writeJSON(w, http.StatusNoContent, nil)

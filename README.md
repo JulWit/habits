@@ -1,89 +1,89 @@
 # Habits
 
-Ein Gewohnheitstracker als **eine einzige Datei**: HTTP-Server, Frontend und
-SQLite-Treiber sind in das Binary einkompiliert. Zur Laufzeit entsteht nur noch
-die Datenbankdatei.
+A habit tracker as **a single file**: HTTP server, frontend and SQLite driver
+are all compiled into the binary. At runtime the only thing that appears is the
+database file.
 
-Das Layout orientiert sich an [Loop Habit Tracker](https://github.com/isoron/uhabits):
-eine Zeile pro Gewohnheit, eine Spalte pro Tag, heute ganz rechts.
+The layout follows [Loop Habit Tracker](https://github.com/isoron/uhabits):
+one row per habit, one column per day, today on the far right.
 
-## Bauen
+## Building
 
 ```bash
 go mod tidy
 go build -o habits .
 ```
 
-Braucht Go 1.26 oder neuer — das ist die Untergrenze, die `modernc.org/libc`
-mitbringt. Tests laufen ohne jede Vorbereitung:
+Needs Go 1.26 or newer — that is the floor `modernc.org/libc` brings with it.
+Tests run without any preparation at all:
 
 ```bash
 go test ./...
 ```
 
-`internal/store` legt sich dafür eine echte SQLite-Datei im Temp-Verzeichnis an
-und spielt alle Migrationen ein; weil der Treiber reines Go ist, braucht auch
-das keine Toolchain.
+For them `internal/store` creates a real SQLite file in the temp directory and
+plays in every migration; because the driver is pure Go, that needs no toolchain
+either.
 
-Das Ergebnis ist statisch gelinkt — der SQLite-Treiber ist
-[`modernc.org/sqlite`](https://pkg.go.dev/modernc.org/sqlite), ein reiner
-Go-Port ohne cgo. Deshalb funktioniert auch Cross-Compiling ohne C-Toolchain:
+The result is statically linked — the SQLite driver is
+[`modernc.org/sqlite`](https://pkg.go.dev/modernc.org/sqlite), a pure Go port
+without cgo. That is why cross-compiling works without a C toolchain too:
 
 ```bash
 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o dist/habits-linux-amd64 .
 GOOS=linux GOARCH=arm64 go build -trimpath -ldflags="-s -w" -o dist/habits-linux-arm64 .
 ```
 
-`-trimpath` entfernt lokale Pfade aus dem Binary, `-s -w` die Debug-Symbole
-(spart rund ein Drittel der Größe).
+`-trimpath` strips local paths out of the binary, `-s -w` the debug symbols
+(saving about a third of its size).
 
-## Starten
+## Running
 
 ```bash
 ./habits
 ```
 
-Läuft dann auf <http://localhost:8080> im Modus `single-user` — ohne
-Authentifizierung, alle Daten gehören dem Benutzer `local`. Das ist der
-Entwicklungsmodus.
+It then runs on <http://localhost:8080> in `single-user` mode — without
+authentication, all data belonging to the user `local`. That is the development
+mode.
 
-## Konfiguration
+## Configuration
 
-Alles über Umgebungsvariablen, damit keine Konfigurationsdatei neben dem Binary
-liegen muss.
+Everything through environment variables, so no configuration file has to sit
+next to the binary.
 
-| Variable | Default | Bedeutung |
+| Variable | Default | Meaning |
 |---|---|---|
-| `HABITS_ADDR` | `:8080` | Listen-Adresse |
-| `HABITS_DB` | `habits.db` | Pfad zur SQLite-Datei |
-| `HABITS_TZ` | `Local` | Zeitzone, die „heute" bestimmt (z. B. `Europe/Berlin`) |
-| `HABITS_AUTH_MODE` | `single-user` | `single-user` oder `authelia` |
-| `HABITS_DEFAULT_USER` | `local` | Benutzer im Modus `single-user` |
-| `HABITS_TRUSTED_PROXIES` | — | **Pflicht** im Modus `authelia`: Komma-Liste aus IPs/CIDRs |
-| `HABITS_USER_HEADER` | `Remote-User` | Header mit der Benutzerkennung |
-| `HABITS_NAME_HEADER` | `Remote-Name` | Anzeigename (optional) |
-| `HABITS_EMAIL_HEADER` | `Remote-Email` | E-Mail (optional) |
-| `HABITS_GROUPS_HEADER` | `Remote-Groups` | Gruppen (optional) |
+| `HABITS_ADDR` | `:8080` | Listen address |
+| `HABITS_DB` | `habits.db` | Path to the SQLite file |
+| `HABITS_TZ` | `Local` | Time zone that decides what "today" is (e.g. `Europe/Berlin`) |
+| `HABITS_AUTH_MODE` | `single-user` | `single-user` or `authelia` |
+| `HABITS_DEFAULT_USER` | `local` | User in `single-user` mode |
+| `HABITS_TRUSTED_PROXIES` | — | **Required** in `authelia` mode: comma-separated list of IPs/CIDRs |
+| `HABITS_USER_HEADER` | `Remote-User` | Header carrying the user identifier |
+| `HABITS_NAME_HEADER` | `Remote-Name` | Display name (optional) |
+| `HABITS_EMAIL_HEADER` | `Remote-Email` | Email (optional) |
+| `HABITS_GROUPS_HEADER` | `Remote-Groups` | Groups (optional) |
 
-`HABITS_TZ` ist bewusst serverseitig: eine selbst gehostete Instanz soll genau
-eine Vorstellung davon haben, welcher Tag gerade läuft.
+`HABITS_TZ` is deliberately server-side: a self-hosted instance should have
+exactly one idea of which day is currently running.
 
 ## Authelia
 
-Die Anwendung hat **keine eigenen Accounts**. Sie liest die Identität aus dem
-`Remote-User`-Header, den der Reverse Proxy setzt, nachdem Authelias
-`/api/verify` die Anfrage bestätigt hat. Jeder Benutzer sieht nur seine eigenen
-Gewohnheiten; die Kennung wird kleingeschrieben gespeichert, damit `Alice` und
-`alice` nicht zwei getrennte Datensätze bekommen.
+The application has **no accounts of its own**. It reads the identity from the
+`Remote-User` header the reverse proxy sets after Authelia's `/api/verify` has
+confirmed the request. Every user sees only their own habits; the identifier is
+stored lower-cased so that `Alice` and `alice` do not end up as two separate
+sets of data.
 
-> **Wichtig:** Header-Auth ist nur so sicher wie der Netzwerkpfad. Wer den Port
-> direkt erreichen kann, könnte sich sonst per `Remote-User: admin` als
-> beliebiger Benutzer ausgeben. Deshalb startet der Modus `authelia` nur mit
-> gesetztem `HABITS_TRUSTED_PROXIES`, und Anfragen von anderen Peers werden mit
-> 403 abgewiesen. Zusätzlich sollte der Port nur im internen Netz erreichbar
-> sein (Docker: kein `ports:`-Mapping, nur ein gemeinsames Netzwerk).
+> **Important:** header auth is only as secure as the network path. Anyone who
+> can reach the port directly could otherwise pass themselves off as any user
+> with `Remote-User: admin`. That is why `authelia` mode only starts with
+> `HABITS_TRUSTED_PROXIES` set, and requests from other peers are refused with
+> 403. On top of that the port should only be reachable on the internal network
+> (Docker: no `ports:` mapping, just a shared network).
 
-Beispiel für Traefik:
+Example for Traefik:
 
 ```yaml
 labels:
@@ -92,7 +92,7 @@ labels:
   - "traefik.http.services.habits.loadbalancer.server.port=8080"
 ```
 
-Beispiel für Caddy:
+Example for Caddy:
 
 ```caddyfile
 habits.example.com {
@@ -104,7 +104,7 @@ habits.example.com {
 }
 ```
 
-Passend dazu:
+And to go with it:
 
 ```bash
 HABITS_AUTH_MODE=authelia
@@ -113,217 +113,214 @@ HABITS_TZ=Europe/Berlin
 HABITS_DB=/data/habits.db
 ```
 
-`/healthz` liegt außerhalb der Authentifizierung, damit ein Container-Healthcheck
-ohne Identitäts-Header auskommt.
+`/healthz` sits outside the authentication, so a container health check manages
+without identity headers.
 
-## Bedienung
+## Using it
 
-| Aktion | Wie |
+| Action | How |
 |---|---|
-| Abhaken | Auf den Tag tippen |
-| Anzahl/Zeit/Distanz erhöhen | Tippen erhöht um einen Schritt (Zeit: 5 min, Distanz: 500 m), nach dem Ziel zurück auf 0 |
-| Genauen Wert setzen | Lange drücken oder Rechtsklick |
-| Rückgängig / Wiederholen | `Strg+Z` / `Strg+Umschalt+Z`, oder der „Rückgängig"-Button im Toast |
-| Neue Gewohnheit | `N` |
-| Einstellungen | Zahnrad in der Kopfzeile |
-| Design, Tage in der Übersicht, Archiv | alles im Einstellungsdialog |
-| Kategorie zuweisen oder neu anlegen | Feld „Kategorie" im Habit-Editor |
-| Kategorie umbenennen / löschen | ✎ und ✕ in der Blocküberschrift |
-| Detailansicht schließen | `Esc` |
-| Tag im Jahresverlauf ablesen | Mauszeiger über das Quadrat |
+| Tick off | Tap the day |
+| Increase count/time/distance | Tapping adds one step (time: 5 min, distance: 500 m), back to 0 once past the target |
+| Set an exact value | Long press or right-click |
+| Undo / redo | `Ctrl+Z` / `Ctrl+Shift+Z`, or the "Undo" button in the toast |
+| New habit | `N` |
+| Settings | Cog in the header |
+| Theme, days in the overview, archive | all in the settings dialog |
+| Assign or create a category | The "Category" field in the habit editor |
+| Rename / delete a category | ✎ and ✕ in the block heading |
+| Close the detail view | `Esc` |
+| Read a day in the year view | Hover over the square |
 
-Gelöschte Gewohnheiten werden 30 Tage lang nur als gelöscht markiert. Erst danach
-räumt der Start des Binaries sie endgültig ab — bis dahin bringt „Rückgängig"
-sie mitsamt ihrer gesamten Historie zurück.
+Deleted habits are only marked as deleted for 30 days. Only after that does
+starting the binary clear them away for good — until then "Undo" brings them
+back with their entire history.
 
-## Datenmodell
+## Data model
 
-**Kategorien** — Gewohnheiten lassen sich zu Kategorien gruppieren; die Übersicht
-zeichnet pro Kategorie einen eigenen Block. Eine Gewohnheit ohne Kategorie landet
-im Block „Ohne Kategorie". Gibt es überhaupt keine Kategorie, ist das Board ein
-einzelner Block ohne Überschriften.
+**Categories** — habits can be grouped into categories; the overview draws its
+own block per category. A habit without a category lands in the "No category"
+block. If there is no category at all, the board is a single block without
+headings.
 
-Kategorien werden — wie Gewohnheiten — nur als gelöscht markiert. Ihre
-Gewohnheiten behalten dabei die Zuordnung und rutschen lediglich in den Block
-„Ohne Kategorie". Ein „Rückgängig" stellt den Block deshalb genau so wieder her,
-wie er war, ohne eine einzige Gewohnheit anzufassen.
+Categories — like habits — are only marked as deleted. Their habits keep their
+assignment while that happens and merely slip into the "No category" block. An
+"Undo" therefore restores the block exactly as it was, without touching a single
+habit.
 
-**Frequenzen** — `daily`, `times_per_week` (x-mal pro Woche, Woche beginnt
-montags), `weekdays` (Bitmaske, Bit 0 = Montag), `every_n_days` (Intervall plus
-Ankerdatum, damit eine Bearbeitung die Phase nicht verschiebt).
+**Frequencies** — `daily`, `times_per_week` (x times per week, the week starting
+on Monday), `weekdays` (bitmask, bit 0 = Monday), `every_n_days` (interval plus
+anchor date, so that an edit does not shift the phase).
 
-**Typen** — `check` (Haken), `count` (Anzahl, z. B. 8 Gläser), `time` (Zeit in
-Minuten) und `distance` (Distanz in Metern). Intern ist jeder Eintrag eine Ganzzahl pro Tag; „erledigt" heißt
-`wert >= zielwert`. Ein Tag ohne Eintrag hat *keine* Zeile in `entries`, statt
-einer Zeile mit dem Wert 0 — so muss keine Auswertung zwischen „nicht erfasst"
-und „mit 0 erfasst" unterscheiden.
+**Kinds** — `check` (a tick), `count` (a count, e.g. 8 glasses), `time` (time in
+minutes) and `distance` (distance in metres). Internally every entry is one
+integer per day; "done" means `value >= target`. A day without an entry has *no*
+row in `entries` at all, rather than a row holding the value 0 — so no analysis
+has to tell "not recorded" apart from "recorded as 0".
 
-**Serien** — ein noch offener heutiger Tag unterbricht keine Serie. Bei
-`times_per_week` zählt die Serie in Wochen statt in Tagen, weil dort nicht der
-einzelne Tag, sondern die Woche das Ziel ist.
+**Streaks** — a today that is still open does not break a streak. With
+`times_per_week` the streak counts in weeks rather than days, because there it is
+the week and not the individual day that is the target.
 
 ## API
 
-Alle Endpunkte liegen unter `/api` und antworten mit JSON.
+All endpoints live under `/api` and answer with JSON.
 
-| Methode | Pfad | Zweck |
+| Method | Path | Purpose |
 |---|---|---|
-| `GET` | `/api/state` | Kompletter Zustand für einen Kaltstart (ein Request); folgt der Einstellung `showArchived`, `?archived=0`/`1` überschreibt sie |
-| `POST` | `/api/habits` | Anlegen |
-| `GET` | `/api/habits/{id}` | Einzelne Gewohnheit mit **voller** Historie |
-| `PATCH` | `/api/habits/{id}` | Ändern (nur gesendete Felder) |
-| `DELETE` | `/api/habits/{id}` | Soft-Delete |
-| `POST` | `/api/habits/{id}/restore` | Soft-Delete rückgängig machen |
-| `POST` | `/api/habits/reorder` | Reihenfolge setzen |
-| `PUT` | `/api/habits/{id}/entries/{date}` | Tageswert setzen |
-| `POST` | `/api/categories` | Kategorie anlegen |
-| `PATCH` | `/api/categories/{id}` | Umbenennen |
-| `DELETE` | `/api/categories/{id}` | Soft-Delete |
-| `POST` | `/api/categories/{id}/restore` | Soft-Delete rückgängig machen |
-| `POST` | `/api/categories/reorder` | Reihenfolge setzen |
-| `GET`/`PATCH` | `/api/settings` | Einstellungen, siehe unten |
-| `GET` | `/api/background` | Hintergrundbild ausliefern (404, wenn keines hinterlegt) |
-| `PUT` | `/api/background` | Bild hochladen (roher Body, JPEG oder PNG, höchstens 12 MB) |
-| `DELETE` | `/api/background` | Bild entfernen |
+| `GET` | `/api/state` | Complete state for a cold start (one request); follows the `showArchived` setting, `?archived=0`/`1` overrides it |
+| `POST` | `/api/habits` | Create |
+| `GET` | `/api/habits/{id}` | A single habit with its **full** history |
+| `PATCH` | `/api/habits/{id}` | Change (only the fields sent) |
+| `DELETE` | `/api/habits/{id}` | Soft delete |
+| `POST` | `/api/habits/{id}/restore` | Undo a soft delete |
+| `POST` | `/api/habits/reorder` | Set the order |
+| `PUT` | `/api/habits/{id}/entries/{date}` | Set a day's value |
+| `POST` | `/api/categories` | Create a category |
+| `PATCH` | `/api/categories/{id}` | Rename |
+| `DELETE` | `/api/categories/{id}` | Soft delete |
+| `POST` | `/api/categories/{id}/restore` | Undo a soft delete |
+| `POST` | `/api/categories/reorder` | Set the order |
+| `GET`/`PATCH` | `/api/settings` | Settings, see below |
+| `GET` | `/api/background` | Serve the background image (404 if none is stored) |
+| `PUT` | `/api/background` | Upload an image (raw body, JPEG or PNG, at most 12 MB) |
+| `DELETE` | `/api/background` | Remove the image |
 
-Alle schreibenden Endpunkte verlangen `Content-Type: application/json`. Das ist
-kein Formalismus: ohne diese Bedingung wäre `POST` von einer fremden Seite aus
-erreichbar, weil ein Formular `text/plain` senden darf und ein solcher Body
-gültiges JSON sein kann. Mit der Bedingung muss der Browser vorher einen
-Preflight schicken, den die Same-Origin-Policy abweist.
+Every writing endpoint demands `Content-Type: application/json`. That is not
+mere formality: without this condition a `POST` would be reachable from a
+foreign page, because a form is allowed to send `text/plain` and such a body can
+be valid JSON. With the condition the browser has to send a preflight first,
+which the same-origin policy refuses.
 
-`/api/state` liefert neben den Gewohnheiten auch die Tabellen, die der Client
-zum Lesen eines gespeicherten Wertes braucht: `colors` (die Palette) und `kinds`
-(pro Typ `scale`, `step`, `max`, `unit`). Sie werden geschickt statt im
-JavaScript ein zweites Mal hingeschrieben — diese Zahlen entscheiden, ob 5000
-fünf Kilometer oder fünfhundert Wiederholungen bedeutet, und eine zweite Kopie
-könnte auseinanderlaufen, ohne dass irgendetwas bricht.
+Alongside the habits, `/api/state` also delivers the tables the client needs in
+order to read a stored value: `colors` (the palette) and `kinds` (per kind
+`scale`, `step`, `max`, `unit`). They are sent rather than written out a second
+time in JavaScript — these numbers decide whether 5000 means five kilometres or
+five hundred repetitions, and a second copy could drift apart without anything
+breaking.
 
-`PUT …/entries/{date}` liefert im Feld `previous` den überschriebenen Wert
-zurück. Genau daraus baut das Frontend seinen Undo-Stack: Rückgängig heißt
-einfach, `previous` wieder zu schreiben. Deshalb funktioniert Undo auch ohne
-jede lokale Persistenz.
+`PUT …/entries/{date}` returns the value it overwrote in the `previous` field.
+That is exactly what the frontend builds its undo stack out of: undoing simply
+means writing `previous` back. Which is why undo works without any local
+persistence.
 
-## Aufbau
+## Structure
 
 ```
-main.go                     Start, Signal-Handling, //go:embed des Frontends
-internal/config             Konfiguration aus der Umgebung
-internal/auth               Authelia-Forward-Auth als Middleware
-internal/domain             Habits, Frequenzen, Serien — ohne I/O
-internal/store              SQLite: Schema, Migrationen, Queries
-internal/httpapi            Routing, JSON, Auslieferung des Frontends
-web/                        Frontend (ES-Module, kein Build-Schritt)
-  assets/overview.js        Board: Blöcke pro Kategorie, geteilter Tages-Header
-  assets/cells.js           Habit-Zeile und Tageszelle
-  assets/actions.js         alle Mutationen, jeweils mit Undo-Schritt
-  assets/icons.js           Inline-SVG-Icons für Buttons
-  assets/categorypicker.js  verschachtelter Dialog zur Kategorieauswahl
-  assets/settings.js        Einstellungsdialog, schreibt jede Änderung sofort
+main.go                     Startup, signal handling, //go:embed of the frontend
+internal/config             Configuration from the environment
+internal/auth               Authelia forward auth as middleware
+internal/domain             Habits, frequencies, streaks — without I/O
+internal/store              SQLite: schema, migrations, queries
+internal/httpapi            Routing, JSON, serving the frontend
+web/                        Frontend (ES modules, no build step)
+  assets/overview.js        Board: blocks per category, shared day header
+  assets/cells.js           Habit row and day cell
+  assets/actions.js         All mutations, each with its undo step
+  assets/icons.js           Inline SVG icons for buttons
+  assets/categorypicker.js  Nested dialog for choosing a category
+  assets/settings.js        Settings dialog, writes every change immediately
 ```
 
-`internal/domain` kennt weder Datenbank noch HTTP. Die Regeln — wann ein Habit
-fällig ist, wann ein Tag als erledigt gilt, wie eine Serie zählt — stehen dort
-und sind ohne Server testbar. Das ist keine Absichtserklärung: `stats_test.go`,
-`habit_test.go` und `date_test.go` testen sie genau so, ohne Datenbank und ohne
-Netzwerk.
+`internal/domain` knows neither database nor HTTP. The rules — when a habit is
+due, when a day counts as done, how a streak counts — live there and are
+testable without a server. That is not a statement of intent: `stats_test.go`,
+`habit_test.go` and `date_test.go` test them exactly like that, without a
+database and without a network.
 
-Das Frontend ist bewusst ohne Build-Schritt gebaut: native ES-Module, kein npm,
-kein Bundler. `go build` bleibt damit der einzige Befehl, der zum Release nötig
-ist.
+The frontend is deliberately built without a build step: native ES modules, no
+npm, no bundler. `go build` thereby stays the only command needed for a release.
 
-## Erweitern
+## Extending
 
-**Neue Migration** — einen weiteren String an `migrations` in
-`internal/store/store.go` anhängen. Bereits ausgelieferte Einträge nie ändern;
-`PRAGMA user_version` verfolgt den Stand.
+**A new migration** — append another string to `migrations` in
+`internal/store/store.go`. Never change entries that have already shipped;
+`PRAGMA user_version` tracks where things stand.
 
-**Neues Feld an einer Gewohnheit** — Feld in `domain.Habit` und dessen
-`Validate()`, Spalte per Migration, Lesen/Schreiben in
-`internal/store/habits.go`, optionaler Zeiger in `habitInput`
-(`internal/httpapi/handlers_habits.go`), Eingabe in `web/assets/editor.js`.
-Und zuletzt in `writableFields()` in `web/assets/actions.js`: PATCH liest ein
-fehlendes Feld als „unverändert", ein dort vergessenes Feld wird also von
-seinem eigenen Undo nicht zurückgenommen.
+**A new field on a habit** — the field in `domain.Habit` and its `Validate()`, a
+column by migration, reading/writing in `internal/store/habits.go`, an optional
+pointer in `habitInput` (`internal/httpapi/handlers_habits.go`), an input in
+`web/assets/editor.js`. And finally in `writableFields()` in
+`web/assets/actions.js`: PATCH reads a missing field as "unchanged", so a field
+forgotten there is not taken back by its own undo.
 
-**Neuer Habit-Typ** — `AllKinds` in `internal/domain/habit.go` ergänzen und die
-vier Methoden `Scale`, `Step`, `MaxTarget`, `Unit` bedienen. Der Client bekommt
-das über `kinds` in `/api/state` und braucht keine eigene Tabelle; im Editor
-kommen nur die Eingabefelder dazu.
+**A new habit kind** — add it to `AllKinds` in `internal/domain/habit.go` and
+serve the four methods `Scale`, `Step`, `MaxTarget`, `Unit`. The client gets
+that through `kinds` in `/api/state` and needs no table of its own; in the
+editor only the input fields are added.
 
-**Neues Werkzeug (Kanban, Pomodoro, To-do)** — als eigenes `internal/<tool>`
-mit eigenem Domain-Paket und eigenen Tabellen. Was dabei geteilt wird, ist die
-Infrastruktur: `config`, `auth`, die Store-Verbindung, das Routing und die
-CSS-Tokens in `web/assets/base.css`.
+**A new tool (kanban, pomodoro, to-do)** — as its own `internal/<tool>` with its
+own domain package and its own tables. What is shared is the infrastructure:
+`config`, `auth`, the store connection, the routing and the CSS tokens in
+`web/assets/base.css`.
 
-**Undo für eine neue Aktion** — die Aktion in `web/assets/actions.js`
-ausführen und anschließend `record({label, undo, redo})` aufrufen. `undo` und
-`redo` sind Server-Aufrufe, keine lokalen Zustandsänderungen; deshalb bleibt
-die Historie auch dann korrekt, wenn parallel ein zweites Gerät schreibt.
+**Undo for a new action** — carry the action out in `web/assets/actions.js` and
+then call `record({label, undo, redo})`. `undo` and `redo` are server calls, not
+local state changes; that is why the history stays correct even when a second
+device is writing in parallel.
 
 
-**Historie und Nachladen** — `/api/state` liefert pro Gewohnheit nur die
-Einträge der letzten 200 Tage; das reicht für das Board und hält die Antwort
-klein. Die Detailansicht zeichnet ein ganzes Kalenderjahr und holt sich deshalb
-beim Öffnen einmal die vollständige Historie über `/api/habits/{id}` nach.
-Streaks und die beste Serie rechnet der Server ohnehin immer über alles.
+**History and reloading** — `/api/state` delivers only the last 200 days of
+entries per habit; that is enough for the board and keeps the response small.
+The detail view draws a whole calendar year and therefore fetches the full
+history once through `/api/habits/{id}` when it opens. Streaks and the best
+streak are computed by the server over everything anyway.
 
-## Einstellungen
+## Settings
 
-Das Zahnrad in der Kopfzeile öffnet den Einstellungsdialog. Er ist in Reiter
-geteilt; alle Werte liegen serverseitig pro Benutzer.
+The cog in the header opens the settings dialog. It is split into tabs; all the
+values live server-side, per user.
 
-| Schlüssel | Werte | Bedeutung |
+| Key | Values | Meaning |
 |---|---|---|
-| `theme` | `system`, `light`, `dark` | Erscheinungsbild; `system` folgt dem Gerät |
-| `font` | `system`, `inter`, `roboto`, `geist`, `opensans`, `montserrat`, `poppins`, `lato` | Schriftart, alle im Binary |
-| `overviewDays` | 0 = automatisch, sonst 3–90 | Tagesspalten im Board |
-| `alignWeeks` | bool | Board auf ganze Kalenderwochen ausrichten |
-| `showArchived` | bool | Archivierte Gewohnheiten einblenden |
-| `reorderMode` | `drag`, `buttons` | Ziehen am Griff oder Pfeile je Eintrag |
-| `pattern` | `none`, `dots`, `grid`, `diagonal`, `cross`, `image` | Textur hinter der Seite; `image` ist das hochgeladene Bild |
-| `bandColor` | `neutral` oder eine Habit-Farbe | Färbung der Heute-Spalte |
-| `bandOpacity` | 0–100 | Wie kräftig diese Markierung gezeichnet wird |
-| `backgroundDim` | 0–100 | Abdunklung des hochgeladenen Bildes |
-| `backgroundBlur` | 0–100 | Weichzeichnung desselben |
-| `surfaceOpacity` | 20–100 | Deckkraft der Karten über einem Bild |
-| `surfaceBlur` | 0–100 | Wie weich sie durchscheinen lassen |
+| `theme` | `system`, `light`, `dark` | Appearance; `system` follows the device |
+| `font` | `system`, `inter`, `roboto`, `geist`, `opensans`, `montserrat`, `poppins`, `lato` | Typeface, all of them in the binary |
+| `overviewDays` | 0 = automatic, otherwise 3–90 | Day columns on the board |
+| `alignWeeks` | bool | Align the board to whole calendar weeks |
+| `showArchived` | bool | Show archived habits |
+| `reorderMode` | `drag`, `buttons` | Dragging by the handle, or arrows per entry |
+| `pattern` | `none`, `dots`, `grid`, `diagonal`, `cross`, `image` | Texture behind the page; `image` is the uploaded picture |
+| `bandColor` | `neutral` or a habit colour | Colouring of the today column |
+| `bandOpacity` | 0–100 | How strongly that marker is drawn |
+| `backgroundDim` | 0–100 | Dimming of the uploaded image |
+| `backgroundBlur` | 0–100 | Blurring of the same |
+| `surfaceOpacity` | 20–100 | Opacity of the cards over an image |
+| `surfaceBlur` | 0–100 | How softly they let it show through |
 
-Die Anzahl der Tage: **Automatisch** füllt die verfügbare Breite, sonst wählst
-du eine feste Zahl. Die gewählte Zahl ist eine Obergrenze, keine Garantie — 28
-Spalten passen auf ein Telefon nicht. Der Dialog nennt deshalb immer die
-tatsächlich gezeigte Anzahl und erklärt die Abweichung, statt das Board still
-abzuschneiden.
+The number of days: **Automatic** fills the available width, otherwise you pick
+a fixed number. The chosen number is an upper bound, not a guarantee — 28
+columns do not fit on a phone. The dialog therefore always names the number
+actually being shown and explains the difference, rather than silently clipping
+the board.
 
-Bei einer festen Zahl schrumpft das Board auf genau diese Spalten und bleibt
-dabei im Fenster zentriert. Im Modus „Automatisch" füllt es die Breite, und die
-Namensspalte nimmt den Rest auf — das ist der Unterschied zwischen „so viele
-wie möglich" und „genau so viele".
+With a fixed number the board shrinks to exactly those columns and stays centred
+in the window while it does. In "Automatic" mode it fills the width and the name
+column takes up the rest — that is the difference between "as many as possible"
+and "exactly this many".
 
-Alle Einstellungen liegen serverseitig pro Benutzer und gelten damit auf jedem
-Gerät. Jede Änderung wird sofort geschrieben; es gibt keinen Speichern-Knopf,
-weil die Einstellungen voneinander unabhängig sind.
+All settings live server-side per user and therefore apply on every device.
+Every change is written immediately; there is no save button, because the
+settings are independent of one another.
 
-## Bekannte Grenzen
+## Known limits
 
-- Der SQLite-Pool ist auf **eine** Verbindung begrenzt. Für einen persönlichen
-  Tracker ist das die einfachste korrekte Wahl; sollte Lesedurchsatz je zum
-  Thema werden, wäre ein zweiter, nur lesender Pool die Lösung — nicht ein
-  größerer gemeinsamer.
-- Die Fälligkeitslogik ist in `internal/domain/habit.go` und
-  `web/assets/habit.js` doppelt vorhanden — der Server braucht sie zur
-  Validierung, der Client, um ein ganzes Raster ohne Round-Trip zu zeichnen.
-  Änderungen an Frequenzregeln müssen an beiden Stellen erfolgen. Die *Zahlen*
-  je Typ (Skala, Schrittweite, Obergrenze) sind dagegen nicht mehr doppelt: sie
-  kommen als `kinds` mit `/api/state`.
-- Die Listen der Schriftarten und Muster stehen in `internal/store/settings.go`,
-  in `web/assets/app.js` und in den `<option>`-Elementen von `index.html`. Ein
-  Auseinanderlaufen fällt hier nur auf den Default zurück, statt Daten falsch zu
-  lesen — deshalb bisher belassen.
-- Der Typ einer Gewohnheit lässt sich nicht mehr ändern, sobald Tage erfasst
-  sind. Jeder Typ speichert eine Ganzzahl pro Tag, aber nicht dieselbe: 5000
-  sind fünf Kilometer oder fünfhundert Wiederholungen. Eine ehrliche Umrechnung
-  gibt es nicht, also wird der Wechsel abgelehnt statt die Historie still
-  umzudeuten. Ohne Einträge bleibt er möglich — dann wird er auch gebraucht.
-- Die Detailansicht zeichnet immer das *laufende* Kalenderjahr. Frühere Jahre
-  sind über die Oberfläche nicht erreichbar.
+- The SQLite pool is limited to **one** connection. For a personal tracker that
+  is the simplest correct choice; should read throughput ever become an issue,
+  the answer would be a second, read-only pool — not a larger shared one.
+- The due-date logic exists twice, in `internal/domain/habit.go` and in
+  `web/assets/habit.js` — the server needs it for validation, the client in
+  order to draw a whole grid without a round trip. Changes to frequency rules
+  have to be made in both places. The *numbers* per kind (scale, step size,
+  ceiling), on the other hand, are no longer duplicated: they arrive as `kinds`
+  with `/api/state`.
+- The lists of fonts and patterns appear in `internal/store/settings.go`, in
+  `web/assets/app.js` and in the `<option>` elements of `index.html`. A drift
+  here only falls back to the default rather than reading data incorrectly —
+  which is why it has been left as it is so far.
+- A habit's kind can no longer be changed once days have been recorded. Every
+  kind stores one integer per day, but not the same one: 5000 is either five
+  kilometres or five hundred repetitions. There is no honest conversion, so the
+  change is refused rather than silently reinterpreting the history. Without
+  entries it stays possible — and that is when it is actually needed.
+- The detail view always draws the *current* calendar year. Earlier years are
+  not reachable through the interface.

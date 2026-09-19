@@ -38,7 +38,7 @@ func TestLoadDefaultsToSingleUser(t *testing.T) {
 		t.Errorf("UserHeader = %q", cfg.UserHeader)
 	}
 	if cfg.Location == nil {
-		t.Error("Location ist nil")
+		t.Error("Location is nil")
 	}
 	if cfg.DeletedRetention <= 0 {
 		t.Errorf("DeletedRetention = %v", cfg.DeletedRetention)
@@ -54,10 +54,10 @@ func TestBlankEnvFallsBackToTheDefault(t *testing.T) {
 		t.Fatalf("Load: %v", err)
 	}
 	if cfg.Addr != ":8080" {
-		t.Errorf("Addr = %q, want den Default", cfg.Addr)
+		t.Errorf("Addr = %q, want the default", cfg.Addr)
 	}
 	if cfg.DatabasePath != "data.db" {
-		t.Errorf("DatabasePath = %q, want getrimmt", cfg.DatabasePath)
+		t.Errorf("DatabasePath = %q, want trimmed", cfg.DatabasePath)
 	}
 }
 
@@ -67,10 +67,10 @@ func TestAutheliaRefusesToStartWithoutTrustedProxies(t *testing.T) {
 	withEnv(t, map[string]string{"HABITS_AUTH_MODE": "authelia"})
 	_, err := Load()
 	if err == nil {
-		t.Fatal("authelia ohne HABITS_TRUSTED_PROXIES wurde akzeptiert")
+		t.Fatal("authelia without HABITS_TRUSTED_PROXIES was accepted")
 	}
 	if !strings.Contains(err.Error(), "HABITS_TRUSTED_PROXIES") {
-		t.Errorf("die Fehlermeldung nennt die Variable nicht: %v", err)
+		t.Errorf("the error message does not name the variable: %v", err)
 	}
 }
 
@@ -87,14 +87,14 @@ func TestAutheliaParsesTrustedProxies(t *testing.T) {
 		t.Errorf("AuthMode = %q", cfg.AuthMode)
 	}
 	if len(cfg.TrustedProxies) != 3 {
-		t.Fatalf("%d Präfixe, want 3: %v", len(cfg.TrustedProxies), cfg.TrustedProxies)
+		t.Fatalf("%d prefixes, want 3: %v", len(cfg.TrustedProxies), cfg.TrustedProxies)
 	}
 	// A bare address becomes a single-host prefix.
 	if got := cfg.TrustedProxies[0]; got.Bits() != 32 || got.Addr().String() != "127.0.0.1" {
-		t.Errorf("erstes Präfix = %v, want 127.0.0.1/32", got)
+		t.Errorf("first prefix = %v, want 127.0.0.1/32", got)
 	}
 	if !cfg.TrustedProxies[1].Contains(netip.MustParseAddr("172.18.5.9")) {
-		t.Errorf("172.18.0.0/16 deckt 172.18.5.9 nicht ab")
+		t.Errorf("172.18.0.0/16 does not cover 172.18.5.9")
 	}
 }
 
@@ -104,14 +104,14 @@ func TestLoadRejects(t *testing.T) {
 		env  map[string]string
 		says string
 	}{
-		{"unbekannter Auth-Modus",
+		{"unknown auth mode",
 			map[string]string{"HABITS_AUTH_MODE": "oauth"}, "HABITS_AUTH_MODE"},
-		{"unbekannte Zeitzone",
+		{"unknown time zone",
 			map[string]string{"HABITS_TZ": "Mars/Olympus_Mons"}, "HABITS_TZ"},
-		{"kaputtes CIDR", map[string]string{
+		{"broken CIDR", map[string]string{
 			"HABITS_AUTH_MODE": "authelia", "HABITS_TRUSTED_PROXIES": "172.18.0.0/99",
 		}, "HABITS_TRUSTED_PROXIES"},
-		{"keine IP", map[string]string{
+		{"not an IP", map[string]string{
 			"HABITS_AUTH_MODE": "authelia", "HABITS_TRUSTED_PROXIES": "proxy.example.com",
 		}, "HABITS_TRUSTED_PROXIES"},
 	} {
@@ -119,10 +119,10 @@ func TestLoadRejects(t *testing.T) {
 			withEnv(t, tc.env)
 			_, err := Load()
 			if err == nil {
-				t.Fatal("wurde akzeptiert")
+				t.Fatal("was accepted")
 			}
 			if !strings.Contains(err.Error(), tc.says) {
-				t.Errorf("Meldung nennt %q nicht: %v", tc.says, err)
+				t.Errorf("message does not mention %q: %v", tc.says, err)
 			}
 		})
 	}

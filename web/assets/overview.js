@@ -463,15 +463,15 @@ function dayNav() {
   const nav = document.createElement("div");
   nav.className = "day-nav";
 
-  const older = toolButton("page-older", icons.chevronLeft, "Frühere Tage");
-  const newer = toolButton("page-newer", icons.chevronRight, "Spätere Tage");
+  const older = toolButton("page-older", icons.chevronLeft, "Earlier days");
+  const newer = toolButton("page-newer", icons.chevronRight, "Later days");
   // The forward arrow stops at the horizon rather than disappearing, so the row
   // does not jump about.
   newer.disabled = offset <= -MAX_AHEAD_DAYS;
   nav.append(older, newer);
 
   if (offset !== 0) {
-    nav.append(toolButton("page-today", icons.toToday, "Zurück zu heute"));
+    nav.append(toolButton("page-today", icons.toToday, "Back to today"));
   }
   return nav;
 }
@@ -487,7 +487,7 @@ function renderBlock({ category, habits, visible }, dates, labelled) {
   if (rows.length === 0) {
     const empty = document.createElement("p");
     empty.className = "block-empty";
-    empty.textContent = "Noch keine Gewohnheit in dieser Kategorie.";
+    empty.textContent = "No habit in this category yet.";
     section.append(empty);
     return section;
   }
@@ -539,14 +539,14 @@ function habitTools(habit, siblings) {
   if (siblings.length < 2) return tools;
 
   if (byDragging()) {
-    const grip = toolButton("drag-habit", icons.grip, "Gewohnheit verschieben");
+    const grip = toolButton("drag-habit", icons.grip, "Move habit");
     grip.classList.add("drag-handle");
     grip.dataset.habit = habit.id;
     tools.append(grip);
   } else {
     const at = siblings.indexOf(habit);
-    const up = toolButton("move-habit-up", icons.chevronUp, "Gewohnheit nach oben");
-    const down = toolButton("move-habit-down", icons.chevronDown, "Gewohnheit nach unten");
+    const up = toolButton("move-habit-up", icons.chevronUp, "Move habit up");
+    const down = toolButton("move-habit-down", icons.chevronDown, "Move habit down");
     up.disabled = at === 0;
     down.disabled = at === siblings.length - 1;
     up.dataset.habit = habit.id;
@@ -577,7 +577,7 @@ function blockProgress(habits) {
 
   const wrap = document.createElement("div");
   wrap.className = "block-progress";
-  wrap.title = `Heute ${done} von ${due} erledigt`;
+  wrap.title = `${done} of ${due} done today`;
 
   const count = document.createElement("span");
   count.className = "block-progress-count";
@@ -593,7 +593,7 @@ function blockProgress(habits) {
   track.setAttribute("aria-valuemin", "0");
   track.setAttribute("aria-valuemax", String(due));
   track.setAttribute("aria-valuenow", String(done));
-  track.setAttribute("aria-label", "Heute erledigt");
+  track.setAttribute("aria-label", "Done today");
   for (let i = 0; i < due; i++) {
     const seg = document.createElement("span");
     seg.className = "block-progress-seg";
@@ -622,7 +622,7 @@ function blockHead(category, habits = []) {
     link.textContent = category.name;
     title.append(link);
   } else {
-    title.textContent = "Ohne Kategorie";
+    title.textContent = "No category";
   }
   head.append(title);
 
@@ -640,13 +640,13 @@ function blockHead(category, habits = []) {
     // arrows that step one place at a time.
     if (state.categories.length > 1) {
       if (byDragging()) {
-        const grip = toolButton("drag-category", icons.grip, "Kategorie verschieben");
+        const grip = toolButton("drag-category", icons.grip, "Move category");
         grip.classList.add("drag-handle");
         tools.append(grip);
       } else {
         const at = state.categories.findIndex((c) => c.id === category.id);
-        const up = toolButton("move-category-up", icons.chevronUp, "Kategorie nach oben");
-        const down = toolButton("move-category-down", icons.chevronDown, "Kategorie nach unten");
+        const up = toolButton("move-category-up", icons.chevronUp, "Move category up");
+        const down = toolButton("move-category-down", icons.chevronDown, "Move category down");
         up.disabled = at <= 0;
         down.disabled = at === state.categories.length - 1;
         tools.append(up, down);

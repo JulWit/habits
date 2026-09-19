@@ -18,8 +18,8 @@ import (
 )
 
 var (
-	ErrNotFound = errors.New("nicht gefunden")
-	ErrConflict = errors.New("konflikt")
+	ErrNotFound = errors.New("not found")
+	ErrConflict = errors.New("conflict")
 )
 
 // invalidf marks a rejection as a validation failure rather than a fault, so
@@ -56,7 +56,7 @@ func Open(ctx context.Context, path string) (*Store, error) {
 
 	db, err := sql.Open("sqlite", dsn)
 	if err != nil {
-		return nil, fmt.Errorf("datenbank öffnen: %w", err)
+		return nil, fmt.Errorf("opening the database: %w", err)
 	}
 	db.SetMaxOpenConns(1)
 	db.SetMaxIdleConns(1)
@@ -64,7 +64,7 @@ func Open(ctx context.Context, path string) (*Store, error) {
 
 	if err := db.PingContext(ctx); err != nil {
 		db.Close()
-		return nil, fmt.Errorf("datenbank erreichen: %w", err)
+		return nil, fmt.Errorf("reaching the database: %w", err)
 	}
 	s := &Store{db: db}
 	if err := s.migrate(ctx); err != nil {
@@ -285,28 +285,28 @@ var migrations = []string{
 func (s *Store) migrate(ctx context.Context) error {
 	var version int
 	if err := s.db.QueryRowContext(ctx, "PRAGMA user_version").Scan(&version); err != nil {
-		return fmt.Errorf("schema-version lesen: %w", err)
+		return fmt.Errorf("reading schema version: %w", err)
 	}
 	if version > len(migrations) {
-		return fmt.Errorf("datenbank hat schema-version %d, dieses binary kennt nur %d — vermutlich eine ältere version der anwendung", version, len(migrations))
+		return fmt.Errorf("database has schema version %d, this binary only knows %d — probably an older version of the application", version, len(migrations))
 	}
 	for i := version; i < len(migrations); i++ {
 		tx, err := s.db.BeginTx(ctx, nil)
 		if err != nil {
-			return fmt.Errorf("migration %d starten: %w", i+1, err)
+			return fmt.Errorf("starting migration %d: %w", i+1, err)
 		}
 		if _, err := tx.ExecContext(ctx, migrations[i]); err != nil {
 			tx.Rollback()
-			return fmt.Errorf("migration %d anwenden: %w", i+1, err)
+			return fmt.Errorf("applying migration %d: %w", i+1, err)
 		}
 		// PRAGMA does not accept placeholders, hence the formatted statement;
 		// the value is a loop index, never user input.
 		if _, err := tx.ExecContext(ctx, fmt.Sprintf("PRAGMA user_version = %d", i+1)); err != nil {
 			tx.Rollback()
-			return fmt.Errorf("schema-version %d setzen: %w", i+1, err)
+			return fmt.Errorf("setting schema version %d: %w", i+1, err)
 		}
 		if err := tx.Commit(); err != nil {
-			return fmt.Errorf("migration %d committen: %w", i+1, err)
+			return fmt.Errorf("committing migration %d: %w", i+1, err)
 		}
 	}
 	return nil
@@ -317,7 +317,7 @@ func (s *Store) migrate(ctx context.Context) error {
 func NewID() string {
 	var b [16]byte
 	if _, err := rand.Read(b[:]); err != nil {
-		panic("store: keine entropie verfügbar: " + err.Error())
+		panic("store: no entropy available: " + err.Error())
 	}
 	return hex.EncodeToString(b[:])
 }

@@ -9,7 +9,7 @@ import (
 
 func baseHabit() Habit {
 	return Habit{
-		Name:        "Lesen",
+		Name:        "Reading",
 		Color:       "#16a34a",
 		Kind:        KindCheck,
 		TargetValue: 1,
@@ -47,31 +47,31 @@ func TestValidateRejects(t *testing.T) {
 		name   string
 		mutate func(*Habit)
 	}{
-		{"leerer Name", func(h *Habit) { h.Name = "   " }},
-		{"zu langer Name", func(h *Habit) { h.Name = strings.Repeat("a", MaxNameLen+1) }},
-		{"zu lange Einheit", func(h *Habit) {
+		{"empty name", func(h *Habit) { h.Name = "   " }},
+		{"name too long", func(h *Habit) { h.Name = strings.Repeat("a", MaxNameLen+1) }},
+		{"unit too long", func(h *Habit) {
 			h.Kind = KindCount
 			h.TargetValue = 10
 			h.Unit = strings.Repeat("a", MaxUnitLen+1)
 		}},
-		{"kaputte Farbe", func(h *Habit) { h.Color = "grün" }},
-		{"unbekannter Typ", func(h *Habit) { h.Kind = Kind("gewicht") }},
-		{"unbekannte Frequenz", func(h *Habit) { h.Frequency.Kind = FrequencyKind("monatlich") }},
-		{"Ziel über dem Maximum", func(h *Habit) {
+		{"broken colour", func(h *Habit) { h.Color = "not-a-colour" }},
+		{"unknown kind", func(h *Habit) { h.Kind = Kind("gewicht") }},
+		{"unknown frequency", func(h *Habit) { h.Frequency.Kind = FrequencyKind("monatlich") }},
+		{"target above the maximum", func(h *Habit) {
 			h.Kind = KindTime
 			h.TargetValue = KindTime.MaxTarget() + 1
 		}},
-		{"Ziel unter 1", func(h *Habit) { h.Kind = KindCount; h.TargetValue = 0 }},
-		{"kein Wochentag gewählt", func(h *Habit) {
+		{"target below 1", func(h *Habit) { h.Kind = KindCount; h.TargetValue = 0 }},
+		{"no weekday selected", func(h *Habit) {
 			h.Frequency = Frequency{Kind: FreqWeekdays, Weekdays: 0}
 		}},
-		{"Wochentagsmaske zu groß", func(h *Habit) {
+		{"weekday mask too large", func(h *Habit) {
 			h.Frequency = Frequency{Kind: FreqWeekdays, Weekdays: 0b10000000}
 		}},
-		{"Intervall 0", func(h *Habit) {
+		{"interval 0", func(h *Habit) {
 			h.Frequency = Frequency{Kind: FreqEveryNDays, IntervalDays: 0}
 		}},
-		{"Intervall über einem Jahr", func(h *Habit) {
+		{"interval over a year", func(h *Habit) {
 			h.Frequency = Frequency{Kind: FreqEveryNDays, IntervalDays: 366}
 		}},
 		{"times per week 0", func(h *Habit) {
@@ -86,10 +86,10 @@ func TestValidateRejects(t *testing.T) {
 			tc.mutate(&h)
 			err := h.Validate()
 			if err == nil {
-				t.Fatal("Validate akzeptierte einen ungültigen Habit")
+				t.Fatal("Validate accepted an invalid habit")
 			}
 			if !errors.Is(err, ErrValidation) {
-				t.Errorf("Fehler ist kein ErrValidation: %v", err)
+				t.Errorf("error is not ErrValidation: %v", err)
 			}
 		})
 	}
@@ -140,7 +140,7 @@ func TestValidateStepValue(t *testing.T) {
 
 	h.StepValue = KindTime.MaxTarget() + 1
 	if err := h.Validate(); !errors.Is(err, ErrValidation) {
-		t.Errorf("zu große Schrittweite: %v, want ErrValidation", err)
+		t.Errorf("step too large: %v, want ErrValidation", err)
 	}
 }
 
@@ -155,11 +155,11 @@ func TestIsScheduled(t *testing.T) {
 			map[int]bool{0: true, 3: true, 6: true}},
 		{"times per week is every day an opportunity", Frequency{Kind: FreqTimesPerWeek, TimesPerWeek: 3},
 			map[int]bool{0: true, 3: true, 6: true}},
-		{"Mo und Fr", Frequency{Kind: FreqWeekdays, Weekdays: 1<<0 | 1<<4},
+		{"Mon and Fri", Frequency{Kind: FreqWeekdays, Weekdays: 1<<0 | 1<<4},
 			map[int]bool{0: true, 1: false, 4: true, 6: false}},
-		{"nur Sonntag", Frequency{Kind: FreqWeekdays, Weekdays: 1 << 6},
+		{"Sunday only", Frequency{Kind: FreqWeekdays, Weekdays: 1 << 6},
 			map[int]bool{0: false, 6: true}},
-		{"alle 3 Tage ab Montag", Frequency{Kind: FreqEveryNDays, IntervalDays: 3, AnchorDate: mon},
+		{"every 3 days from Monday", Frequency{Kind: FreqEveryNDays, IntervalDays: 3, AnchorDate: mon},
 			map[int]bool{0: true, 1: false, 2: false, 3: true, 6: true}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -182,7 +182,7 @@ func TestEveryNDaysIsNotDueBeforeItsAnchor(t *testing.T) {
 	h := baseHabit()
 	h.Frequency = Frequency{Kind: FreqEveryNDays, IntervalDays: 3, AnchorDate: anchor}
 	if h.IsScheduled(anchor.AddDays(-3)) {
-		t.Error("ein Tag vor dem Anker darf nicht fällig sein")
+		t.Error("a day before the anchor must not be due")
 	}
 }
 
@@ -210,7 +210,7 @@ func TestValidateEntryValue(t *testing.T) {
 				tc.kind, tc.value, err, tc.wantErr)
 		}
 		if err != nil && !errors.Is(err, ErrValidation) {
-			t.Errorf("ValidateEntryValue(%q, %d): kein ErrValidation: %v", tc.kind, tc.value, err)
+			t.Errorf("ValidateEntryValue(%q, %d): not ErrValidation: %v", tc.kind, tc.value, err)
 		}
 	}
 }
@@ -220,17 +220,17 @@ func TestValidateEntryValue(t *testing.T) {
 func TestKindDescriptorsMatchTheKindMethods(t *testing.T) {
 	got := KindDescriptors()
 	if len(got) != len(AllKinds) {
-		t.Fatalf("%d Deskriptoren für %d Typen", len(got), len(AllKinds))
+		t.Fatalf("%d descriptors for %d kinds", len(got), len(AllKinds))
 	}
 	for _, k := range AllKinds {
 		info, ok := got[k]
 		if !ok {
-			t.Errorf("kein Deskriptor für %q", k)
+			t.Errorf("no descriptor for %q", k)
 			continue
 		}
 		if info.Scale != k.Scale() || info.Step != k.Step() ||
 			info.Max != k.MaxTarget() || info.Unit != k.Unit() {
-			t.Errorf("%q: %+v weicht von den Methoden ab", k, info)
+			t.Errorf("%q: %+v differs from the methods", k, info)
 		}
 	}
 }
@@ -238,10 +238,10 @@ func TestKindDescriptorsMatchTheKindMethods(t *testing.T) {
 func TestAllKindsAreValidAndNothingElseIs(t *testing.T) {
 	for _, k := range AllKinds {
 		if !k.Valid() {
-			t.Errorf("%q steht in AllKinds, ist aber nicht Valid()", k)
+			t.Errorf("%q is in AllKinds but is not Valid()", k)
 		}
 	}
 	if Kind("gewicht").Valid() {
-		t.Error("ein unbekannter Typ darf nicht Valid() sein")
+		t.Error("an unknown kind must not be Valid()")
 	}
 }

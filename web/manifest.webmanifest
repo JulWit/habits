@@ -1,8 +1,8 @@
 {
   "name": "Habits",
   "short_name": "Habits",
-  "description": "Gewohnheiten verfolgen — täglich, an bestimmten Wochentagen oder alle paar Tage.",
-  "lang": "de",
+  "description": "Track habits — daily, on certain weekdays or every few days.",
+  "lang": "en",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

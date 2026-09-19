@@ -52,23 +52,23 @@ function header(category, habits) {
   const head = document.createElement("div");
   head.className = "detail-head";
   head.innerHTML = `
-    <button class="icon-button is-back" type="button" data-action="back" aria-label="Zurück">${icons.arrowLeft}</button>
+    <button class="icon-button is-back" type="button" data-action="back" aria-label="Back">${icons.arrowLeft}</button>
     <div class="detail-title">
       <h2><span class="name"></span></h2>
       <span class="sub"></span>
     </div>
     <div class="topbar-actions">
-      <button type="button" class="button" data-action="rename" aria-label="Umbenennen">
-        ${icons.edit}<span class="label">Bearbeiten</span>
+      <button type="button" class="button" data-action="rename" aria-label="Rename">
+        ${icons.edit}<span class="label">Edit</span>
       </button>
-      <button type="button" class="button danger" data-action="delete" aria-label="Löschen">
-        ${icons.trash}<span class="label">Löschen</span>
+      <button type="button" class="button danger" data-action="delete" aria-label="Delete">
+        ${icons.trash}<span class="label">Delete</span>
       </button>
     </div>`;
   head.querySelector(".name").textContent = category.name;
   head.querySelector(".sub").textContent = habits.length === 1
-    ? "1 Gewohnheit"
-    : `${habits.length} Gewohnheiten`;
+    ? "1 habit"
+    : `${habits.length} habits`;
   return head;
 }
 
@@ -137,10 +137,10 @@ function stats(habits) {
   const row = document.createElement("div");
   row.className = "stat-row";
   for (const [label, value] of [
-    ["Aktuelle Serie", `${streak} ${streak === 1 ? "Tag" : "Tage"}`],
-    [`Perfekte Tage ${sinceLabel(from)}`, `${perfect} von ${due}`],
-    ["Quote (30 Tage)", `${rate} %`],
-    ["Gewohnheiten", String(habits.length)],
+    ["Current streak", `${streak} ${streak === 1 ? "day" : "days"}`],
+    [`Perfect days ${sinceLabel(from)}`, `${perfect} of ${due}`],
+    ["Rate (30 days)", `${rate} %`],
+    ["Habits", String(habits.length)],
   ]) {
     const tile = document.createElement("div");
     tile.className = "stat";
@@ -152,24 +152,24 @@ function stats(habits) {
   return row;
 }
 
-/** "(2026)" for a full year, "(seit 12. Mär)" when history starts later. */
+/** "(2026)" for a full year, "(since 12 Mar)" when history starts later. */
 function sinceLabel(from) {
   const year = state.today.slice(0, 4);
   if (from === `${year}-01-01`) return `(${year})`;
-  return `(seit ${dayOfMonth(from)}. ${MONTH_SHORT[Number(from.slice(5, 7)) - 1]})`;
+  return `(since ${dayOfMonth(from)} ${MONTH_SHORT[Number(from.slice(5, 7)) - 1]})`;
 }
 
 function habitList(habits) {
   const panel = document.createElement("section");
   panel.className = "panel";
   const title = document.createElement("h3");
-  title.textContent = "Gewohnheiten";
+  title.textContent = "Habits";
   panel.append(title);
 
   if (habits.length === 0) {
     const empty = document.createElement("p");
     empty.className = "block-empty";
-    empty.textContent = "Noch keine Gewohnheit in dieser Kategorie.";
+    empty.textContent = "No habit in this category yet.";
     panel.append(empty);
     return panel;
   }
@@ -193,8 +193,12 @@ function habitList(habits) {
     row.querySelector(".habit-name").textContent = habit.name;
     row.querySelector(".habit-meta").textContent = H.describeHabit(habit);
     const s = habit.stats;
-    row.querySelector(".cat-habit-streak").textContent =
-      `${s.currentStreak} ${s.streakUnit === "weeks" ? "Wo." : "Tage"}`;
+    // "wk" is already short enough to carry both numbers; only the spelled-out
+    // day needs to agree, so a one-day streak does not read "1 days".
+    const unit = s.streakUnit === "weeks"
+      ? "wk"
+      : s.currentStreak === 1 ? "day" : "days";
+    row.querySelector(".cat-habit-streak").textContent = `${s.currentStreak} ${unit}`;
     list.append(row);
   }
   panel.append(list);

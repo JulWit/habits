@@ -22,7 +22,7 @@ func TestParseDateRoundTrip(t *testing.T) {
 func TestParseDateRejects(t *testing.T) {
 	for _, s := range []string{"", "2026-13-01", "2026-02-30", "18.09.2026", "2026-9-8", "heute"} {
 		if _, err := ParseDate(s); err == nil {
-			t.Errorf("ParseDate(%q) wurde akzeptiert", s)
+			t.Errorf("ParseDate(%q) was accepted", s)
 		}
 	}
 }
@@ -36,10 +36,10 @@ func TestDayArithmeticIgnoresDaylightSaving(t *testing.T) {
 	} {
 		next := around.AddDays(1)
 		if next.DaysSince(around) != 1 {
-			t.Errorf("%v -> %v ist nicht ein Tag", around, next)
+			t.Errorf("%v -> %v is not one day", around, next)
 		}
 		if back := next.AddDays(-1); back != around {
-			t.Errorf("hin und zurück über die Umstellung: %v != %v", back, around)
+			t.Errorf("round trip across the changeover: %v != %v", back, around)
 		}
 	}
 }
@@ -50,14 +50,14 @@ func TestDaysSince(t *testing.T) {
 		t.Errorf("DaysSince = %d, want 30", got)
 	}
 	if got := a.DaysSince(a.AddDays(30)); got != -30 {
-		t.Errorf("rückwärts: DaysSince = %d, want -30", got)
+		t.Errorf("backwards: DaysSince = %d, want -30", got)
 	}
 	if got := a.DaysSince(a); got != 0 {
-		t.Errorf("selber Tag: DaysSince = %d, want 0", got)
+		t.Errorf("same day: DaysSince = %d, want 0", got)
 	}
 	// Across a year boundary and a leap day.
 	if got := (Date{2024, time.March, 1}).DaysSince(Date{2024, time.February, 28}); got != 2 {
-		t.Errorf("über den Schalttag: %d, want 2", got)
+		t.Errorf("across the leap day: %d, want 2", got)
 	}
 }
 
@@ -71,7 +71,7 @@ func TestStartOfWeek(t *testing.T) {
 		}
 	}
 	if monday.Weekday() != time.Monday {
-		t.Fatalf("Fixture ist kein Montag, sondern %v", monday.Weekday())
+		t.Fatalf("fixture is not a Monday but %v", monday.Weekday())
 	}
 }
 
@@ -80,17 +80,17 @@ func TestWeekdayBitmaskIsMondayFirst(t *testing.T) {
 	var all Weekdays = 0b1111111
 	for offset := 0; offset < 7; offset++ {
 		if !all.Has(monday.AddDays(offset).Weekday()) {
-			t.Errorf("volle Maske deckt %v nicht ab", monday.AddDays(offset).Weekday())
+			t.Errorf("the full mask does not cover %v", monday.AddDays(offset).Weekday())
 		}
 	}
 	// Bit 0 is Monday, bit 6 is Sunday.
 	var mondayOnly Weekdays = 1 << 0
 	if !mondayOnly.Has(time.Monday) || mondayOnly.Has(time.Sunday) {
-		t.Error("Bit 0 muss Montag sein")
+		t.Error("bit 0 must be Monday")
 	}
 	var sundayOnly Weekdays = 1 << 6
 	if !sundayOnly.Has(time.Sunday) || sundayOnly.Has(time.Monday) {
-		t.Error("Bit 6 muss Sonntag sein")
+		t.Error("bit 6 must be Sunday")
 	}
 	if all.Count() != 7 {
 		t.Errorf("Count = %d, want 7", all.Count())
@@ -124,11 +124,11 @@ func TestDateJSON(t *testing.T) {
 		t.Fatalf(`Unmarshal(""): %v`, err)
 	}
 	if !back.D.IsZero() {
-		t.Errorf(`"" ergab %v, want zero`, back.D)
+		t.Errorf(`"" gave %v, want zero`, back.D)
 	}
 
-	if err := json.Unmarshal([]byte(`{"d":"nicht-ein-datum"}`), &back); err == nil {
-		t.Error("ein kaputtes Datum wurde akzeptiert")
+	if err := json.Unmarshal([]byte(`{"d":"not-a-date"}`), &back); err == nil {
+		t.Error("a broken date was accepted")
 	}
 }
 
@@ -138,7 +138,7 @@ func TestTodayUsesTheGivenLocation(t *testing.T) {
 	kiritimati := time.FixedZone("UTC+14", 14*60*60)
 	baker := time.FixedZone("UTC-12", -12*60*60)
 	if Today(kiritimati).DaysSince(Today(baker)) > 1 {
-		t.Error("zwei Zonen dürfen höchstens einen Tag auseinanderliegen")
+		t.Error("two zones may differ by at most one day")
 	}
 	// A nil location must not panic.
 	_ = Today(nil)

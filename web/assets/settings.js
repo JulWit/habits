@@ -179,16 +179,16 @@ function paint() {
   showKnob(bandOpacityOut, bandOpacity.value, "%");
   for (const input of reorderInputs) input.checked = input.value === reorder;
   reorderHint.textContent = reorder === "drag"
-    ? "Kategorien und Gewohnheiten werden am Griff verschoben."
-    : "Kategorien und Gewohnheiten werden mit Pfeilen verschoben — auch per Tastatur.";
+    ? "Categories and habits are moved by their handle."
+    : "Categories and habits are moved with arrows — by keyboard too.";
   for (const input of dayInputs) input.checked = Number(input.value) === days;
 
   const shown = effectiveDays();
   daysHint.textContent = days === 0
-    ? `Es werden so viele Tage gezeigt, wie ins Fenster passen — aktuell ${shown}.`
+    ? `As many days are shown as fit in the window — currently ${shown}.`
     : shown < days
-      ? `Aktuell passen nur ${shown} Tage ins Fenster. Bei einem breiteren Fenster werden es ${days}.`
-      : `Aktuell werden ${shown} Tage gezeigt.`;
+      ? `Only ${shown} days fit in the window right now. In a wider window it will be ${days}.`
+      : `${shown} days are shown right now.`;
 
   const aligned = state.settings?.alignWeeks ?? false;
   alignInput.checked = aligned;
@@ -196,10 +196,10 @@ function paint() {
   // contain today, so the board ignores the switch rather than paging away from
   // the current day. Said plainly instead of letting it look broken.
   alignHint.textContent = !aligned
-    ? "Die Übersicht endet am heutigen Tag."
+    ? "The overview ends on today."
     : shown < 7
-      ? `Erst ab 7 Spalten möglich — aktuell passen ${shown}.`
-      : "Die Übersicht zeigt ganze Kalenderwochen, auch die restlichen Tage dieser Woche.";
+      ? `Possible from 7 columns on — ${shown} fit right now.`
+      : "The overview shows whole calendar weeks, including the remaining days of this week.";
 
   paintBackground();
 
@@ -215,8 +215,8 @@ function paint() {
   archiveTab.hidden = archiveField.hidden;
   if (archiveField.hidden && openTab === "tab-archive") showTab("tab-look");
   archiveHint.textContent = archived === 1
-    ? "1 Gewohnheit ist archiviert."
-    : `${archived} Gewohnheiten sind archiviert.`;
+    ? "1 habit is archived."
+    : `${archived} habits are archived.`;
 }
 
 /**
@@ -288,7 +288,7 @@ function paintBandChoices(chosen) {
         b.title = "Neutral";
       } else {
         b.style.background = color;
-        b.setAttribute("aria-label", `Farbe ${color}`);
+        b.setAttribute("aria-label", `Colour ${color}`);
       }
       return b;
     }));
@@ -371,7 +371,7 @@ async function uploadBackground(file) {
   // after it has been carried across the network; everything else - the format,
   // the dimensions - the server decides, because only it sees the bytes.
   if (file.size > 12 * 1024 * 1024) {
-    report("Das Bild darf höchstens 12 MB groß sein.");
+    report("The image may be at most 12 MB.");
     return;
   }
   bgFile.disabled = true;

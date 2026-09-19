@@ -32,12 +32,12 @@ export function startOfWeek(iso) {
   return addDays(iso, -weekdayIndex(iso));
 }
 
-export const WEEKDAY_SHORT = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
+export const WEEKDAY_SHORT = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 export const WEEKDAY_LONG = [
-  "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag",
+  "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday",
 ];
 export const MONTH_SHORT = [
-  "Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez",
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
 ];
 
 export function dayOfMonth(iso) {
@@ -52,20 +52,20 @@ export function monthIndex(iso) {
   return new Date(toUTC(iso)).getUTCMonth();
 }
 
-/** "Mo, 13. Sep 2026" — used in headings and dialog titles. */
+/** "Mon, 13 Sep 2026" — used in headings and dialog titles. */
 export function formatLong(iso) {
   const d = new Date(toUTC(iso));
-  return `${WEEKDAY_SHORT[weekdayIndex(iso)]}, ${d.getUTCDate()}. ${MONTH_SHORT[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
+  return `${WEEKDAY_SHORT[weekdayIndex(iso)]}, ${d.getUTCDate()} ${MONTH_SHORT[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
 }
 
-/** "heute" / "gestern" / a long date, for anything the user reads in prose. */
+/** "today" / "yesterday" / a long date, for anything the user reads in prose. */
 export function formatRelative(iso, today) {
   const diff = daysBetween(iso, today);
-  if (diff === 0) return "heute";
-  if (diff === 1) return "gestern";
-  if (diff === 2) return "vorgestern";
-  if (diff === -1) return "morgen";
-  if (diff === -2) return "übermorgen";
+  if (diff === 0) return "today";
+  if (diff === 1) return "yesterday";
+  if (diff === 2) return "the day before yesterday";
+  if (diff === -1) return "tomorrow";
+  if (diff === -2) return "the day after tomorrow";
   return formatLong(iso);
 }
 
@@ -77,13 +77,13 @@ export function range(from, to) {
 }
 
 export const MONTH_LONG = [
-  "Januar", "Februar", "März", "April", "Mai", "Juni",
-  "Juli", "August", "September", "Oktober", "November", "Dezember",
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
 ];
 
-/** "Donnerstag, 1. Januar 2026" — the spelled-out form for tooltips. */
+/** "Thursday, 1 January 2026" — the spelled-out form for tooltips. */
 export function formatFull(iso) {
   const d = new Date(toUTC(iso));
-  return `${WEEKDAY_LONG[weekdayIndex(iso)]}, ${d.getUTCDate()}. ` +
+  return `${WEEKDAY_LONG[weekdayIndex(iso)]}, ${d.getUTCDate()} ` +
     `${MONTH_LONG[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
 }

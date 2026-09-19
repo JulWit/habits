@@ -34,7 +34,7 @@ func writeJSON(w http.ResponseWriter, status int, payload any) {
 		// The status line is already sent, so this can only be logged. main
 		// installs the application logger as the default, which is what lets a
 		// package-level helper reach it without carrying a server around.
-		slog.Error("antwort schreiben fehlgeschlagen", "fehler", err)
+		slog.Error("writing response failed", "error", err)
 	}
 }
 
@@ -43,7 +43,7 @@ func writeError(w http.ResponseWriter, status int, msg string) {
 }
 
 func notFoundJSON(w http.ResponseWriter, r *http.Request) {
-	writeError(w, http.StatusNotFound, "Unbekannter Endpunkt")
+	writeError(w, http.StatusNotFound, "Unknown endpoint")
 }
 
 // decodeJSON reads a request body strictly: unknown fields are an error, so a
@@ -60,18 +60,18 @@ func decodeJSON(w http.ResponseWriter, r *http.Request, dst any) bool {
 	mediaType, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
 	if err != nil || mediaType != "application/json" {
 		writeError(w, http.StatusUnsupportedMediaType,
-			"Content-Type muss application/json sein")
+			"Content-Type must be application/json")
 		return false
 	}
 	r.Body = http.MaxBytesReader(w, r.Body, maxBodyBytes)
 	dec := json.NewDecoder(r.Body)
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(dst); err != nil {
-		writeError(w, http.StatusBadRequest, "Ungültiger Request-Body: "+err.Error())
+		writeError(w, http.StatusBadRequest, "Invalid request body: "+err.Error())
 		return false
 	}
 	if dec.More() {
-		writeError(w, http.StatusBadRequest, "Request-Body enthält mehr als ein JSON-Dokument")
+		writeError(w, http.StatusBadRequest, "Request body contains more than one JSON document")
 		return false
 	}
 	return true
@@ -82,16 +82,16 @@ func decodeJSON(w http.ResponseWriter, r *http.Request, dst any) bool {
 func (s *Server) writeStoreError(w http.ResponseWriter, err error, context string) {
 	switch {
 	case errors.Is(err, store.ErrNotFound):
-		writeError(w, http.StatusNotFound, "Nicht gefunden")
+		writeError(w, http.StatusNotFound, "Not found")
 	case errors.Is(err, domain.ErrValidation):
 		// The sentinel prefix is how the layers below say "this is the client's
 		// mistake, not ours". It has done its job by the time we are here, and
-		// "validierungsfehler: Name darf nicht leer sein" is not a sentence to
+		// "validation error: name must not be empty" is not a sentence to
 		// show anyone — the status code already carries that meaning.
 		msg := strings.TrimPrefix(err.Error(), domain.ErrValidation.Error()+": ")
 		writeError(w, http.StatusUnprocessableEntity, msg)
 	default:
-		s.log.Error(context, "fehler", err)
-		writeError(w, http.StatusInternalServerError, "Interner Serverfehler")
+		s.log.Error(context, "error", err)
+		writeError(w, http.StatusInternalServerError, "Internal server error")
 	}
 }

@@ -36,7 +36,7 @@ func (s *Store) GetBackground(ctx context.Context, userID string) (Background, b
 		return Background{}, false, nil
 	}
 	if err != nil {
-		return Background{}, false, fmt.Errorf("hintergrund laden: %w", err)
+		return Background{}, false, fmt.Errorf("loading background: %w", err)
 	}
 	if t, err := parseTime(updated); err == nil {
 		bg.UpdatedAt = t
@@ -55,7 +55,7 @@ func (s *Store) BackgroundVersion(ctx context.Context, userID string) (string, e
 		return "", nil
 	}
 	if err != nil {
-		return "", fmt.Errorf("hintergrund-version laden: %w", err)
+		return "", fmt.Errorf("loading background version: %w", err)
 	}
 	return etag, nil
 }
@@ -74,7 +74,7 @@ func (s *Store) SaveBackground(ctx context.Context, userID string, bg Background
 			updated_at = excluded.updated_at`,
 		userID, bg.Mime, bg.Bytes, bg.ETag, formatTime(time.Now()))
 	if err != nil {
-		return fmt.Errorf("hintergrund speichern: %w", err)
+		return fmt.Errorf("saving background: %w", err)
 	}
 	return nil
 }
@@ -82,7 +82,7 @@ func (s *Store) SaveBackground(ctx context.Context, userID string, bg Background
 func (s *Store) DeleteBackground(ctx context.Context, userID string) error {
 	if _, err := s.db.ExecContext(ctx,
 		`DELETE FROM backgrounds WHERE user_id = ?`, userID); err != nil {
-		return fmt.Errorf("hintergrund löschen: %w", err)
+		return fmt.Errorf("deleting background: %w", err)
 	}
 	return nil
 }

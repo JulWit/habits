@@ -28,13 +28,13 @@ async function request(method, path, body, type) {
       body: body === undefined ? undefined : (type ? body : JSON.stringify(body)),
     });
   } catch (cause) {
-    throw new ApiError("Keine Verbindung zum Server", 0, { cause });
+    throw new ApiError("No connection to the server", 0, { cause });
   }
 
   if (res.status === 401 || res.status === 403) {
     // Authelia's session expired behind our back. Reloading sends the user
     // through the proxy's login flow instead of leaving a dead page behind.
-    throw new ApiError("Sitzung abgelaufen — bitte die Seite neu laden", res.status);
+    throw new ApiError("Session expired — please reload the page", res.status);
   }
   if (res.status === 204) return null;
 

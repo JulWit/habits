@@ -209,7 +209,7 @@ func (s *Store) GetSettings(ctx context.Context, userID string) (Settings, error
 func (s *Store) UpdateSettings(ctx context.Context, userID string, apply func(*Settings) error) (Settings, error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
-		return Settings{}, fmt.Errorf("transaktion starten: %w", err)
+		return Settings{}, fmt.Errorf("starting transaction: %w", err)
 	}
 	defer tx.Rollback()
 
@@ -224,7 +224,7 @@ func (s *Store) UpdateSettings(ctx context.Context, userID string, apply func(*S
 		return Settings{}, err
 	}
 	if err := tx.Commit(); err != nil {
-		return Settings{}, fmt.Errorf("einstellungen committen: %w", err)
+		return Settings{}, fmt.Errorf("committing settings: %w", err)
 	}
 	return settings, nil
 }
@@ -242,7 +242,7 @@ func (s *Store) getSettings(ctx context.Context, q queryer, userID string) (Sett
 		return DefaultSettings(), nil
 	}
 	if err != nil {
-		return DefaultSettings(), fmt.Errorf("einstellungen laden: %w", err)
+		return DefaultSettings(), fmt.Errorf("loading settings: %w", err)
 	}
 	// A value the current binary no longer accepts falls back rather than
 	// propagating into the UI as something unrenderable.
@@ -291,37 +291,37 @@ func (s *Store) SaveSettings(ctx context.Context, userID string, in Settings) er
 // catches it first with a message naming the setting; this is the backstop.
 func (s *Store) saveSettings(ctx context.Context, q execer, userID string, in Settings) error {
 	if !ValidTheme(in.Theme) {
-		return invalidf("unbekanntes theme %q", in.Theme)
+		return invalidf("unknown theme %q", in.Theme)
 	}
 	if !ValidOverviewDays(in.OverviewDays) {
-		return invalidf("ungültige tagesanzahl %d", in.OverviewDays)
+		return invalidf("invalid overview day count %d", in.OverviewDays)
 	}
 	if !ValidFont(in.Font) {
-		return invalidf("unbekannte schriftart %q", in.Font)
+		return invalidf("unknown font %q", in.Font)
 	}
 	if !ValidReorderMode(in.ReorderMode) {
-		return invalidf("unbekannter sortiermodus %q", in.ReorderMode)
+		return invalidf("unknown reorder mode %q", in.ReorderMode)
 	}
 	if !ValidPattern(in.Pattern) {
-		return invalidf("unbekanntes hintergrundmuster %q", in.Pattern)
+		return invalidf("unknown background pattern %q", in.Pattern)
 	}
 	if !ValidBandColor(in.BandColor) {
-		return invalidf("unbekannte bandfarbe %q", in.BandColor)
+		return invalidf("unknown band colour %q", in.BandColor)
 	}
 	if !ValidBandOpacity(in.BandOpacity) {
-		return invalidf("ungültige deckkraft der tagesmarkierung %d", in.BandOpacity)
+		return invalidf("invalid band opacity %d", in.BandOpacity)
 	}
 	if !ValidBackgroundDim(in.BackgroundDim) {
-		return invalidf("ungültige abdunklung %d", in.BackgroundDim)
+		return invalidf("invalid background dim %d", in.BackgroundDim)
 	}
 	if !ValidBackgroundBlur(in.BackgroundBlur) {
-		return invalidf("ungültiger weichzeichner %d", in.BackgroundBlur)
+		return invalidf("invalid background blur %d", in.BackgroundBlur)
 	}
 	if !ValidSurfaceOpacity(in.SurfaceOpacity) {
-		return invalidf("ungültige flächendeckkraft %d", in.SurfaceOpacity)
+		return invalidf("invalid surface opacity %d", in.SurfaceOpacity)
 	}
 	if !ValidSurfaceBlur(in.SurfaceBlur) {
-		return invalidf("ungültiger flächen-weichzeichner %d", in.SurfaceBlur)
+		return invalidf("invalid surface blur %d", in.SurfaceBlur)
 	}
 	_, err := q.ExecContext(ctx, `
 		INSERT INTO user_settings
@@ -348,7 +348,7 @@ func (s *Store) saveSettings(ctx context.Context, q execer, userID string, in Se
 		in.AlignWeeks, in.BandColor, in.BandOpacity, in.BackgroundDim, in.BackgroundBlur,
 		in.SurfaceOpacity, in.SurfaceBlur, formatTime(time.Now()))
 	if err != nil {
-		return fmt.Errorf("einstellungen speichern: %w", err)
+		return fmt.Errorf("saving settings: %w", err)
 	}
 	return nil
 }

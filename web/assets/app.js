@@ -16,7 +16,7 @@ import { paintIcons } from "./icons.js";
 
 // Three choices: the two explicit ones and "system", which hands the decision
 // to the device. The stylesheet turns each into a color-scheme.
-const THEME_LABEL = { system: "System", light: "Hell", dark: "Dunkel" };
+const THEME_LABEL = { system: "System", light: "Light", dark: "Dark" };
 const DEFAULT_THEME = "system";
 
 /** Falls back to the default for anything the client does not know. */

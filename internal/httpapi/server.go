@@ -37,7 +37,7 @@ type Server struct {
 func New(cfg config.Config, st *store.Store, log *slog.Logger, webFS fs.FS) (http.Handler, error) {
 	shell, err := template.ParseFS(webFS, "index.html")
 	if err != nil {
-		return nil, fmt.Errorf("index.html laden: %w", err)
+		return nil, fmt.Errorf("loading index.html: %w", err)
 	}
 	assets, err := newAssetHandler(webFS)
 	if err != nil {
@@ -135,7 +135,7 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	user := auth.MustUser(r.Context())
 	settings, err := s.store.GetSettings(r.Context(), user.ID)
 	if err != nil {
-		s.log.Error("einstellungen laden fehlgeschlagen", "fehler", err, "user", user.ID)
+		s.log.Error("loading settings failed", "error", err, "user", user.ID)
 		settings = store.DefaultSettings()
 	}
 	data := struct {
@@ -170,7 +170,7 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-store")
 	if err := s.shell.Execute(w, data); err != nil {
-		s.log.Error("index rendern fehlgeschlagen", "fehler", err)
+		s.log.Error("rendering index failed", "error", err)
 	}
 }
 
@@ -200,9 +200,9 @@ func (s *Server) recoverPanics(next http.Handler) http.Handler {
 				if errors.Is(asError(v), http.ErrAbortHandler) {
 					panic(v)
 				}
-				s.log.Error("panic im handler",
-					"wert", v, "pfad", r.URL.Path, "stack", string(debug.Stack()))
-				writeError(w, http.StatusInternalServerError, "Interner Serverfehler")
+				s.log.Error("panic in handler",
+					"value", v, "path", r.URL.Path, "stack", string(debug.Stack()))
+				writeError(w, http.StatusInternalServerError, "Internal server error")
 			}
 		}()
 		next.ServeHTTP(w, r)
@@ -250,12 +250,12 @@ func newAssetHandler(webFS fs.FS) (http.Handler, error) {
 	// then fall back to sniffing and label the font a stream of bytes. Stating
 	// it here makes the answer the same on every host.
 	if err := mime.AddExtensionType(".woff2", "font/woff2"); err != nil {
-		return nil, fmt.Errorf("mime-typ registrieren: %w", err)
+		return nil, fmt.Errorf("registering mime type: %w", err)
 	}
 	// Same story for the manifest: no registry entry on Windows, and a browser
 	// that is handed it as plain text ignores it.
 	if err := mime.AddExtensionType(".webmanifest", "application/manifest+json"); err != nil {
-		return nil, fmt.Errorf("mime-typ registrieren: %w", err)
+		return nil, fmt.Errorf("registering mime type: %w", err)
 	}
 
 	etags := map[string]string{}
@@ -272,7 +272,7 @@ func newAssetHandler(webFS fs.FS) (http.Handler, error) {
 		return nil
 	})
 	if err != nil {
-		return nil, fmt.Errorf("assets hashen: %w", err)
+		return nil, fmt.Errorf("hashing assets: %w", err)
 	}
 
 	files := http.FileServerFS(webFS)

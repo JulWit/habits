@@ -23,10 +23,10 @@ func scanCategory(row interface{ Scan(...any) error }) (domain.Category, error) 
 	}
 	var err error
 	if c.CreatedAt, err = parseTime(created); err != nil {
-		return domain.Category{}, fmt.Errorf("kategorie %s: created_at: %w", c.ID, err)
+		return domain.Category{}, fmt.Errorf("category %s: created_at: %w", c.ID, err)
 	}
 	if c.UpdatedAt, err = parseTime(updated); err != nil {
-		return domain.Category{}, fmt.Errorf("kategorie %s: updated_at: %w", c.ID, err)
+		return domain.Category{}, fmt.Errorf("category %s: updated_at: %w", c.ID, err)
 	}
 	return c, nil
 }
@@ -40,7 +40,7 @@ func (s *Store) ListCategories(ctx context.Context, userID string) ([]domain.Cat
 		 WHERE user_id = ? AND deleted_at IS NULL
 		 ORDER BY position, created_at`, userID)
 	if err != nil {
-		return nil, fmt.Errorf("kategorien laden: %w", err)
+		return nil, fmt.Errorf("loading categories: %w", err)
 	}
 	defer rows.Close()
 
@@ -64,7 +64,7 @@ func (s *Store) GetCategory(ctx context.Context, userID, id string) (domain.Cate
 		return domain.Category{}, ErrNotFound
 	}
 	if err != nil {
-		return domain.Category{}, fmt.Errorf("kategorie laden: %w", err)
+		return domain.Category{}, fmt.Errorf("loading category: %w", err)
 	}
 	return c, nil
 }
@@ -79,7 +79,7 @@ func (s *Store) CreateCategory(ctx context.Context, userID string, c *domain.Cat
 
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
-		return fmt.Errorf("transaktion starten: %w", err)
+		return fmt.Errorf("starting transaction: %w", err)
 	}
 	defer tx.Rollback()
 
@@ -87,7 +87,7 @@ func (s *Store) CreateCategory(ctx context.Context, userID string, c *domain.Cat
 	if err := tx.QueryRowContext(ctx,
 		`SELECT MAX(position) FROM categories WHERE user_id = ? AND deleted_at IS NULL`, userID,
 	).Scan(&next); err != nil {
-		return fmt.Errorf("position bestimmen: %w", err)
+		return fmt.Errorf("determining position: %w", err)
 	}
 	c.Position = int(next.Int64) + 1
 
@@ -95,7 +95,7 @@ func (s *Store) CreateCategory(ctx context.Context, userID string, c *domain.Cat
 		`INSERT INTO categories (id, user_id, name, position, created_at, updated_at)
 		 VALUES (?,?,?,?,?,?)`,
 		c.ID, userID, c.Name, c.Position, formatTime(c.CreatedAt), formatTime(c.UpdatedAt)); err != nil {
-		return fmt.Errorf("kategorie anlegen: %w", err)
+		return fmt.Errorf("creating category: %w", err)
 	}
 	return tx.Commit()
 }
@@ -110,7 +110,7 @@ func (s *Store) UpdateCategory(ctx context.Context, userID string, c *domain.Cat
 		 WHERE id = ? AND user_id = ? AND deleted_at IS NULL`,
 		c.Name, formatTime(c.UpdatedAt), c.ID, userID)
 	if err != nil {
-		return fmt.Errorf("kategorie aktualisieren: %w", err)
+		return fmt.Errorf("updating category: %w", err)
 	}
 	return expectOneRow(res)
 }
@@ -124,7 +124,7 @@ func (s *Store) SoftDeleteCategory(ctx context.Context, userID, id string) error
 		`UPDATE categories SET deleted_at = ?, updated_at = ?
 		 WHERE id = ? AND user_id = ? AND deleted_at IS NULL`, now, now, id, userID)
 	if err != nil {
-		return fmt.Errorf("kategorie löschen: %w", err)
+		return fmt.Errorf("deleting category: %w", err)
 	}
 	return expectOneRow(res)
 }
@@ -135,7 +135,7 @@ func (s *Store) RestoreCategory(ctx context.Context, userID, id string) error {
 		 WHERE id = ? AND user_id = ? AND deleted_at IS NOT NULL`,
 		formatTime(time.Now()), id, userID)
 	if err != nil {
-		return fmt.Errorf("kategorie wiederherstellen: %w", err)
+		return fmt.Errorf("restoring category: %w", err)
 	}
 	return expectOneRow(res)
 }
@@ -143,7 +143,7 @@ func (s *Store) RestoreCategory(ctx context.Context, userID, id string) error {
 func (s *Store) ReorderCategories(ctx context.Context, userID string, ids []string) error {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
-		return fmt.Errorf("transaktion starten: %w", err)
+		return fmt.Errorf("starting transaction: %w", err)
 	}
 	defer tx.Rollback()
 
@@ -151,14 +151,14 @@ func (s *Store) ReorderCategories(ctx context.Context, userID string, ids []stri
 		`UPDATE categories SET position = ?, updated_at = ?
 		 WHERE id = ? AND user_id = ? AND deleted_at IS NULL`)
 	if err != nil {
-		return fmt.Errorf("reihenfolge vorbereiten: %w", err)
+		return fmt.Errorf("preparing reorder: %w", err)
 	}
 	defer stmt.Close()
 
 	now := formatTime(time.Now())
 	for i, id := range ids {
 		if _, err := stmt.ExecContext(ctx, i, now, id, userID); err != nil {
-			return fmt.Errorf("reihenfolge speichern: %w", err)
+			return fmt.Errorf("saving order: %w", err)
 		}
 	}
 	return tx.Commit()
@@ -171,7 +171,7 @@ func (s *Store) PurgeDeletedCategories(ctx context.Context, olderThan time.Durat
 		`DELETE FROM categories WHERE deleted_at IS NOT NULL AND deleted_at < ?`,
 		formatTime(time.Now().Add(-olderThan)))
 	if err != nil {
-		return 0, fmt.Errorf("gelöschte kategorien aufräumen: %w", err)
+		return 0, fmt.Errorf("purging deleted categories: %w", err)
 	}
 	return res.RowsAffected()
 }
@@ -190,7 +190,7 @@ func (s *Store) categoryBelongsTo(ctx context.Context, q queryer, userID, catego
 		return false, nil
 	}
 	if err != nil {
-		return false, fmt.Errorf("kategorie prüfen: %w", err)
+		return false, fmt.Errorf("checking category: %w", err)
 	}
 	return true, nil
 }

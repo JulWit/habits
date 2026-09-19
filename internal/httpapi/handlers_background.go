@@ -38,11 +38,11 @@ func (s *Server) handleGetBackground(w http.ResponseWriter, r *http.Request) {
 	user := auth.MustUser(r.Context())
 	bg, ok, err := s.store.GetBackground(r.Context(), user.ID)
 	if err != nil {
-		s.writeStoreError(w, err, "hintergrund laden")
+		s.writeStoreError(w, err, "loading background")
 		return
 	}
 	if !ok {
-		writeError(w, http.StatusNotFound, "kein hintergrundbild hinterlegt")
+		writeError(w, http.StatusNotFound, "no background image stored")
 		return
 	}
 
@@ -77,10 +77,10 @@ func (s *Server) handlePutBackground(w http.ResponseWriter, r *http.Request) {
 		var tooLarge *http.MaxBytesError
 		if errors.As(err, &tooLarge) {
 			writeError(w, http.StatusRequestEntityTooLarge,
-				fmt.Sprintf("das bild darf höchstens %d MB groß sein", maxBackgroundBytes>>20))
+				fmt.Sprintf("the image may be at most %d MB", maxBackgroundBytes>>20))
 			return
 		}
-		writeError(w, http.StatusBadRequest, "bild konnte nicht gelesen werden")
+		writeError(w, http.StatusBadRequest, "the image could not be read")
 		return
 	}
 
@@ -93,7 +93,7 @@ func (s *Server) handlePutBackground(w http.ResponseWriter, r *http.Request) {
 	sum := sha256.Sum256(raw)
 	bg := store.Background{Mime: mime, Bytes: raw, ETag: hex.EncodeToString(sum[:])}
 	if err := s.store.SaveBackground(r.Context(), user.ID, bg); err != nil {
-		s.writeStoreError(w, err, "hintergrund speichern")
+		s.writeStoreError(w, err, "saving background")
 		return
 	}
 
@@ -106,7 +106,7 @@ func (s *Server) handlePutBackground(w http.ResponseWriter, r *http.Request) {
 		return nil
 	})
 	if err != nil {
-		s.writeStoreError(w, err, "einstellungen speichern")
+		s.writeStoreError(w, err, "saving settings")
 		return
 	}
 
@@ -121,7 +121,7 @@ func (s *Server) handlePutBackground(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleDeleteBackground(w http.ResponseWriter, r *http.Request) {
 	user := auth.MustUser(r.Context())
 	if err := s.store.DeleteBackground(r.Context(), user.ID); err != nil {
-		s.writeStoreError(w, err, "hintergrund löschen")
+		s.writeStoreError(w, err, "deleting background")
 		return
 	}
 	// Reading the pattern and putting it back is the same read-modify-write the
@@ -133,7 +133,7 @@ func (s *Server) handleDeleteBackground(w http.ResponseWriter, r *http.Request) 
 		return nil
 	})
 	if err != nil {
-		s.writeStoreError(w, err, "einstellungen speichern")
+		s.writeStoreError(w, err, "saving settings")
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"version": "", "settings": settings})
@@ -147,7 +147,7 @@ func (s *Server) handleDeleteBackground(w http.ResponseWriter, r *http.Request) 
 func checkImage(raw []byte) (string, error) {
 	cfg, format, err := image.DecodeConfig(bytes.NewReader(raw))
 	if err != nil {
-		return "", fmt.Errorf("die datei ist kein jpeg- oder png-bild")
+		return "", fmt.Errorf("the file is not a jpeg or png image")
 	}
 	var mime string
 	switch format {
@@ -156,16 +156,16 @@ func checkImage(raw []byte) (string, error) {
 	case "png":
 		mime = "image/png"
 	default:
-		return "", fmt.Errorf("nur jpeg und png werden unterstützt, nicht %s", format)
+		return "", fmt.Errorf("only jpeg and png are supported, not %s", format)
 	}
 	if cfg.Width < 1 || cfg.Height < 1 {
-		return "", fmt.Errorf("das bild hat keine fläche")
+		return "", fmt.Errorf("the image has no area")
 	}
 	if cfg.Width > maxBackgroundSide || cfg.Height > maxBackgroundSide {
-		return "", fmt.Errorf("das bild darf höchstens %d pixel je kante haben", maxBackgroundSide)
+		return "", fmt.Errorf("the image may be at most %d pixels per edge", maxBackgroundSide)
 	}
 	if cfg.Width*cfg.Height > maxBackgroundPixels {
-		return "", fmt.Errorf("das bild hat zu viele pixel (höchstens %d millionen)",
+		return "", fmt.Errorf("the image has too many pixels (at most %d million)",
 			maxBackgroundPixels/1_000_000)
 	}
 	return mime, nil

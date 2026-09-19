@@ -21,7 +21,7 @@ type Date struct {
 // plain text, which is what lets SQLite range-query the entries table).
 const DateLayout = "2006-01-02"
 
-var ErrInvalidDate = errors.New("ungültiges Datum")
+var ErrInvalidDate = errors.New("invalid date")
 
 func DateFromTime(t time.Time) Date {
 	y, m, d := t.Date()

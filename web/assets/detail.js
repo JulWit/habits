@@ -48,7 +48,7 @@ function header(habit) {
   const head = document.createElement("div");
   head.className = "detail-head";
   head.innerHTML = `
-    <button class="icon-button is-back" type="button" data-action="back" aria-label="Zurück">${icons.arrowLeft}</button>
+    <button class="icon-button is-back" type="button" data-action="back" aria-label="Back">${icons.arrowLeft}</button>
     <div class="detail-title">
       <h2><span class="dot"></span><span class="name"></span></h2>
       <span class="sub"></span>
@@ -58,17 +58,17 @@ function header(habit) {
   const target = H.describeTarget(habit);
   head.querySelector(".sub").textContent =
     H.describeFrequency(habit) + (target ? ` · ${target}` : "") +
-    (habit.archivedAt ? " · archiviert" : "");
+    (habit.archivedAt ? " · archived" : "");
 
   const archived = habit.archivedAt != null;
   const buttons = document.createElement("div");
   buttons.className = "topbar-actions";
   buttons.append(
-    actionButton("edit", "Bearbeiten", icons.edit),
+    actionButton("edit", "Edit", icons.edit),
     archived
-      ? actionButton("archive", "Reaktivieren", icons.unarchive)
-      : actionButton("archive", "Archivieren", icons.archive),
-    actionButton("delete", "Löschen", icons.trash, "danger"),
+      ? actionButton("archive", "Reactivate", icons.unarchive)
+      : actionButton("archive", "Archive", icons.archive),
+    actionButton("delete", "Delete", icons.trash, "danger"),
   );
   head.append(buttons);
   wrap.append(head);
@@ -97,16 +97,21 @@ function actionButton(action, label, icon, variant = "") {
   return b;
 }
 
+/** A streak with its unit agreeing: "1 day", "6 days", "1 week". */
+function streakText(count, unit) {
+  const word = unit === "weeks" ? "week" : "day";
+  return `${count} ${word}${count === 1 ? "" : "s"}`;
+}
+
 function stats(habit) {
   const s = habit.stats;
-  const streakUnit = s.streakUnit === "weeks" ? "Wochen" : "Tage";
   const row = document.createElement("div");
   row.className = "stat-row";
   for (const [label, value] of [
-    [`Aktuelle Serie`, `${s.currentStreak} ${streakUnit}`],
-    [`Beste Serie`, `${s.bestStreak} ${streakUnit}`],
-    ["Quote (30 Tage)", `${Math.round(s.completionRate * 100)} %`],
-    ["Gesamt", H.formatTotal(habit, s.total)],
+    [`Current streak`, streakText(s.currentStreak, s.streakUnit)],
+    [`Best streak`, streakText(s.bestStreak, s.streakUnit)],
+    ["Rate (30 days)", `${Math.round(s.completionRate * 100)} %`],
+    ["Total", H.formatTotal(habit, s.total)],
   ]) {
     const tile = document.createElement("div");
     tile.className = "stat";
@@ -133,7 +138,7 @@ function heatmap(habit) {
   const firstWeek = startOfWeek(yearStart);
   const weeks = Math.floor(daysBetween(firstWeek, state.today) / 7) + 1;
 
-  title.textContent = `Jahresverlauf ${year}`;
+  title.textContent = `Year ${year}`;
   panel.append(title);
 
   const scroll = document.createElement("div");
@@ -202,10 +207,10 @@ function heatCell(habit, iso, yearStart) {
 
   el.dataset.date = iso;
   el.dataset.status = value > 0
-    ? `${H.formatValue(habit, value)} von ${H.formatValue(habit, H.target(habit))}`
+    ? `${H.formatValue(habit, value)} of ${H.formatValue(habit, H.target(habit))}`
     : H.isScheduled(habit, iso)
-      ? "nichts eingetragen"
-      : "nicht geplant";
+      ? "nothing recorded"
+      : "not scheduled";
   // No title attribute: the custom tooltip below replaces it, and keeping both
   // would stack the browser's own tooltip on top a second later. The accessible
   // name carries the same text for anyone not using a pointer.
@@ -217,12 +222,12 @@ function heatCell(habit, iso, yearStart) {
 function legend(yearStart, year) {
   const el = document.createElement("div");
   el.className = "heatmap-legend";
-  const from = `${dayOfMonth(yearStart)}. ${MONTH_SHORT[monthIndex(yearStart)]}`;
-  const to = `${dayOfMonth(state.today)}. ${MONTH_SHORT[monthIndex(state.today)]} ${year}`;
+  const from = `${dayOfMonth(yearStart)} ${MONTH_SHORT[monthIndex(yearStart)]}`;
+  const to = `${dayOfMonth(state.today)} ${MONTH_SHORT[monthIndex(state.today)]} ${year}`;
   el.innerHTML =
-    `<span>${from} – ${to}</span><span style="flex:1"></span><span>weniger</span>` +
+    `<span>${from} – ${to}</span><span style="flex:1"></span><span>less</span>` +
     [0, 1, 2, 3, 4].map((l) => `<span class="heat" data-level="${l}"></span>`).join("") +
-    `<span>mehr</span>`;
+    `<span>more</span>`;
   return el;
 }
 
@@ -253,7 +258,7 @@ function showTooltip(cell) {
 
   const date = document.createElement("div");
   date.className = "tip-date";
-  // A bar names its own bucket ("Woche ab 23. Mär"); a heatmap square is a
+  // A bar names its own bucket ("Week from 23 Mar"); a heatmap square is a
   // single day and spells that day out.
   date.textContent = cell.dataset.tip ?? formatFull(cell.dataset.date);
 
@@ -307,9 +312,9 @@ function initTooltip(container) {
  * before that starts, and `every` how many buckets share one label.
  */
 const GRAINS = {
-  day: { label: "Tag", barMin: "9px", every: 7 },
-  week: { label: "Woche", barMin: "14px", every: 4 },
-  month: { label: "Monat", barMin: "24px", every: 1 },
+  day: { label: "Day", barMin: "9px", every: 7 },
+  week: { label: "Week", barMin: "14px", every: 4 },
+  month: { label: "Month", barMin: "24px", every: 1 },
 };
 
 /**
@@ -347,19 +352,19 @@ function showNewest(panel) {
   if (scroller) scroller.scrollLeft = scroller.scrollWidth;
 }
 
-/** Title plus the Tag/Woche/Monat switch. */
+/** Title plus the Day/Week/Month switch. */
 function grainHead(habit) {
   const head = document.createElement("div");
   head.className = "cum-head";
 
   const title = document.createElement("h3");
-  title.textContent = "Kumuliert";
+  title.textContent = "Cumulative";
   head.append(title);
 
   const choices = document.createElement("div");
   choices.className = "segmented cum-grain";
   choices.setAttribute("role", "radiogroup");
-  choices.setAttribute("aria-label", "Zeitraum");
+  choices.setAttribute("aria-label", "Period");
   for (const [key, { label }] of Object.entries(GRAINS)) {
     const wrap = document.createElement("label");
     const input = document.createElement("input");
@@ -392,7 +397,7 @@ function cumulativeBody(habit) {
   if (summary.total === 0) {
     const empty = document.createElement("p");
     empty.className = "cum-empty";
-    empty.textContent = `Noch keine Einträge in ${year}.`;
+    empty.textContent = `No entries in ${year} yet.`;
     body.append(empty);
     return body;
   }
@@ -412,9 +417,9 @@ function cumulativeSummary(habit, { total, best, activeDays }, scopeIn) {
   const average = Math.round(total / activeDays);
   line.append(
     strong(H.formatTotal(habit, total)),
-    text(` ${scopeIn} · Ø `),
+    text(` ${scopeIn} · avg `),
     strong(H.formatTotal(habit, average)),
-    text(` an ${activeDays} ${activeDays === 1 ? "aktivem Tag" : "aktiven Tagen"} · bester Tag `),
+    text(` on ${activeDays} active ${activeDays === 1 ? "day" : "days"} · best day `),
     strong(H.formatTotal(habit, best)),
   );
   return line;
@@ -450,8 +455,8 @@ function cumulativeChart(habit, { buckets, total }) {
     // the two would end up stacked.
     col.dataset.tip = bucketName(start);
     col.dataset.status = sum > 0
-      ? `${H.formatTotal(habit, running)} · davon +${H.formatTotal(habit, sum)}`
-      : `${H.formatTotal(habit, running)} · nichts dazugekommen`;
+      ? `${H.formatTotal(habit, running)} · of that +${H.formatTotal(habit, sum)}`
+      : `${H.formatTotal(habit, running)} · nothing added`;
     // The bar is a picture of a number, and the tooltip is not reachable
     // without a pointer, so the same sentence is the accessible name.
     col.setAttribute("role", "img");
@@ -491,8 +496,8 @@ function cumulativeChart(habit, { buckets, total }) {
 
 /** What a bucket is called in its tooltip. */
 function bucketName(start) {
-  if (grain === "month") return `Ende ${MONTH_LONG[monthIndex(start)]}`;
-  if (grain === "week") return `Woche ab ${dayOfMonth(start)}. ${MONTH_SHORT[monthIndex(start)]}`;
+  if (grain === "month") return `End of ${MONTH_LONG[monthIndex(start)]}`;
+  if (grain === "week") return `Week from ${dayOfMonth(start)} ${MONTH_SHORT[monthIndex(start)]}`;
   return formatFull(start);
 }
 

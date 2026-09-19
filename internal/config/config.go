@@ -77,7 +77,7 @@ func Load() (Config, error) {
 	switch cfg.AuthMode {
 	case AuthModeSingleUser:
 		if cfg.DefaultUser == "" {
-			return Config{}, errors.New("HABITS_DEFAULT_USER darf im Modus single-user nicht leer sein")
+			return Config{}, errors.New("HABITS_DEFAULT_USER must not be empty in single-user mode")
 		}
 	case AuthModeAuthelia:
 		cfg.TrustedProxies, err = parsePrefixes(os.Getenv("HABITS_TRUSTED_PROXIES"))
@@ -86,16 +86,16 @@ func Load() (Config, error) {
 		}
 		if len(cfg.TrustedProxies) == 0 {
 			return Config{}, errors.New(
-				"HABITS_TRUSTED_PROXIES muss im Modus authelia gesetzt sein " +
-					"(z. B. 127.0.0.1/32,172.18.0.0/16) — sonst könnte jeder Client " +
-					"den Remote-User-Header selbst setzen")
+				"HABITS_TRUSTED_PROXIES must be set in authelia mode " +
+					"(e.g. 127.0.0.1/32,172.18.0.0/16) — otherwise any client could " +
+					"set the Remote-User header itself")
 		}
 	default:
-		return Config{}, fmt.Errorf("HABITS_AUTH_MODE: unbekannter Wert %q (erlaubt: authelia, single-user)", cfg.AuthMode)
+		return Config{}, fmt.Errorf("HABITS_AUTH_MODE: unknown value %q (allowed: authelia, single-user)", cfg.AuthMode)
 	}
 
 	if cfg.UserHeader == "" {
-		return Config{}, errors.New("HABITS_USER_HEADER darf nicht leer sein")
+		return Config{}, errors.New("HABITS_USER_HEADER must not be empty")
 	}
 	return cfg, nil
 }
@@ -112,14 +112,14 @@ func parsePrefixes(raw string) ([]netip.Prefix, error) {
 		if strings.Contains(part, "/") {
 			p, err := netip.ParsePrefix(part)
 			if err != nil {
-				return nil, fmt.Errorf("%q ist kein gültiges CIDR: %w", part, err)
+				return nil, fmt.Errorf("%q is not a valid CIDR: %w", part, err)
 			}
 			out = append(out, p.Masked())
 			continue
 		}
 		addr, err := netip.ParseAddr(part)
 		if err != nil {
-			return nil, fmt.Errorf("%q ist keine gültige IP-Adresse: %w", part, err)
+			return nil, fmt.Errorf("%q is not a valid IP address: %w", part, err)
 		}
 		out = append(out, netip.PrefixFrom(addr, addr.BitLen()))
 	}

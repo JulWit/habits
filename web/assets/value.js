@@ -89,7 +89,7 @@ function paintQuick(habit) {
     const b = document.createElement("button");
     b.type = "button";
     b.className = "button";
-    b.textContent = (offset < 0 ? "−" : "+") + Math.abs(offset).toLocaleString("de-DE");
+    b.textContent = (offset < 0 ? "−" : "+") + Math.abs(offset).toLocaleString("en-GB");
     b.addEventListener("click", () => setValue((Number(input.value) || 0) + offset));
     return b;
   }));
@@ -110,7 +110,7 @@ export function openValueDialog(habit, iso, handler) {
   // make the browser reject a 7 that was typed into a habit counted in fives.
   input.step = scale === 1 ? "1" : "any";
   input.inputMode = scale === 1 ? "numeric" : "decimal";
-  input.setAttribute("aria-label", `Wert${H.unitLabel(habit) ? ` in ${unitName(habit)}` : ""}`);
+  input.setAttribute("aria-label", `Value${H.unitLabel(habit) ? ` in ${unitName(habit)}` : ""}`);
 
   paintQuick(habit);
 
@@ -123,16 +123,16 @@ export function openValueDialog(habit, iso, handler) {
 
 /** The line under the stepper: the target, plus the step when it says anything. */
 function hintFor(habit) {
-  const goal = `Tagesziel: ${H.formatValue(habit, H.target(habit))}`;
+  const goal = `Daily target: ${H.formatValue(habit, H.target(habit))}`;
   // A count of one is what everyone assumes anyway; every other step is worth
   // spelling out.
   if (habit.kind === "count" && currentStep === 1) return goal;
 
   // In the unit the box is typed in, not the one the value is stored in: half
-  // a kilometre reads as 0,5 km here, so the hint matches what the buttons do
+  // a kilometre reads as 0.5 km here, so the hint matches what the buttons do
   // to the number above it.
   const unit = { distance: " km", time: " min" }[habit.kind] ?? "";
-  return `${goal} · Schritt: ${currentStep.toLocaleString("de-DE")}${unit}`;
+  return `${goal} · step: ${currentStep.toLocaleString("en-GB")}${unit}`;
 }
 
 /** What the number in the box is measured in, for the field's accessible name. */

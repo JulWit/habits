@@ -67,7 +67,7 @@ func do(t *testing.T, h http.Handler, method, path, body, contentType string) *h
 // content type is what forces a preflight, which same-origin policy then stops.
 func TestMutationsRequireTheJSONContentType(t *testing.T) {
 	h := newTestServer(t)
-	habit := `{"name":"Lesen","kind":"check","frequency":{"kind":"daily"}}`
+	habit := `{"name":"Reading","kind":"check","frequency":{"kind":"daily"}}`
 
 	for _, ct := range []string{
 		"text/plain",
@@ -104,15 +104,15 @@ func TestSecurityHeadersAreOnEveryResponse(t *testing.T) {
 		}
 		csp := w.Header().Get("Content-Security-Policy")
 		if !strings.Contains(csp, "script-src 'self'") {
-			t.Errorf("%s: CSP ohne strenges script-src: %q", path, csp)
+			t.Errorf("%s: CSP without a strict script-src: %q", path, csp)
 		}
 		if !strings.Contains(csp, "frame-ancestors 'none'") {
-			t.Errorf("%s: CSP ohne frame-ancestors: %q", path, csp)
+			t.Errorf("%s: CSP without frame-ancestors: %q", path, csp)
 		}
 		// The whole point of the strict script-src is that nothing needs
 		// 'unsafe-inline' or 'unsafe-eval' there.
 		if strings.Contains(csp, "script-src 'self' 'unsafe") {
-			t.Errorf("%s: script-src wurde aufgeweicht: %q", path, csp)
+			t.Errorf("%s: script-src was loosened: %q", path, csp)
 		}
 	}
 }
@@ -123,12 +123,12 @@ func TestIndexCarriesTheStoredAppearance(t *testing.T) {
 	h := newTestServer(t)
 
 	if w := do(t, h, "PATCH", "/api/settings", `{"theme":"dark","font":"lato"}`, "application/json"); w.Code != http.StatusOK {
-		t.Fatalf("Einstellungen schreiben: %d (%s)", w.Code, w.Body)
+		t.Fatalf("writing settings: %d (%s)", w.Code, w.Body)
 	}
 	w := do(t, h, "GET", "/", "", "")
 	if body := w.Body.String(); !strings.Contains(body, `data-theme="dark"`) ||
 		!strings.Contains(body, `data-font="lato"`) {
-		t.Errorf("Shell ohne die gespeicherte Darstellung: %s", body)
+		t.Errorf("shell without the stored appearance: %s", body)
 	}
 	if cc := w.Header().Get("Cache-Control"); cc != "no-store" {
 		t.Errorf("Cache-Control = %q, want no-store", cc)
@@ -155,11 +155,11 @@ func TestStateCarriesTheKindDescriptors(t *testing.T) {
 		BlurAtFull int `json:"blurAtFull"`
 	}
 	if err := json.Unmarshal(w.Body.Bytes(), &got); err != nil {
-		t.Fatalf("Antwort lesen: %v", err)
+		t.Fatalf("reading response: %v", err)
 	}
 	for _, kind := range []string{"check", "count", "time", "distance"} {
 		if _, ok := got.Kinds[kind]; !ok {
-			t.Errorf("kinds enthält %q nicht", kind)
+			t.Errorf("kinds does not contain %q", kind)
 		}
 	}
 	if got.Kinds["distance"].Scale != 1000 || got.Kinds["distance"].Max != 200000 {
@@ -172,7 +172,7 @@ func TestStateCarriesTheKindDescriptors(t *testing.T) {
 		t.Errorf("blurAtFull = %d, want %d", got.BlurAtFull, store.BackgroundBlurAtFull)
 	}
 	if len(got.Colors) == 0 {
-		t.Error("colors ist leer")
+		t.Error("colors is empty")
 	}
 }
 
@@ -192,12 +192,12 @@ func TestBadSettingsAnswer422(t *testing.T) {
 			t.Errorf("%s: status %d, want 422", body, w.Code)
 		}
 		if strings.Contains(w.Body.String(), "Interner Serverfehler") {
-			t.Errorf("%s: als Serverfehler gemeldet: %s", body, w.Body)
+			t.Errorf("%s: reported as a server error: %s", body, w.Body)
 		}
 	}
 	// An unknown field is a typo in the client, and says so.
 	if w := do(t, h, "PATCH", "/api/settings", `{"thme":"dark"}`, "application/json"); w.Code != http.StatusBadRequest {
-		t.Errorf("unbekanntes Feld: status %d, want 400", w.Code)
+		t.Errorf("unknown field: status %d, want 400", w.Code)
 	}
 }
 
@@ -205,32 +205,32 @@ func TestBadSettingsAnswer422(t *testing.T) {
 func TestEntryValueIsBounded(t *testing.T) {
 	h := newTestServer(t)
 	w := do(t, h, "POST", "/api/habits",
-		`{"name":"Laufen","kind":"distance","targetValue":5000,"frequency":{"kind":"daily"}}`,
+		`{"name":"Running","kind":"distance","targetValue":5000,"frequency":{"kind":"daily"}}`,
 		"application/json")
 	if w.Code != http.StatusCreated {
-		t.Fatalf("Habit anlegen: %d (%s)", w.Code, w.Body)
+		t.Fatalf("creating habit: %d (%s)", w.Code, w.Body)
 	}
 	var created struct {
 		ID string `json:"id"`
 	}
 	if err := json.Unmarshal(w.Body.Bytes(), &created); err != nil {
-		t.Fatalf("Antwort lesen: %v", err)
+		t.Fatalf("reading response: %v", err)
 	}
 
 	path := "/api/habits/" + created.ID + "/entries/2026-09-18"
 	if w := do(t, h, "PUT", path, `{"value":999999999}`, "application/json"); w.Code != http.StatusUnprocessableEntity {
-		t.Errorf("zu großer Wert: status %d, want 422 (%s)", w.Code, w.Body)
+		t.Errorf("value too large: status %d, want 422 (%s)", w.Code, w.Body)
 	}
 	if w := do(t, h, "PUT", path, `{"value":-5}`, "application/json"); w.Code != http.StatusUnprocessableEntity {
-		t.Errorf("negativer Wert: status %d, want 422", w.Code)
+		t.Errorf("negative value: status %d, want 422", w.Code)
 	}
 	if w := do(t, h, "PUT", path, `{"value":5000}`, "application/json"); w.Code != http.StatusOK {
-		t.Errorf("gültiger Wert: status %d, want 200 (%s)", w.Code, w.Body)
+		t.Errorf("valid value: status %d, want 200 (%s)", w.Code, w.Body)
 	}
 	// Beyond the horizon is a different rejection, and also not a 500.
 	far := "/api/habits/" + created.ID + "/entries/2099-01-01"
 	if w := do(t, h, "PUT", far, `{"value":1000}`, "application/json"); w.Code != http.StatusUnprocessableEntity {
-		t.Errorf("Datum jenseits des Horizonts: status %d, want 422", w.Code)
+		t.Errorf("date beyond the horizon: status %d, want 422", w.Code)
 	}
 }
 
@@ -247,13 +247,13 @@ func TestValidationMessagesReachTheUserPlain(t *testing.T) {
 		Error string `json:"error"`
 	}
 	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
-		t.Fatalf("Antwort lesen: %v", err)
+		t.Fatalf("reading response: %v", err)
 	}
-	if strings.Contains(body.Error, "validierungsfehler") {
-		t.Errorf("Meldung trägt das Sentinel-Präfix: %q", body.Error)
+	if strings.Contains(body.Error, "validation error") {
+		t.Errorf("message carries the sentinel prefix: %q", body.Error)
 	}
-	if body.Error != "Name darf nicht leer sein" {
-		t.Errorf("Meldung = %q", body.Error)
+	if body.Error != "name must not be empty" {
+		t.Errorf("message = %q", body.Error)
 	}
 }
 
@@ -263,17 +263,17 @@ func TestValidationMessagesReachTheUserPlain(t *testing.T) {
 func TestKindChangeWithHistoryIsRefusedReadably(t *testing.T) {
 	h := newTestServer(t)
 	w := do(t, h, "POST", "/api/habits",
-		`{"name":"Laufen","kind":"distance","targetValue":5000,"frequency":{"kind":"daily"}}`,
+		`{"name":"Running","kind":"distance","targetValue":5000,"frequency":{"kind":"daily"}}`,
 		"application/json")
 	var created struct {
 		ID string `json:"id"`
 	}
 	if err := json.Unmarshal(w.Body.Bytes(), &created); err != nil {
-		t.Fatalf("Antwort lesen: %v", err)
+		t.Fatalf("reading response: %v", err)
 	}
 	if w := do(t, h, "PUT", "/api/habits/"+created.ID+"/entries/2026-09-18",
 		`{"value":5200}`, "application/json"); w.Code != http.StatusOK {
-		t.Fatalf("Eintrag: %d (%s)", w.Code, w.Body)
+		t.Fatalf("entry: %d (%s)", w.Code, w.Body)
 	}
 
 	w = do(t, h, "PATCH", "/api/habits/"+created.ID,
@@ -285,15 +285,34 @@ func TestKindChangeWithHistoryIsRefusedReadably(t *testing.T) {
 		Error string `json:"error"`
 	}
 	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
-		t.Fatalf("Antwort lesen: %v", err)
+		t.Fatalf("reading response: %v", err)
 	}
-	for _, want := range []string{"Anzahl", "1 Tage"} {
+	for _, want := range []string{"Count", "1 day is already recorded"} {
 		if !strings.Contains(body.Error, want) {
-			t.Errorf("Meldung %q nennt %q nicht", body.Error, want)
+			t.Errorf("message %q does not mention %q", body.Error, want)
 		}
 	}
 	if strings.Contains(body.Error, `"count"`) {
-		t.Errorf("Meldung zeigt den rohen Schlüssel: %q", body.Error)
+		t.Errorf("message shows the raw key: %q", body.Error)
+	}
+
+	// A second day switches the sentence to its plural form, which is the half
+	// a reader sees most often and the half a naive "%d days" would get right
+	// by accident.
+	if w := do(t, h, "PUT", "/api/habits/"+created.ID+"/entries/2026-09-17",
+		`{"value":4800}`, "application/json"); w.Code != http.StatusOK {
+		t.Fatalf("second entry: %d (%s)", w.Code, w.Body)
+	}
+	w = do(t, h, "PATCH", "/api/habits/"+created.ID,
+		`{"kind":"count","targetValue":80}`, "application/json")
+	if w.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("status %d, want 422 (%s)", w.Code, w.Body)
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+		t.Fatalf("reading response: %v", err)
+	}
+	if !strings.Contains(body.Error, "2 days are already recorded") {
+		t.Errorf("message %q does not use the plural form", body.Error)
 	}
 }
 

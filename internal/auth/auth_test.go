@@ -63,10 +63,10 @@ func TestSingleUserIgnoresHeaders(t *testing.T) {
 		r.Header.Set("Remote-User", "admin")
 	})
 	if !reached {
-		t.Fatal("die Anfrage kam nicht beim Handler an")
+		t.Fatal("the request never reached the handler")
 	}
 	if user.ID != "local" {
-		t.Errorf("user.ID = %q, want local — der Header darf hier nichts entscheiden", user.ID)
+		t.Errorf("user.ID = %q, want local — the header must decide nothing here", user.ID)
 	}
 }
 
@@ -80,7 +80,7 @@ func TestUntrustedPeerIsRefused(t *testing.T) {
 			r.Header.Set("Remote-User", "admin")
 		})
 		if reached {
-			t.Errorf("%s: der Handler wurde trotzdem erreicht", peer)
+			t.Errorf("%s: the handler was reached anyway", peer)
 		}
 		// 403, not 401: the request did not fail to authenticate, it came from
 		// somewhere it must never come from.
@@ -98,7 +98,7 @@ func TestTrustedPeerIsBelieved(t *testing.T) {
 			r.Header.Set("Remote-User", "Alice")
 		})
 		if !reached {
-			t.Errorf("%s: abgewiesen mit %d", peer, w.Code)
+			t.Errorf("%s: rejected with %d", peer, w.Code)
 			continue
 		}
 		// Lower-cased, so "Alice" and "alice" cannot own two separate sets.
@@ -117,7 +117,7 @@ func TestIPv4MappedPeerMatchesItsIPv4Prefix(t *testing.T) {
 		r.Header.Set("Remote-User", "alice")
 	})
 	if !reached {
-		t.Error("der IPv4-gemappte Peer wurde nicht als vertrauenswürdig erkannt")
+		t.Error("the IPv4-mapped peer was not recognised as trusted")
 	}
 }
 
@@ -133,7 +133,7 @@ func TestTrustedPeerWithoutIdentityIs401(t *testing.T) {
 			}
 		})
 		if reached {
-			t.Errorf("Header %q: der Handler wurde erreicht", header)
+			t.Errorf("header %q: the handler was reached", header)
 		}
 		if w.Code != http.StatusUnauthorized {
 			t.Errorf("Header %q: status %d, want 401", header, w.Code)
@@ -151,13 +151,13 @@ func TestOptionalHeadersAreCarriedThrough(t *testing.T) {
 		r.Header.Set("Remote-Groups", " admins , users ,, ")
 	})
 	if !reached {
-		t.Fatal("abgewiesen")
+		t.Fatal("rejected")
 	}
 	if user.Name != "Alice Example" || user.Email != "alice@example.com" {
 		t.Errorf("Name/Email: %q / %q", user.Name, user.Email)
 	}
 	if len(user.Groups) != 2 || user.Groups[0] != "admins" || user.Groups[1] != "users" {
-		t.Errorf("Groups = %#v, want [admins users] — leere Einträge fallen weg", user.Groups)
+		t.Errorf("Groups = %#v, want [admins users] — empty entries are dropped", user.Groups)
 	}
 }
 
@@ -179,7 +179,7 @@ func TestNameFallsBackToTheIdentifier(t *testing.T) {
 func TestMustUserPanicsWithoutMiddleware(t *testing.T) {
 	defer func() {
 		if recover() == nil {
-			t.Error("MustUser hat ohne Middleware nicht paniziert")
+			t.Error("MustUser did not panic without the middleware")
 		}
 	}()
 	MustUser(httptest.NewRequest("GET", "/", nil).Context())
@@ -199,7 +199,7 @@ func TestPeerTrusted(t *testing.T) {
 		{"10.0.0.1", true}, // no port at all
 		{"11.0.0.1:1234", false},
 		{"127.0.0.2:1234", false},
-		{"nicht-eine-adresse", false},
+		{"not-an-address", false},
 		{"", false},
 	} {
 		if got := peerTrusted(trusted, tc.addr); got != tc.want {
@@ -208,6 +208,6 @@ func TestPeerTrusted(t *testing.T) {
 	}
 	// An empty list trusts nobody, which is what makes the config guard matter.
 	if peerTrusted(nil, "127.0.0.1:1234") {
-		t.Error("eine leere Liste darf niemandem vertrauen")
+		t.Error("an empty list must trust nobody")
 	}
 }

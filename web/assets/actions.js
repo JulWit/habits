@@ -112,14 +112,14 @@ async function writeEntry(habit, iso, value) {
   // Ticking a habit raises no toast on purpose, so this is the only thing a
   // screen reader gets told about a tap.
   announce(value === 0
-    ? `${habit.name}, ${when}: gelöscht`
+    ? `${habit.name}, ${when}: cleared`
     : `${habit.name}, ${when}: ${H.formatValue(habit, value)}`);
   record({
     label: `${habit.name} — ${when}`,
     // Only clearing a day interrupts with a toast; ticking something off is
     // not destructive and should stay quiet.
     silent: !cleared,
-    toastLabel: `Eintrag gelöscht: ${habit.name}, ${when}`,
+    toastLabel: `Entry cleared: ${habit.name}, ${when}`,
     undo: () => api.setEntry(habit.id, iso, result.previous),
     redo: () => api.setEntry(habit.id, iso, value),
   });
@@ -132,7 +132,7 @@ export function createHabit() {
     const created = await api.createHabit(input);
     upsertHabit(created);
     record({
-      label: `„${created.name}" angelegt`,
+      label: `"${created.name}" created`,
       silent: true,
       undo: async () => {
         await api.deleteHabit(created.id);
@@ -140,7 +140,7 @@ export function createHabit() {
       },
       redo: async () => upsertHabit(await api.restoreHabit(created.id)),
     });
-    toast(`„${created.name}" angelegt`);
+    toast(`"${created.name}" created`);
   });
 }
 
@@ -152,7 +152,7 @@ export function editHabit(id) {
   openEditor(habit, async (input) => {
     upsertHabit(await api.updateHabit(id, input));
     record({
-      label: `„${habit.name}" bearbeitet`,
+      label: `"${habit.name}" edited`,
       silent: true,
       undo: async () => upsertHabit(await api.updateHabit(id, before)),
       redo: async () => upsertHabit(await api.updateHabit(id, input)),
@@ -195,7 +195,7 @@ export async function deleteHabit(id) {
   // Deletion is soft on the server, so undo brings the habit back with its
   // whole history instead of recreating an empty one.
   record({
-    label: `„${habit.name}" gelöscht`,
+    label: `"${habit.name}" deleted`,
     undo: async () => upsertHabit(await api.restoreHabit(id)),
     redo: async () => {
       await api.deleteHabit(id);
@@ -220,7 +220,7 @@ export async function toggleArchive(id) {
   await deps.refresh();
 
   record({
-    label: archived ? `„${name}" archiviert` : `„${name}" reaktiviert`,
+    label: archived ? `"${name}" archived` : `"${name}" reactivated`,
     undo: async () => {
       await api.updateHabit(id, { archived: !archived });
       await deps.refresh();
@@ -254,7 +254,7 @@ export async function createCategory(name) {
   }
   upsertCategory(created);
   record({
-    label: `Kategorie „${created.name}" angelegt`,
+    label: `Category "${created.name}" created`,
     silent: true,
     undo: async () => {
       await api.deleteCategory(created.id);
@@ -262,7 +262,7 @@ export async function createCategory(name) {
     },
     redo: async () => upsertCategory(await api.restoreCategory(created.id)),
   });
-  toast(`Kategorie „${created.name}" angelegt`);
+  toast(`Category "${created.name}" created`);
   // Returned so the picker can select the category it just created.
   return created;
 }
@@ -381,7 +381,7 @@ export async function renameCategory(id, name) {
     return;
   }
   record({
-    label: `Kategorie „${before}" umbenannt`,
+    label: `Category "${before}" renamed`,
     silent: true,
     undo: async () => upsertCategory(await api.updateCategory(id, { name: before })),
     redo: async () => upsertCategory(await api.updateCategory(id, { name })),
@@ -390,7 +390,7 @@ export async function renameCategory(id, name) {
 
 /**
  * Deletes a category. The habits inside are not touched — they keep pointing at
- * it and fall into the "Ohne Kategorie" block, so undo rebuilds the block
+ * it and fall into the "No category" block, so undo rebuilds the block
  * exactly as it was rather than having to reassign anything.
  */
 export async function deleteCategory(id) {
@@ -408,8 +408,8 @@ export async function deleteCategory(id) {
 
   record({
     label: affected === 0
-      ? `Kategorie „${category.name}" gelöscht`
-      : `Kategorie „${category.name}" gelöscht — ${affected} Gewohnheit${affected === 1 ? "" : "en"} bleiben erhalten`,
+      ? `Category "${category.name}" deleted`
+      : `Category "${category.name}" deleted — ${affected} habit${affected === 1 ? "" : "s"} kept`,
     undo: async () => {
       upsertCategory(await api.restoreCategory(id));
       await deps.refresh();

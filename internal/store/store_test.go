@@ -53,18 +53,18 @@ func TestMigrationsAreIdempotent(t *testing.T) {
 
 	first, err := Open(ctx, path)
 	if err != nil {
-		t.Fatalf("erstes Open: %v", err)
+		t.Fatalf("first Open: %v", err)
 	}
 	h := mustCreateHabit(t, first, "alice", countHabit(domain.KindCheck, 1))
 	first.Close()
 
 	second, err := Open(ctx, path)
 	if err != nil {
-		t.Fatalf("zweites Open: %v", err)
+		t.Fatalf("second Open: %v", err)
 	}
 	defer second.Close()
 	if _, err := second.GetHabit(ctx, "alice", h.ID); err != nil {
-		t.Errorf("Habit hat den zweiten Start nicht überlebt: %v", err)
+		t.Errorf("habit did not survive the second start: %v", err)
 	}
 }
 
@@ -75,20 +75,20 @@ func TestHabitsAreScopedToTheirUser(t *testing.T) {
 	mine := mustCreateHabit(t, st, "alice", countHabit(domain.KindCheck, 1))
 
 	if _, err := st.GetHabit(ctx, "someone-else", mine.ID); !errors.Is(err, ErrNotFound) {
-		t.Errorf("GetHabit fremd: %v, want ErrNotFound", err)
+		t.Errorf("GetHabit foreign: %v, want ErrNotFound", err)
 	}
 	if err := st.SoftDeleteHabit(ctx, "someone-else", mine.ID); !errors.Is(err, ErrNotFound) {
-		t.Errorf("SoftDelete fremd: %v, want ErrNotFound", err)
+		t.Errorf("SoftDelete foreign: %v, want ErrNotFound", err)
 	}
 	if _, err := st.SetEntry(ctx, "someone-else", mine.ID, day(2026, time.September, 18), 1); !errors.Is(err, ErrNotFound) {
-		t.Errorf("SetEntry fremd: %v, want ErrNotFound", err)
+		t.Errorf("SetEntry foreign: %v, want ErrNotFound", err)
 	}
 	habits, err := st.ListHabits(ctx, "someone-else", true)
 	if err != nil {
 		t.Fatalf("ListHabits: %v", err)
 	}
 	if len(habits) != 0 {
-		t.Errorf("fremde Liste enthält %d Habits", len(habits))
+		t.Errorf("foreign list contains %d habits", len(habits))
 	}
 }
 
@@ -106,7 +106,7 @@ func TestSetEntryBoundsTheValue(t *testing.T) {
 		}
 	}
 	if _, err := st.SetEntry(ctx, "alice", h.ID, day, domain.KindDistance.MaxTarget()); err != nil {
-		t.Errorf("das Maximum selbst muss erlaubt sein: %v", err)
+		t.Errorf("the maximum itself must be allowed: %v", err)
 	}
 }
 
@@ -119,13 +119,13 @@ func TestSetEntryReturnsThePreviousValueAndStaysSparse(t *testing.T) {
 	day := day(2026, time.September, 18)
 
 	if prev, err := st.SetEntry(ctx, "alice", h.ID, day, 30); err != nil || prev != 0 {
-		t.Fatalf("erster Schreibvorgang: prev = %d, err = %v", prev, err)
+		t.Fatalf("first write: prev = %d, err = %v", prev, err)
 	}
 	if prev, err := st.SetEntry(ctx, "alice", h.ID, day, 50); err != nil || prev != 30 {
-		t.Fatalf("zweiter Schreibvorgang: prev = %d, want 30, err = %v", prev, err)
+		t.Fatalf("second write: prev = %d, want 30, err = %v", prev, err)
 	}
 	if prev, err := st.SetEntry(ctx, "alice", h.ID, day, 0); err != nil || prev != 50 {
-		t.Fatalf("löschen: prev = %d, want 50, err = %v", prev, err)
+		t.Fatalf("delete: prev = %d, want 50, err = %v", prev, err)
 	}
 
 	entries, err := st.EntriesForHabit(ctx, "alice", h.ID)
@@ -133,7 +133,7 @@ func TestSetEntryReturnsThePreviousValueAndStaysSparse(t *testing.T) {
 		t.Fatalf("EntriesForHabit: %v", err)
 	}
 	if _, present := entries[day]; present {
-		t.Error("ein auf 0 gesetzter Tag muss zeilenlos sein, nicht eine Zeile mit 0")
+		t.Error("a day set to 0 must have no row, not a row holding 0")
 	}
 }
 
@@ -149,7 +149,7 @@ func TestKindCannotChangeOnceThereIsAHistory(t *testing.T) {
 	changed.Kind = domain.KindCount
 	changed.TargetValue = 80
 	if err := st.UpdateHabit(ctx, "alice", &changed); err != nil {
-		t.Fatalf("Typwechsel ohne Historie muss erlaubt sein: %v", err)
+		t.Fatalf("kind change without history must be allowed: %v", err)
 	}
 
 	// Now give it a history and try again.
@@ -160,7 +160,7 @@ func TestKindCannotChangeOnceThereIsAHistory(t *testing.T) {
 	again.Kind = domain.KindTime
 	err := st.UpdateHabit(ctx, "alice", &again)
 	if !errors.Is(err, domain.ErrValidation) {
-		t.Errorf("Typwechsel mit Historie: %v, want ErrValidation", err)
+		t.Errorf("kind change with history: %v, want ErrValidation", err)
 	}
 
 	// And the habit is untouched — the transaction rolled the whole thing back.
@@ -169,7 +169,7 @@ func TestKindCannotChangeOnceThereIsAHistory(t *testing.T) {
 		t.Fatalf("GetHabit: %v", err)
 	}
 	if after.Kind != domain.KindCount {
-		t.Errorf("kind = %q, want count — der Fehlschlag darf nichts geschrieben haben", after.Kind)
+		t.Errorf("kind = %q, want count — the failure must not have written anything", after.Kind)
 	}
 }
 
@@ -197,10 +197,10 @@ func TestEverythingButTheKindStaysEditable(t *testing.T) {
 		t.Fatalf("GetHabit: %v", err)
 	}
 	if after.Name != "Wasser trinken" || after.TargetValue != 100 || after.StepValue != 20 {
-		t.Errorf("Änderungen kamen nicht an: %+v", after)
+		t.Errorf("changes did not arrive: %+v", after)
 	}
 	if after.Frequency.Kind != domain.FreqTimesPerWeek || after.Frequency.TimesPerWeek != 4 {
-		t.Errorf("Frequenz kam nicht an: %+v", after.Frequency)
+		t.Errorf("frequency did not arrive: %+v", after.Frequency)
 	}
 }
 
@@ -218,12 +218,12 @@ func TestHabitCannotJoinAForeignCategory(t *testing.T) {
 	h := countHabit(domain.KindCheck, 1)
 	h.CategoryID = theirs.ID
 	if err := st.CreateHabit(ctx, "alice", &h); !errors.Is(err, domain.ErrValidation) {
-		t.Errorf("fremde Kategorie: %v, want ErrValidation", err)
+		t.Errorf("foreign category: %v, want ErrValidation", err)
 	}
 
-	h.CategoryID = "gibt-es-nicht"
+	h.CategoryID = "does-not-exist"
 	if err := st.CreateHabit(ctx, "alice", &h); !errors.Is(err, domain.ErrValidation) {
-		t.Errorf("unbekannte Kategorie: %v, want ErrValidation", err)
+		t.Errorf("unknown category: %v, want ErrValidation", err)
 	}
 }
 
@@ -241,11 +241,11 @@ func TestSoftDeleteKeepsTheHistory(t *testing.T) {
 		t.Fatalf("SoftDeleteHabit: %v", err)
 	}
 	if habits, _ := st.ListHabits(ctx, "alice", true); len(habits) != 0 {
-		t.Error("ein gelöschter Habit darf nicht mehr gelistet werden")
+		t.Error("a deleted habit must no longer be listed")
 	}
 	// Purging only takes what is past the window.
 	if n, err := st.PurgeDeleted(ctx, 30*24*time.Hour); err != nil || n != 0 {
-		t.Errorf("PurgeDeleted räumte %d Zeilen zu früh ab (err %v)", n, err)
+		t.Errorf("PurgeDeleted removed %d rows too early (err %v)", n, err)
 	}
 
 	if err := st.RestoreHabit(ctx, "alice", h.ID); err != nil {
@@ -256,7 +256,7 @@ func TestSoftDeleteKeepsTheHistory(t *testing.T) {
 		t.Fatalf("EntriesForHabit: %v", err)
 	}
 	if entries[day] != 1 {
-		t.Errorf("die Historie kam nicht zurück: %+v", entries)
+		t.Errorf("the history did not come back: %+v", entries)
 	}
 }
 
@@ -280,7 +280,7 @@ func TestPurgeRemovesWhatIsPastTheWindow(t *testing.T) {
 		t.Errorf("PurgeDeleted entfernte %d Zeilen, want 1", n)
 	}
 	if err := st.RestoreHabit(ctx, "alice", h.ID); !errors.Is(err, ErrNotFound) {
-		t.Errorf("nach dem Purge: %v, want ErrNotFound", err)
+		t.Errorf("after the purge: %v, want ErrNotFound", err)
 	}
 }
 
@@ -301,7 +301,7 @@ func TestStoredTimestampsSortChronologically(t *testing.T) {
 	for i := 1; i < len(ordered); i++ {
 		earlier, later := formatTime(ordered[i-1]), formatTime(ordered[i])
 		if !(earlier < later) {
-			t.Errorf("%q sortiert nicht vor %q", earlier, later)
+			t.Errorf("%q does not sort before %q", earlier, later)
 		}
 	}
 
@@ -319,7 +319,7 @@ func TestStoredTimestampsSortChronologically(t *testing.T) {
 
 	// Rows written before the padding existed still read back correctly.
 	if _, err := parseTime("2026-09-19T12:00:00.5Z"); err != nil {
-		t.Errorf("alter Zeitstempel ohne Auffüllung: %v", err)
+		t.Errorf("old timestamp without padding: %v", err)
 	}
 }
 
@@ -334,7 +334,7 @@ func TestSettingsRoundTripAndValidation(t *testing.T) {
 		t.Fatalf("GetSettings: %v", err)
 	}
 	if got != DefaultSettings() {
-		t.Errorf("ein unbekannter Nutzer bekommt %+v statt der Defaults", got)
+		t.Errorf("an unknown user gets %+v instead of the defaults", got)
 	}
 
 	want := DefaultSettings()
@@ -352,7 +352,7 @@ func TestSettingsRoundTripAndValidation(t *testing.T) {
 	bad := DefaultSettings()
 	bad.Theme = "neon"
 	if err := st.SaveSettings(ctx, "alice", bad); !errors.Is(err, domain.ErrValidation) {
-		t.Errorf("kaputtes Theme: %v, want ErrValidation", err)
+		t.Errorf("broken theme: %v, want ErrValidation", err)
 	}
 }
 
@@ -376,7 +376,7 @@ func TestUpdateSettingsIsAtomic(t *testing.T) {
 		t.Fatalf("UpdateSettings: %v", err)
 	}
 	if got.Theme != "dark" || got.Font != "lato" {
-		t.Errorf("eine der beiden Änderungen ging verloren: %+v", got)
+		t.Errorf("one of the two changes was lost: %+v", got)
 	}
 
 	// A failing apply writes nothing.
@@ -385,10 +385,10 @@ func TestUpdateSettingsIsAtomic(t *testing.T) {
 		s.Font = "poppins"
 		return boom
 	}); !errors.Is(err, boom) {
-		t.Errorf("UpdateSettings verschluckte den Fehler: %v", err)
+		t.Errorf("UpdateSettings swallowed the error: %v", err)
 	}
 	if after, _ := st.GetSettings(ctx, "alice"); after.Font != "lato" {
-		t.Errorf("font = %q — ein abgebrochenes Update darf nichts schreiben", after.Font)
+		t.Errorf("font = %q — an aborted update must write nothing", after.Font)
 	}
 }
 
@@ -410,21 +410,21 @@ func TestCategorySoftDeleteLeavesHabitsAssigned(t *testing.T) {
 		t.Fatalf("SoftDeleteCategory: %v", err)
 	}
 	if cats, _ := st.ListCategories(ctx, "alice"); len(cats) != 0 {
-		t.Error("die gelöschte Kategorie wird noch gelistet")
+		t.Error("the deleted category is still listed")
 	}
 	after, err := st.GetHabit(ctx, "alice", h.ID)
 	if err != nil {
 		t.Fatalf("GetHabit: %v", err)
 	}
 	if after.CategoryID != c.ID {
-		t.Errorf("categoryId = %q — die Zuordnung muss stehen bleiben", after.CategoryID)
+		t.Errorf("categoryId = %q — the assignment must stay", after.CategoryID)
 	}
 
 	if err := st.RestoreCategory(ctx, "alice", c.ID); err != nil {
 		t.Fatalf("RestoreCategory: %v", err)
 	}
 	if cats, _ := st.ListCategories(ctx, "alice"); len(cats) != 1 {
-		t.Error("die Kategorie kam nicht zurück")
+		t.Error("the category did not come back")
 	}
 }
 
@@ -444,10 +444,10 @@ func TestReorderIgnoresForeignIDs(t *testing.T) {
 		t.Fatalf("ListHabits: %v", err)
 	}
 	if len(habits) != 2 || habits[0].ID != b.ID || habits[1].ID != a.ID {
-		t.Errorf("Reihenfolge = %v", habits)
+		t.Errorf("order = %v", habits)
 	}
 	// The other user's habit kept its own position.
 	if other, _ := st.ListHabits(ctx, "someone-else", true); len(other) != 1 {
-		t.Error("die fremde Liste wurde angefasst")
+		t.Error("the foreign list was touched")
 	}
 }

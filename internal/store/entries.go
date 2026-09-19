@@ -23,7 +23,7 @@ func (s *Store) EntriesForUser(ctx context.Context, userID string) (map[string]E
 		JOIN habits h ON h.id = e.habit_id
 		WHERE h.user_id = ? AND h.deleted_at IS NULL`, userID)
 	if err != nil {
-		return nil, fmt.Errorf("einträge laden: %w", err)
+		return nil, fmt.Errorf("loading entries: %w", err)
 	}
 	defer rows.Close()
 	return collectEntries(rows)
@@ -37,7 +37,7 @@ func (s *Store) EntriesForHabit(ctx context.Context, userID, habitID string) (En
 		JOIN habits h ON h.id = e.habit_id
 		WHERE h.user_id = ? AND h.deleted_at IS NULL AND e.habit_id = ?`, userID, habitID)
 	if err != nil {
-		return nil, fmt.Errorf("einträge laden: %w", err)
+		return nil, fmt.Errorf("loading entries: %w", err)
 	}
 	defer rows.Close()
 
@@ -60,11 +60,11 @@ func collectEntries(rows *sql.Rows) (map[string]EntryMap, error) {
 			value   int
 		)
 		if err := rows.Scan(&habitID, &raw, &value); err != nil {
-			return nil, fmt.Errorf("eintrag lesen: %w", err)
+			return nil, fmt.Errorf("reading entry: %w", err)
 		}
 		d, err := domain.ParseDate(raw)
 		if err != nil {
-			return nil, fmt.Errorf("eintrag von habit %s: %w", habitID, err)
+			return nil, fmt.Errorf("entry of habit %s: %w", habitID, err)
 		}
 		if out[habitID] == nil {
 			out[habitID] = EntryMap{}
@@ -83,12 +83,12 @@ func (s *Store) SetEntry(ctx context.Context, userID, habitID string, date domai
 	// The value is checked against the habit's kind below, once the row that
 	// names that kind has been read.
 	if date.IsZero() {
-		return 0, fmt.Errorf("%w: datum fehlt", domain.ErrValidation)
+		return 0, fmt.Errorf("%w: date is missing", domain.ErrValidation)
 	}
 
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
-		return 0, fmt.Errorf("transaktion starten: %w", err)
+		return 0, fmt.Errorf("starting transaction: %w", err)
 	}
 	defer tx.Rollback()
 
@@ -102,7 +102,7 @@ func (s *Store) SetEntry(ctx context.Context, userID, habitID string, date domai
 		return 0, ErrNotFound
 	}
 	if err != nil {
-		return 0, fmt.Errorf("habit prüfen: %w", err)
+		return 0, fmt.Errorf("checking habit: %w", err)
 	}
 	if err := domain.ValidateEntryValue(kind, value); err != nil {
 		return 0, err
@@ -112,7 +112,7 @@ func (s *Store) SetEntry(ctx context.Context, userID, habitID string, date domai
 	err = tx.QueryRowContext(ctx,
 		`SELECT value FROM entries WHERE habit_id = ? AND date = ?`, habitID, key).Scan(&previous)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return 0, fmt.Errorf("vorherigen wert lesen: %w", err)
+		return 0, fmt.Errorf("reading previous value: %w", err)
 	}
 
 	if value == 0 {
@@ -121,23 +121,23 @@ func (s *Store) SetEntry(ctx context.Context, userID, habitID string, date domai
 		// "not recorded" from "recorded as nothing".
 		if _, err := tx.ExecContext(ctx,
 			`DELETE FROM entries WHERE habit_id = ? AND date = ?`, habitID, key); err != nil {
-			return 0, fmt.Errorf("eintrag löschen: %w", err)
+			return 0, fmt.Errorf("deleting entry: %w", err)
 		}
 	} else {
 		if _, err := tx.ExecContext(ctx, `
 			INSERT INTO entries (habit_id, date, value, updated_at) VALUES (?,?,?,?)
 			ON CONFLICT(habit_id, date) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`,
 			habitID, key, value, formatTime(time.Now())); err != nil {
-			return 0, fmt.Errorf("eintrag speichern: %w", err)
+			return 0, fmt.Errorf("saving entry: %w", err)
 		}
 	}
 
 	if _, err := tx.ExecContext(ctx,
 		`UPDATE habits SET updated_at = ? WHERE id = ?`, formatTime(time.Now()), habitID); err != nil {
-		return 0, fmt.Errorf("habit-zeitstempel aktualisieren: %w", err)
+		return 0, fmt.Errorf("updating habit timestamp: %w", err)
 	}
 	if err := tx.Commit(); err != nil {
-		return 0, fmt.Errorf("eintrag committen: %w", err)
+		return 0, fmt.Errorf("committing entry: %w", err)
 	}
 	return previous, nil
 }

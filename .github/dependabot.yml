@@ -1,7 +1,7 @@
-# Dependabot verfolgt die Go-Abhängigkeiten und meldet neue Versionen als Pull
-# Request. Ein PR statt einer bloßen Benachrichtigung, weil er die Änderung
-# gleich mitbringt: go.mod und go.sum sind schon angepasst, es bleibt das Lesen
-# und das Mergen.
+# Dependabot tracks the Go dependencies and reports new versions as a pull
+# request. A PR rather than a bare notification, because it brings the change
+# with it: go.mod and go.sum are already adjusted, leaving the reading and the
+# merging.
 version: 2
 
 updates:
@@ -13,17 +13,17 @@ updates:
       time: "07:00"
       timezone: Europe/Berlin
 
-    # Ein PR für alle Go-Updates statt zehn einzelner. Die indirekten
-    # Abhängigkeiten stammen bis auf golang.org/x/sys alle aus dem
-    # Abhängigkeitsbaum von modernc.org/sqlite und bewegen sich im
-    # Gleichschritt; getrennte PRs wären zehnmal dieselbe Arbeit.
+    # One PR for all Go updates rather than ten separate ones. Apart from
+    # golang.org/x/sys, the indirect dependencies all come out of the
+    # dependency tree of modernc.org/sqlite and move in lockstep; separate PRs
+    # would be the same work ten times over.
     groups:
       go:
         patterns:
           - "*"
 
-    # Mit Gruppierung steht ohnehin meist nur ein PR offen. Das Limit greift
-    # erst, wenn ein Update hängen bleibt und die nächste Woche schon da ist.
+    # With grouping there is usually only one PR open anyway. The limit only
+    # bites when an update gets stuck and the next week has already arrived.
     open-pull-requests-limit: 3
 
     commit-message:

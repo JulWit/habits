@@ -105,7 +105,7 @@ async function writeEntry(habit, iso, value) {
     await deps.refresh();
     return;
   }
-  setEntryLocal(habit.id, iso, value, result.stats);
+  setEntryLocal(habit.id, iso, value, result);
 
   const when = formatRelative(iso, state.today);
   const cleared = value === 0 && result.previous > 0;

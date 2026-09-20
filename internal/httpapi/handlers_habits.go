@@ -11,11 +11,16 @@ import (
 
 // habitView is a habit plus everything the UI needs to draw it. The embedded
 // domain.Habit is flattened into the JSON object, so the client sees one flat
-// habit with two extra fields.
+// habit with a few extra fields.
 type habitView struct {
 	domain.Habit
 	Stats   domain.Stats   `json:"stats"`
 	Entries map[string]int `json:"entries"`
+	// StreakRuns are the unbroken runs the board colours, oldest first. A run
+	// keeps its true first day even when that day is older than the shipped
+	// history, because the colour of a cell depends on how long its run had
+	// been going by then.
+	StreakRuns []domain.StreakRun `json:"streakRuns"`
 }
 
 type stateResponse struct {
@@ -147,10 +152,21 @@ func (s *Server) viewFor(h domain.Habit, all store.EntryMap, today, from domain.
 			windowed[d.String()] = v
 		}
 	}
+	// A run that ended before the window is one no visible cell belongs to, so
+	// it is dropped rather than shipped; the run a visible day is part of
+	// survives whole, first day included.
+	runs := domain.StreakRuns(h, all, today)
+	visible := make([]domain.StreakRun, 0, len(runs))
+	for _, run := range runs {
+		if from.IsZero() || !run.To.Before(from) {
+			visible = append(visible, run)
+		}
+	}
 	return habitView{
-		Habit:   h,
-		Stats:   domain.ComputeStats(h, all, today, domain.DefaultRateWindowDays),
-		Entries: windowed,
+		Habit:      h,
+		Stats:      domain.ComputeStats(h, all, today, domain.DefaultRateWindowDays),
+		Entries:    windowed,
+		StreakRuns: visible,
 	}
 }
 

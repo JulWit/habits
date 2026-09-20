@@ -501,8 +501,8 @@ html.route-detail .view {
    stops the three from overlapping.
 
    A centred field needs room for the wider of the two sides twice over: the
-   controls measure 117px once the caption is gone, the field 210px, plus the
-   two gaps - 476px, rounded up for air. */
+   three controls measure 116px, the field 210px, plus the two gaps - 472px,
+   rounded up for air. */
 @container topbar (min-width: 490px) {
   .topbar-inner .board-filter {
     position: absolute;

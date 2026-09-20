@@ -282,15 +282,19 @@
 
 /* ---------- narrow screens ---------- */
 
-/* Long before a phone the bar runs out of room - and it runs out of its own
-   room, not the window's: it is capped to the board, so seven day columns give
-   it about 530px whatever the monitor does. Below the width where a centred
-   field still clears both sides (the controls are 248px wide with the caption,
-   so twice that plus the 210px field plus two gaps: 739px) the bar keeps the
-   marks and drops the words - the logo without the name, the plus without its
-   caption. Nothing is lost to a screen reader: the button has its aria-label,
-   and the heading keeps its text, just not on the screen. */
-@container topbar (max-width: 750px) {
+/* The bar keeps its brand word far longer than it used to. With no caption on
+   the add button the controls are three icons of a constant 116px, so the word
+   is no longer what decides whether a centred field clears both sides - the
+   controls are. It only has to go once the field rejoins the grid below 490px
+   and the three sit in one row: 87px of logo and word (the mark, its gap, and
+   "Habits" at 57px in Montserrat - the widest of the eight faces on offer),
+   210px of field, 116px of controls and two 15px gaps come to 443px. Rounded
+   up for air, that is where the word goes and the mark stays on alone. In
+   practice that is a phone: the bar is capped to the board, and seven day
+   columns hold it near 530px, so on a desktop the name now stays. Nothing is
+   lost to a screen reader - the heading keeps its text, just not on the
+   screen. */
+@container topbar (max-width: 450px) {
   .brand-text {
     position: absolute;
     width: 1px;
@@ -299,19 +303,17 @@
     clip-path: inset(50%);
     white-space: nowrap;
   }
-
-  .button-label { display: none; }
 }
 
 /* Narrower still, and there is no room for a field at all: what is left after
-   the logo, the four controls and the two gaps would be a slot a couple of
+   the logo, the three controls and the two gaps would be a slot a couple of
    characters wide. It goes away rather than shrink into uselessness - a board
    this narrow shows a handful of habits, which one reads rather than searches,
    and the open-only filter beside it still narrows the list. The field keeps
    its value while hidden, so nothing is lost by turning the phone sideways.
 
    The threshold is what the row needs with a field worth typing in: 19px logo,
-   117px controls, two 16px gaps - and about 190px left for the field itself. */
+   116px controls, two 15px gaps - and about 190px left for the field itself. */
 @container topbar (max-width: 360px) {
   .board-filter { display: none; }
 }

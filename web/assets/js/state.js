@@ -63,13 +63,22 @@ export function removeHabit(id) {
   notify();
 }
 
-/** Apply a single day's value locally so the cell updates without a full reload. */
-export function setEntryLocal(habitId, date, value, stats) {
+/**
+ * Apply a single day's value locally so the cell updates without a full reload.
+ *
+ * `answer` is the server's reply once it arrives: the derived numbers — the
+ * stats and the streak runs behind the cells' colours — are only ever taken
+ * from it, because they depend on history the client does not hold.
+ */
+export function setEntryLocal(habitId, date, value, answer) {
   const habit = habitById(habitId);
   if (!habit) return;
   if (value > 0) habit.entries[date] = value;
   else delete habit.entries[date];
-  if (stats) habit.stats = stats;
+  if (answer) {
+    habit.stats = answer.stats;
+    habit.streakRuns = answer.streakRuns ?? [];
+  }
   notify();
 }
 

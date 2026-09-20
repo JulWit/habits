@@ -97,6 +97,10 @@ export const icons = {
 
   search: draw('<circle cx="10.8" cy="10.8" r="6.3"/><path d="M15.4 15.4 20.5 20.5"/>'),
 
+  // A plus sign for the one control that adds something. Drawn on the same
+  // grid as the icons beside it, so the three read as one row.
+  plus: draw('<path d="M12 5.2v13.6M5.2 12h13.6"/>'),
+
   // A funnel: what a filter looks like everywhere.
   filter: draw('<path d="M3.6 5.2h16.8l-6.6 7.7v5.4l-3.6 2.1v-7.5z"/>'),
 

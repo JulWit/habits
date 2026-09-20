@@ -293,6 +293,47 @@ export function describeHabit(habit) {
   return parts.join(" · ");
 }
 
+/**
+ * The streak levels the board paints, as the number of calendar days a run has
+ * to have been going before a day earns that level.
+ *
+ * Stated in days rather than in the habit's own rhythm, because the steps are
+ * milestones a person recognises — a week, a fortnight, a month, a quarter,
+ * half a year, a year — and those pass at the same rate whether a habit is due
+ * daily or three times a week.
+ *
+ * Here rather than on the server for the same reason as heatLevel above: the
+ * server decides what a run *is*, this decides only how it is drawn.
+ */
+export const STREAK_LEVELS = [7, 14, 30, 90, 180, 365];
+
+/** Level 0…6 for a run that has been going for `days` calendar days. */
+export function streakLevel(days) {
+  let level = 0;
+  for (const needed of STREAK_LEVELS) {
+    if (days >= needed) level++;
+  }
+  return level;
+}
+
+/**
+ * How many calendar days the run covering `iso` had been going by that day, or
+ * 0 for a day outside every run.
+ *
+ * Counted from the run's own first day, which the server sends even when it is
+ * older than the history the board holds: a year-long streak is painted as one
+ * the moment it is a year old, not once its start scrolls into view.
+ */
+export function streakDaysOn(habit, iso) {
+  for (const run of habit.streakRuns ?? []) {
+    // ISO dates sort as text, which is what makes this a comparison and not a
+    // date calculation per cell.
+    if (iso < run.from || iso > run.to) continue;
+    return daysBetween(run.from, iso) + 1;
+  }
+  return 0;
+}
+
 /** Heat level 0…4 for the calendar heatmap. */
 export function heatLevel(habit, value) {
   if (!value) return 0;

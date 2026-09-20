@@ -53,6 +53,9 @@ export function dayEntry(habit, iso) {
   const value = habit.entries[iso] ?? 0;
   const future = iso > state.today;
   const scheduled = H.isScheduled(habit, iso);
+  // How long the run this day belongs to had been going by then. A day ahead of
+  // today is in no run, so a plan never borrows the colours of a streak.
+  const streakDays = H.streakDaysOn(habit, iso);
 
   const btn = document.createElement("button");
   btn.type = "button";
@@ -61,7 +64,7 @@ export function dayEntry(habit, iso) {
   btn.dataset.date = iso;
   btn.dataset.role = "cell";
   btn.style.setProperty("--habit-color", habit.color);
-  btn.setAttribute("aria-label", cellLabel(habit, iso, value, scheduled));
+  btn.setAttribute("aria-label", cellLabel(habit, iso, value, scheduled, streakDays));
 
   const mark = document.createElement("span");
   mark.className = "mark";
@@ -75,6 +78,11 @@ export function dayEntry(habit, iso) {
   if (H.isComplete(habit, value)) {
     mark.classList.remove("is-off");
     mark.classList.add("is-complete");
+    // The longer the run, the less of the habit's own colour is left over the
+    // spectrum underneath. Level 0 sets nothing, so a day outside a run — and
+    // every day of a run in its first week — is drawn exactly as before.
+    const level = H.streakLevel(streakDays);
+    if (level > 0) mark.dataset.streak = String(level);
     if (habit.kind === "check") mark.innerHTML = CHECK_SVG;
     else mark.append(numberLabel(H.cellValue(habit, value)));
   } else if (value > 0) {
@@ -103,7 +111,7 @@ function numberLabel(text) {
   return el;
 }
 
-function cellLabel(habit, iso, value, scheduled) {
+function cellLabel(habit, iso, value, scheduled, streakDays = 0) {
   const when = formatRelative(iso, state.today);
   // "Done" would be a lie about a day that has not happened yet, so a day
   // ahead reports what is planned instead.
@@ -120,5 +128,11 @@ function cellLabel(habit, iso, value, scheduled) {
           : scheduled
             ? "open"
             : "not scheduled";
-  return `${habit.name}, ${when}: ${status}`;
+  // The colours of a streak are colour alone; a screen reader gets the same
+  // information as a number. Only on days that actually carry one, so an
+  // ordinary row does not gain a suffix on every cell.
+  const run = reached && !ahead && streakDays > 0
+    ? `, day ${streakDays} of a streak`
+    : "";
+  return `${habit.name}, ${when}: ${status}${run}`;
 }

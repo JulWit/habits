@@ -9,6 +9,7 @@ import { state } from "./state.js";
 import { dayCell, habitLabel, dayEntry } from "./cells.js";
 import { paintIcons } from "./icons.js";
 import { addDays } from "./dates.js";
+import { STREAK_LEVELS } from "./habit.js";
 
 /** A date `back` days before today, for the sample cells. */
 const day = (back) => addDays(state.today, -back);
@@ -217,8 +218,30 @@ function board(s) {
     specimen("Time", cells(s.time, dates)),
     specimen("Distance", cells(s.distance, dates)),
     specimen("not scheduled", cells(s.sparse, dates)),
+    specimen("streak levels: none, 1 week … 1 year", streakScale(s.check)),
     specimen(".month-label", el("div", "month-label", "September")),
   );
+}
+
+/**
+ * One completed cell per streak level, drawn through dayEntry() like the rest
+ * of this page.
+ *
+ * Each cell gets its own day and its own run, reaching exactly as far back as
+ * the level it stands for — the rendering path is then the real one, down to
+ * how the run is looked up.
+ */
+function streakScale(habit) {
+  const row = el("div", "sg-cells");
+  [0, ...STREAK_LEVELS].forEach((length, i) => {
+    const iso = day(i);
+    row.append(dayEntry({
+      ...habit,
+      entries: { [iso]: 1 },
+      streakRuns: length ? [{ from: addDays(iso, -(length - 1)), to: iso }] : [],
+    }, iso));
+  });
+  return row;
 }
 
 function heatmap() {

@@ -21,6 +21,9 @@ type setEntryResponse struct {
 	// without any client-side persistence: to undo, write Previous back.
 	Previous int          `json:"previous"`
 	Stats    domain.Stats `json:"stats"`
+	// StreakRuns travel with every write: one tick can start, extend, join or
+	// end a run, and the board has to recolour without a full reload.
+	StreakRuns []domain.StreakRun `json:"streakRuns"`
 }
 
 func (s *Server) handleSetEntry(w http.ResponseWriter, r *http.Request) {
@@ -59,11 +62,12 @@ func (s *Server) handleSetEntry(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, setEntryResponse{
-		HabitID:  habitID,
-		Date:     date,
-		Value:    body.Value,
-		Previous: previous,
-		Stats:    view.Stats,
+		HabitID:    habitID,
+		Date:       date,
+		Value:      body.Value,
+		Previous:   previous,
+		Stats:      view.Stats,
+		StreakRuns: view.StreakRuns,
 	})
 }
 

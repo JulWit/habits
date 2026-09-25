@@ -65,6 +65,9 @@ export function dayEntry(habit, iso) {
   btn.dataset.role = "cell";
   btn.style.setProperty("--habit-color", habit.color);
   btn.setAttribute("aria-label", cellLabel(habit, iso, value, scheduled, streakDays));
+  // A day outside the chosen weekdays takes nothing. A leftover value from
+  // before the days changed stays tappable, so it can still be cleared.
+  if (!H.acceptsEntry(habit, iso) && value === 0) btn.disabled = true;
 
   const mark = document.createElement("span");
   mark.className = "mark";

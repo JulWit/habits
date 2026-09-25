@@ -30,6 +30,14 @@ export function isScheduled(habit, iso) {
 }
 
 /**
+ * Whether a value may be recorded on a day. Mirrors domain.Habit.AcceptsEntry:
+ * only a habit with chosen weekdays closes the other days.
+ */
+export function acceptsEntry(habit, iso) {
+  return habit.frequency.kind !== "weekdays" || isScheduled(habit, iso);
+}
+
+/**
  * What the server says about a kind: how fine its stored unit is, how much one
  * tap adds, and the largest a day may be.
  *

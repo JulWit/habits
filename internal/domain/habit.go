@@ -399,6 +399,19 @@ func (h Habit) IsScheduled(d Date) bool {
 	return false
 }
 
+// AcceptsEntry reports whether a value may be recorded on d.
+//
+// Only FreqWeekdays closes days: picking the days is the whole point of that
+// frequency, so a tick on any other day is a mistake. Every other frequency
+// stays open on all days — for times-per-week any day counts anyway, and an
+// every-n-days rhythm is allowed to slip by a day.
+func (h Habit) AcceptsEntry(d Date) bool {
+	if h.Frequency.Kind == FreqWeekdays {
+		return h.IsScheduled(d)
+	}
+	return true
+}
+
 func (h Habit) IsArchived() bool { return h.ArchivedAt != nil }
 
 // DefaultColors is the palette offered in the editor, kept in the domain so the

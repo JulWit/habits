@@ -47,6 +47,10 @@ function announce(text) {
 export function tapEntry(habitId, iso) {
   const habit = habitById(habitId);
   if (!habit) return;
+  if (!H.acceptsEntry(habit, iso)) {
+    clearClosedDay(habit, iso);
+    return;
+  }
   const current = habit.entries[iso] ?? 0;
   const next = H.nextValue(habit, current);
   // At the per-kind ceiling a tap has nothing left to do. Writing anyway would
@@ -59,11 +63,23 @@ export function tapEntry(habitId, iso) {
 export function editEntry(habitId, iso) {
   const habit = habitById(habitId);
   if (!habit) return;
+  if (!H.acceptsEntry(habit, iso)) {
+    clearClosedDay(habit, iso);
+    return;
+  }
   if (habit.kind === "check") {
     writeEntry(habit, iso, (habit.entries[iso] ?? 0) > 0 ? 0 : 1);
     return;
   }
   openValueDialog(habit, iso, (value) => writeEntry(habit, iso, value));
+}
+
+/**
+ * A day outside the chosen weekdays can only lose a value left over from
+ * before the days changed; there is nothing to set there.
+ */
+function clearClosedDay(habit, iso) {
+  if ((habit.entries[iso] ?? 0) > 0) writeEntry(habit, iso, 0);
 }
 
 /**
@@ -114,6 +130,12 @@ async function writeEntry(habit, iso, value) {
   announce(value === 0
     ? `${habit.name}, ${when}: cleared`
     : `${habit.name}, ${when}: ${H.formatValue(habit, value)}`);
+  // Undo would write the old value back onto a day that no longer takes one,
+  // and the server would refuse it — so clearing such a day is final.
+  if (!H.acceptsEntry(habit, iso)) {
+    toast(`Entry cleared: ${habit.name}, ${when}`);
+    return;
+  }
   record({
     label: `${habit.name} — ${when}`,
     // Only clearing a day interrupts with a toast; ticking something off is

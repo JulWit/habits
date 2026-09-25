@@ -64,3 +64,34 @@ func TestEntryValueIsBounded(t *testing.T) {
 		t.Errorf("date beyond the horizon: status %d, want 422", w.Code)
 	}
 }
+
+// A habit with chosen weekdays takes no entry on any other day, but a leftover
+// entry there can still be cleared.
+func TestEntryOnUnscheduledWeekdayIsRefused(t *testing.T) {
+	h := newTestServer(t)
+	// Monday and Friday.
+	w := do(t, h, "POST", "/api/habits",
+		`{"name":"Gym","kind":"check","frequency":{"kind":"weekdays","weekdays":17}}`,
+		"application/json")
+	if w.Code != http.StatusCreated {
+		t.Fatalf("creating habit: %d (%s)", w.Code, w.Body)
+	}
+	var created struct {
+		ID string `json:"id"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &created); err != nil {
+		t.Fatalf("reading response: %v", err)
+	}
+
+	base := "/api/habits/" + created.ID + "/entries/"
+	// 2026-09-14 is a Monday, 2026-09-15 a Tuesday.
+	if w := do(t, h, "PUT", base+"2026-09-14", `{"value":1}`, "application/json"); w.Code != http.StatusOK {
+		t.Errorf("scheduled day: status %d, want 200 (%s)", w.Code, w.Body)
+	}
+	if w := do(t, h, "PUT", base+"2026-09-15", `{"value":1}`, "application/json"); w.Code != http.StatusUnprocessableEntity {
+		t.Errorf("unscheduled day: status %d, want 422 (%s)", w.Code, w.Body)
+	}
+	if w := do(t, h, "PUT", base+"2026-09-15", `{"value":0}`, "application/json"); w.Code != http.StatusOK {
+		t.Errorf("clearing an unscheduled day: status %d, want 200 (%s)", w.Code, w.Body)
+	}
+}

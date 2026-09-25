@@ -50,6 +50,20 @@ func (s *Server) handleSetEntry(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Clearing is always allowed, so an entry left over from before the days
+	// were changed can still be removed.
+	if body.Value > 0 {
+		habit, err := s.store.GetHabit(r.Context(), user.ID, habitID)
+		if err != nil {
+			s.writeStoreError(w, err, "loading habit")
+			return
+		}
+		if !habit.AcceptsEntry(date) {
+			writeError(w, http.StatusUnprocessableEntity, "The habit is not scheduled on this weekday")
+			return
+		}
+	}
+
 	previous, err := s.store.SetEntry(r.Context(), user.ID, habitID, date, body.Value)
 	if err != nil {
 		s.writeStoreError(w, err, "saving entry")

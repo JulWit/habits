@@ -37,6 +37,14 @@ function knownFont(font) {
   return FONTS.includes(font) ? font : DEFAULT_FONT;
 }
 
+/** The spacing steps the stylesheet has tokens for, mirroring store.Densities. */
+const DENSITIES = ["compact", "standard", "comfortable"];
+const DEFAULT_DENSITY = "standard";
+
+function knownDensity(density) {
+  return DENSITIES.includes(density) ? density : DEFAULT_DENSITY;
+}
+
 /** The background textures the stylesheet draws, mirroring store.Patterns. */
 const PATTERNS = ["none", "dots", "grid", "diagonal", "cross", "image"];
 const DEFAULT_PATTERN = "none";
@@ -141,13 +149,15 @@ function initServiceWorker() {
 async function main() {
   // Before the views wire themselves up, so every declared icon is in place.
   paintIcons();
+  // Before the board, so a change that alters the column width - the density,
+  // the reorder mode - lands on <html> before the board measures what fits.
+  initAppearance();
   initCategoryPicker({ createCategory: actions.createCategory });
   initEditor();
   initValueDialog();
   initOverview(handlers);
   initDetail(handlers);
   initCategory(handlers);
-  initAppearance();
   initEditMode();
   initScrollState();
   initServiceWorker();
@@ -356,6 +366,9 @@ function initAppearance() {
     const root = document.documentElement;
     root.dataset.theme = knownTheme(state.settings?.theme);
     root.dataset.font = knownFont(state.settings?.font);
+    // Also decides the width of a day column, which is why this subscriber is
+    // registered before the board's.
+    root.dataset.density = knownDensity(state.settings?.density);
     root.dataset.pattern = knownPattern(state.settings?.pattern);
     // The width of the board's last column depends on it: one handle or two
     // arrows.

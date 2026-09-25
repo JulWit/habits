@@ -280,6 +280,10 @@ var migrations = []string{
 	// How strongly today's column is marked. A hundred is what it has always
 	// been, so nothing changes for anyone who never touches the slider.
 	`ALTER TABLE user_settings ADD COLUMN band_opacity INTEGER NOT NULL DEFAULT 100;`,
+
+	// How tightly the interface is packed. "standard" is the spacing it has always
+	// had, so nothing moves for anyone until they choose otherwise.
+	`ALTER TABLE user_settings ADD COLUMN density TEXT NOT NULL DEFAULT 'standard';`,
 }
 
 func (s *Store) migrate(ctx context.Context) error {

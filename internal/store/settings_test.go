@@ -25,6 +25,7 @@ func TestSettingsRoundTripAndValidation(t *testing.T) {
 	want := DefaultSettings()
 	want.Theme = "dark"
 	want.Font = "geist"
+	want.Density = "compact"
 	want.OverviewDays = 21
 	want.BandOpacity = 40
 	if err := st.SaveSettings(ctx, "alice", want); err != nil {
@@ -38,6 +39,12 @@ func TestSettingsRoundTripAndValidation(t *testing.T) {
 	bad.Theme = "neon"
 	if err := st.SaveSettings(ctx, "alice", bad); !errors.Is(err, domain.ErrValidation) {
 		t.Errorf("broken theme: %v, want ErrValidation", err)
+	}
+
+	bad = DefaultSettings()
+	bad.Density = "cramped"
+	if err := st.SaveSettings(ctx, "alice", bad); !errors.Is(err, domain.ErrValidation) {
+		t.Errorf("broken density: %v, want ErrValidation", err)
 	}
 }
 

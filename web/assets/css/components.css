@@ -5,7 +5,7 @@
 .board-filter {
   display: flex;
   align-items: center;
-  gap: .5rem;
+  gap: calc(.5 * var(--space));
   min-width: 0;
 }
 
@@ -15,7 +15,7 @@
 
 .search-icon {
   position: absolute;
-  left: .6rem;
+  left: calc(.6 * var(--space));
   display: flex;
   color: var(--text-faint);
   pointer-events: none;
@@ -30,7 +30,9 @@
   background: var(--search-bg);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  padding: .45rem .7rem .45rem 2.1rem;
+  /* The left padding clears the magnifier: its offset, which follows the
+     density, plus the icon and a fixed half rem of air after it. */
+  padding: calc(.45 * var(--space)) calc(.7 * var(--space)) calc(.45 * var(--space)) calc(.6 * var(--space) + 1.5rem);
   color: inherit;
 }
 
@@ -55,13 +57,13 @@
 .board {
   display: flex;
   flex-direction: column;
-  gap: .85rem;
+  gap: calc(.85 * var(--space));
   /* A stacking context, so the cards' own layers stay contained. */
   position: relative;
   isolation: isolate;
   /* The air under a category heading. Named because the today band starts at
      that line and has to follow it. */
-  --head-gap: .3rem;
+  --head-gap: calc(.3 * var(--space));
   /* Where the today column starts, measured from the padding edge of the card
      the band is drawn in: past the card padding, the name column, the gap
      after it, and the columns before today. */
@@ -154,7 +156,7 @@ html:not(.route-detail):not(.route-styleguide) .topbar-inner {
      position rather than only where it is needed - parked under the title bar -
      because a padding that appears on scrolling would push the whole board down
      by its own height the moment the page moves. */
-  padding: .4rem var(--block-pad-x) 0;
+  padding: calc(.4 * var(--space)) var(--block-pad-x) 0;
   /* Sticky so the dates stay readable while scrolling past several blocks. */
   position: sticky;
   top: var(--topbar-h);
@@ -205,13 +207,13 @@ html:not(.route-detail):not(.route-styleguide) .topbar-inner {
 .block-head {
   display: flex;
   align-items: center;
-  gap: .6rem;
+  gap: calc(.6 * var(--space));
   /* A margin, not padding: the heading carries the line that separates it from
      the rows, and a border is drawn across the whole box. With padding the line
      would run out past the card and across the handles; with a margin the box
      itself ends where the card's surface does. The handles get that space back
      below. */
-  padding: .4rem 0 .5rem .55rem;
+  padding: calc(.4 * var(--space)) 0 calc(.5 * var(--space)) calc(.55 * var(--space));
   margin-right: var(--tools-inset);
   /* Separates the heading from the rows below. Inset by the card's own padding
      rather than bleeding to the edges, so it sits inside the rounded corners
@@ -222,7 +224,7 @@ html:not(.route-detail):not(.route-styleguide) .topbar-inner {
 
 .block-title {
   font-size: .92rem;
-  font-weight: 650;
+  font-weight: var(--weight-bold);
   letter-spacing: .01em;
   /* Takes the free space so the tools sit at the right edge. Truncating a long
      name is the link's job, not this box's: the link reaches past this edge by
@@ -245,7 +247,7 @@ html:not(.route-detail):not(.route-styleguide) .topbar-inner {
 .block-tools {
   display: flex;
   align-items: center;
-  gap: .1rem;
+  gap: calc(.1 * var(--space));
   margin-right: calc(-1 * var(--tools-inset));
   margin-block: -2px;
 }
@@ -275,9 +277,9 @@ html:not(.route-detail):not(.route-styleguide) .topbar-inner {
   background: none;
   border: none;
   cursor: pointer;
-  padding: .5rem .4rem;
-  margin-inline: -.4rem;
-  margin-block: -.25rem;
+  padding: calc(.5 * var(--space)) calc(.4 * var(--space));
+  margin-inline: calc(-.4 * var(--space));
+  margin-block: calc(-.25 * var(--space));
   border-radius: var(--radius-sm);
   transition: background .12s ease;
   max-width: 100%;
@@ -295,9 +297,9 @@ html:not(.route-detail):not(.route-styleguide) .topbar-inner {
 .cat-habit {
   display: flex;
   align-items: center;
-  gap: .7rem;
+  gap: calc(.7 * var(--space));
   width: 100%;
-  padding: .6rem .5rem;
+  padding: calc(.6 * var(--space)) calc(.5 * var(--space));
   border: none;
   border-radius: var(--radius-sm);
   background: none;
@@ -320,7 +322,7 @@ html:not(.route-detail):not(.route-styleguide) .topbar-inner {
 .cat-habit-text {
   display: flex;
   flex-direction: column;
-  gap: .1rem;
+  gap: calc(.1 * var(--space));
   flex: 1;
   min-width: 0;
 }
@@ -338,12 +340,12 @@ html:not(.route-detail):not(.route-styleguide) .topbar-inner {
 .block-progress {
   display: flex;
   align-items: center;
-  gap: .45rem;
+  gap: calc(.45 * var(--space));
   flex: none;
   /* The same indent the title keeps on the left, so the bar sits inside the
      card rather than against its edge. In the edit mode the tools take over
      that job and this only widens the gap to them, which is harmless. */
-  margin-right: .55rem;
+  margin-right: calc(.55 * var(--space));
   color: var(--text-muted);
   font-size: .78rem;
   font-variant-numeric: tabular-nums;
@@ -356,7 +358,7 @@ html:not(.route-detail):not(.route-styleguide) .topbar-inner {
    evenly - a category with a dozen habits must not push the heading around. */
 .block-progress-track {
   display: flex;
-  gap: .15rem;
+  gap: calc(.15 * var(--space));
   flex: none;
   width: calc(var(--segments) * .7rem);
   max-width: 6rem;
@@ -378,7 +380,7 @@ html:not(.route-detail):not(.route-styleguide) .topbar-inner {
 
 .block-empty {
   margin: 0;
-  padding: .35rem .55rem .8rem;
+  padding: calc(.35 * var(--space)) calc(.55 * var(--space)) calc(.8 * var(--space));
   color: var(--text-faint);
   font-size: .82rem;
 }
@@ -388,11 +390,11 @@ html:not(.route-detail):not(.route-styleguide) .topbar-inner {
 .inline-input {
   font: inherit;
   font-size: .92rem;
-  font-weight: 650;
+  font-weight: var(--weight-bold);
   background: var(--bg);
   border: 1px solid var(--primary);
   border-radius: var(--radius-sm);
-  padding: .2rem .45rem;
+  padding: calc(.2 * var(--space)) calc(.45 * var(--space));
   min-width: 12rem;
   max-width: 100%;
 }
@@ -403,9 +405,9 @@ html:not(.route-detail):not(.route-styleguide) .topbar-inner {
    two months. */
 .month-label {
   align-self: end;
-  padding: 0 .3rem .15rem;
+  padding: 0 calc(.3 * var(--space)) calc(.15 * var(--space));
   font-size: .68rem;
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
   letter-spacing: .04em;
   color: var(--text-muted);
   /* A long name in a short run is clipped rather than pushing the grid wider. */
@@ -422,7 +424,7 @@ html:not(.route-detail):not(.route-styleguide) .topbar-inner {
   /* A little more air than the plain padding, so the name is not pressed
      against the line. Only where there is a line to keep away from: the
      leftmost label has none and keeps its own indent. */
-  padding-left: .55rem;
+  padding-left: calc(.55 * var(--space));
 }
 
 /* The date cell cannot use a border for its half of the line: the cell is
@@ -450,11 +452,11 @@ html:not(.route-detail):not(.route-styleguide) .topbar-inner {
   /* Centred on the date row, so the arrows sit level with the day numbers
      rather than with the header block as a whole. */
   align-items: center;
-  gap: .15rem;
+  gap: calc(.15 * var(--space));
   /* The date cell carries more padding below its text than above it, so the
      text block sits a hair above the middle of the row. The same offset here
      puts the arrows on the text's centre line rather than the row's. */
-  padding: 0 0 .15rem .3rem;
+  padding: 0 0 calc(.15 * var(--space)) calc(.3 * var(--space));
 }
 
 .day-nav .icon-button {
@@ -481,7 +483,7 @@ html:not(.route-detail):not(.route-styleguide) .topbar-inner {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: .35rem 0 .5rem;
+  padding: calc(.35 * var(--space)) 0 calc(.5 * var(--space));
   border-radius: var(--radius-sm);
   color: var(--text-faint);
   font-size: .7rem;
@@ -489,7 +491,7 @@ html:not(.route-detail):not(.route-styleguide) .topbar-inner {
      the smallest lettering on the board, and the extra weight is what keeps
      them legible - over a photograph as much as over a plain page. Mondays and
      today go further still, in the rules below. */
-  font-weight: 500;
+  font-weight: var(--weight-medium);
   line-height: 1.25;
 }
 
@@ -524,7 +526,7 @@ html[data-pattern="image"][data-scrolled="on"] .day-header {
   position: relative;
   isolation: isolate;
   color: var(--text);
-  font-weight: 650;
+  font-weight: var(--weight-bold);
 }
 
 .grid-head.is-today::before {
@@ -538,7 +540,7 @@ html[data-pattern="image"][data-scrolled="on"] .day-header {
   width: calc(var(--cell) + 4px);
   aspect-ratio: 1;
   left: 50%;
-  top: calc(50% - .075rem);
+  top: calc(50% - .075 * var(--space));
   translate: -50% -50%;
   border-radius: 50%;
   background: var(--today-shown);
@@ -558,7 +560,7 @@ html[data-pattern="image"][data-scrolled="on"] .day-header {
    background; a fill and a weight do not fight over the same cell. */
 .grid-head.is-week-start .dow,
 .grid-head.is-week-start .dom {
-  font-weight: 700;
+  font-weight: var(--weight-heavy);
 }
 
 /* The name column of a row: the label fills it, the arrows lie on top of its
@@ -576,7 +578,7 @@ html[data-pattern="image"][data-scrolled="on"] .day-header {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: .1rem;
+  gap: calc(.1 * var(--space));
 }
 
 /* Reordering is a mode, not something that appears under the pointer. Outside
@@ -632,12 +634,12 @@ html[data-filtering="on"] {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: .1rem;
+  gap: calc(.1 * var(--space));
   min-width: 0;
   text-align: left;
   /* Tighter at the sides than a button would normally be: every pixel here is
      one the second line does not get. */
-  padding: .5rem .4rem;
+  padding: calc(.5 * var(--space)) calc(.4 * var(--space));
   border: none;
   border-radius: var(--radius-sm);
   background: transparent;
@@ -647,7 +649,7 @@ html[data-filtering="on"] {
 .habit-cell:hover .habit-main { background: var(--surface-2); }
 
 .habit-name {
-  font-weight: 550;
+  font-weight: var(--weight-emphasis);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -671,7 +673,7 @@ html[data-filtering="on"] {
   /* min-height, not height: a fixed height would stop the cell from stretching
      to the row, and the mark would then sit at the top edge instead of level
      with the two-line habit label beside it. */
-  min-height: 3rem;
+  min-height: calc(3 * var(--space));
   border: none;
   border-radius: var(--radius-sm);
   background: transparent;
@@ -703,7 +705,7 @@ html[data-filtering="on"] {
   display: grid;
   place-items: center;
   font-size: .7rem;
-  font-weight: 650;
+  font-weight: var(--weight-bold);
   color: var(--text-muted);
   background:
     conic-gradient(var(--habit-color) calc(var(--p) * 360deg), transparent 0);
@@ -825,46 +827,46 @@ html[data-filtering="on"] {
 .detail-head {
   display: flex;
   align-items: flex-start;
-  gap: .75rem;
-  margin-bottom: 1.25rem;
+  gap: calc(.75 * var(--space));
+  margin-bottom: calc(1.25 * var(--space));
 }
 
-.detail-title { display: flex; flex-direction: column; gap: .15rem; flex: 1; min-width: 0; }
-.detail-title h2 { font-size: 1.4rem; display: flex; align-items: center; gap: .5rem; }
+.detail-title { display: flex; flex-direction: column; gap: calc(.15 * var(--space)); flex: 1; min-width: 0; }
+.detail-title h2 { font-size: 1.4rem; display: flex; align-items: center; gap: calc(.5 * var(--space)); }
 .detail-title .dot { width: .7rem; height: .7rem; border-radius: 50%; background: var(--habit-color); flex: none; }
 .detail-title .sub { color: var(--text-muted); font-size: .85rem; }
 
 .stat-row {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
-  gap: .75rem;
-  margin-bottom: 1.5rem;
+  gap: calc(.75 * var(--space));
+  margin-bottom: calc(1.5 * var(--space));
 }
 
 .stat {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: .8rem .9rem;
+  padding: calc(.8 * var(--space)) calc(.9 * var(--space));
 }
 
-.stat .value { font-size: 1.5rem; font-weight: 650; letter-spacing: -.02em; }
+.stat .value { font-size: 1.5rem; font-weight: var(--weight-bold); letter-spacing: -.02em; }
 .stat .label { color: var(--text-faint); font-size: .74rem; text-transform: uppercase; letter-spacing: .05em; }
 
 .panel {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 1rem;
-  margin-bottom: 1.25rem;
+  padding: var(--space);
+  margin-bottom: calc(1.25 * var(--space));
   box-shadow: var(--shadow);
 }
 
-.panel h3 { font-size: .9rem; color: var(--text-muted); margin-bottom: .85rem; }
+.panel h3 { font-size: .9rem; color: var(--text-muted); margin-bottom: calc(.85 * var(--space)); }
 
 /* ---------- heatmap ---------- */
 
-.heatmap-scroll { overflow-x: auto; padding-bottom: .35rem; }
+.heatmap-scroll { overflow-x: auto; padding-bottom: calc(.35 * var(--space)); }
 
 /* A whole year is around 37 columns, wider than the panel on a phone. The body
    sizes to its content so the month row and the grid scroll together as one. */
@@ -874,7 +876,7 @@ html[data-filtering="on"] {
   display: grid;
   grid-template-columns: repeat(var(--weeks), var(--heat-cell));
   gap: var(--heat-gap);
-  margin-bottom: .25rem;
+  margin-bottom: calc(.25 * var(--space));
   height: .9rem;
   color: var(--text-faint);
   font-size: .68rem;
@@ -915,8 +917,8 @@ html[data-filtering="on"] {
 .heatmap-legend {
   display: flex;
   align-items: center;
-  gap: .35rem;
-  margin-top: .6rem;
+  gap: calc(.35 * var(--space));
+  margin-top: calc(.6 * var(--space));
   color: var(--text-faint);
   font-size: .72rem;
 }
@@ -936,13 +938,13 @@ html[data-filtering="on"] {
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-sm);
   box-shadow: var(--shadow);
-  padding: .4rem .6rem;
+  padding: calc(.4 * var(--space)) calc(.6 * var(--space));
   font-size: .78rem;
   line-height: 1.35;
   white-space: nowrap;
 }
 
-.chart-tooltip .tip-date { font-weight: 600; }
+.chart-tooltip .tip-date { font-weight: var(--weight-semibold); }
 .chart-tooltip .tip-status { color: var(--text-muted); }
 
 /* A day square and a bar are hover targets, so they say so. */
@@ -959,19 +961,19 @@ html[data-filtering="on"] {
   z-index: 60;
   display: flex;
   flex-direction: column-reverse;
-  gap: .5rem;
+  gap: calc(.5 * var(--space));
   width: min(28rem, calc(100vw - 2rem));
 }
 
 .toast {
   display: flex;
   align-items: center;
-  gap: .75rem;
+  gap: calc(.75 * var(--space));
   background: var(--surface);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
-  padding: .6rem .6rem .6rem .9rem;
+  padding: calc(.6 * var(--space)) calc(.6 * var(--space)) calc(.6 * var(--space)) calc(.9 * var(--space));
   animation: toast-in .16s ease-out;
 }
 
@@ -992,11 +994,11 @@ html[data-filtering="on"] {
    Only ever seen on #/styleguide. Its own prefix, so nothing here can reach
    into the app by accident. */
 
-.sg-head { padding: .5rem 0 1.5rem; }
+.sg-head { padding: calc(.5 * var(--space)) 0 calc(1.5 * var(--space)); }
 .sg-head h1 { font-size: 1.5rem; }
 
 .sg-note {
-  margin: .35rem 0 0;
+  margin: calc(.35 * var(--space)) 0 0;
   color: var(--text-muted);
   font-size: .85rem;
   max-width: 46rem;
@@ -1006,7 +1008,7 @@ html[data-filtering="on"] {
    own background, because the page behind it can only have one theme. */
 .sg-themes {
   display: grid;
-  gap: 1.25rem;
+  gap: calc(1.25 * var(--space));
   grid-template-columns: repeat(auto-fit, minmax(28rem, 1fr));
   align-items: start;
 }
@@ -1016,7 +1018,7 @@ html[data-filtering="on"] {
   color: var(--text);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 1rem 1.15rem 1.5rem;
+  padding: var(--space) calc(1.15 * var(--space)) calc(1.5 * var(--space));
 }
 
 .sg-theme-title {
@@ -1024,11 +1026,11 @@ html[data-filtering="on"] {
   text-transform: uppercase;
   letter-spacing: .08em;
   color: var(--text-muted);
-  padding-bottom: .75rem;
+  padding-bottom: calc(.75 * var(--space));
   border-bottom: 1px solid var(--border);
 }
 
-.sg-section { padding-top: 1.5rem; }
+.sg-section { padding-top: calc(1.5 * var(--space)); }
 .sg-title { font-size: 1rem; }
 
 /* Specimens wrap and sit on a baseline of their own, so a row of buttons and a
@@ -1037,8 +1039,8 @@ html[data-filtering="on"] {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
-  gap: 1rem .9rem;
-  margin-top: .9rem;
+  gap: var(--space) calc(.9 * var(--space));
+  margin-top: calc(.9 * var(--space));
 }
 
 .sg-row.is-block { display: block; }
@@ -1047,7 +1049,7 @@ html[data-filtering="on"] {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: .3rem;
+  gap: calc(.3 * var(--space));
   min-width: 0;
 }
 
@@ -1071,7 +1073,7 @@ html[data-filtering="on"] {
   display: grid;
   grid-template-columns: auto 1fr auto;
   align-items: center;
-  gap: .3rem .6rem;
+  gap: calc(.3 * var(--space)) calc(.6 * var(--space));
   font-size: .78rem;
 }
 
@@ -1096,12 +1098,12 @@ html[data-filtering="on"] {
    habit's colour like every other part of the detail view. */
 
 .cum-summary {
-  margin: -.35rem 0 1rem;
+  margin: calc(-.35 * var(--space)) 0 var(--space);
   color: var(--text-muted);
   font-size: .85rem;
 }
 
-.cum-summary strong { color: var(--text); font-weight: 650; }
+.cum-summary strong { color: var(--text); font-weight: var(--weight-bold); }
 
 .cum-empty { margin: 0; color: var(--text-faint); font-size: .85rem; }
 
@@ -1113,14 +1115,14 @@ html[data-filtering="on"] {
   text-align: right;
   font-size: .72rem;
   color: var(--text-faint);
-  padding-bottom: .2rem;
+  padding-bottom: calc(.2 * var(--space));
   border-bottom: 1px dashed var(--border);
 }
 
 .cum-bars {
   display: grid;
   grid-template-columns: repeat(var(--cols), 1fr);
-  gap: .3rem;
+  gap: calc(.3 * var(--space));
   align-items: end;
   height: 9rem;
 }
@@ -1152,8 +1154,8 @@ html[data-filtering="on"] {
 .cum-months {
   display: grid;
   grid-template-columns: repeat(var(--cols), 1fr);
-  gap: .3rem;
-  margin-top: .4rem;
+  gap: calc(.3 * var(--space));
+  margin-top: calc(.4 * var(--space));
   font-size: .68rem;
   color: var(--text-faint);
   text-align: center;
@@ -1165,15 +1167,15 @@ html[data-filtering="on"] {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
-  margin-bottom: .85rem;
+  gap: var(--space);
+  margin-bottom: calc(.85 * var(--space));
   flex-wrap: wrap;
 }
 
 .cum-head h3 { margin-bottom: 0; }
 
 .segmented.cum-grain { width: auto; flex: none; }
-.segmented.cum-grain span { padding: .25rem .7rem; font-size: .78rem; }
+.segmented.cum-grain span { padding: calc(.25 * var(--space)) calc(.7 * var(--space)); font-size: .78rem; }
 
 /* Nine monthly bars can afford the wide gap; thirty daily ones cannot, or the
    gaps take more room than the bars. */
@@ -1184,7 +1186,7 @@ html[data-filtering="on"] {
    their labels scroll sideways together — the same arrangement the heatmap
    above uses. The track stretches to the panel when there is room to spare, so
    a handful of monthly bars still fill the width instead of huddling left. */
-.cum-scroll { overflow-x: auto; padding-bottom: .35rem; }
+.cum-scroll { overflow-x: auto; padding-bottom: calc(.35 * var(--space)); }
 
 .cum-track { min-width: 100%; width: max-content; }
 

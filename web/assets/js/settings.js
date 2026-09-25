@@ -13,6 +13,7 @@ import { errorText, toast } from "./undo.js";
 let dialog;
 let themeInputs;
 let fontSelect;
+let densityInputs;
 let patternSelect;
 let bandChoices;
 let bandOpacity;
@@ -53,6 +54,7 @@ export function initSettings(handlers = {}) {
   dialog = document.getElementById("settings-dialog");
   themeInputs = [...dialog.querySelectorAll('input[name="settings-theme"]')];
   fontSelect = document.getElementById("settings-font");
+  densityInputs = [...dialog.querySelectorAll('input[name="settings-density"]')];
   patternSelect = document.getElementById("settings-pattern");
   bandChoices = document.getElementById("band-choices");
   bandOpacity = document.getElementById("band-opacity");
@@ -96,6 +98,9 @@ export function initSettings(handlers = {}) {
     input.addEventListener("change", () => saveSetting({ theme: input.value }));
   }
   fontSelect.addEventListener("change", () => saveSetting({ font: fontSelect.value }));
+  for (const input of densityInputs) {
+    input.addEventListener("change", () => saveSetting({ density: input.value }));
+  }
   patternSelect.addEventListener("change", () => saveSetting({ pattern: patternSelect.value }));
   bandChoices.addEventListener("click", (event) => {
     const swatch = event.target.closest(".swatch");
@@ -167,12 +172,14 @@ function paint() {
   if (!dialog) return;
   const theme = state.settings?.theme ?? "system";
   const font = state.settings?.font ?? "inter";
+  const density = state.settings?.density ?? "standard";
   const pattern = state.settings?.pattern ?? "none";
   const days = state.settings?.overviewDays ?? 0;
   const reorder = state.settings?.reorderMode ?? "drag";
 
   for (const input of themeInputs) input.checked = input.value === theme;
   fontSelect.value = font;
+  for (const input of densityInputs) input.checked = input.value === density;
   patternSelect.value = pattern;
   paintBandChoices(state.settings?.bandColor ?? NEUTRAL_BAND);
   bandOpacity.value = String(state.settings?.bandOpacity ?? 100);

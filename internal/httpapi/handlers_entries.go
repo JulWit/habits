@@ -102,6 +102,7 @@ func (s *Server) handleUpdateSettings(w http.ResponseWriter, r *http.Request) {
 		OverviewDays *int    `json:"overviewDays"`
 		ShowArchived *bool   `json:"showArchived"`
 		Font         *string `json:"font"`
+		Density      *string `json:"density"`
 		ReorderMode  *string `json:"reorderMode"`
 		Pattern      *string `json:"pattern"`
 		AlignWeeks   *bool   `json:"alignWeeks"`
@@ -129,6 +130,11 @@ func (s *Server) handleUpdateSettings(w http.ResponseWriter, r *http.Request) {
 	if in.Font != nil && !store.ValidFont(*in.Font) {
 		writeError(w, http.StatusUnprocessableEntity,
 			fmt.Sprintf("font must be one of %v", store.Fonts))
+		return
+	}
+	if in.Density != nil && !store.ValidDensity(*in.Density) {
+		writeError(w, http.StatusUnprocessableEntity,
+			fmt.Sprintf("density must be one of %v", store.Densities))
 		return
 	}
 	if in.ReorderMode != nil && !store.ValidReorderMode(*in.ReorderMode) {
@@ -188,6 +194,7 @@ func (s *Server) handleUpdateSettings(w http.ResponseWriter, r *http.Request) {
 	settings, err := s.store.UpdateSettings(r.Context(), user.ID, func(cur *store.Settings) error {
 		setIf(&cur.Theme, in.Theme)
 		setIf(&cur.Font, in.Font)
+		setIf(&cur.Density, in.Density)
 		setIf(&cur.ReorderMode, in.ReorderMode)
 		setIf(&cur.Pattern, in.Pattern)
 		setIf(&cur.AlignWeeks, in.AlignWeeks)

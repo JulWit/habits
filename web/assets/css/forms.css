@@ -15,13 +15,13 @@
 .dialog::backdrop { background: rgba(0, 0, 0, .55); }
 
 .dialog-head {
-  padding: 1rem 1.15rem .25rem;
+  padding: var(--space) calc(1.15 * var(--space)) calc(.25 * var(--space));
   font-size: 1.05rem;
-  font-weight: 650;
+  font-weight: var(--weight-bold);
 }
 
 .dialog-body {
-  padding: .75rem 1.15rem;
+  padding: calc(.75 * var(--space)) calc(1.15 * var(--space));
   max-height: min(70dvh, 40rem);
   overflow-y: auto;
 }
@@ -29,8 +29,8 @@
 .dialog-foot {
   display: flex;
   justify-content: flex-end;
-  gap: .5rem;
-  padding: .85rem 1.15rem 1.1rem;
+  gap: calc(.5 * var(--space));
+  padding: calc(.85 * var(--space)) calc(1.15 * var(--space)) calc(1.1 * var(--space));
   border-top: 1px solid var(--border);
 }
 
@@ -43,8 +43,8 @@
    content. */
 .tabs {
   display: flex;
-  gap: .15rem;
-  padding: 0 1.15rem;
+  gap: calc(.15 * var(--space));
+  padding: 0 calc(1.15 * var(--space));
   border-bottom: 1px solid var(--border);
 }
 
@@ -55,8 +55,8 @@
   color: var(--text-muted);
   font: inherit;
   font-size: .86rem;
-  font-weight: 550;
-  padding: .55rem .7rem;
+  font-weight: var(--weight-emphasis);
+  padding: calc(.55 * var(--space)) calc(.7 * var(--space));
   cursor: pointer;
   /* The underline of the open tab sits on the strip's own border, so the two
      never add up to a double line. */
@@ -81,22 +81,22 @@
 .field {
   display: block;
   border: none;
-  margin: 0 0 1.75rem;
+  margin: 0 0 calc(1.75 * var(--space));
   padding: 0;
   min-width: 0;
 }
 
 .field.row,
 /* Two inputs side by side inside a block that also carries a hint below. */
-.field-row { display: flex; gap: .75rem; }
+.field-row { display: flex; gap: calc(.75 * var(--space)); }
 .field .grow { flex: 1; min-width: 0; }
 
 .field-label {
   display: block;
   font-size: .78rem;
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
   color: var(--text-muted);
-  margin-bottom: .3rem;
+  margin-bottom: calc(.3 * var(--space));
   padding: 0;
 }
 
@@ -110,7 +110,7 @@
   background: var(--bg);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-sm);
-  padding: .5rem .6rem;
+  padding: calc(.5 * var(--space)) calc(.6 * var(--space));
   resize: vertical;
 }
 
@@ -148,8 +148,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: .35rem;
-  padding: .4rem .6rem;
+  gap: calc(.35 * var(--space));
+  padding: calc(.4 * var(--space)) calc(.6 * var(--space));
   border-radius: calc(var(--radius-sm) - 2px);
   font-size: .85rem;
   color: var(--text-muted);
@@ -160,7 +160,7 @@
 .segmented input:checked + span {
   background: var(--surface);
   color: var(--text);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
   box-shadow: 0 1px 2px rgba(0, 0, 0, .12);
 }
 
@@ -170,7 +170,7 @@
 
 /* ---------- colour swatches ---------- */
 
-.swatches { display: flex; flex-wrap: wrap; gap: .4rem; }
+.swatches { display: flex; flex-wrap: wrap; gap: calc(.4 * var(--space)); }
 
 .swatch {
   width: 1.75rem;
@@ -190,7 +190,7 @@
 
 /* ---------- weekday picker ---------- */
 
-.weekdays { display: flex; gap: .3rem; flex-wrap: wrap; }
+.weekdays { display: flex; gap: calc(.3 * var(--space)); flex-wrap: wrap; }
 
 .weekday {
   width: 2.4rem;
@@ -201,7 +201,7 @@
   background: var(--surface);
   cursor: pointer;
   font-size: .8rem;
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
   color: var(--text-muted);
 }
 
@@ -219,7 +219,7 @@
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-sm);
   background: var(--surface);
-  padding: .5rem .6rem;
+  padding: calc(.5 * var(--space)) calc(.6 * var(--space));
   cursor: pointer;
 }
 
@@ -247,8 +247,8 @@
 .stepper {
   display: flex;
   align-items: center;
-  gap: .75rem;
-  padding: 1rem 1.15rem .25rem;
+  gap: calc(.75 * var(--space));
+  padding: var(--space) calc(1.15 * var(--space)) calc(.25 * var(--space));
 }
 
 .stepper input {
@@ -256,11 +256,11 @@
   min-width: 0;
   text-align: center;
   font-size: 1.4rem;
-  font-weight: 650;
+  font-weight: var(--weight-bold);
   background: var(--bg);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-sm);
-  padding: .4rem;
+  padding: calc(.4 * var(--space));
 }
 
 /* Fixed jumps for counting habits, below the stepper: 30 push-ups should be
@@ -269,16 +269,16 @@
 .quick-steps {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: .4rem;
-  padding: .7rem 1.15rem 0;
+  gap: calc(.4 * var(--space));
+  padding: calc(.7 * var(--space)) calc(1.15 * var(--space)) 0;
 }
 
 .quick-steps .button {
-  padding-inline: .2rem;
+  padding-inline: calc(.2 * var(--space));
   font-variant-numeric: tabular-nums;
 }
 
-#value-hint { padding: 0 1.15rem; margin-top: .4rem; }
+#value-hint { padding: 0 calc(1.15 * var(--space)); margin-top: calc(.4 * var(--space)); }
 
 /* ---------- narrow screens ---------- */
 
@@ -322,7 +322,7 @@
   /* The name column grows far less here than on the desktop: past about 106px
      the seventh day column no longer fits, and a full week is worth more on a
      phone than an untruncated second line. */
-  :root { --cell: 34px; --label-min: 104px; --topbar-h: calc(3.1rem + 1px); }
+  :root { --cell: 34px; --label-min: 104px; --topbar-row: calc(2.25rem + .85 * var(--space)); }
 
   /* Two pixels less card padding than the desktop, which is a whole day column
      here: at 12px the sixth day no longer fits on a 375px screen. Ten is the
@@ -339,16 +339,15 @@
      and is hidden once it does not. A row of its own for the search would cost
      more height than it is worth on a screen this size - and --topbar-h, which
      the day header sticks to, assumes the bar is one row tall. */
-  .topbar-inner { min-height: 3.1rem; }
   .board-filter .search { width: auto; }
   .brand { font-size: 1.05rem; }
   .field.row,
-  .field-row { flex-direction: column; gap: 1rem; }
+  .field-row { flex-direction: column; gap: var(--space); }
 
   /* Three captioned buttons do not fit next to the habit name on a phone.
      The icons carry the meaning; each button keeps its aria-label. */
   .detail-head .button .label { display: none; }
-  .detail-head .button { padding-inline: .6rem; }
+  .detail-head .button { padding-inline: calc(.6 * var(--space)); }
 }
 
 /* ---------- category picker ---------- */
@@ -358,13 +357,13 @@
 .picker {
   display: flex;
   align-items: center;
-  gap: .5rem;
+  gap: calc(.5 * var(--space));
   width: 100%;
   text-align: left;
   background: var(--bg);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-sm);
-  padding: .5rem .6rem;
+  padding: calc(.5 * var(--space)) calc(.6 * var(--space));
   cursor: pointer;
 }
 
@@ -382,23 +381,23 @@
   gap: 2px;
   max-height: 15rem;
   overflow-y: auto;
-  margin-bottom: .85rem;
+  margin-bottom: calc(.85 * var(--space));
 }
 
 .picker-option {
   display: flex;
   align-items: center;
-  gap: .5rem;
+  gap: calc(.5 * var(--space));
   text-align: left;
   border: none;
   background: transparent;
   border-radius: var(--radius-sm);
-  padding: .5rem .6rem;
+  padding: calc(.5 * var(--space)) calc(.6 * var(--space));
   cursor: pointer;
 }
 
 .picker-option:hover { background: var(--surface-2); }
-.picker-option[aria-selected="true"] { color: var(--text); font-weight: 600; }
+.picker-option[aria-selected="true"] { color: var(--text); font-weight: var(--weight-semibold); }
 .picker-option.is-stale { color: var(--text-faint); font-style: italic; }
 
 .picker-option-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -408,9 +407,9 @@
 /* Creating a category without leaving the chooser. */
 .picker-create {
   display: flex;
-  gap: .5rem;
+  gap: calc(.5 * var(--space));
   border-top: 1px solid var(--border);
-  padding-top: .85rem;
+  padding-top: calc(.85 * var(--space));
 }
 
 .picker-create input {
@@ -419,7 +418,7 @@
   background: var(--bg);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-sm);
-  padding: .45rem .6rem;
+  padding: calc(.45 * var(--space)) calc(.6 * var(--space));
 }
 
 .picker-create input:focus {
@@ -432,7 +431,7 @@
 .switch {
   display: flex;
   align-items: center;
-  gap: .55rem;
+  gap: calc(.55 * var(--space));
   cursor: pointer;
 }
 
@@ -452,7 +451,7 @@
 .upload {
   display: flex;
   align-items: center;
-  gap: .75rem;
+  gap: calc(.75 * var(--space));
 }
 
 .upload-preview {
@@ -472,7 +471,7 @@
 .upload-actions {
   display: flex;
   align-items: center;
-  gap: .5rem;
+  gap: calc(.5 * var(--space));
   flex-wrap: wrap;
 }
 
@@ -487,8 +486,8 @@
   display: grid;
   grid-template-columns: 1fr auto;
   align-items: center;
-  gap: .2rem .6rem;
-  margin-top: .9rem;
+  gap: calc(.2 * var(--space)) calc(.6 * var(--space));
+  margin-top: calc(.9 * var(--space));
 }
 
 .slider .field-label { grid-column: 1; margin: 0; }
@@ -513,10 +512,10 @@
 /* A caption over a group of sliders. Not a field label: the fields are the
    sliders themselves, and this only says which of them belong together. */
 .knob-group {
-  margin: 1.1rem 0 0;
+  margin: calc(1.1 * var(--space)) 0 0;
   color: var(--text-muted);
   font-size: .78rem;
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
 }
 
-.knob-group + .slider { margin-top: .5rem; }
+.knob-group + .slider { margin-top: calc(.5 * var(--space)); }

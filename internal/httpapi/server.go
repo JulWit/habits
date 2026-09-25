@@ -128,9 +128,9 @@ func securityHeaders(next http.Handler) http.Handler {
 	})
 }
 
-// handleIndex renders the app shell with the stored theme and typeface baked
-// in, so the page paints in the right colours and the right font immediately
-// instead of flashing the defaults first.
+// handleIndex renders the app shell with the stored theme, typeface and density
+// baked in, so the page paints in the right colours, font and spacing
+// immediately instead of flashing the defaults first.
 func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	user := auth.MustUser(r.Context())
 	settings, err := s.store.GetSettings(r.Context(), user.ID)
@@ -141,6 +141,7 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	data := struct {
 		Theme      string
 		Font       string
+		Density    string
 		Pattern    string
 		BandColor  string
 		BandOp     int
@@ -152,6 +153,7 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	}{
 		Theme:     settings.Theme,
 		Font:      settings.Font,
+		Density:   settings.Density,
 		Pattern:   settings.Pattern,
 		BandColor: settings.BandColor,
 		BandOp:    settings.BandOpacity,

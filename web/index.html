@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-theme="{{.Theme}}" data-font="{{.Font}}" data-pattern="{{.Pattern}}" data-band="{{.BandColor}}" style="--today-opacity: {{.BandOp}}%; --bg-dim: {{.Dim}}%; --bg-blur: {{.Blur}}px; --surface-opacity: {{.SurfaceOp}}%; --surface-blur: {{.SurfaceBlr}}px">
+<html lang="en" data-theme="{{.Theme}}" data-font="{{.Font}}" data-density="{{.Density}}" data-pattern="{{.Pattern}}" data-band="{{.BandColor}}" style="--today-opacity: {{.BandOp}}%; --bg-dim: {{.Dim}}%; --bg-blur: {{.Blur}}px; --surface-opacity: {{.SurfaceOp}}%; --surface-blur: {{.SurfaceBlr}}px">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -249,6 +249,16 @@
         <option value="lato">Lato</option>
       </select>
     </label>
+
+    <fieldset class="field">
+      <legend class="field-label">Density</legend>
+      <div class="segmented" role="radiogroup" aria-label="Density">
+        <label><input type="radio" name="settings-density" value="compact" autocomplete="off"><span>Compact</span></label>
+        <label><input type="radio" name="settings-density" value="standard" autocomplete="off"><span>Standard</span></label>
+        <label><input type="radio" name="settings-density" value="comfortable" autocomplete="off"><span>Comfortable</span></label>
+      </div>
+      <p class="field-hint">Spacing inside and around every element, and how heavy its emphasis is set.</p>
+    </fieldset>
 
     <fieldset class="field">
       <legend class="field-label">Today's marker</legend>

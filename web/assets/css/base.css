@@ -83,7 +83,7 @@
      The side padding is in px like --cell and --label-min: the board reads it
      to work out how many day columns fit, and a rem would be read there as a
      bare number. */
-  --block-pad: .35rem;
+  --block-pad: calc(.35 * var(--space));
   --block-pad-x: 12px;
   /* Wide enough for one handle; the arrows of the button mode need room for
      two, so that mode widens it below. In px like --cell and --label-min: the
@@ -113,8 +113,11 @@
      the weekday buttons in the editor. One token, so the two cannot drift apart
      and the circles read as the same family of control. */
   --ring: 3px;
-  /* Height of the sticky topbar, so the day header can park beneath it. */
-  --topbar-h: calc(3.5rem + 1px);
+  /* Height of the sticky topbar, so the day header can park beneath it: its
+     row, which is the icon buttons plus air that follows the density, and the
+     border below it. */
+  --topbar-row: calc(2.25rem + 1.25 * var(--space));
+  --topbar-h: calc(var(--topbar-row) + 1px);
   /* Width of the habit-name column. The JS that decides how many day columns
      fit reads this token, so the constant lives in exactly one place.
 
@@ -163,6 +166,64 @@ html[data-font="opensans"] { --font: "Open Sans", var(--font-system); }
 html[data-font="montserrat"] { --font: "Montserrat", var(--font-system); }
 html[data-font="poppins"] { --font: "Poppins", var(--font-system); }
 html[data-font="lato"] { --font: "Lato", var(--font-system); }
+
+/* ---------- density ----------
+
+   How tightly the interface is packed. Every padding, margin and gap in the
+   stylesheets is written as a multiple of --space rather than in rem, so this
+   one token moves all of them together; "standard" is exactly the spacing the
+   app had before the setting existed.
+
+   The emphasis goes with it. Tight rows set in heavy type turn into a dark
+   wall, so compact takes every step of weight down by fifty; with more air
+   around it the type needs a little more body to hold the structure, so
+   comfortable takes it up by the same amount. Regular text stays at 400 in all
+   three.
+
+   --cell is in px and written out per density rather than computed: the board
+   reads it to work out how many day columns fit, and a calc() would be read
+   there as a bare number. The page's side gutter is deliberately not part of
+   this - see .view. */
+:root {
+  --space: 1rem;
+  --leading: 1.45;
+  --weight-medium: 500;
+  --weight-emphasis: 550;
+  --weight-semibold: 600;
+  --weight-bold: 650;
+  --weight-heavy: 700;
+}
+
+html[data-density="compact"] {
+  --space: .7rem;
+  --leading: 1.35;
+  --cell: 36px;
+  --weight-medium: 450;
+  --weight-emphasis: 500;
+  --weight-semibold: 550;
+  --weight-bold: 600;
+  --weight-heavy: 650;
+}
+
+html[data-density="comfortable"] {
+  --space: 1.3rem;
+  --leading: 1.55;
+  --cell: 44px;
+  --weight-medium: 550;
+  --weight-emphasis: 600;
+  --weight-semibold: 650;
+  --weight-bold: 700;
+  --weight-heavy: 750;
+}
+
+/* The phone's narrower columns, per density. The standard one lives with the
+   rest of the narrow-screen rules; these have to be restated here because the
+   density selectors above outrank a plain :root. Comfortable keeps the standard
+   width - at 375px any wider costs the sixth day. */
+@media (max-width: 40rem) {
+  html[data-density="compact"] { --cell: 32px; }
+  html[data-density="comfortable"] { --cell: 34px; }
+}
 
 /* Two arrows side by side instead of one handle. */
 html[data-reorder="buttons"] { --tools-col: 64px; }
@@ -400,7 +461,7 @@ html, body {
   color: var(--text);
   font-family: var(--font);
   font-size: 15px;
-  line-height: 1.45;
+  line-height: var(--leading);
   -webkit-text-size-adjust: 100%;
 }
 
@@ -411,11 +472,11 @@ html { background-color: var(--bg); }
 
 body {
   min-height: 100dvh;
-  padding-bottom: 5rem;
+  padding-bottom: calc(5 * var(--space));
   background: transparent;
 }
 
-h1, h2, h3 { margin: 0; font-weight: 650; letter-spacing: -.01em; }
+h1, h2, h3 { margin: 0; font-weight: var(--weight-bold); letter-spacing: -.01em; }
 
 button, input, textarea, select { font: inherit; color: inherit; }
 
@@ -456,6 +517,8 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .view {
   max-width: 100rem;
   margin: 0 auto;
+  /* Not scaled with the density: the gutter is what the board is measured
+     against, and on a phone a wider one costs a whole day column. */
   padding: 0 1rem;
 }
 
@@ -471,8 +534,8 @@ html.route-detail .view {
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  gap: 1rem;
-  min-height: 3.5rem;
+  gap: var(--space);
+  min-height: var(--topbar-row);
   position: relative;
   /* A query container, because the bar is not as wide as the window: it is
      capped to the board, so at seven day columns it is a few hundred pixels
@@ -516,12 +579,12 @@ html.route-detail .view {
   }
 }
 
-.view { padding-top: 1.25rem; }
+.view { padding-top: calc(1.25 * var(--space)); }
 
 .brand {
   display: flex;
   align-items: center;
-  gap: .5rem;
+  gap: calc(.5 * var(--space));
   font-size: 1.15rem;
 }
 
@@ -534,7 +597,7 @@ html.route-detail .view {
 .topbar-actions {
   display: flex;
   align-items: center;
-  gap: .5rem;
+  gap: calc(.5 * var(--space));
 }
 
 /* ---------- buttons ---------- */
@@ -543,13 +606,13 @@ html.route-detail .view {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: .4rem;
+  gap: calc(.4 * var(--space));
   border: 1px solid var(--border-strong);
   background: var(--surface);
   border-radius: var(--radius-sm);
-  padding: .45rem .8rem;
+  padding: calc(.45 * var(--space)) calc(.8 * var(--space));
   cursor: pointer;
-  font-weight: 550;
+  font-weight: var(--weight-emphasis);
   white-space: nowrap;
   transition: background .12s ease, border-color .12s ease, transform .06s ease;
 }
@@ -629,27 +692,27 @@ html.route-detail .view {
 .field-hint {
   color: var(--text-faint);
   font-size: .8rem;
-  margin: .75rem .25rem 0;
+  margin: calc(.75 * var(--space)) calc(.25 * var(--space)) 0;
 }
 
 /* A hint in the middle of a field explains the control above it; without this
    it would sit straight on the next one. */
-.field-hint:not(:last-child) { margin-bottom: .9rem; }
+.field-hint:not(:last-child) { margin-bottom: calc(.9 * var(--space)); }
 
 .error {
   color: var(--danger);
   font-size: .85rem;
-  margin: .5rem 0 0;
+  margin: calc(.5 * var(--space)) 0 0;
 }
 
 .empty {
   text-align: center;
-  padding: 4rem 1rem;
+  padding: calc(4 * var(--space)) var(--space);
   color: var(--text-muted);
 }
 
-.empty h2 { color: var(--text); margin-bottom: .5rem; }
-.empty p { margin: 0 0 1.25rem; }
+.empty h2 { color: var(--text); margin-bottom: calc(.5 * var(--space)); }
+.empty p { margin: 0 0 calc(1.25 * var(--space)); }
 
 /* Present to a screen reader, absent from the page. Used by the live region
    that reports what a tap on the board just changed: the board itself carries

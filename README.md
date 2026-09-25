@@ -319,6 +319,7 @@ values live server-side, per user.
 |---|---|---|
 | `theme` | `system`, `light`, `dark` | Appearance; `system` follows the device |
 | `font` | `system`, `inter`, `roboto`, `geist`, `opensans`, `montserrat`, `poppins`, `lato` | Typeface, all of them in the binary |
+| `density` | `compact`, `standard`, `comfortable` | Spacing inside and around every element, line height and weight of emphasis |
 | `overviewDays` | 0 = automatic, otherwise 3–90 | Day columns on the board |
 | `alignWeeks` | bool | Align the board to whole calendar weeks |
 | `showArchived` | bool | Show archived habits |
@@ -357,7 +358,7 @@ settings are independent of one another.
   have to be made in both places. The *numbers* per kind (scale, step size,
   ceiling), on the other hand, are no longer duplicated: they arrive as `kinds`
   with `/api/state`.
-- The lists of fonts and patterns appear in `internal/store/settings.go`, in
+- The lists of fonts, densities and patterns appear in `internal/store/settings.go`, in
   `web/assets/js/app.js` and in the `<option>` elements of `index.html`. A drift
   here only falls back to the default rather than reading data incorrectly —
   which is why it has been left as it is so far.

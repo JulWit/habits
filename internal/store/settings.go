@@ -24,6 +24,9 @@ type Settings struct {
 	// Font names one of the typefaces shipped inside the binary, or "system"
 	// for whatever the device provides.
 	Font string `json:"font"`
+	// Density sets how tightly the interface is packed: the air in and around
+	// every control, and how heavy its emphasis is set.
+	Density string `json:"density"`
 	// ReorderMode decides how categories and habits are rearranged: by dragging
 	// them, or with a pair of arrows per entry.
 	ReorderMode string `json:"reorderMode"`
@@ -149,6 +152,20 @@ func ValidFont(f string) bool {
 	return false
 }
 
+// Densities are the three ways the interface can be packed. Like the fonts, the
+// server validates against this list and bakes the choice into the HTML shell;
+// the stylesheet carries the tokens per key.
+var Densities = []string{"compact", "standard", "comfortable"}
+
+func ValidDensity(d string) bool {
+	for _, known := range Densities {
+		if known == d {
+			return true
+		}
+	}
+	return false
+}
+
 // MaxOverviewDays bounds the stored wish. Beyond a quarter of a year the row of
 // squares stops being readable at any window size.
 const MaxOverviewDays = 90
@@ -178,6 +195,7 @@ func DefaultSettings() Settings {
 		OverviewDays: 0,
 		ShowArchived: false,
 		Font:         "inter",
+		Density:      "standard",
 		ReorderMode:  "drag",
 		Pattern:      "none",
 		AlignWeeks:   false,
@@ -233,11 +251,11 @@ func (s *Store) getSettings(ctx context.Context, q queryer, userID string) (Sett
 	out := DefaultSettings()
 	err := q.QueryRowContext(ctx,
 		`SELECT theme, overview_days, show_archived, font, reorder_mode, pattern, align_weeks,
-		        band_color, band_opacity, bg_dim, bg_blur, surface_opacity, surface_blur
+		        band_color, band_opacity, bg_dim, bg_blur, surface_opacity, surface_blur, density
 		 FROM user_settings WHERE user_id = ?`,
 		userID).Scan(&out.Theme, &out.OverviewDays, &out.ShowArchived, &out.Font, &out.ReorderMode,
 		&out.Pattern, &out.AlignWeeks, &out.BandColor, &out.BandOpacity,
-		&out.BackgroundDim, &out.BackgroundBlur, &out.SurfaceOpacity, &out.SurfaceBlur)
+		&out.BackgroundDim, &out.BackgroundBlur, &out.SurfaceOpacity, &out.SurfaceBlur, &out.Density)
 	if errors.Is(err, sql.ErrNoRows) {
 		return DefaultSettings(), nil
 	}
@@ -254,6 +272,9 @@ func (s *Store) getSettings(ctx context.Context, q queryer, userID string) (Sett
 	}
 	if !ValidFont(out.Font) {
 		out.Font = DefaultSettings().Font
+	}
+	if !ValidDensity(out.Density) {
+		out.Density = DefaultSettings().Density
 	}
 	if !ValidReorderMode(out.ReorderMode) {
 		out.ReorderMode = DefaultSettings().ReorderMode
@@ -299,6 +320,9 @@ func (s *Store) saveSettings(ctx context.Context, q execer, userID string, in Se
 	if !ValidFont(in.Font) {
 		return invalidf("unknown font %q", in.Font)
 	}
+	if !ValidDensity(in.Density) {
+		return invalidf("unknown density %q", in.Density)
+	}
 	if !ValidReorderMode(in.ReorderMode) {
 		return invalidf("unknown reorder mode %q", in.ReorderMode)
 	}
@@ -327,8 +351,8 @@ func (s *Store) saveSettings(ctx context.Context, q execer, userID string, in Se
 		INSERT INTO user_settings
 			(user_id, theme, overview_days, show_archived, font, reorder_mode, pattern,
 			 align_weeks, band_color, band_opacity, bg_dim, bg_blur, surface_opacity,
-			 surface_blur, updated_at)
-			VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+			 surface_blur, density, updated_at)
+			VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
 		ON CONFLICT(user_id) DO UPDATE SET
 			theme = excluded.theme,
 			overview_days = excluded.overview_days,
@@ -343,10 +367,11 @@ func (s *Store) saveSettings(ctx context.Context, q execer, userID string, in Se
 			bg_blur = excluded.bg_blur,
 			surface_opacity = excluded.surface_opacity,
 			surface_blur = excluded.surface_blur,
+			density = excluded.density,
 			updated_at = excluded.updated_at`,
 		userID, in.Theme, in.OverviewDays, in.ShowArchived, in.Font, in.ReorderMode, in.Pattern,
 		in.AlignWeeks, in.BandColor, in.BandOpacity, in.BackgroundDim, in.BackgroundBlur,
-		in.SurfaceOpacity, in.SurfaceBlur, formatTime(time.Now()))
+		in.SurfaceOpacity, in.SurfaceBlur, in.Density, formatTime(time.Now()))
 	if err != nil {
 		return fmt.Errorf("saving settings: %w", err)
 	}

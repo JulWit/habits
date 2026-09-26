@@ -1,32 +1,27 @@
 package domain
 
-// Stats summarises a habit's history. Streaks are computed over the full
-// history while the completion rate is windowed, because a streak that is two
-// years old is still the honest answer to "best streak" whereas a completion
-// rate over all time stops reacting to recent effort.
+// Stats summarises a habit's history. Streaks cover the full history; the
+// completion rate covers a recent window only.
 type Stats struct {
 	CurrentStreak  int     `json:"currentStreak"`
 	BestStreak     int     `json:"bestStreak"`
 	CompletionRate float64 `json:"completionRate"`
-	// Expected and Achieved are the raw numbers behind CompletionRate, in days
-	// for daily-style habits and in single completions for times-per-week.
+	// Expected and Achieved are the counts behind CompletionRate: days, or
+	// completions for times-per-week habits.
 	Expected int `json:"expected"`
 	Achieved int `json:"achieved"`
-	// Total is the sum of all recorded values: check-marks, glasses, minutes.
+	// Total is the sum of all values recorded up to today.
 	Total int `json:"total"`
-	// StreakUnit is "days" or "weeks" and tells the UI how to label a streak.
+	// StreakUnit is "days" or "weeks".
 	StreakUnit string `json:"streakUnit"`
 }
 
-// DefaultRateWindowDays is the window the overview uses for completion rates.
+// DefaultRateWindowDays is the default window for the completion rate.
 const DefaultRateWindowDays = 30
 
-// ComputeStats derives the statistics for a habit from its complete entry map.
-//
-// A day still open (today) never breaks a streak: an unfinished day is not yet
-// a failed day, so the run is carried forward instead of reset. This matches
-// what Loop does and is the behaviour users expect from a tracker they open in
-// the morning.
+// ComputeStats computes the statistics of a habit from all its entries. The
+// completion rate covers the last windowDays days. An open today does not
+// break a streak.
 func ComputeStats(h Habit, entries map[Date]int, today Date, windowDays int) Stats {
 	if windowDays < 1 {
 		windowDays = DefaultRateWindowDays
@@ -37,8 +32,8 @@ func ComputeStats(h Habit, entries map[Date]int, today Date, windowDays int) Sta
 	return dailyStats(h, entries, today, windowDays)
 }
 
-// historyStart is the first day worth walking: the habit's creation day, or an
-// earlier entry if history was backfilled.
+// historyStart returns the creation day of the habit, or the earliest entry if
+// that is earlier.
 func historyStart(h Habit, entries map[Date]int) Date {
 	start := DateFromTime(h.CreatedAt)
 	for d := range entries {
@@ -49,9 +44,7 @@ func historyStart(h Habit, entries map[Date]int) Date {
 	return start
 }
 
-// totalValue sums what has actually happened. Days ahead of today can hold
-// entries - a planned run, a week filled in before a holiday - but a plan is
-// not an achievement, so it stays out of the total until its day arrives.
+// totalValue sums the values of all entries up to today.
 func totalValue(entries map[Date]int, today Date) int {
 	sum := 0
 	for d, v := range entries {
@@ -63,6 +56,7 @@ func totalValue(entries map[Date]int, today Date) int {
 	return sum
 }
 
+// dailyStats computes the statistics of a habit with fixed due days.
 func dailyStats(h Habit, entries map[Date]int, today Date, windowDays int) Stats {
 	st := Stats{StreakUnit: "days", Total: totalValue(entries, today)}
 	start := historyStart(h, entries)
@@ -82,7 +76,7 @@ func dailyStats(h Habit, entries map[Date]int, today Date, windowDays int) Stats
 				st.BestStreak = run
 			}
 		case d == today:
-			// Today is still open; leave the run standing.
+			// Today is still open and does not break the streak.
 		default:
 			run = 0
 		}
@@ -108,14 +102,9 @@ func dailyStats(h Habit, entries map[Date]int, today Date, windowDays int) Stats
 	return st
 }
 
-// weeklyStats treats an x-times-per-week habit as a sequence of weeks: a week
-// counts once the target number of days is reached, no matter which days those
-// were.
-//
-// The rate is therefore measured in whole weeks rather than in the raw day
-// window. A window ending mid-week would report a met week as missed whenever
-// its completed days fell on the far side of the cut, so someone who never
-// misses could never reach 100%.
+// weeklyStats computes the statistics of a times-per-week habit. A week counts
+// as met once the target number of days is completed. The rate window is
+// rounded up to whole weeks.
 func weeklyStats(h Habit, entries map[Date]int, today Date, windowDays int) Stats {
 	st := Stats{StreakUnit: "weeks", Total: totalValue(entries, today)}
 	target := h.Frequency.TimesPerWeek
@@ -129,15 +118,12 @@ func weeklyStats(h Habit, entries map[Date]int, today Date, windowDays int) Stat
 
 	firstWeek := start.StartOfWeek()
 	currentWeek := today.StartOfWeek()
-	// The window rounded up to whole weeks, ending with the current one.
 	windowWeeks := (windowDays + 6) / 7
 	windowFirstWeek := currentWeek.AddDays(-7 * (windowWeeks - 1))
 
 	run := 0
 	for week := firstWeek; !week.After(currentWeek); week = week.AddDays(7) {
-		// open is how many days of the week the habit was around for: seven for
-		// an ordinary week, fewer for the current one and for the week the
-		// habit was created in.
+		// open is the number of days of the week within the habit's history.
 		done, open := 0, 0
 		for i := 0; i < 7; i++ {
 			d := week.AddDays(i)
@@ -164,10 +150,7 @@ func weeklyStats(h Habit, entries map[Date]int, today Date, windowDays int) Stat
 		if week.Before(windowFirstWeek) {
 			continue
 		}
-		// A week offering fewer days expects proportionally less of its target,
-		// rounded up so some effort is always asked for. Without this the
-		// current week would be judged on days that have not happened yet — the
-		// daily rate never judges tomorrow either.
+		// Partial weeks expect a proportional share of the target, rounded up.
 		expected := target
 		if open < 7 {
 			expected = (target*open + 6) / 7

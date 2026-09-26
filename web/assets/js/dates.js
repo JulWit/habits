@@ -1,6 +1,4 @@
-// Calendar helpers. Dates are ISO strings ("2026-09-13") everywhere in the
-// client, exactly as the server sends them. All arithmetic goes through UTC so
-// a daylight-saving transition can never shift a day by one.
+// Date helpers. Dates are ISO strings ("2026-09-13"); arithmetic is done in UTC.
 
 import { t, lang } from "./i18n.js";
 
@@ -25,7 +23,7 @@ export function daysBetween(from, to) {
   return Math.round((toUTC(to) - toUTC(from)) / DAY_MS);
 }
 
-/** Monday = 0 … Sunday = 6, matching the server's weekday bitmask. */
+/** Returns the weekday index: Monday = 0 … Sunday = 6. */
 export function weekdayIndex(iso) {
   return (new Date(toUTC(iso)).getUTCDay() + 6) % 7;
 }
@@ -34,9 +32,7 @@ export function startOfWeek(iso) {
   return addDays(iso, -weekdayIndex(iso));
 }
 
-// Written out per language rather than taken from Intl: the short forms are
-// chosen to fit a day column, and Intl's German ones carry a full stop ("Mo.")
-// that the column has no room for.
+// Weekday and month names per language, short enough for a day column.
 const NAMES = {
   en: {
     weekdayShort: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
@@ -74,19 +70,19 @@ export function monthIndex(iso) {
   return new Date(toUTC(iso)).getUTCMonth();
 }
 
-/** "13 Sep" / "13. Sep" — a day of the year without its year. */
+/** Formats a date without year: "13 Sep" / "13. Sep". */
 export function formatDayMonth(iso) {
   const d = new Date(toUTC(iso));
   const day = lang === "de" ? `${d.getUTCDate()}.` : String(d.getUTCDate());
   return `${day} ${MONTH_SHORT[d.getUTCMonth()]}`;
 }
 
-/** "Mon, 13 Sep 2026" — used in headings and dialog titles. */
+/** Formats a date as "Mon, 13 Sep 2026". */
 export function formatLong(iso) {
   return `${WEEKDAY_SHORT[weekdayIndex(iso)]}, ${formatDayMonth(iso)} ${yearOf(iso)}`;
 }
 
-/** "today" / "yesterday" / a long date, for anything the user reads in prose. */
+/** Formats a date as "today", "yesterday" or a long date. */
 export function formatRelative(iso, today) {
   const diff = daysBetween(iso, today);
   if (diff === 0) return t("today");
@@ -97,7 +93,7 @@ export function formatRelative(iso, today) {
   return formatLong(iso);
 }
 
-/** Inclusive list of dates from `from` to `to`. */
+/** Returns all dates from `from` to `to`, inclusive. */
 export function range(from, to) {
   const out = [];
   for (let d = from; daysBetween(d, to) >= 0; d = addDays(d, 1)) out.push(d);
@@ -106,7 +102,7 @@ export function range(from, to) {
 
 export const MONTH_LONG = NAMES.monthLong;
 
-/** "Thursday, 1 January 2026" — the spelled-out form for tooltips. */
+/** Formats a date as "Thursday, 1 January 2026". */
 export function formatFull(iso) {
   const d = new Date(toUTC(iso));
   const day = lang === "de" ? `${d.getUTCDate()}.` : String(d.getUTCDate());

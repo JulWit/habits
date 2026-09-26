@@ -10,7 +10,7 @@
 }
 
 .dialog.compact { width: min(20rem, calc(100vw - 2rem)); }
-/* Neutral, so the dark theme stays free of a blue cast behind its dialogs. */
+/* Neutral backdrop, without a colour cast in the dark theme. */
 .dialog::backdrop { background: rgba(0, 0, 0, .55); }
 
 .dialog-head {
@@ -34,8 +34,7 @@
 
 /* ---------- dialog tabs ---------- */
 
-/* Sits between the dialog's heading and its body: the strip is part of the
-   frame, not of the scrolling content. Only the open tab is underlined. */
+/* Tab strip between dialog heading and body. The open tab is underlined. */
 .tabs {
   display: flex;
   gap: calc(.15 * var(--space));
@@ -66,13 +65,12 @@
 
 /* ---------- settings: list beside the settings ---------- */
 
-/* Wider than the other dialogs: the list takes a column of its own, and the
-   settings beside it keep the width they had before. */
+/* Wider than other dialogs, to fit the tab list. */
 .dialog.settings-dialog { width: min(46rem, calc(100vw - 2rem)); }
 
 .settings-dialog .dialog-head { padding-bottom: calc(.75 * var(--space)); }
 
-/* The same gear as the button that opens the dialog, so the two read as one. */
+/* Gear icon in the heading, like the button that opens the dialog. */
 .settings-dialog .dialog-head h2 {
   display: flex;
   align-items: center;
@@ -94,8 +92,7 @@
   border-right: 1px solid var(--border);
 }
 
-/* A row in a list rather than a tab in a strip: the open one is filled, with
-   no line underneath. */
+/* Tabs as list rows; the open one is filled. */
 .settings-layout .tab {
   text-align: left;
   border-bottom: none;
@@ -104,8 +101,7 @@
   transition: background .12s ease;
 }
 
-/* The icon in front of the name, in the text's colour so it dims and lights
-   with it. */
+/* Tab icon in the text colour. */
 .settings-layout .tab > span {
   display: flex;
   align-items: center;
@@ -118,17 +114,14 @@
 
 .settings-layout .tab[aria-selected="true"] { background: var(--surface-2); }
 
-/* A fixed height rather than a cap: the sections differ a lot in length, and
-   a dialog that grows and shrinks with each one moves the list under the
-   pointer. */
+/* Fixed height, so the dialog does not resize when switching tabs. */
 .settings-layout .dialog-body {
   height: min(70dvh, 36rem);
   max-height: none;
   padding-top: calc(1.1 * var(--space));
 }
 
-/* On a phone two columns leave the settings no room, so the list folds back
-   into the strip it used to be, above them. */
+/* On phones, the tab list becomes a strip above the settings. */
 @media (max-width: 40rem) {
   .settings-layout { grid-template-columns: minmax(0, 1fr); }
 
@@ -156,9 +149,7 @@
 
 /* ---------- form fields ---------- */
 
-/* One setting, one question, one field - and they are read one at a time, so
-   they stand well apart. Far enough that a hint under a control still reads as
-   belonging to it rather than to the label below. */
+/* Form field with generous spacing, so hints belong visibly to their field. */
 .field {
   display: block;
   border: none;
@@ -168,7 +159,7 @@
 }
 
 .field.row,
-/* Two inputs side by side inside a block that also carries a hint below. */
+/* Two inputs side by side. */
 .field-row { display: flex; gap: calc(.75 * var(--space)); }
 .field .grow { flex: 1; min-width: 0; }
 
@@ -262,7 +253,7 @@
   background-clip: content-box;
 }
 
-/* "No colour": an empty ring struck through, the usual sign for none. */
+/* "No colour": a struck-through empty ring. */
 .swatch.is-none {
   background:
     linear-gradient(to top right, transparent 46%, var(--text-muted) 46% 54%, transparent 54%)
@@ -277,8 +268,8 @@
 
 /* ---------- icon picker ---------- */
 
-/* Each icon on the same tile the board draws it on, in the colour picked
-   above; editor.js sets --habit-color on the group. */
+/* Icons on the same tiles as on the board, in the colour set by editor.js
+   (--habit-color). */
 .icon-choices {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(2.25rem, 1fr));
@@ -318,8 +309,7 @@
   width: 2.4rem;
   height: 2.4rem;
   border-radius: 50%;
-  /* The ring is kept, invisible, so a day does not change size when it is
-     picked: same thickness as the marks on the board, from the same token. */
+  /* Transparent border, so selecting a day does not change its size. */
   border: var(--ring) solid transparent;
   background: var(--surface-2);
   cursor: pointer;
@@ -334,9 +324,7 @@
   color: var(--primary-text);
 }
 
-/* A dropdown, styled like the text fields around it. The arrow is the browser's
-   own: color-scheme is pinned per theme, so the control and its popup are drawn
-   dark on the dark theme without any of this having to know about it. */
+/* Dropdown styled like the text fields. The native arrow follows color-scheme. */
 .select {
   width: 100%;
   border: 1px solid transparent;
@@ -352,9 +340,7 @@
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 22%, transparent);
 }
 
-/* Closed, the field shows the chosen face; open, each entry is set in the one
-   it stands for, so the choice can be made by looking rather than by knowing
-   what the names mean. */
+/* Font preview: the field and each option use their own font. */
 #settings-font { font-family: var(--font); }
 #settings-font option[value="system"] { font-family: var(--font-system); }
 #settings-font option[value="inter"] { font-family: "Inter", var(--font-system); }
@@ -386,9 +372,7 @@
   padding: calc(.4 * var(--space));
 }
 
-/* Fixed jumps for counting habits, below the stepper: 30 push-ups should be
-   three taps, not thirty. Equal columns so the four labels line up whatever
-   their width. */
+/* Quick value buttons below the stepper, in equal columns. */
 .quick-steps {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -405,14 +389,8 @@
 
 /* ---------- narrow screens ---------- */
 
-/* The bar holds the brand and four icon controls of a constant 155px. The word
-   only has to go once those two no longer fit side by side: 87px of logo and
-   word (the mark, its gap, and "Habits" at 57px in Montserrat - the widest of
-   the eight faces on offer), the controls and a 15px gap come to 257px. Rounded
-   up for air, that is where the word goes and the mark stays on alone - in
-   practice never, since the bar is capped to the board and seven day columns
-   hold it wider than that even on a phone. Nothing is lost to a screen reader -
-   the heading keeps its text, just not on the screen. */
+/* Hide the app name when the title bar is too narrow (below ~257px); the
+   heading keeps its text for screen readers. */
 @container topbar (max-width: 270px) {
   .brand-text {
     position: absolute;
@@ -425,19 +403,14 @@
 }
 
 @media (max-width: 40rem) {
-  /* The name column grows far less here than on the desktop: past about 106px
-     the seventh day column no longer fits, and a full week is worth more on a
-     phone than an untruncated second line. */
+  /* Narrower name column, so that seven day columns fit. */
   :root { --cell: 34px; --label-min: 104px; --topbar-row: calc(2.25rem + .85 * var(--space)); }
 
-  /* Two pixels less card padding than the desktop, which is a whole day column
-     here: at 12px the sixth day no longer fits on a 375px screen. Ten is the
-     least it may be - the today band ends a padding plus a grid gap short of
-     the card's inner edge, and that has to clear the corner radius. */
+  /* Less card padding, so that a 375px screen fits seven day columns. Must not
+     go below 10px, so that the today band clears the corner radius. */
   :root { --block-pad-x: 10px; }
 
-  /* Three paging buttons have to share a name column half the desktop width,
-     so they keep the size they had before the desktop ones grew. */
+  /* Smaller paging buttons. */
   .day-nav .icon-button { width: 1.8rem; height: 1.8rem; }
   .day-nav .icon-button svg { width: 1.05rem; height: 1.05rem; }
 
@@ -445,16 +418,14 @@
   .field.row,
   .field-row { flex-direction: column; gap: var(--space); }
 
-  /* Three captioned buttons do not fit next to the habit name on a phone.
-     The icons carry the meaning; each button keeps its aria-label. */
+  /* Icon-only buttons; each keeps its aria-label. */
   .detail-head .button .label { display: none; }
   .detail-head .button { padding-inline: calc(.6 * var(--space)); }
 }
 
 /* ---------- category picker ---------- */
 
-/* The field itself: looks like an input, behaves like a button that opens the
-   chooser dialog. */
+/* Input-like button that opens the category picker. */
 .picker {
   display: flex;
   align-items: center;
@@ -475,7 +446,7 @@
 .picker-caret { display: flex; color: var(--text-faint); }
 .picker-caret svg { width: 1rem; height: 1rem; }
 
-/* The chooser's list of categories. */
+/* Category list of the picker. */
 .picker-list {
   display: flex;
   flex-direction: column;
@@ -505,7 +476,7 @@
 .picker-option-mark { display: flex; color: var(--text); }
 .picker-option-mark svg { width: 1rem; height: 1rem; }
 
-/* Creating a category without leaving the chooser. */
+/* Creating a category in the picker. */
 .picker-create {
   display: flex;
   gap: calc(.5 * var(--space));
@@ -527,7 +498,7 @@
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 22%, transparent);
 }
 
-/* A labelled checkbox row, for the settings that are simply on or off. */
+/* Checkbox with label, for on/off settings. */
 .switch {
   display: flex;
   align-items: center;
@@ -545,9 +516,7 @@
 
 /* ---------- the uploaded background ----------
 
-   A row: what is there now, and what can be done about it. The preview is a
-   thumbnail of the picture itself rather than a file name - a name says which
-   file was chosen, a thumbnail says what the board will look like. */
+   Preview thumbnail and buttons. */
 .upload {
   display: flex;
   align-items: center;
@@ -564,7 +533,7 @@
   background-position: center;
 }
 
-/* Nothing uploaded: a plain field rather than a broken picture. */
+/* No image uploaded. */
 .upload-preview.is-empty { background-image: none; }
 
 .upload-actions {
@@ -574,13 +543,10 @@
   flex-wrap: wrap;
 }
 
-/* The file input is hidden and its label carries the button look, because the
-   browsers each draw the control itself differently and none of them the way
-   the rest of this dialog looks. */
+/* The file input is hidden; its label is styled as a button. */
 .upload-actions .button { cursor: pointer; }
 
-/* A knob and its reading, side by side: the number belongs to the slider, and
-   putting it under the label would leave the eye travelling. */
+/* Slider with its value beside it. */
 .slider {
   display: grid;
   grid-template-columns: 1fr auto;
@@ -608,8 +574,7 @@
   cursor: pointer;
 }
 
-/* A caption over a group of sliders. Not a field label: the fields are the
-   sliders themselves, and this only says which of them belong together. */
+/* Caption for a group of sliders. */
 .knob-group {
   margin: calc(1.1 * var(--space)) 0 0;
   color: var(--text-muted);

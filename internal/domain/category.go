@@ -5,24 +5,26 @@ import (
 	"time"
 )
 
-// Category groups habits into blocks on the overview. It may carry an icon and
-// a colour for that icon; without a colour the icon is drawn in neutral ink.
+// Category is a named group of habits on the overview.
 type Category struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`
-	// Icon names one of HabitIcons, or is empty for a category without one.
+	// Icon is one of HabitIcons, or "" for no icon.
 	Icon string `json:"icon"`
-	// Color is a hex value like a habit's, or empty for neutral ink.
+	// Color is the icon colour as a hex value, or "" for the default colour.
 	Color string `json:"color"`
-	// ShowProgress draws today's progress bar and count in the block heading.
+	// ShowProgress shows today's progress in the category heading.
 	ShowProgress bool      `json:"showProgress"`
 	Position     int       `json:"position"`
 	CreatedAt    time.Time `json:"createdAt"`
 	UpdatedAt    time.Time `json:"updatedAt"`
 }
 
+// MaxCategoryNameLen is the maximum length of a category name, in characters.
 const MaxCategoryNameLen = 60
 
+// Validate normalises c in place and returns a validation error if c is
+// invalid.
 func (c *Category) Validate() error {
 	c.Name = strings.TrimSpace(c.Name)
 	if c.Name == "" {

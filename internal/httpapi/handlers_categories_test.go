@@ -6,8 +6,7 @@ import (
 	"testing"
 )
 
-// A new category shows no progress until it is switched on, and a PATCH that
-// does not mention the setting leaves it where it was.
+// New categories have progress off; a PATCH without showProgress keeps it.
 func TestCategoryProgressIsOffUntilSwitchedOn(t *testing.T) {
 	h := newTestServer(t)
 

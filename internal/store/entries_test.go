@@ -9,8 +9,7 @@ import (
 	"github.com/JulWit/habits/internal/domain"
 )
 
-// The regression guard for the unbounded entry value: the API is reachable
-// without the client that used to be the only thing enforcing the ceiling.
+// SetEntry rejects values above the kind's maximum.
 func TestSetEntryBoundsTheValue(t *testing.T) {
 	ctx := context.Background()
 	st := openTestStore(t)
@@ -27,8 +26,7 @@ func TestSetEntryBoundsTheValue(t *testing.T) {
 	}
 }
 
-// Undo leans entirely on the returned previous value, and a zero clears the row
-// rather than storing a zero.
+// SetEntry returns the previous value; a value of 0 deletes the entry.
 func TestSetEntryReturnsThePreviousValueAndStaysSparse(t *testing.T) {
 	ctx := context.Background()
 	st := openTestStore(t)

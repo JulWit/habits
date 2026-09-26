@@ -1,6 +1,5 @@
-// Package auth turns Authelia's forward-auth headers into a request-scoped
-// user. The application deliberately has no accounts of its own: identity is
-// owned by Authelia, and this package only decides whom the request belongs to.
+// Package auth determines the user of a request, either a fixed user or from
+// the identity headers set by Authelia.
 package auth
 
 import (
@@ -14,8 +13,7 @@ import (
 	"github.com/JulWit/habits/internal/config"
 )
 
-// User is the identity a request acts under. ID is the scope key for all data;
-// everything else is cosmetic.
+// User is the user of a request. All data is scoped by ID.
 type User struct {
 	ID     string   `json:"id"`
 	Name   string   `json:"name"`
@@ -25,14 +23,13 @@ type User struct {
 
 type ctxKey struct{}
 
-// FromContext returns the authenticated user. The second result is false only
-// if the handler was mounted outside Middleware, which is a programming error.
+// FromContext returns the user stored by Middleware.
 func FromContext(ctx context.Context) (User, bool) {
 	u, ok := ctx.Value(ctxKey{}).(User)
 	return u, ok
 }
 
-// MustUser is for handlers that are always mounted behind Middleware.
+// MustUser is like FromContext but panics if there is no user.
 func MustUser(ctx context.Context) User {
 	u, ok := FromContext(ctx)
 	if !ok {
@@ -41,12 +38,9 @@ func MustUser(ctx context.Context) User {
 	return u
 }
 
-// Middleware resolves the user for every request.
-//
-// In authelia mode the identity headers are only believed when the immediate
-// peer is a configured trusted proxy. Header-based auth is otherwise trivially
-// forgeable: anyone able to open a TCP connection to the port could claim to be
-// any user simply by setting Remote-User themselves.
+// Middleware stores the user of each request in its context and rejects
+// requests without one. In authelia mode, identity headers are accepted only
+// from trusted proxies.
 func Middleware(cfg config.Config, log *slog.Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -65,6 +59,8 @@ func Middleware(cfg config.Config, log *slog.Logger) func(http.Handler) http.Han
 	}
 }
 
+// authError is a rejected request: Status and Message go to the client,
+// Reason to the log.
 type authError struct {
 	Status  int
 	Message string
@@ -73,14 +69,13 @@ type authError struct {
 
 func (e *authError) Error() string { return e.Reason }
 
+// resolve determines the user of r according to cfg.AuthMode.
 func resolve(cfg config.Config, r *http.Request) (User, *authError) {
 	if cfg.AuthMode == config.AuthModeSingleUser {
 		return User{ID: cfg.DefaultUser, Name: cfg.DefaultUser}, nil
 	}
 
 	if !peerTrusted(cfg.TrustedProxies, r.RemoteAddr) {
-		// Deliberately 403 and not 401: the request did not fail to
-		// authenticate, it arrived from somewhere it must never arrive from.
 		return User{}, &authError{
 			Status:  http.StatusForbidden,
 			Message: "access only through the configured reverse proxy",
@@ -98,8 +93,7 @@ func resolve(cfg config.Config, r *http.Request) (User, *authError) {
 	}
 
 	u := User{
-		// Lower-cased so that "Alice" and "alice" cannot end up owning two
-		// separate sets of habits.
+		// Lower case, so that "Alice" and "alice" are the same user.
 		ID:    strings.ToLower(id),
 		Name:  strings.TrimSpace(r.Header.Get(cfg.DisplayHeader)),
 		Email: strings.TrimSpace(r.Header.Get(cfg.EmailHeader)),
@@ -117,6 +111,7 @@ func resolve(cfg config.Config, r *http.Request) (User, *authError) {
 	return u, nil
 }
 
+// peerTrusted reports whether remoteAddr lies in one of the trusted prefixes.
 func peerTrusted(trusted []netip.Prefix, remoteAddr string) bool {
 	host, _, err := net.SplitHostPort(remoteAddr)
 	if err != nil {
@@ -126,8 +121,7 @@ func peerTrusted(trusted []netip.Prefix, remoteAddr string) bool {
 	if err != nil {
 		return false
 	}
-	// A proxy on the same host often connects over IPv6-mapped IPv4; compare
-	// the unmapped form so 127.0.0.1/32 also matches ::ffff:127.0.0.1.
+	// Unmap so that ::ffff:127.0.0.1 matches 127.0.0.1/32.
 	addr = addr.Unmap()
 	for _, p := range trusted {
 		if p.Contains(addr) {

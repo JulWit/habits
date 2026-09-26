@@ -1,6 +1,4 @@
-// Package config loads the runtime configuration from the environment. Every
-// setting has an env var so the binary stays a single self-contained artefact
-// with no config file to ship alongside it.
+// Package config loads the configuration from environment variables.
 package config
 
 import (
@@ -12,40 +10,43 @@ import (
 	"time"
 )
 
+// AuthMode determines how the user of a request is identified.
 type AuthMode string
 
 const (
-	// AuthModeAuthelia trusts identity headers set by a reverse proxy that has
-	// already run Authelia's forward-auth endpoint.
+	// AuthModeAuthelia reads the user from headers set by a trusted reverse
+	// proxy with Authelia.
 	AuthModeAuthelia AuthMode = "authelia"
-	// AuthModeSingleUser skips authentication entirely and pins every request
-	// to one fixed user. Intended for local development and for instances that
-	// are already behind another access control layer.
+	// AuthModeSingleUser assigns every request to DefaultUser, without
+	// authentication.
 	AuthModeSingleUser AuthMode = "single-user"
 )
 
+// Config is the runtime configuration.
 type Config struct {
 	Addr         string
 	DatabasePath string
 	Location     *time.Location
 
 	AuthMode AuthMode
-	// UserHeader carries the stable user identifier (Authelia: Remote-User).
+	// UserHeader holds the user ID (Authelia: Remote-User).
 	UserHeader string
-	// DisplayHeader and EmailHeader are optional niceties for the UI.
+	// DisplayHeader, EmailHeader and GroupsHeader are optional.
 	DisplayHeader string
 	EmailHeader   string
 	GroupsHeader  string
-	// TrustedProxies lists the peers allowed to assert identity headers.
-	// Without it any client that can reach the port could simply send its own
-	// Remote-User, so authelia mode refuses to start with an empty list.
+	// TrustedProxies are the peers whose identity headers are accepted.
+	// Required in authelia mode.
 	TrustedProxies []netip.Prefix
-	DefaultUser    string
+	// DefaultUser is the user in single-user mode.
+	DefaultUser string
 
-	// DeletedRetention is how long soft-deleted habits stay restorable.
+	// DeletedRetention is how long deleted habits and categories can be
+	// restored.
 	DeletedRetention time.Duration
 }
 
+// env returns the trimmed value of key, or fallback if it is unset or blank.
 func env(key, fallback string) string {
 	if v, ok := os.LookupEnv(key); ok && strings.TrimSpace(v) != "" {
 		return strings.TrimSpace(v)
@@ -53,8 +54,7 @@ func env(key, fallback string) string {
 	return fallback
 }
 
-// Load reads the configuration and fails loudly on anything ambiguous rather
-// than falling back to a less safe default.
+// Load reads the configuration from the environment and validates it.
 func Load() (Config, error) {
 	cfg := Config{
 		Addr:             env("HABITS_ADDR", ":8080"),
@@ -100,8 +100,8 @@ func Load() (Config, error) {
 	return cfg, nil
 }
 
-// parsePrefixes accepts both bare addresses and CIDR notation, so
-// "127.0.0.1,10.0.0.0/8" works as written.
+// parsePrefixes parses a comma-separated list of IP addresses and CIDR
+// prefixes, e.g. "127.0.0.1,10.0.0.0/8".
 func parsePrefixes(raw string) ([]netip.Prefix, error) {
 	var out []netip.Prefix
 	for _, part := range strings.Split(raw, ",") {

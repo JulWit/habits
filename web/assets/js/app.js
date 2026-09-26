@@ -1,5 +1,5 @@
-// Bootstrap: loads the state, wires the views and owns routing, theme and
-// keyboard shortcuts. Data mutations live in actions.js.
+// Entry point: loads the state, initialises the views and handles routing,
+// appearance and keyboard shortcuts. Data changes are in actions.js.
 
 import { api } from "./api.js";
 import { state, replaceState, habitById, upsertHabit, subscribe } from "./state.js";
@@ -17,22 +17,16 @@ import * as actions from "./actions.js";
 import { paintIcons } from "./icons.js";
 import { translateDocument } from "./i18n.js";
 
-// Three choices: the two explicit ones and "system", which hands the decision
-// to the device. The stylesheet turns each into a color-scheme.
+// Theme labels.
 const THEME_LABEL = { system: "System", light: "Light", dark: "Dark" };
 const DEFAULT_THEME = "system";
 
-/** Falls back to the default for anything the client does not know. */
+/** Returns `theme` if it is known, otherwise the default. */
 function knownTheme(theme) {
   return THEME_LABEL[theme] ? theme : DEFAULT_THEME;
 }
 
-/**
- * The keys the stylesheet has a rule for, mirroring store.Fonts on the server.
- *
- * A key the client does not know would leave --font unset and the page in the
- * browser's own font, so anything unfamiliar falls back to the default.
- */
+/** Known fonts, as in store.Fonts. Unknown values fall back to the default. */
 const FONTS = ["system", "inter", "roboto", "geist", "opensans", "montserrat", "poppins", "lato"];
 const DEFAULT_FONT = "inter";
 
@@ -40,7 +34,7 @@ function knownFont(font) {
   return FONTS.includes(font) ? font : DEFAULT_FONT;
 }
 
-/** The spacing steps the stylesheet has tokens for, mirroring store.Densities. */
+/** Known densities, as in store.Densities. */
 const DENSITIES = ["compact", "standard", "comfortable"];
 const DEFAULT_DENSITY = "standard";
 
@@ -48,7 +42,7 @@ function knownDensity(density) {
   return DENSITIES.includes(density) ? density : DEFAULT_DENSITY;
 }
 
-/** The background textures the stylesheet draws, mirroring store.Patterns. */
+/** Known background patterns, as in store.Patterns. */
 const PATTERNS = ["none", "dots", "grid", "diagonal", "cross", "image"];
 const DEFAULT_PATTERN = "none";
 
@@ -56,20 +50,14 @@ function knownPattern(pattern) {
   return PATTERNS.includes(pattern) ? pattern : DEFAULT_PATTERN;
 }
 
-/** A number the server sent, kept inside the range the stylesheet expects. */
+/** Returns `value` clamped to [min, max], or `fallback` if it is not a number. */
 function clampNumber(value, min, max, fallback) {
   const n = Number(value);
   if (!Number.isFinite(n)) return fallback;
   return Math.min(max, Math.max(min, Math.round(n)));
 }
 
-/**
- * Whether the board is in reordering mode.
- *
- * Deliberately not a stored setting: it is a mode one enters to move something
- * and leaves again, like a text cursor - carrying it across reloads or to
- * another device would only mean finding handles one did not ask for.
- */
+/** Whether reorder mode is active. Not persisted. */
 let editing = false;
 
 const overviewView = document.getElementById("view-overview");
@@ -98,16 +86,12 @@ const handlers = {
 };
 
 function initEditMode() {
-  // In the settings, beside the choice of how things are moved: the mode and
-  // that choice are one subject, and the title bar has four controls competing
-  // for a bar that is only as wide as the board. Still owned here rather than
-  // by settings.js, because nothing about it is written to the server.
+  // The reorder mode switch in the settings dialog.
   const input = document.getElementById("settings-edit");
   const apply = () => {
     document.documentElement.dataset.edit = editing ? "on" : "off";
     input.checked = editing;
-    // The day columns follow the width the handles leave behind, so the board
-    // has to be measured again.
+    // The handles change the available width, so re-render the board.
     renderOverview();
   };
   input.addEventListener("change", () => {
@@ -118,12 +102,8 @@ function initEditMode() {
 }
 
 /**
- * Whether the page is scrolled, on the root element.
- *
- * One thing depends on it: over an uploaded background the day header stays
- * invisible until something is actually sliding underneath it. A scroll
- * listener rather than a scroll-driven animation, because it is a switch, not
- * a curve - and passive, so it never holds up the scroll itself.
+ * Sets a class on the root element while the page is scrolled. Used for the
+ * day header over a background image.
  */
 function initScrollState() {
   const root = document.documentElement;
@@ -135,13 +115,7 @@ function initScrollState() {
   apply();
 }
 
-/**
- * Registers the service worker, which is what makes the app installable.
- *
- * Failure is not worth reporting: the page works without it, and a browser that
- * refuses - an insecure origin, a private window - is not something the person
- * at the keyboard can act on.
- */
+/** Registers the service worker. Failures are ignored. */
 function initServiceWorker() {
   if (!("serviceWorker" in navigator)) return;
   window.addEventListener("load", () => {
@@ -150,13 +124,11 @@ function initServiceWorker() {
 }
 
 async function main() {
-  // First of all, so every view that reads a caption out of the markup reads
-  // it in the page's language.
+  // Translate first, so views read translated texts from the markup.
   translateDocument();
-  // Before the views wire themselves up, so every declared icon is in place.
+  // Insert the icons before the views are initialised.
   paintIcons();
-  // Before the board, so a change that alters the column width - the density,
-  // the reorder mode - lands on <html> before the board measures what fits.
+  // Before the board, which measures its width depending on these settings.
   initAppearance();
   initCategoryPicker({ createCategory: actions.createCategory });
   initEditor();
@@ -178,39 +150,29 @@ async function main() {
   setChangeHandler(refresh);
   subscribe(syncRoute);
   window.addEventListener("hashchange", syncRoute);
-  // pushState navigation (the back arrow, and the browser's own Back button)
-  // reports through popstate rather than hashchange.
+  // pushState navigation triggers popstate, not hashchange.
   window.addEventListener("popstate", syncRoute);
 
   await refresh();
 }
 
 /**
- * The earliest day the board has asked for, or null for the default window.
- *
- * Remembered rather than passed in once: every later refresh — an edit, an undo
- * — has to keep the window the user paged to, or the days they are looking at
- * would come back empty.
+ * The start date of the loaded entries, or null for the default window. Kept
+ * for all subsequent reloads.
  */
 let historyFrom = null;
 
 async function refresh() {
   try {
     replaceState(await api.loadState(historyFrom));
-    // The fresh state carries windowed entries again, so anything pulled in
-    // full before has just been replaced by a partial history.
+    // The reloaded state only contains the entry window again.
     fullHistoryLoaded.clear();
   } catch (err) {
     toast(errorText(err), { error: true, timeout: 12000 });
   }
 }
 
-/**
- * Widen the loaded history so the board can show `from`.
- *
- * ISO dates compare correctly as strings, so no parsing is needed to decide
- * whether the window already reaches far enough.
- */
+/** Loads entries back to `from`, unless they are already loaded. */
 async function extendHistory(from) {
   if (historyFrom !== null && from >= historyFrom) return;
   historyFrom = from;
@@ -218,13 +180,8 @@ async function extendHistory(from) {
 }
 
 /**
- * Habits whose complete history has been merged into the cache.
- *
- * /api/state ships only the last few months of entries — enough for the board,
- * and small enough to send on every load. The detail view draws a whole
- * calendar year, so it pulls the rest from /api/habits/{id} once per habit and
- * merges it in. The set is what stops the merge from re-triggering itself
- * through the state subscription.
+ * IDs of habits whose complete history has been loaded. /api/state only
+ * contains recent entries; the detail view loads the rest per habit.
  */
 const fullHistoryLoaded = new Set();
 
@@ -241,13 +198,7 @@ async function ensureFullHistory(id) {
 
 // ---------- styleguide ----------
 
-/**
- * Loads the styleguide the first time it is opened.
- *
- * A dynamic import, because nobody reaching the overview should pay for a page
- * that exists for whoever is building the next module. Rendered once: it has no
- * state of its own and nothing in it reacts to the store.
- */
+/** Loads (dynamic import) and renders the style guide on first use. */
 let styleguideDrawn = false;
 
 async function showStyleguide() {
@@ -275,12 +226,8 @@ function currentCategoryId() {
 }
 
 /**
- * Return to the overview.
- *
- * The fragment is dropped with pushState rather than by assigning
- * `location.hash = ""`, which leaves a bare "#" behind and does not reliably
- * fire hashchange. syncRoute is then called directly, so the view never depends
- * on an event that may not arrive.
+ * Returns to the overview. Uses pushState, as setting location.hash to ""
+ * leaves a "#" and does not reliably fire hashchange.
  */
 function goHome() {
   if (location.hash) history.pushState(null, "", location.pathname + location.search);
@@ -288,8 +235,7 @@ function goHome() {
 }
 
 function syncRoute() {
-  // The styleguide is not part of the app's navigation and needs no data, so it
-  // is handled before anything looks at habits.
+  // The style guide needs no data.
   if (location.hash === "#/styleguide") {
     document.documentElement.classList.remove("route-detail");
     document.documentElement.classList.add("route-styleguide");
@@ -303,15 +249,13 @@ function syncRoute() {
   styleguideView.hidden = true;
   document.documentElement.classList.remove("route-styleguide");
 
-  // A category screen of its own: same shape as the habit screen, different
-  // question - not how one habit is going, but whether the group holds.
+  // Category detail view.
   const categoryId = currentCategoryId();
   const category = categoryId
     ? state.categories.find((c) => c.id === categoryId)
     : null;
   if (categoryId && !category) {
-    // Deleted, here or on another device: fall back rather than showing a
-    // screen about nothing.
+    // The category no longer exists: back to the overview.
     history.replaceState(null, "", location.pathname + location.search);
   }
   if (category) {
@@ -320,8 +264,7 @@ function syncRoute() {
     detailView.hidden = true;
     categoryView.hidden = false;
     renderCategory(category);
-    // The perfect-day count runs over the year, which the board alone does not
-    // carry: the window is widened once, and the screen redrawn when it lands.
+    // Perfect days are counted over the whole year.
     extendHistory(`${state.today.slice(0, 4)}-01-01`);
     return;
   }
@@ -331,58 +274,43 @@ function syncRoute() {
   const habit = id ? habitById(id) : null;
 
   if (!habit) {
-    // A hash pointing at a habit that no longer exists (deleted elsewhere, or
-    // archived out of the list) falls back to the overview.
+    // The habit no longer exists: back to the overview.
     if (id && state.habits.length > 0) {
       history.replaceState(null, "", location.pathname + location.search);
     }
     document.documentElement.classList.remove("route-detail");
     overviewView.hidden = false;
     detailView.hidden = true;
-    // The grid could not measure itself while it was hidden, so it is drawn
-    // now that it has a width again.
+    // Re-render, as the board could not be measured while hidden.
     renderOverview();
     return;
   }
-  // The header only tracks the board width on the overview; the detail view has
-  // no day columns to match.
+  // The detail view has no day columns.
   document.documentElement.classList.add("route-detail");
   overviewView.hidden = true;
   detailView.hidden = false;
   renderDetail(habit);
-  // Drawn at once from the cache, then redrawn when the full year arrives.
+  // Render from the loaded entries, then again once the full history arrives.
   ensureFullHistory(habit.id);
 }
 
 // ---------- theme ----------
 
 /**
- * Applies the stored theme to the document.
- *
- * Choosing it lives in the settings dialog; this only reflects the choice, and
- * does so through the state subscription so it follows any write.
- */
-/**
- * Keeps the two appearance choices on <html>, where the stylesheet reads them.
- *
- * The server already wrote both into the shell, so this changes nothing on a
- * cold load; it is what makes a choice in the settings dialog take effect
- * without a reload.
+ * Applies the appearance settings to <html> whenever the state changes. The
+ * server already sets them in the initial HTML.
  */
 function initAppearance() {
   const apply = () => {
     const root = document.documentElement;
     root.dataset.theme = knownTheme(state.settings?.theme);
     root.dataset.font = knownFont(state.settings?.font);
-    // Also decides the width of a day column, which is why this subscriber is
-    // registered before the board's.
+    // Affects the column width, so this runs before the board is rendered.
     root.dataset.density = knownDensity(state.settings?.density);
     root.dataset.pattern = knownPattern(state.settings?.pattern);
-    // The width of the board's last column depends on it: one handle or two
-    // arrows.
+    // Affects the width of the last column.
     root.dataset.reorder = state.settings?.reorderMode === "buttons" ? "buttons" : "drag";
-    // The palette comes from the server, so anything else - an old value, a
-    // colour since dropped - falls back to the neutral band.
+    // Unknown colours fall back to the neutral band.
     const band = state.settings?.bandColor;
     root.dataset.band = state.colors?.includes(band) ? band : "neutral";
     root.style.setProperty("--today-opacity",
@@ -391,9 +319,7 @@ function initAppearance() {
       `${clampNumber(state.settings?.bandFillOpacity, 0, 100, 30)}%`);
     root.dataset.todayBand = state.settings?.showBand === false ? "off" : "on";
 
-    // The two knobs of the uploaded background. Written as custom properties
-    // rather than data attributes, because the stylesheet has to compute with
-    // them - a percentage and a length, not a selector.
+    // Custom properties, as the stylesheet computes with them.
     root.style.setProperty("--bg-dim", `${clampNumber(state.settings?.backgroundDim, 0, 100, 55)}%`);
     root.style.setProperty("--bg-blur", blurLength(clampNumber(state.settings?.backgroundBlur, 0, 100, 0)));
     root.style.setProperty("--surface-opacity",

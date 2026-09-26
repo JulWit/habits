@@ -13,43 +13,40 @@ import (
 	"github.com/JulWit/habits/internal/store"
 )
 
-// maxBodyBytes caps request bodies. Habits are small; anything larger is either
-// a bug or an attempt to make the server allocate.
+// maxBodyBytes is the maximum size of a JSON request body.
 const maxBodyBytes = 64 << 10
 
+// errorBody is the JSON body of an error response.
 type errorBody struct {
+	// Error is the English message.
 	Error string `json:"error"`
-	// Message is the template Error was filled from and Params what filled it,
-	// sent when the sentence has placeholders or may be translated. The
-	// interface looks the template up in its dictionary; Error stays the whole
-	// sentence in English for anything else that reads the API.
+	// Message is the untranslated template of Error and Params its values
+	// (see domain.Problem).
 	Message string         `json:"message,omitempty"`
 	Params  map[string]any `json:"params,omitempty"`
 }
 
+// writeJSON writes payload as JSON with the given status. API responses are
+// not cached.
 func writeJSON(w http.ResponseWriter, status int, payload any) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	// API responses describe mutable state; a cached one would show stale
-	// check-marks after a back-navigation.
 	w.Header().Set("Cache-Control", "no-store")
 	w.WriteHeader(status)
 	if payload == nil {
 		return
 	}
 	if err := json.NewEncoder(w).Encode(payload); err != nil && !errors.Is(err, io.ErrClosedPipe) {
-		// The status line is already sent, so this can only be logged. main
-		// installs the application logger as the default, which is what lets a
-		// package-level helper reach it without carrying a server around.
 		slog.Error("writing response failed", "error", err)
 	}
 }
 
+// writeError writes an error response with the message msg.
 func writeError(w http.ResponseWriter, status int, msg string) {
 	writeJSON(w, status, errorBody{Error: msg})
 }
 
-// writeProblem answers with a sentence the interface can translate: err is
-// normally a *domain.Problem, anything else is sent as it reads.
+// writeProblem writes an error response for err, including template and
+// parameters if err is a *domain.Problem.
 func writeProblem(w http.ResponseWriter, status int, err error) {
 	var p *domain.Problem
 	if !errors.As(err, &p) {
@@ -59,20 +56,14 @@ func writeProblem(w http.ResponseWriter, status int, err error) {
 	writeJSON(w, status, errorBody{Error: p.Message(), Message: p.Template, Params: p.Params})
 }
 
+// notFoundJSON answers unknown API paths with 404.
 func notFoundJSON(w http.ResponseWriter, r *http.Request) {
 	writeError(w, http.StatusNotFound, "Unknown endpoint")
 }
 
-// decodeJSON reads a request body strictly: unknown fields are an error, so a
-// typo in a client field name surfaces instead of being silently dropped.
-//
-// The content type is required, and required to be JSON. Without that check the
-// endpoint would be reachable cross-site: a form can POST text/plain,
-// urlencoded or multipart with no preflight, and a body in any of those can be
-// valid JSON. Demanding application/json is what forces the browser to
-// preflight the request, which the same-origin policy then refuses — the
-// identity here comes from a proxy header behind a session cookie, so there is
-// no token of our own doing that job.
+// decodeJSON decodes the request body into dst and writes an error response if
+// that fails. Unknown fields are rejected. Requiring Content-Type
+// application/json forces a CORS preflight and thus protects against CSRF.
 func decodeJSON(w http.ResponseWriter, r *http.Request, dst any) bool {
 	mediaType, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
 	if err != nil || mediaType != "application/json" {
@@ -94,8 +85,8 @@ func decodeJSON(w http.ResponseWriter, r *http.Request, dst any) bool {
 	return true
 }
 
-// writeStoreError maps the layered error types onto status codes in one place,
-// so handlers stay free of status-code branching.
+// writeStoreError writes an error response for err: 404 for store.ErrNotFound,
+// 422 for validation errors and 500 otherwise.
 func (s *Server) writeStoreError(w http.ResponseWriter, err error, context string) {
 	switch {
 	case errors.Is(err, store.ErrNotFound):
@@ -106,10 +97,7 @@ func (s *Server) writeStoreError(w http.ResponseWriter, err error, context strin
 			writeProblem(w, http.StatusUnprocessableEntity, p)
 			return
 		}
-		// The sentinel prefix is how the layers below say "this is the client's
-		// mistake, not ours". It has done its job by the time we are here, and
-		// "validation error: name must not be empty" is not a sentence to
-		// show anyone — the status code already carries that meaning.
+		// Strip the "validation error: " prefix.
 		msg := strings.TrimPrefix(err.Error(), domain.ErrValidation.Error()+": ")
 		writeError(w, http.StatusUnprocessableEntity, msg)
 	default:

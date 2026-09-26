@@ -7,9 +7,7 @@ import (
 	"testing"
 )
 
-// A cross-site form can POST text/plain, urlencoded or multipart with no
-// preflight, and any of those bodies can be valid JSON. Requiring the JSON
-// content type is what forces a preflight, which same-origin policy then stops.
+// Mutating requests require Content-Type application/json (CSRF protection).
 func TestMutationsRequireTheJSONContentType(t *testing.T) {
 	h := newTestServer(t)
 	habit := `{"name":"Reading","kind":"check","frequency":{"kind":"daily"}}`
@@ -27,7 +25,7 @@ func TestMutationsRequireTheJSONContentType(t *testing.T) {
 		}
 	}
 
-	// The real thing still works, with or without a charset parameter.
+	// application/json is accepted with or without charset.
 	for _, ct := range []string{"application/json", "application/json; charset=utf-8"} {
 		if w := do(t, h, "POST", "/api/habits", habit, ct); w.Code != http.StatusCreated {
 			t.Errorf("Content-Type %q: status %d, want 201 (%s)", ct, w.Code, w.Body)
@@ -35,8 +33,7 @@ func TestMutationsRequireTheJSONContentType(t *testing.T) {
 	}
 }
 
-// Validation messages are read by a person in a dialog, so the sentinel prefix
-// the layers below use to classify the error must not travel with them.
+// Validation messages do not contain the "validation error: " prefix.
 func TestValidationMessagesReachTheUserPlain(t *testing.T) {
 	h := newTestServer(t)
 	w := do(t, h, "POST", "/api/habits",
@@ -58,8 +55,7 @@ func TestValidationMessagesReachTheUserPlain(t *testing.T) {
 	}
 }
 
-// A message with a number in it is sent as its template as well, since that is
-// what the interface's dictionary is keyed by.
+// Validation errors include their message template.
 func TestValidationMessagesCarryTheirTemplate(t *testing.T) {
 	h := newTestServer(t)
 	w := do(t, h, "POST", "/api/habits",

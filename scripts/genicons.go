@@ -1,11 +1,9 @@
-// Command genicons draws the app icon into the PNG sizes a web app manifest
-// needs. Run it after changing web/assets/images/icon.svg:
+// Command genicons renders the PNG app icons for the web app manifest. Run it
+// after changing web/assets/images/icon.svg:
 //
 //	go run ./scripts/genicons
 //
-// Drawn rather than rasterised: the icon is a rounded square and a tick in an
-// opened ring, which is a dozen lines of geometry, and that saves the repository
-// an image toolchain it would otherwise need for three files.
+// The icon geometry is defined in code, so no image toolchain is needed.
 package main
 
 import (
@@ -18,8 +16,7 @@ import (
 	"path/filepath"
 )
 
-// The icon itself, in the 24x24 coordinates the title bar's mark is drawn in -
-// icon.svg shows the same shape at the 0.72 its tile leaves it.
+// Icon geometry in 24x24 coordinates, matching icon.svg.
 var (
 	background = color.NRGBA{R: 0x33, G: 0x36, B: 0x3d, A: 0xff}
 	ink        = color.NRGBA{R: 0xff, G: 0xff, B: 0xff, A: 0xff}
@@ -27,14 +24,11 @@ var (
 	ringC      = [2]float64{12, 12}
 	ringR      = 9.6
 	strokeW    = 2.4
-	// Where the ring is cut open, in degrees clockwise from three o'clock -
-	// four gaps along the bottom, which leave three bars between them. The ends
-	// are square, which is what an arc cut at an angle gives on its own.
+	// Gaps in the ring, in degrees clockwise from three o'clock.
 	ringGaps = [][2]float64{{20, 32}, {62.667, 74.667}, {105.333, 117.333}, {148, 160}}
 )
 
-// sample is how many times each pixel is divided per axis before averaging.
-// Four is enough for edges this smooth and keeps the whole run under a second.
+// sample is the number of antialiasing samples per pixel and axis.
 const sample = 4
 
 func main() {
@@ -57,6 +51,7 @@ func main() {
 	}
 }
 
+// write renders the icon and saves it as a PNG file at path.
 func write(path string, size int, maskable bool) error {
 	img := render(size, maskable)
 	f, err := os.Create(path)
@@ -70,11 +65,12 @@ func write(path string, size int, maskable bool) error {
 	return nil
 }
 
+// render draws the icon at size x size pixels.
 func render(size int, maskable bool) *image.NRGBA {
 	img := image.NewNRGBA(image.Rect(0, 0, size, size))
 
-	// A maskable icon is cropped to whatever shape the platform likes, so it
-	// fills the square and keeps the mark well inside the safe zone.
+	// A maskable icon fills the whole square and keeps the mark inside the
+	// safe zone.
 	scale := 0.72
 	radius := 0.25
 	if maskable {
@@ -90,8 +86,7 @@ func render(size int, maskable bool) *image.NRGBA {
 	return img
 }
 
-// pixel averages the sample x sample points inside one pixel, which is what
-// gives the corners and the stroke their smooth edge.
+// pixel returns the antialiased colour of a pixel.
 func pixel(px, py, size int, scale, radius float64) color.NRGBA {
 	var r, g, b, a float64
 	unit := float64(size) / 24 * scale
@@ -105,8 +100,7 @@ func pixel(px, py, size int, scale, radius float64) color.NRGBA {
 			c := color.NRGBA{}
 			if inRoundedSquare(x, y, float64(size), radius*float64(size)) {
 				c = background
-				// The mark is drawn in the icon's own coordinates, then moved
-				// to wherever the scaled 24x24 box starts.
+				// Convert to 24x24 icon coordinates.
 				if onMark((x-offset)/unit, (y-offset)/unit) {
 					c = ink
 				}
@@ -122,8 +116,7 @@ func pixel(px, py, size int, scale, radius float64) color.NRGBA {
 	if a == 0 {
 		return color.NRGBA{}
 	}
-	// Back out of the premultiplied average, so a pixel on the very edge keeps
-	// its colour instead of fading towards black.
+	// Convert from premultiplied to straight alpha.
 	return color.NRGBA{
 		R: uint8(math.Round(r / n * 255 / (a / n))),
 		G: uint8(math.Round(g / n * 255 / (a / n))),
@@ -132,19 +125,19 @@ func pixel(px, py, size int, scale, radius float64) color.NRGBA {
 	}
 }
 
+// inRoundedSquare reports whether (x, y) lies in a square of the given size
+// with corner radius r.
 func inRoundedSquare(x, y, size, r float64) bool {
 	if r <= 0 {
 		return x >= 0 && y >= 0 && x <= size && y <= size
 	}
-	// Distance to the rounded rectangle, measured from the inner box the
-	// corner circles sit on.
 	cx := math.Max(r, math.Min(x, size-r))
 	cy := math.Max(r, math.Min(y, size-r))
 	return math.Hypot(x-cx, y-cy) <= r
 }
 
-// onMark reports whether a point in 24x24 icon space lies under the stroke,
-// which is the opened ring and the two round-capped segments of the tick.
+// onMark reports whether a point in icon coordinates lies on the ring or the
+// check mark.
 func onMark(x, y float64) bool {
 	half := strokeW / 2
 	if onRing(x, y, half) {
@@ -158,8 +151,7 @@ func onMark(x, y float64) bool {
 	return false
 }
 
-// onRing is a ring, not a disc: what counts is the distance to the circle
-// itself - and then whether the point falls in one of the gaps.
+// onRing reports whether a point lies on the ring stroke outside its gaps.
 func onRing(x, y, half float64) bool {
 	if math.Abs(math.Hypot(x-ringC[0], y-ringC[1])-ringR) > half {
 		return false
@@ -176,6 +168,7 @@ func onRing(x, y, half float64) bool {
 	return true
 }
 
+// distanceToSegment returns the distance from (x, y) to the segment a-b.
 func distanceToSegment(x, y float64, a, b [2]float64) float64 {
 	dx, dy := b[0]-a[0], b[1]-a[1]
 	length := dx*dx + dy*dy

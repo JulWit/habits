@@ -9,10 +9,8 @@ import (
 	"github.com/JulWit/habits/internal/domain"
 )
 
-// openTestStore builds a real SQLite database in the test's temp directory and
-// runs every migration against it. The driver is pure Go, so this needs no
-// toolchain and no fixture file — and it means the migrations themselves are
-// exercised on each run.
+// openTestStore opens a new database in a temporary directory, running all
+// migrations.
 func openTestStore(t *testing.T) *Store {
 	t.Helper()
 	ctx := context.Background()
@@ -32,7 +30,7 @@ func mustCreateHabit(t *testing.T, st *Store, user string, h domain.Habit) domai
 	return h
 }
 
-// day keeps the Date literals keyed, which vet insists on across packages.
+// day returns a Date (keyed fields, as required by vet).
 func day(y int, m time.Month, d int) domain.Date {
 	return domain.Date{Year: y, Month: m, Day: d}
 }
@@ -44,8 +42,8 @@ func countHabit(kind domain.Kind, target int) domain.Habit {
 	}
 }
 
-// Every migration applies cleanly to an empty file, and re-opening the same
-// file is a no-op rather than a second run.
+// Migrations apply to an empty database, and reopening it does not run them
+// again.
 func TestMigrationsAreIdempotent(t *testing.T) {
 	ctx := context.Background()
 	path := filepath.Join(t.TempDir(), "test.db")
@@ -67,9 +65,7 @@ func TestMigrationsAreIdempotent(t *testing.T) {
 	}
 }
 
-// Stored timestamps are compared as text — by the purge, and as the tie-break
-// in every list — so the text order has to be the chronological order. A
-// trimmed fraction would break that: ".5Z" sorts after ".5001Z".
+// Stored timestamps sort chronologically as text.
 func TestStoredTimestampsSortChronologically(t *testing.T) {
 	base := time.Date(2026, 9, 19, 12, 0, 0, 0, time.UTC)
 	ordered := []time.Time{
@@ -88,7 +84,7 @@ func TestStoredTimestampsSortChronologically(t *testing.T) {
 		}
 	}
 
-	// And the format still parses back to the instant it came from.
+	// Stored timestamps parse back to the original time.
 	for _, want := range ordered {
 		got, err := parseTime(formatTime(want))
 		if err != nil {
@@ -100,7 +96,7 @@ func TestStoredTimestampsSortChronologically(t *testing.T) {
 		}
 	}
 
-	// Rows written before the padding existed still read back correctly.
+	// Timestamps without fixed-width nanoseconds still parse.
 	if _, err := parseTime("2026-09-19T12:00:00.5Z"); err != nil {
 		t.Errorf("old timestamp without padding: %v", err)
 	}

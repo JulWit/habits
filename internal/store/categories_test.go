@@ -8,8 +8,7 @@ import (
 	"github.com/JulWit/habits/internal/domain"
 )
 
-// A soft-deleted category leaves its habits alone; they only look uncategorised
-// until it comes back.
+// Soft-deleting a category keeps the category ID of its habits.
 func TestCategorySoftDeleteLeavesHabitsAssigned(t *testing.T) {
 	ctx := context.Background()
 	st := openTestStore(t)
@@ -44,8 +43,7 @@ func TestCategorySoftDeleteLeavesHabitsAssigned(t *testing.T) {
 	}
 }
 
-// A category's icon survives the round trip through create, update and read,
-// and an unknown name is refused.
+// A category icon is stored and read back; unknown icons are rejected.
 func TestCategoryIcon(t *testing.T) {
 	ctx := context.Background()
 	st := openTestStore(t)
@@ -76,7 +74,7 @@ func TestCategoryIcon(t *testing.T) {
 	}
 }
 
-// Whether a category shows its progress is stored both ways round.
+// ShowProgress is stored in both states.
 func TestCategoryShowProgress(t *testing.T) {
 	ctx := context.Background()
 	st := openTestStore(t)
@@ -98,8 +96,8 @@ func TestCategoryShowProgress(t *testing.T) {
 	}
 }
 
-// A category's colour is stored lower-cased, can go back to neutral, and has to
-// be a hex value.
+// A category colour is stored in lower case, can be reset and must be a hex
+// value.
 func TestCategoryColor(t *testing.T) {
 	ctx := context.Background()
 	st := openTestStore(t)

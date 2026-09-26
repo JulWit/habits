@@ -1,7 +1,5 @@
-// The search dialog: a quick jump to a habit or a category, opened from the
-// title bar or with "/". It does not filter the board - a modal lies over the
-// board, so a filter behind it would change something no one can see. Picking a
-// result opens it instead, which is what one searches a list of names for.
+// Search dialog for habits and categories, opened from the title bar or with
+// "/". Selecting a result opens it.
 
 import { subscribe, groupedHabits } from "./state.js";
 import { habitIconBadge, categoryIconBadge } from "./icons.js";
@@ -13,7 +11,7 @@ let input;
 let list;
 let empty;
 
-/** The results as drawn, in order, and which of them Enter would open. */
+/** The displayed results and the index of the selected one. */
 let results = [];
 let active = 0;
 
@@ -37,8 +35,7 @@ export function initSearch(handlers) {
     const option = event.target.closest("[data-index]");
     if (option) choose(results[Number(option.dataset.index)]);
   });
-  // The pointer and the arrow keys share one highlight, so Enter always opens
-  // what is marked - whichever of the two marked it last.
+  // Pointer and arrow keys move the same selection.
   list.addEventListener("pointermove", (event) => {
     const option = event.target.closest("[data-index]");
     if (option && Number(option.dataset.index) !== active) {
@@ -47,14 +44,12 @@ export function initSearch(handlers) {
     }
   });
 
-  // A click on the backdrop lands on the dialog element itself, outside its
-  // content box; a modal only closes on Escape by default.
+  // Close on a click on the backdrop.
   dialog.addEventListener("click", (event) => {
     if (event.target === dialog) dialog.close();
   });
 
-  // The state can change while the dialog is open - an undo, another tab - and
-  // the list should not offer something that has just gone.
+  // Update the results when the state changes.
   subscribe(() => {
     if (dialog.open) draw();
   });
@@ -64,13 +59,13 @@ export function openSearch() {
   if (dialog.open) return;
   input.value = "";
   active = 0;
-  // Shown first: a closed dialog lays nothing out, and draw() measures the list.
+  // Open first, so that draw() can measure the list.
   dialog.showModal();
   draw();
   input.focus();
 }
 
-/** Everything that can be jumped to, in the order the board shows it. */
+/** Returns all searchable entries in board order. */
 function candidates() {
   const out = [];
   for (const { category, habits } of groupedHabits()) {
@@ -82,8 +77,7 @@ function candidates() {
 
 function matches(entry, query) {
   if (query === "") return true;
-  // A habit is found by its category's name too: typing "Sport" should list
-  // what is filed under it, not only the category itself.
+  // Habits also match the name of their category.
   const text = entry.kind === "habit"
     ? `${entry.item.name} ${entry.category?.name ?? ""}`
     : entry.item.name;
@@ -98,8 +92,7 @@ function draw() {
   list.replaceChildren(...results.map(option));
   list.hidden = results.length === 0;
   empty.hidden = results.length > 0;
-  // Measured without the padding the class adds, so the answer does not
-  // depend on the previous one.
+  // Measure without the class's padding.
   list.classList.remove("is-scrolling");
   list.classList.toggle("is-scrolling", list.scrollHeight > list.clientHeight);
   mark();
@@ -112,7 +105,7 @@ function option(entry, index) {
   el.dataset.index = String(index);
   el.setAttribute("role", "option");
 
-  // A habit or category with an icon shows it in place of its dot.
+  // Show the icon instead of the dot, if there is one.
   let dot = entry.kind === "habit"
     ? habitIconBadge(entry.item, "habit-icon is-small")
     : categoryIconBadge(entry.item, "habit-icon is-small");
@@ -139,7 +132,7 @@ function option(entry, index) {
   return el;
 }
 
-/** Moves the highlight and keeps it in view. */
+/** Highlights the selected result and scrolls it into view. */
 function mark() {
   for (const el of list.children) {
     el.setAttribute("aria-selected", String(Number(el.dataset.index) === active));

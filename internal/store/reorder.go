@@ -8,19 +8,10 @@ import (
 	"github.com/JulWit/habits/internal/domain"
 )
 
-// reorder writes the positions 0, 1, 2, … of the user's live rows in table, in
-// the order ids gives.
-//
-// ids need not name every row. The client leaves out what it does not show -
-// archived habits while they are hidden, a habit another device created a
-// moment ago - and those follow the named rows in the order they already had,
-// so no two rows ever share a position. An id that is not one of the user's
-// live rows is skipped rather than refused, so a stale client cannot fail the
-// whole request. An id named twice is refused: no client means that, and there
-// is no telling which of the two places it wanted.
-//
-// table is one of the package's own constants, never input. touchUpdated says
-// whether a move counts as a change to the row.
+// reorder sets the positions of the user's non-deleted rows in table to the
+// order of ids. Rows missing from ids follow in their previous order; unknown
+// IDs are ignored; duplicate IDs are an error. table must be a constant.
+// touchUpdated also sets updated_at.
 func (s *Store) reorder(ctx context.Context, table, userID string, ids []string, touchUpdated bool) error {
 	named := make(map[string]bool, len(ids))
 	for _, id := range ids {

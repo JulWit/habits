@@ -18,16 +18,14 @@ const (
 	KindCount Kind = "count"
 	// KindTime counts minutes, e.g. 20 minutes of reading.
 	KindTime Kind = "time"
-	// KindDistance counts metres. Stored in metres rather than kilometres so a
-	// day's value stays a whole number like every other kind; the UI formats it
-	// as kilometres once it passes a thousand.
+	// KindDistance measures a distance, stored in metres.
 	KindDistance Kind = "distance"
 )
 
-// AllKinds is every kind there is, in the order the editor offers them. One
-// list rather than a switch per question, so adding a kind is one edit.
+// AllKinds lists all kinds in the order the editor offers them.
 var AllKinds = []Kind{KindCheck, KindCount, KindTime, KindDistance}
 
+// Valid reports whether k is one of AllKinds.
 func (k Kind) Valid() bool {
 	for _, known := range AllKinds {
 		if k == known {
@@ -37,25 +35,20 @@ func (k Kind) Valid() bool {
 	return false
 }
 
-// KindInfo is everything the client has to know to treat a kind correctly.
+// KindInfo describes a kind's value range for the client.
 type KindInfo struct {
-	// Scale is how many stored units make one unit the reader writes.
+	// Scale is the number of stored units per displayed unit.
 	Scale int `json:"scale"`
-	// Step is how much a single tap adds, in stored units.
+	// Step is the default increment per tap, in stored units.
 	Step int `json:"step"`
-	// Max is the largest value a target or a single day may hold.
+	// Max is the upper bound for a target or a day's value.
 	Max int `json:"max"`
-	// Unit is the fixed unit, or "" where the user names their own.
+	// Unit is the fixed unit, or "" if the user chooses one.
 	Unit string `json:"unit"`
 }
 
-// KindDescriptors is the per-kind table the state response carries.
-//
-// Sent to the client rather than mirrored there. These four numbers decide what
-// a stored integer means — 5000 is five kilometres or five hundred repetitions
-// depending on them — and a second copy in JavaScript is a copy that can drift.
-// A drift here would not throw; it would quietly misread every entry a habit
-// has.
+// KindDescriptors returns the KindInfo of every kind. It is sent to the client
+// so that the client does not keep its own copy of these values.
 func KindDescriptors() map[Kind]KindInfo {
 	out := make(map[Kind]KindInfo, len(AllKinds))
 	for _, k := range AllKinds {
@@ -64,11 +57,8 @@ func KindDescriptors() map[Kind]KindInfo {
 	return out
 }
 
-// Scale is how many stored units go into one unit the reader writes.
-//
-// Values are whole numbers all the way down, so a kind that accepts a decimal
-// place has to be kept finer than it is spelled: tenths of a count, tenths of
-// a minute - six seconds - and metres for a distance written in kilometres.
+// Scale returns the number of stored units per displayed unit. Values are
+// stored as integers: counts and minutes in tenths, distances in metres.
 func (k Kind) Scale() int {
 	switch k {
 	case KindCount, KindTime:
@@ -79,9 +69,7 @@ func (k Kind) Scale() int {
 	return 1
 }
 
-// MaxTarget is the largest daily target the kind accepts, in stored units. One
-// global limit does not work across kinds: a whole day of minutes is an absurdly
-// short distance, and 200 km would be a nonsensical number of glasses of water.
+// MaxTarget returns the largest daily target of the kind, in stored units.
 func (k Kind) MaxTarget() int {
 	switch k {
 	case KindCount:
@@ -94,9 +82,7 @@ func (k Kind) MaxTarget() int {
 	return 1
 }
 
-// Step is how much one tap adds by default, in stored units. Minutes and metres
-// move in useful chunks rather than one at a time; every counting kind can be
-// given a step of its own.
+// Step returns the default increment per tap, in stored units.
 func (k Kind) Step() int {
 	switch k {
 	case KindTime:
@@ -109,9 +95,7 @@ func (k Kind) Step() int {
 	return 1
 }
 
-// Label is what the editor calls the kind. It lives here because the server
-// writes it into messages the user reads, and a message naming a kind
-// differently from the radio button next to it is a seam showing through.
+// Label returns the display name of the kind, as shown in the editor.
 func (k Kind) Label() string {
 	switch k {
 	case KindCheck:
@@ -126,7 +110,7 @@ func (k Kind) Label() string {
 	return string(k)
 }
 
-// Unit is the fixed unit of a kind, or "" when the user names it themselves.
+// Unit returns the fixed unit of the kind, or "" if the user chooses one.
 func (k Kind) Unit() string {
 	switch k {
 	case KindTime:
@@ -137,16 +121,21 @@ func (k Kind) Unit() string {
 	return ""
 }
 
-// FrequencyKind is how often a habit is expected.
+// FrequencyKind is the type of a habit's schedule.
 type FrequencyKind string
 
 const (
-	FreqDaily          FrequencyKind = "daily"
-	FreqTimesPerWeek   FrequencyKind = "times_per_week"
-	FreqWeekdays       FrequencyKind = "weekdays"
+	// FreqDaily is due every day.
+	FreqDaily FrequencyKind = "daily"
+	// FreqTimesPerWeek is due a number of times per week, on any days.
+	FreqTimesPerWeek FrequencyKind = "times_per_week"
+	// FreqWeekdays is due on selected weekdays.
+	FreqWeekdays FrequencyKind = "weekdays"
+	// FreqCustomInterval is due every n days.
 	FreqCustomInterval FrequencyKind = "custom_interval"
 )
 
+// Valid reports whether f is a known frequency kind.
 func (f FrequencyKind) Valid() bool {
 	switch f {
 	case FreqDaily, FreqTimesPerWeek, FreqWeekdays, FreqCustomInterval:
@@ -155,57 +144,53 @@ func (f FrequencyKind) Valid() bool {
 	return false
 }
 
-// Weekdays is a bitmask with bit 0 = Monday through bit 6 = Sunday. A bitmask
-// keeps the column a single integer, which matters once habits are queried in
-// bulk for the overview.
+// Weekdays is a set of weekdays as a bitmask: bit 0 is Monday, bit 6 Sunday.
 type Weekdays uint8
 
 func weekdayBit(d time.Weekday) Weekdays { return 1 << uint((int(d)+6)%7) }
 
+// Has reports whether d is in the set.
 func (w Weekdays) Has(d time.Weekday) bool { return w&weekdayBit(d) != 0 }
-func (w Weekdays) Count() int              { return bits.OnesCount8(uint8(w)) }
 
-// Frequency describes the schedule of a habit. Only the fields belonging to
-// Kind carry meaning; the others are normalised to zero by Validate so that two
-// habits with the same effective schedule compare equal.
+// Count returns the number of weekdays in the set.
+func (w Weekdays) Count() int { return bits.OnesCount8(uint8(w)) }
+
+// Frequency is the schedule of a habit. Only the fields used by Kind are set;
+// Validate resets the others to zero.
 type Frequency struct {
 	Kind         FrequencyKind `json:"kind"`
 	TimesPerWeek int           `json:"timesPerWeek"`
 	Weekdays     Weekdays      `json:"weekdays"`
 	IntervalDays int           `json:"intervalDays"`
-	// WeekInterval narrows chosen weekdays to every n-th week, counted in whole
-	// Monday-to-Sunday weeks from the week of AnchorDate. One is every week.
+	// WeekInterval limits FreqWeekdays to every n-th week, counted from the
+	// week of AnchorDate. 1 means every week.
 	WeekInterval int `json:"weekInterval"`
-	// WeekOfMonth narrows chosen weekdays to their n-th occurrence in the month:
-	// 1 to 4, or LastWeekOfMonth for the last one. Zero is every occurrence. It
-	// cannot be combined with a WeekInterval above one.
+	// WeekOfMonth limits FreqWeekdays to the n-th occurrence of each weekday in
+	// the month (1 to 4, or LastWeekOfMonth). 0 means every occurrence.
+	// Cannot be combined with a WeekInterval greater than 1.
 	WeekOfMonth int `json:"weekOfMonth"`
-	// AnchorDate is the first due day of a custom-interval schedule, or the
-	// start of an every-n-weeks one. Without it the phase would silently shift
-	// whenever the habit is edited.
+	// AnchorDate is the first due day of FreqCustomInterval, or the start week
+	// of a WeekInterval greater than 1.
 	AnchorDate Date `json:"anchorDate"`
 }
 
-// LastWeekOfMonth is the WeekOfMonth for the last occurrence of a weekday in
-// its month, whether that is the fourth or the fifth.
+// LastWeekOfMonth selects the last occurrence of a weekday in its month.
 const LastWeekOfMonth = -1
 
-// Habit is a tracked habit belonging to exactly one user.
+// Habit is a tracked habit of a single user.
 type Habit struct {
 	ID    string `json:"id"`
 	Name  string `json:"name"`
 	Color string `json:"color"`
-	// Icon names one of HabitIcons, or is empty for a habit drawn without one.
+	// Icon is one of HabitIcons, or "" for no icon.
 	Icon string `json:"icon"`
 	Kind Kind   `json:"kind"`
-	// CategoryID is empty when the habit belongs to no category. It may also
-	// point at a soft-deleted category, in which case the habit shows up as
-	// uncategorised until that category is restored.
+	// CategoryID is "" for no category. If it refers to a deleted category,
+	// the habit is shown as uncategorised.
 	CategoryID  string `json:"categoryId"`
 	TargetValue int    `json:"targetValue"`
-	// StepValue is how much one tap, or one press of + or -, adds. It starts at
-	// the kind's natural step and every kind but a tick lets the user change
-	// it: "one glass" is the obvious increment for water, "ten" is for push-ups.
+	// StepValue is the increment per tap, in stored units. Always 1 for
+	// KindCheck.
 	StepValue  int        `json:"stepValue"`
 	Unit       string     `json:"unit"`
 	Frequency  Frequency  `json:"frequency"`
@@ -216,17 +201,18 @@ type Habit struct {
 }
 
 var (
+	// ErrValidation is matched by every validation error (see Problem).
 	ErrValidation = errors.New("validation error")
 	colorPattern  = regexp.MustCompile(`^#[0-9a-fA-F]{6}$`)
 )
 
+// Maximum lengths of a habit's name and unit, in characters.
 const (
 	MaxNameLen = 80
 	MaxUnitLen = 16
 )
 
-// The bounds messages are phrased per kind, so the reader is told about
-// minutes or metres rather than about an abstract "target".
+// targetTooSmall returns the error for a target below the minimum of k.
 func targetTooSmall(k Kind) error {
 	switch k {
 	case KindTime:
@@ -237,10 +223,8 @@ func targetTooSmall(k Kind) error {
 	return invalid("target must be at least 0.1")
 }
 
-// tooLarge names a kind's ceiling the way the reader wrote it: the stored
-// number divided back down, with the unit it is entered in. what is the thing
-// being bounded - "target", "step", "value" - and is part of the template, so
-// every combination is a sentence of its own for the translation to key on.
+// tooLarge returns the error for a value above the maximum of k, stated in
+// display units. what names the value, e.g. "target" or "step".
 func tooLarge(what string, k Kind) error {
 	limit := k.MaxTarget() / k.Scale()
 	switch k {
@@ -264,9 +248,8 @@ func targetTooLarge(k Kind) error {
 
 var invalid = Invalid
 
-// Validate normalises the habit in place and reports why it is unacceptable.
-// Normalising here rather than in the HTTP layer means the invariants hold for
-// every future entry point, including imports and CLI tooling.
+// Validate normalises h in place and returns a validation error if h is
+// invalid.
 func (h *Habit) Validate() error {
 	h.Name = strings.TrimSpace(h.Name)
 	h.Unit = strings.TrimSpace(h.Unit)
@@ -297,7 +280,6 @@ func (h *Habit) Validate() error {
 		return invalid(`unknown habit kind "{kind}"`, "kind", h.Kind)
 	}
 	if h.Kind == KindCheck {
-		// A tick is done or it is not; there is nothing to configure.
 		h.TargetValue = 1
 	} else if h.TargetValue < 1 {
 		return targetTooSmall(h.Kind)
@@ -305,9 +287,7 @@ func (h *Habit) Validate() error {
 	if h.TargetValue > h.Kind.MaxTarget() {
 		return targetTooLarge(h.Kind)
 	}
-	// A tick has nothing to count, so its step stays one whatever a client
-	// sends. The counting kinds start at the step of their unit and may be set
-	// to anything up to their own maximum.
+	// The step defaults to the kind's step and is fixed at 1 for KindCheck.
 	if h.Kind == KindCheck {
 		h.StepValue = 1
 	} else if h.StepValue < 1 {
@@ -315,7 +295,7 @@ func (h *Habit) Validate() error {
 	} else if h.StepValue > h.Kind.MaxTarget() {
 		return tooLarge("step", h.Kind)
 	}
-	// Kinds with a fixed unit own it; only a count lets the user name one.
+	// Only KindCount has a user-defined unit.
 	if u := h.Kind.Unit(); u != "" || h.Kind == KindCheck {
 		h.Unit = u
 	}
@@ -323,6 +303,8 @@ func (h *Habit) Validate() error {
 	return h.normaliseFrequency()
 }
 
+// normaliseFrequency validates h.Frequency and resets the fields its kind does
+// not use.
 func (h *Habit) normaliseFrequency() error {
 	f := &h.Frequency
 	if !f.Kind.Valid() {
@@ -345,8 +327,7 @@ func (h *Habit) normaliseFrequency() error {
 		if f.Weekdays > 0b1111111 {
 			return invalid("invalid weekday selection")
 		}
-		// Zero is what a client that knows nothing of the week interval sends,
-		// and it means what it always has: every week.
+		// 0 means every week, for clients that do not send a week interval.
 		if f.WeekInterval == 0 {
 			f.WeekInterval = 1
 		}
@@ -359,7 +340,7 @@ func (h *Habit) normaliseFrequency() error {
 		if f.WeekInterval > 1 && f.WeekOfMonth != 0 {
 			return invalid("a week interval and a week of the month cannot be combined")
 		}
-		// Only an every-n-weeks schedule has a phase to keep.
+		// Only a week interval greater than 1 needs an anchor.
 		if f.WeekInterval > 1 {
 			if f.AnchorDate.IsZero() {
 				f.AnchorDate = DateFromTime(h.CreatedAt)
@@ -381,11 +362,8 @@ func (h *Habit) normaliseFrequency() error {
 	return nil
 }
 
-// ValidateEntryValue bounds a single day's value.
-//
-// A day is held to the same per-kind ceiling as a target: the client already
-// stops a tap there, but the API is reachable without it, and an unbounded
-// value would overflow the sum in Stats.Total long before it meant anything.
+// ValidateEntryValue checks that a day's value lies between 0 and the kind's
+// MaxTarget.
 func ValidateEntryValue(k Kind, value int) error {
 	if !k.Valid() {
 		return invalid(`unknown habit kind "{kind}"`, "kind", k)
@@ -399,7 +377,7 @@ func ValidateEntryValue(k Kind, value int) error {
 	return nil
 }
 
-// Target is the value that counts as done for a single day.
+// Target returns the value at which a day counts as completed.
 func (h Habit) Target() int {
 	if h.Kind == KindCheck {
 		return 1
@@ -413,11 +391,8 @@ func (h Habit) Target() int {
 // IsComplete reports whether a day's value reaches the habit's target.
 func (h Habit) IsComplete(value int) bool { return value >= h.Target() }
 
-// IsScheduled reports whether the habit is due on d.
-//
-// FreqTimesPerWeek has no fixed days by design: any day of the week is a valid
-// opportunity, and whether the week was met is a question for the weekly stats
-// rather than for a single day.
+// IsScheduled reports whether the habit is due on d. FreqDaily and
+// FreqTimesPerWeek are due every day.
 func (h Habit) IsScheduled(d Date) bool {
 	switch h.Frequency.Kind {
 	case FreqDaily, FreqTimesPerWeek:
@@ -442,9 +417,8 @@ func (h Habit) IsScheduled(d Date) bool {
 	return false
 }
 
-// inScheduledWeek reports whether d, already on one of the chosen weekdays,
-// also falls in a week the schedule asks for: every n-th week from the anchor,
-// or the n-th occurrence of that weekday in its month.
+// inScheduledWeek reports whether d lies in a week selected by WeekInterval or
+// WeekOfMonth.
 func (h Habit) inScheduledWeek(d Date) bool {
 	f := h.Frequency
 	if f.WeekOfMonth == LastWeekOfMonth {
@@ -467,12 +441,8 @@ func (h Habit) inScheduledWeek(d Date) bool {
 	return true
 }
 
-// AcceptsEntry reports whether a value may be recorded on d.
-//
-// Frequencies with fixed days — chosen weekdays and a custom interval — close all
-// other days: the days are the whole point of those frequencies, so a tick in
-// between is a mistake. Daily and times-per-week stay open on every day, since
-// any day counts for them anyway.
+// AcceptsEntry reports whether a value may be recorded on d. Schedules with
+// fixed days accept entries only on those days.
 func (h Habit) AcceptsEntry(d Date) bool {
 	switch h.Frequency.Kind {
 	case FreqWeekdays, FreqCustomInterval:
@@ -481,20 +451,18 @@ func (h Habit) AcceptsEntry(d Date) bool {
 	return true
 }
 
+// IsArchived reports whether the habit is archived.
 func (h Habit) IsArchived() bool { return h.ArchivedAt != nil }
 
-// DefaultColors is the palette offered in the editor, kept in the domain so the
-// server can validate against the same list the client renders.
+// DefaultColors is the colour palette offered in the editor.
 var DefaultColors = []string{
 	"#dc2626", "#ea580c", "#eab308", "#65a30d",
 	"#16a34a", "#0d9488", "#0284c7", "#2563eb",
 	"#4f46e5", "#7c3aed", "#db2777", "#64748b",
 }
 
-// HabitIcons are the icons a habit may wear, in the order the editor offers
-// them. Only the names live here; the drawings are the client's. Kept on the
-// server for the same reason as the palette: a name outside this list would be
-// stored and then drawn as nothing at all.
+// HabitIcons lists the valid icon names, in the order the editor offers them.
+// The icons themselves are defined in the client.
 var HabitIcons = []string{
 	"droplet", "apple", "utensils", "coffee", "pill", "heart", "dumbbell", "bike",
 	"mountain", "flame", "bed", "moon", "sun", "book", "pencil", "lightbulb",

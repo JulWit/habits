@@ -33,7 +33,7 @@ func TestValidateNormalises(t *testing.T) {
 	if h.Color != "#16a34a" {
 		t.Errorf("color = %q, want lower-cased", h.Color)
 	}
-	// A tick owns neither a unit nor a step.
+	// KindCheck has no unit and a step of 1.
 	if h.Unit != "" {
 		t.Errorf("unit = %q, want empty for a check", h.Unit)
 	}
@@ -95,8 +95,7 @@ func TestValidateRejects(t *testing.T) {
 	}
 }
 
-// Fields belonging to another frequency are zeroed, so two habits with the same
-// effective schedule compare equal.
+// Validate resets fields not used by the frequency kind.
 func TestValidateClearsForeignFrequencyFields(t *testing.T) {
 	h := baseHabit()
 	h.Frequency = Frequency{
@@ -111,8 +110,7 @@ func TestValidateClearsForeignFrequencyFields(t *testing.T) {
 	}
 }
 
-// A custom-interval habit without an anchor gets its creation day, so editing it
-// later cannot shift the phase of the interval.
+// A custom interval without an anchor is anchored at the creation day.
 func TestValidateAnchorsCustomInterval(t *testing.T) {
 	h := baseHabit()
 	h.Frequency = Frequency{Kind: FreqCustomInterval, IntervalDays: 3}
@@ -124,8 +122,8 @@ func TestValidateAnchorsCustomInterval(t *testing.T) {
 	}
 }
 
-// A step below one falls back to the kind's own; above the ceiling it is a
-// rejection, not a clamp.
+// A step below 1 falls back to the kind's step; a step above the maximum is an
+// error.
 func TestValidateStepValue(t *testing.T) {
 	h := baseHabit()
 	h.Kind = KindTime
@@ -183,7 +181,7 @@ func TestIsScheduledNarrowedWeekdays(t *testing.T) {
 		want map[Date]bool
 	}{
 		// Mondays in September 2026: 7, 14, 21, 28. The anchor is a Wednesday,
-		// so the Monday of its own week lies before it and is not due.
+		// so the Monday of its week is not due.
 		{"Mondays every 4 weeks from Wed 9 Sep",
 			Frequency{Kind: FreqWeekdays, Weekdays: 1 << 0, WeekInterval: 4, AnchorDate: d(9, 9)},
 			map[Date]bool{d(9, 7): false, d(9, 14): false, d(10, 5): true, d(11, 2): true, d(10, 12): false}},
@@ -193,7 +191,7 @@ func TestIsScheduledNarrowedWeekdays(t *testing.T) {
 		{"second Tuesday of the month",
 			Frequency{Kind: FreqWeekdays, Weekdays: 1 << 1, WeekOfMonth: 2},
 			map[Date]bool{d(9, 1): false, d(9, 8): true, d(9, 15): false}},
-		// Mondays in August 2026: 3, 10, 17, 24, 31 - the last is the fifth.
+		// Mondays in August 2026: 3, 10, 17, 24, 31.
 		{"last Monday of the month",
 			Frequency{Kind: FreqWeekdays, Weekdays: 1 << 0, WeekOfMonth: LastWeekOfMonth},
 			map[Date]bool{d(8, 24): false, d(8, 31): true, d(9, 21): false, d(9, 28): true}},
@@ -230,7 +228,7 @@ func TestValidateNarrowedWeekdays(t *testing.T) {
 		})
 	}
 
-	// An old client sends no interval: that is weekly, and weekly keeps no anchor.
+	// Week interval 0 means every week, without an anchor.
 	h := baseHabit()
 	h.Frequency = Frequency{Kind: FreqWeekdays, Weekdays: 1, AnchorDate: Date{2026, time.January, 1}}
 	if err := h.Validate(); err != nil {
@@ -240,7 +238,7 @@ func TestValidateNarrowedWeekdays(t *testing.T) {
 		t.Errorf("frequency = %+v, want interval 1 and no anchor", h.Frequency)
 	}
 
-	// Every n weeks without an anchor starts in the week the habit was created.
+	// Without an anchor, the week interval starts at the creation week.
 	h = baseHabit()
 	h.Frequency = Frequency{Kind: FreqWeekdays, Weekdays: 1, WeekInterval: 4}
 	if err := h.Validate(); err != nil {
@@ -251,8 +249,7 @@ func TestValidateNarrowedWeekdays(t *testing.T) {
 	}
 }
 
-// Days before the anchor are not due: the schedule starts, it does not extend
-// backwards.
+// A custom interval is not due before its anchor.
 func TestCustomIntervalIsNotDueBeforeItsAnchor(t *testing.T) {
 	anchor := Date{2026, time.September, 14}
 	h := baseHabit()
@@ -291,8 +288,7 @@ func TestValidateEntryValue(t *testing.T) {
 	}
 }
 
-// The descriptors the client is sent have to agree with the methods the server
-// validates against — that is the whole point of sending them.
+// KindDescriptors matches the Kind methods.
 func TestKindDescriptorsMatchTheKindMethods(t *testing.T) {
 	got := KindDescriptors()
 	if len(got) != len(AllKinds) {

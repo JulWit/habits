@@ -8,8 +8,8 @@ import (
 	"github.com/JulWit/habits/internal/domain"
 )
 
-// Settings default cleanly, survive a round trip, and reject nonsense as a
-// validation error rather than as a fault.
+// Settings have defaults, are stored and read back, and invalid values are
+// rejected as validation errors.
 func TestSettingsRoundTripAndValidation(t *testing.T) {
 	ctx := context.Background()
 	st := openTestStore(t)
@@ -29,7 +29,7 @@ func TestSettingsRoundTripAndValidation(t *testing.T) {
 	want.OverviewDays = 21
 	want.BandOpacity = 40
 	want.BandFillOpacity = 25
-	// Off, because on is the default and would pass without being stored.
+	// Differs from the default, so storing it is actually tested.
 	want.ShowBand = false
 	if err := st.SaveSettings(ctx, "alice", want); err != nil {
 		t.Fatalf("SaveSettings: %v", err)
@@ -51,8 +51,7 @@ func TestSettingsRoundTripAndValidation(t *testing.T) {
 	}
 }
 
-// Two settings changed at once must both survive — the dialog writes each
-// control on its own, so this is the ordinary case, not an exotic one.
+// Concurrent updates of different settings do not overwrite each other.
 func TestUpdateSettingsIsAtomic(t *testing.T) {
 	ctx := context.Background()
 	st := openTestStore(t)
@@ -87,8 +86,7 @@ func TestUpdateSettingsIsAtomic(t *testing.T) {
 	}
 }
 
-// Language and time zone round-trip, and only names the zone database knows
-// are taken.
+// Language and time zone are stored; unknown time zones are rejected.
 func TestLanguageAndTimeZone(t *testing.T) {
 	ctx := context.Background()
 	st := openTestStore(t)

@@ -1,10 +1,5 @@
-// The single-category screen: what a category is made of, and how often all of
-// it gets done on the same day.
-//
-// The habit screen answers "how is this one habit going"; this one answers the
-// question a category actually poses — whether the group holds together. Its
-// central number is the perfect day: a day on which every habit of the category
-// that was due got done.
+// Category detail view: its habits and its perfect days, i.e. days on which
+// every scheduled habit of the category was completed.
 
 import { addDays, formatDayMonth } from "./dates.js";
 import { t } from "./i18n.js";
@@ -44,7 +39,7 @@ export function renderCategory(category) {
   );
 }
 
-/** The category's habits, in board order. */
+/** Returns the category's habits in board order. */
 function habitsOf(id) {
   return state.habits.filter((h) => h.categoryId === id && !h.archivedAt);
 }
@@ -76,13 +71,8 @@ function header(category, habits) {
 }
 
 /**
- * A day counts once every habit that was due on it is complete.
- *
- * Days on which nothing was scheduled are skipped rather than counted as
- * missed: a category of weekday habits would otherwise lose its run every
- * Saturday. Today is skipped the same way while it is still open — it has not
- * failed yet. And a habit only counts from the day it was created: the months
- * before it existed are not days it missed.
+ * Returns the perfect days between `from` and `to`. Days without scheduled
+ * habits and an open today are skipped. Habits count from their creation day.
  */
 function perfectDays(habits, from, to) {
   let perfect = 0;
@@ -110,7 +100,7 @@ function perfectDays(habits, from, to) {
   return { perfect, due, streak, best };
 }
 
-/** The first day the client can speak for: the year, unless history is shorter. */
+/** Returns January 1 of this year, or the start of the loaded entries if later. */
 function rangeStart() {
   const yearStart = `${state.today.slice(0, 4)}-01-01`;
   const loaded = state.entriesFrom ?? yearStart;
@@ -121,8 +111,7 @@ function stats(habits) {
   const from = rangeStart();
   const { perfect, due, streak } = perfectDays(habits, from, state.today);
 
-  // Aggregated from the same numbers the habit screen shows, so a category's
-  // rate and its habits' rates can never tell different stories.
+  // Summed from the habits' own stats.
   const expected = habits.reduce((sum, h) => sum + (h.stats?.expected ?? 0), 0);
   const achieved = habits.reduce((sum, h) => sum + (h.stats?.achieved ?? 0), 0);
   const rate = expected > 0 ? Math.round((achieved / expected) * 100) : 0;
@@ -145,7 +134,7 @@ function stats(habits) {
   return row;
 }
 
-/** "(2026)" for a full year, "(since 12 Mar)" when history starts later. */
+/** Returns "(2026)" for a full year, "(since 12 Mar)" otherwise. */
 function sinceLabel(from) {
   const year = state.today.slice(0, 4);
   if (from === `${year}-01-01`) return `(${year})`;
@@ -188,8 +177,7 @@ function habitList(habits) {
     row.querySelector(".habit-name").textContent = habit.name;
     row.querySelector(".habit-meta").textContent = H.describeHabit(habit);
     const s = habit.stats;
-    // "wk" is already short enough to carry both numbers; only the spelled-out
-    // day needs to agree, so a one-day streak does not read "1 days".
+    // Singular/plural for days; "wk" needs no plural.
     const unit = s.streakUnit === "weeks"
       ? t("wk")
       : s.currentStreak === 1 ? t("day") : t("days");

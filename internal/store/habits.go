@@ -15,6 +15,7 @@ const habitColumns = `id, name, color, icon, kind, target_value, step_value, uni
 	freq_week_interval, freq_week_of_month,
 	position, archived_at, created_at, updated_at, category_id`
 
+// scanHabit scans a row selected with habitColumns.
 func scanHabit(rows interface{ Scan(...any) error }) (domain.Habit, error) {
 	var (
 		h          domain.Habit
@@ -53,8 +54,8 @@ func scanHabit(rows interface{ Scan(...any) error }) (domain.Habit, error) {
 	return h, nil
 }
 
-// ListHabits returns the user's habits in display order. Soft-deleted habits
-// are always excluded; they exist only so a deletion can be undone.
+// ListHabits returns the user's habits in display order, excluding deleted
+// habits.
 func (s *Store) ListHabits(ctx context.Context, userID string, includeArchived bool) ([]domain.Habit, error) {
 	query := `SELECT ` + habitColumns + `
 		FROM habits
@@ -81,6 +82,7 @@ func (s *Store) ListHabits(ctx context.Context, userID string, includeArchived b
 	return habits, rows.Err()
 }
 
+// GetHabit returns a habit of the user, or ErrNotFound.
 func (s *Store) GetHabit(ctx context.Context, userID, id string) (domain.Habit, error) {
 	row := s.db.QueryRowContext(ctx,
 		`SELECT `+habitColumns+` FROM habits WHERE id = ? AND user_id = ? AND deleted_at IS NULL`,
@@ -95,8 +97,8 @@ func (s *Store) GetHabit(ctx context.Context, userID, id string) (domain.Habit, 
 	return h, nil
 }
 
-// CreateHabit inserts the habit and assigns it the next free position, so new
-// habits appear at the bottom of the list.
+// CreateHabit inserts the habit at the end of the list and sets its ID,
+// position and timestamps.
 func (s *Store) CreateHabit(ctx context.Context, userID string, h *domain.Habit) error {
 	now := time.Now().UTC()
 	h.ID = NewID()
@@ -140,9 +142,8 @@ func (s *Store) CreateHabit(ctx context.Context, userID string, h *domain.Habit)
 	return tx.Commit()
 }
 
-// requireOwnCategory rejects a habit pointing at a category that is not the
-// user's own. Without it a client could file its habit under someone else's
-// category and learn whether that id exists.
+// requireOwnCategory returns a validation error if categoryID is not "" and
+// not a category of the user.
 func (s *Store) requireOwnCategory(ctx context.Context, q queryer, userID, categoryID string) error {
 	ok, err := s.categoryBelongsTo(ctx, q, userID, categoryID)
 	if err != nil {
@@ -154,8 +155,7 @@ func (s *Store) requireOwnCategory(ctx context.Context, q queryer, userID, categ
 	return nil
 }
 
-// nullableID maps the empty id to SQL NULL, so "no category" is an absent
-// reference rather than an empty string that no foreign key could satisfy.
+// nullableID maps "" to NULL.
 func nullableID(id string) any {
 	if id == "" {
 		return nil
@@ -163,12 +163,7 @@ func nullableID(id string) any {
 	return id
 }
 
-// UpdateHabit writes the mutable fields. Position is not touched here; ordering
-// is changed through ReorderHabits so a rename cannot reshuffle the list.
-//
-// The whole update runs in one transaction: the category check and the kind
-// check both read rows the write then depends on, and between a bare read and a
-// bare write either could stop being true.
+// UpdateHabit updates all fields except the position (see ReorderHabits).
 func (s *Store) UpdateHabit(ctx context.Context, userID string, h *domain.Habit) error {
 	h.UpdatedAt = time.Now().UTC()
 	if err := h.Validate(); err != nil {
@@ -215,15 +210,8 @@ func (s *Store) UpdateHabit(ctx context.Context, userID string, h *domain.Habit)
 	return tx.Commit()
 }
 
-// requireKindKeepsHistoryMeaningful refuses to change the kind of a habit that
-// already has entries.
-//
-// Every kind stores a plain integer per day, but they are not the same integer:
-// 5000 is five kilometres to a distance and five hundred repetitions to a count.
-// Rewriting the kind alone would silently reinterpret the whole history, and
-// there is no honest conversion between the two — so the change is refused
-// while there is a history to misread. A habit without entries can still be
-// corrected freely, which is when people actually do it.
+// requireKindKeepsHistoryMeaningful returns a validation error if the kind of a
+// habit with entries is changed, since stored values depend on the kind.
 func (s *Store) requireKindKeepsHistoryMeaningful(ctx context.Context, q queryer, userID string, h *domain.Habit) error {
 	var current domain.Kind
 	err := q.QueryRowContext(ctx,
@@ -245,9 +233,7 @@ func (s *Store) requireKindKeepsHistoryMeaningful(ctx context.Context, q queryer
 		return fmt.Errorf("counting entries: %w", err)
 	}
 	if entries > 0 {
-		// Spelled with the noun and the verb agreeing: the message is read in a
-		// dialog, where "1 days are already recorded" reads as a bug. Two
-		// templates rather than one, so each has a translation of its own.
+		// Separate templates for singular and plural.
 		if entries == 1 {
 			return domain.Invalid(`The kind can no longer be changed: 1 day is already recorded, `+
 				`and its value would mean something else as "{kind}". Create a new habit instead.`,
@@ -260,8 +246,8 @@ func (s *Store) requireKindKeepsHistoryMeaningful(ctx context.Context, q queryer
 	return nil
 }
 
-// SoftDeleteHabit hides the habit but keeps the row, which is what makes the
-// "Undo" toast able to bring it back with its whole history intact.
+// SoftDeleteHabit marks the habit as deleted. It can be restored with
+// RestoreHabit until PurgeDeleted removes it.
 func (s *Store) SoftDeleteHabit(ctx context.Context, userID, id string) error {
 	res, err := s.db.ExecContext(ctx,
 		`UPDATE habits SET deleted_at = ?, updated_at = ? WHERE id = ? AND user_id = ? AND deleted_at IS NULL`,
@@ -272,6 +258,7 @@ func (s *Store) SoftDeleteHabit(ctx context.Context, userID, id string) error {
 	return expectOneRow(res)
 }
 
+// RestoreHabit restores a soft-deleted habit.
 func (s *Store) RestoreHabit(ctx context.Context, userID, id string) error {
 	res, err := s.db.ExecContext(ctx,
 		`UPDATE habits SET deleted_at = NULL, updated_at = ? WHERE id = ? AND user_id = ? AND deleted_at IS NOT NULL`,
@@ -282,15 +269,14 @@ func (s *Store) RestoreHabit(ctx context.Context, userID, id string) error {
 	return expectOneRow(res)
 }
 
-// ReorderHabits applies a new display order; see reorder for what ids may
-// leave out. updated_at stays as it is: the detail view shows it as the habit's
-// last change, and moving a habit on the board does not change the habit.
+// ReorderHabits sets the display order of the user's habits (see reorder). It
+// does not change updated_at.
 func (s *Store) ReorderHabits(ctx context.Context, userID string, ids []string) error {
 	return s.reorder(ctx, "habits", userID, ids, false)
 }
 
-// PurgeDeleted removes soft-deleted habits past the undo retention window,
-// together with their entries via ON DELETE CASCADE.
+// PurgeDeleted permanently removes habits deleted more than olderThan ago,
+// including their entries, and returns their number.
 func (s *Store) PurgeDeleted(ctx context.Context, olderThan time.Duration) (int64, error) {
 	cutoff := formatTime(time.Now().Add(-olderThan))
 	res, err := s.db.ExecContext(ctx,
@@ -301,6 +287,7 @@ func (s *Store) PurgeDeleted(ctx context.Context, olderThan time.Duration) (int6
 	return res.RowsAffected()
 }
 
+// expectOneRow returns ErrNotFound if res affected no rows.
 func expectOneRow(res sql.Result) error {
 	n, err := res.RowsAffected()
 	if err != nil {
@@ -312,9 +299,7 @@ func expectOneRow(res sql.Result) error {
 	return nil
 }
 
-// CountArchivedHabits reports how many archived habits the user has. The
-// overview needs it to decide whether an "show archived" control is worth
-// showing at all — a toggle that can never reveal anything is just noise.
+// CountArchivedHabits returns the number of archived habits of the user.
 func (s *Store) CountArchivedHabits(ctx context.Context, userID string) (int, error) {
 	var n int
 	err := s.db.QueryRowContext(ctx,

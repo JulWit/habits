@@ -1,9 +1,5 @@
-// A page that shows every building block the app draws, in both themes at once.
-//
-// Linked from nowhere and reached only at #/styleguide: this is a tool for
-// whoever builds the next module, not a feature. Its point is that it does not
-// copy any markup — the board pieces come from the same functions the overview
-// calls, so a change to a cell shows up here rather than drifting out of date.
+// Style guide at #/styleguide: all UI building blocks in both themes. It uses
+// the same render functions as the overview.
 
 import { state } from "./state.js";
 import { dayCell, habitLabel, dayEntry } from "./cells.js";
@@ -11,10 +7,10 @@ import { paintIcons } from "./icons.js";
 import { addDays } from "./dates.js";
 import { STREAK_LEVELS } from "./habit.js";
 
-/** A date `back` days before today, for the sample cells. */
+/** Returns the date `back` days before today. */
 const day = (back) => addDays(state.today, -back);
 
-/** Habits that exist only here, one per kind and per interesting state. */
+/** Returns sample habits, one per kind and state. */
 function samples() {
   const freq = (over) => ({
     kind: "daily", timesPerWeek: 0, weekdays: 0, intervalDays: 0,
@@ -47,7 +43,7 @@ function samples() {
       targetValue: 5000, frequency: freq({ kind: "custom_interval", intervalDays: 3, anchorDate: day(0) }),
       entries: { [day(0)]: 5200, [day(1)]: 2400, [day(2)]: 5000 },
     },
-    // Only Mondays are scheduled, so most sample days draw the "not planned" ring.
+    // Scheduled on Mondays only.
     sparse: {
       ...base, id: "sg-sparse", name: "Laundry", color: "#64748b", kind: "check",
       targetValue: 1, frequency: freq({ kind: "weekdays", weekdays: 1 }), entries: {},
@@ -68,7 +64,7 @@ function el(tag, className, text) {
   return node;
 }
 
-/** Constant markup from icons.js, never user input. */
+/** Creates an element from constant markup (never user input). */
 function html(tag, className, markup) {
   const node = el(tag, className);
   node.innerHTML = markup;
@@ -85,7 +81,7 @@ function section(title, note, ...items) {
   return s;
 }
 
-/** A labelled specimen, so a state can be named rather than guessed at. */
+/** Returns a labelled specimen. */
 function specimen(label, node) {
   const box = el("div", "sg-specimen");
   box.append(node, el("span", "sg-label", label));
@@ -194,7 +190,7 @@ function fields() {
 }
 
 function board(s) {
-  // The real builders, not a copy: whatever the overview draws, this draws.
+  // Uses the overview's render functions.
   const cells = (habit, dates) => {
     const row = el("div", "sg-cells");
     for (const iso of dates) row.append(dayEntry(habit, iso));
@@ -203,7 +199,7 @@ function board(s) {
   const dates = [day(2), day(1), day(0), addDays(state.today, 1)];
 
   const header = el("div", "sg-cells");
-  // Today and an ordinary day, so both header states are visible.
+  // Today and another day.
   header.append(dayCell(day(0)), dayCell(day(1)));
 
   return section(
@@ -223,12 +219,8 @@ function board(s) {
 }
 
 /**
- * One completed cell per streak level, drawn through dayEntry() like the rest
- * of this page.
- *
- * Each cell gets its own day and its own run, reaching exactly as far back as
- * the level it stands for — the rendering path is then the real one, down to
- * how the run is looked up.
+ * Returns one completed cell per streak level, each with a run of matching
+ * length.
  */
 function streakScale(habit) {
   const row = el("div", "sg-cells");
@@ -296,12 +288,7 @@ function typography() {
   );
 }
 
-/**
- * The design tokens, read out of the stylesheet rather than listed here.
- *
- * A hand-kept list would be wrong the first time someone adds a token; this
- * cannot be, because it reports exactly what the light theme declares.
- */
+/** Returns the names of the design tokens declared for the light theme. */
 function tokenNames() {
   const names = [];
   for (const sheet of document.styleSheets) {
@@ -309,8 +296,7 @@ function tokenNames() {
     try {
       rules = sheet.cssRules;
     } catch {
-      // A stylesheet from another origin. There are none, but reading cssRules
-      // on one throws, and a styleguide must not take the page down with it.
+      // Reading cssRules of a cross-origin stylesheet throws.
       continue;
     }
     for (const rule of rules) {
@@ -328,7 +314,7 @@ function tokens(names) {
   for (const name of names) {
     const row = el("div", "sg-token");
     const chip = el("span", "sg-chip");
-    // Filled from the panel's own theme, so the same row shows two colours.
+    // Resolved per panel, so each theme shows its own colour.
     chip.style.background = `var(${name})`;
     row.append(chip, el("code", "sg-token-name", name), el("span", "sg-token-value"));
     list.append(row);
@@ -338,17 +324,15 @@ function tokens(names) {
   return s;
 }
 
-/** Resolves every token's value inside the panel it is shown in. */
+/** Fills in the resolved token values of a panel. */
 function fillTokenValues(panel, names) {
   const styles = getComputedStyle(panel);
   const rows = panel.querySelectorAll(".sg-token");
   rows.forEach((row, i) => {
-    // Collapsed: a multi-line calc() is stored with its line breaks intact and
-    // would otherwise be printed across four lines of the table.
+    // Collapse multi-line values.
     const value = styles.getPropertyValue(names[i]).trim().replace(/\s+/g, " ");
     row.querySelector(".sg-token-value").textContent = value;
-    // Only colours get a chip. Made invisible rather than removed: the rows are
-    // display:contents, so dropping a cell would shift the grid from there on.
+    // Hide the swatch for non-colours, keeping the grid cell.
     if (!/^(#|rgb|hsl|color|oklch)/i.test(value)) {
       row.querySelector(".sg-chip").classList.add("is-empty");
     }
@@ -382,7 +366,7 @@ export function renderStyleguide(root) {
   both.append(light, dark);
 
   root.replaceChildren(head, both);
-  // After insertion: the values only resolve once the panels are in the page.
+  // Values only resolve once the panels are in the document.
   fillTokenValues(light, names);
   fillTokenValues(dark, names);
   paintIcons(root);

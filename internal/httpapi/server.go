@@ -1,5 +1,4 @@
-// Package httpapi exposes the application over HTTP: a small JSON API plus the
-// embedded single-page frontend.
+// Package httpapi provides the JSON API and serves the embedded frontend.
 package httpapi
 
 import (
@@ -25,6 +24,7 @@ import (
 	"github.com/JulWit/habits/internal/store"
 )
 
+// Server holds the dependencies of the HTTP handlers.
 type Server struct {
 	cfg    config.Config
 	store  *store.Store
@@ -33,8 +33,8 @@ type Server struct {
 	assets http.Handler
 }
 
-// New wires the routes. webFS is the embedded frontend, rooted at the directory
-// holding index.html.
+// New returns the HTTP handler of the application. webFS contains the frontend
+// with index.html at its root.
 func New(cfg config.Config, st *store.Store, log *slog.Logger, webFS fs.FS) (http.Handler, error) {
 	shell, err := template.ParseFS(webFS, "index.html")
 	if err != nil {
@@ -75,14 +75,11 @@ func New(cfg config.Config, st *store.Store, log *slog.Logger, webFS fs.FS) (htt
 
 	mux.HandleFunc("GET /{$}", s.handleIndex)
 	mux.Handle("GET /assets/", s.assets)
-	// Both have to answer from the root: a manifest is looked up relative to
-	// the page, and a service worker may only control the paths below its own.
-	// One under /assets/ could never see "/".
+	// Served from the root so that the service worker's scope covers "/".
 	mux.Handle("GET /manifest.webmanifest", s.assets)
 	mux.Handle("GET /sw.js", s.assets)
 
-	// The health check sits outside the auth middleware so a container probe
-	// does not need to carry identity headers.
+	// The health check requires no authentication.
 	root := http.NewServeMux()
 	root.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
@@ -93,13 +90,8 @@ func New(cfg config.Config, st *store.Store, log *slog.Logger, webFS fs.FS) (htt
 	return s.recoverPanics(s.logRequests(securityHeaders(root))), nil
 }
 
-// contentSecurityPolicy is what the page actually needs, and nothing else.
-//
-// script-src can be strict because there is not one inline script in the shell:
-// everything is a module under /assets. Styles cannot, because the shell writes
-// the stored appearance into a style attribute before any script runs, which is
-// the whole point of rendering it server-side — an inline style is parsed
-// markup and needs 'unsafe-inline' where a CSSOM write from a module would not.
+// contentSecurityPolicy is sent with every response. Inline styles are allowed
+// because index.html sets style attributes; inline scripts are not.
 const contentSecurityPolicy = "default-src 'self'; " +
 	"script-src 'self'; " +
 	"style-src 'self' 'unsafe-inline'; " +
@@ -111,27 +103,19 @@ const contentSecurityPolicy = "default-src 'self'; " +
 	"base-uri 'none'; " +
 	"object-src 'none'"
 
-// securityHeaders sets the handful of headers that are worth having on a
-// self-hosted single-binary app. They go on every response, including the
-// assets and the health check, because a header that is only sometimes there is
-// a header nobody can rely on.
+// securityHeaders sets security headers on every response.
 func securityHeaders(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		h := w.Header()
 		h.Set("Content-Security-Policy", contentSecurityPolicy)
-		// The asset handler states a media type for every file it serves;
-		// this stops a browser from second-guessing any of them.
 		h.Set("X-Content-Type-Options", "nosniff")
-		// A habit name must not travel to anyone in a Referer, and nothing
-		// here links out.
 		h.Set("Referrer-Policy", "no-referrer")
 		next.ServeHTTP(w, r)
 	})
 }
 
-// handleIndex renders the app shell with the stored theme, typeface and density
-// baked in, so the page paints in the right colours, font and spacing
-// immediately instead of flashing the defaults first.
+// handleIndex renders index.html with the user's appearance settings, so the
+// page is styled correctly before any script runs.
 func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	user := auth.MustUser(r.Context())
 	settings, err := s.store.GetSettings(r.Context(), user.ID)
@@ -165,9 +149,7 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 		BandFillOp: settings.BandFillOpacity,
 		ShowBand:   settings.ShowBand,
 		Dim:        settings.BackgroundDim,
-		// The stylesheet needs a length where the setting is a percentage, and
-		// the shell is the one place that has to get it right before any script
-		// runs. The client scales it with the same number.
+		// Blur settings are converted from percent to pixels.
 		Blur: strconv.FormatFloat(
 			float64(settings.BackgroundBlur)*store.BackgroundBlurAtFull/100, 'f', -1, 64),
 		SurfaceOp: settings.SurfaceOpacity,
@@ -183,9 +165,8 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// location is the zone that decides what "today" is for a user: their own if
-// they chose one, the server's otherwise. The store has already validated the
-// name, so a failure here only means the zone database lost it since.
+// location returns the user's time zone, or the server's if the user has not
+// chosen one.
 func (s *Server) location(settings store.Settings) *time.Location {
 	if settings.TimeZone != "" {
 		if loc, err := time.LoadLocation(settings.TimeZone); err == nil {
@@ -195,9 +176,8 @@ func (s *Server) location(settings store.Settings) *time.Location {
 	return s.cfg.Location
 }
 
-// todayFor is the current date in the user's zone. A failure to read the
-// settings is logged and answered with the server's zone: an entry landing on
-// the server's day is better than refusing to record it.
+// todayFor returns the current date in the user's time zone. If the settings
+// cannot be loaded, the server's time zone is used.
 func (s *Server) todayFor(ctx context.Context, userID string) domain.Date {
 	settings, err := s.store.GetSettings(ctx, userID)
 	if err != nil {
@@ -207,11 +187,8 @@ func (s *Server) todayFor(ctx context.Context, userID string) domain.Date {
 	return domain.Today(s.location(settings))
 }
 
-// resolveLanguage turns the stored choice into the language the shell is
-// rendered in. "system" takes the first language in Accept-Language that the
-// interface is translated into; browsers list them in order of preference, so
-// the q-values need not be read. English is the fallback, as the language the
-// interface was written in.
+// resolveLanguage returns the UI language. For "system" it returns the first
+// supported language in Accept-Language, or "en".
 func resolveLanguage(chosen, acceptLanguage string) string {
 	if chosen != "system" && store.ValidLanguage(chosen) {
 		return chosen
@@ -226,6 +203,7 @@ func resolveLanguage(chosen, acceptLanguage string) string {
 	return "en"
 }
 
+// logRequests logs every request with its status and duration.
 func (s *Server) logRequests(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
@@ -243,6 +221,7 @@ func (s *Server) logRequests(next http.Handler) http.Handler {
 	})
 }
 
+// recoverPanics logs a panicking handler and answers with status 500.
 func (s *Server) recoverPanics(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
@@ -259,6 +238,7 @@ func (s *Server) recoverPanics(next http.Handler) http.Handler {
 	})
 }
 
+// asError returns v if it is an error, otherwise nil.
 func asError(v any) error {
 	if err, ok := v.(error); ok {
 		return err
@@ -266,6 +246,7 @@ func asError(v any) error {
 	return nil
 }
 
+// statusRecorder records the status code written to a ResponseWriter.
 type statusRecorder struct {
 	http.ResponseWriter
 	status  int
@@ -284,26 +265,13 @@ func (r *statusRecorder) Write(b []byte) (int, error) {
 	return r.ResponseWriter.Write(b)
 }
 
-// newAssetHandler serves the embedded frontend with a content-derived ETag.
-//
-// Files in an embed.FS carry a zero modification time, so the file server sends
-// no Last-Modified and the browser is free to cache them by heuristic. After an
-// update that means an old app.js running against a new HTML shell — the worst
-// kind of failure for a single binary that people upgrade by replacing the
-// file. Hashing the content once at startup gives every asset a validator: the
-// browser revalidates on each load and gets a 304 until the binary really
-// changes. http.ServeContent honours If-None-Match against the ETag we set, so
-// the conditional handling comes for free.
+// newAssetHandler serves the files of webFS with an ETag derived from their
+// content, since embedded files have no modification time.
 func newAssetHandler(webFS fs.FS) (http.Handler, error) {
-	// Windows resolves media types through the registry, where a machine
-	// without a web toolchain has no entry for .woff2 — the file server would
-	// then fall back to sniffing and label the font a stream of bytes. Stating
-	// it here makes the answer the same on every host.
+	// Register MIME types that may be missing on the host (e.g. on Windows).
 	if err := mime.AddExtensionType(".woff2", "font/woff2"); err != nil {
 		return nil, fmt.Errorf("registering mime type: %w", err)
 	}
-	// Same story for the manifest: no registry entry on Windows, and a browser
-	// that is handed it as plain text ignores it.
 	if err := mime.AddExtensionType(".webmanifest", "application/manifest+json"); err != nil {
 		return nil, fmt.Errorf("registering mime type: %w", err)
 	}
@@ -327,9 +295,7 @@ func newAssetHandler(webFS fs.FS) (http.Handler, error) {
 
 	files := http.FileServerFS(webFS)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Only the files themselves. A directory would otherwise be answered
-		// with a listing of its contents, which no page links to and nobody
-		// needs to browse.
+		// Serve files only, no directory listings.
 		tag, ok := etags[strings.TrimPrefix(path.Clean(r.URL.Path), "/")]
 		if !ok {
 			http.NotFound(w, r)

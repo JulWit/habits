@@ -1,7 +1,4 @@
-// The category chooser: a second modal dialog opened from inside the habit
-// editor. Nesting modals is what <dialog> already supports — the inner one goes
-// on top of the outer in the browser's top layer — so the editor keeps its
-// state while a category is picked or created.
+// Category picker, opened as a nested dialog from the habit editor.
 
 import { state } from "./state.js";
 import { icons, categoryIconBadge } from "./icons.js";
@@ -16,7 +13,7 @@ let createForm;
 let nameInput;
 let errorBox;
 
-/** Resolves the promise handed out by openCategoryPicker. */
+/** Resolves the promise returned by openCategoryPicker. */
 let settle = null;
 let current = NONE;
 
@@ -37,13 +34,14 @@ export function initCategoryPicker(handlers) {
 
   createForm.addEventListener("submit", onCreate);
   dialog.querySelector('[data-action="cancel"]').addEventListener("click", () => choose(null));
-  // Escape and the backdrop close the dialog without going through choose().
+  // Escape and backdrop clicks cancel.
   dialog.addEventListener("close", () => finish(null));
 }
 
 /**
- * @param {string} selected  the id currently assigned, "" for none
- * @returns {Promise<string|null>} the chosen id, or null if cancelled
+ * Opens the category picker.
+ * @param {string} selected  the current category ID, "" for none
+ * @returns {Promise<string|null>} the chosen ID, or null if cancelled
  */
 export function openCategoryPicker(selected) {
   current = selected ?? NONE;
@@ -59,9 +57,8 @@ export function openCategoryPicker(selected) {
 function paintList() {
   const options = [{ id: NONE, name: t("No category") }, ...state.categories];
 
-  // A habit can point at a category that was soft-deleted and is therefore not
-  // in the live list. Dropping it here would silently reassign the habit on the
-  // next save, so it is offered as an entry of its own.
+  // A deleted category is still offered, so that saving does not change the
+  // habit's category.
   if (current !== NONE && !state.categories.some((c) => c.id === current)) {
     options.push({ id: current, name: t("Deleted category"), stale: true });
   }
@@ -101,8 +98,7 @@ async function onCreate(event) {
   submit.disabled = true;
   try {
     const created = await deps.createCategory(name);
-    // A fresh category is what the user wanted to file the habit under, so it
-    // is selected straight away rather than only added to the list.
+    // Select the newly created category.
     if (created) choose(created.id);
   } catch (err) {
     errorBox.textContent = errorText(err);

@@ -16,8 +16,7 @@ import (
 	"github.com/JulWit/habits/internal/store"
 )
 
-// The shell is a template, so the test FS has to carry one that executes. Only
-// the fields handleIndex actually writes are referenced.
+// testWeb is a minimal frontend with an index.html template.
 var testWeb = fstest.MapFS{
 	"index.html": &fstest.MapFile{Data: []byte(
 		`<!doctype html><html lang="{{.Lang}}" data-theme="{{.Theme}}" data-font="{{.Font}}"></html>`)},
@@ -80,16 +79,14 @@ func TestSecurityHeadersAreOnEveryResponse(t *testing.T) {
 		if !strings.Contains(csp, "frame-ancestors 'none'") {
 			t.Errorf("%s: CSP without frame-ancestors: %q", path, csp)
 		}
-		// The whole point of the strict script-src is that nothing needs
-		// 'unsafe-inline' or 'unsafe-eval' there.
+		// script-src must not allow inline scripts or eval.
 		if strings.Contains(csp, "script-src 'self' 'unsafe") {
 			t.Errorf("%s: script-src was loosened: %q", path, csp)
 		}
 	}
 }
 
-// The shell is rendered server-side so the page paints in the stored theme
-// rather than flashing the default first.
+// index.html is rendered with the stored appearance settings.
 func TestIndexCarriesTheStoredAppearance(t *testing.T) {
 	h := newTestServer(t)
 
@@ -106,8 +103,7 @@ func TestIndexCarriesTheStoredAppearance(t *testing.T) {
 	}
 }
 
-// The health check has to answer without identity headers, so a container
-// probe does not need to carry them.
+// /healthz requires no identity headers.
 func TestHealthzNeedsNoIdentity(t *testing.T) {
 	h := newTestServer(t)
 	w := do(t, h, "GET", "/healthz", "", "")
@@ -116,8 +112,7 @@ func TestHealthzNeedsNoIdentity(t *testing.T) {
 	}
 }
 
-// "system" takes the first translated language the browser names; anything
-// else is taken as chosen.
+// "system" resolves to the first supported language in Accept-Language.
 func TestResolveLanguage(t *testing.T) {
 	cases := []struct{ chosen, accept, want string }{
 		{"system", "de-DE,de;q=0.9,en;q=0.8", "de"},
@@ -134,7 +129,8 @@ func TestResolveLanguage(t *testing.T) {
 	}
 }
 
-// The shell carries the language, and a time zone of one's own moves "today".
+// The language setting is applied to index.html; the time zone setting changes
+// "today".
 func TestLanguageAndTimeZoneSettings(t *testing.T) {
 	h := newTestServer(t)
 
@@ -153,7 +149,7 @@ func TestLanguageAndTimeZoneSettings(t *testing.T) {
 		t.Errorf("unknown language: status %d, want 422", w.Code)
 	}
 
-	// Kiritimati is UTC+14: for most of the day it is already tomorrow there.
+	// Kiritimati is UTC+14.
 	if w := do(t, h, "PATCH", "/api/settings", `{"timeZone":"Pacific/Kiritimati","language":"en"}`, "application/json"); w.Code != http.StatusOK {
 		t.Fatalf("setting zone: status %d: %s", w.Code, w.Body.String())
 	}
@@ -168,8 +164,7 @@ func TestLanguageAndTimeZoneSettings(t *testing.T) {
 	}
 }
 
-// The asset handler serves files and nothing else: a directory is not
-// answered with a listing of what is in it.
+// Asset directories are not listed.
 func TestAssetDirectoriesAreNotListed(t *testing.T) {
 	h := newTestServer(t)
 	for _, path := range []string{"/assets/", "/assets/js/", "/assets/js", "/assets/nope.js"} {

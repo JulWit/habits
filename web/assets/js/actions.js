@@ -1,5 +1,4 @@
-// Every mutation lives here, so undo has exactly one place to hook into and
-// the views stay free of API knowledge.
+// All data changes, including their undo steps.
 
 import { api } from "./api.js";
 import {
@@ -14,7 +13,7 @@ import { formatRelative } from "./dates.js";
 import * as H from "./habit.js";
 import { t } from "./i18n.js";
 
-/** Set by app.js: reloads the whole state and reports the active route. */
+/** Callbacks set by app.js. */
 let deps = { refresh: async () => {}, currentHabitId: () => null, goHome: () => {} };
 
 export function configureActions(next) {
@@ -22,15 +21,8 @@ export function configureActions(next) {
 }
 
 /**
- * Says one line into the off-screen live region.
- *
- * Cleared first and set a tick later, because a live region handed the same
- * string twice says nothing the second time — and tapping two days to the same
- * value has to be audible both times.
- *
- * A timer rather than requestAnimationFrame: a frame callback does not run in a
- * tab that is throttled or not painting, and the announcement would simply
- * never arrive. A timer fires either way.
+ * Announces a message in the live region. The region is cleared first, so a
+ * repeated message is announced again.
  */
 let announceTimer = null;
 
@@ -44,7 +36,7 @@ function announce(text) {
 
 // ---------- entries ----------
 
-/** A tap advances the day by one step, or toggles a yes/no habit. */
+/** Handles a tap on a day cell: advances the value by one step. */
 export function tapEntry(habitId, iso) {
   const habit = habitById(habitId);
   if (!habit) return;
@@ -54,13 +46,12 @@ export function tapEntry(habitId, iso) {
   }
   const current = habit.entries[iso] ?? 0;
   const next = H.nextValue(habit, current);
-  // At the per-kind ceiling a tap has nothing left to do. Writing anyway would
-  // cost a request and put an undo step on the stack that undoes nothing.
+  // Nothing to do at the maximum.
   if (next === current) return;
   writeEntry(habit, iso, next);
 }
 
-/** A long press or right-click: exact value for counters, plain toggle else. */
+/** Handles a long press or right-click: opens the value dialog or toggles. */
 export function editEntry(habitId, iso) {
   const habit = habitById(habitId);
   if (!habit) return;
@@ -75,41 +66,25 @@ export function editEntry(habitId, iso) {
   openValueDialog(habit, iso, (value) => writeEntry(habit, iso, value));
 }
 
-/**
- * A day the habit is not scheduled on can only lose a value left over from
- * before the schedule changed; there is nothing to set there.
- */
+/** Clears the value of an unscheduled day. */
 function clearClosedDay(habit, iso) {
   if ((habit.entries[iso] ?? 0) > 0) writeEntry(habit, iso, 0);
 }
 
-/**
- * Requests in flight per cell, so writes to the same day are sent in order.
- *
- * Without this, tapping a counter eight times in a row would fire eight
- * overlapping requests whose order of arrival is not guaranteed, and the last
- * one to land — not the last one tapped — would win.
- */
+/** Pending requests per cell, so that writes to the same day stay in order. */
 const inFlight = new Map();
 
 function serialize(key, task) {
   const chain = (inFlight.get(key) ?? Promise.resolve()).then(task, task);
-  // The stored link swallows rejections so one failed write does not poison
-  // every later write to the same cell.
+  // Ignore failures, so the next write still runs.
   inFlight.set(key, chain.catch(() => {}));
   return chain;
 }
 
 /**
- * Writes a value and registers the undo step.
- *
- * The new value is shown before the request completes: a check-mark that waits
- * for a round trip feels broken, and it also lets the next tap read the value
- * this one just set instead of racing it. The server stays the authority — a
- * failed write reloads the real state.
- *
- * The server answers with the value it replaced, so undo never has to trust a
- * locally remembered "before" state — it writes that value back.
+ * Writes a value and records the undo step. The value is shown immediately;
+ * on failure the state is reloaded. Undo writes back the previous value
+ * returned by the server.
  */
 async function writeEntry(habit, iso, value) {
   setEntryLocal(habit.id, iso, value);
@@ -126,21 +101,19 @@ async function writeEntry(habit, iso, value) {
 
   const when = formatRelative(iso, state.today);
   const cleared = value === 0 && result.previous > 0;
-  // Ticking a habit raises no toast on purpose, so this is the only thing a
-  // screen reader gets told about a tap.
+  // Taps show no toast, so announce them.
   announce(value === 0
     ? t("{name}, {when}: cleared", { name: habit.name, when })
     : `${habit.name}, ${when}: ${H.formatValue(habit, value)}`);
-  // Undo would write the old value back onto a day that no longer takes one,
-  // and the server would refuse it — so clearing such a day is final.
+  // Clearing an unscheduled day cannot be undone, as the server would reject
+  // the old value.
   if (!H.acceptsEntry(habit, iso)) {
     toast(t("Entry cleared: {name}, {when}", { name: habit.name, when }));
     return;
   }
   record({
     label: `${habit.name} — ${when}`,
-    // Only clearing a day interrupts with a toast; ticking something off is
-    // not destructive and should stay quiet.
+    // Only clearing a day shows a toast.
     silent: !cleared,
     toastLabel: t("Entry cleared: {name}, {when}", { name: habit.name, when }),
     undo: () => api.setEntry(habit.id, iso, result.previous),
@@ -184,11 +157,8 @@ export function editHabit(id) {
 }
 
 /**
- * The fields the editor may change, used to restore a habit after an edit.
- *
- * Every field the editor sends has to appear here. PATCH reads an absent field
- * as "leave it alone", so one missing from this snapshot is silently not undone
- * — the edit half-survives its own undo.
+ * Returns all fields the editor can change, for undoing an edit. Must include
+ * every field the editor sends.
  */
 function writableFields(habit) {
   return {
@@ -216,8 +186,7 @@ export async function deleteHabit(id) {
   removeHabit(id);
   if (deps.currentHabitId() === id) deps.goHome();
 
-  // Deletion is soft on the server, so undo brings the habit back with its
-  // whole history instead of recreating an empty one.
+  // Undo restores the soft-deleted habit.
   record({
     label: t("\"{name}\" deleted", { name: habit.name }),
     undo: async () => upsertHabit(await api.restoreHabit(id)),
@@ -260,13 +229,7 @@ export async function toggleArchive(id) {
 
 // ---------- categories ----------
 
-/**
- * Creates a category.
- *
- * The new category starts empty: habits move into it through the editor, which
- * keeps "make a group" and "put something in it" as two separate, individually
- * undoable steps.
- */
+/** Creates an empty category. */
 export async function createCategory(name) {
   const wanted = (name ?? "").trim();
   if (!wanted) return;
@@ -289,18 +252,13 @@ export async function createCategory(name) {
     redo: async () => upsertCategory(await api.restoreCategory(created.id)),
   });
   toast(t("Category \"{name}\" created", { name: created.name }));
-  // Returned so the picker can select the category it just created.
+  // Returned so the picker can select it.
   return created;
 }
 
 /**
- * Writes the new order of one block's habits, the way a drag leaves it.
- *
- * Positions are a single sequence across every habit, but a drag only speaks
- * about one block. The global list is therefore walked once, and wherever it
- * holds a habit from that block, the next one from the new order takes its
- * place — so the block's own sequence changes while every habit outside it
- * keeps the exact slot it had.
+ * Saves a new order of the habits of one category. Habits of other categories
+ * keep their positions.
  */
 export async function setHabitOrder(ids) {
   const before = state.habits.map((h) => h.id);
@@ -318,15 +276,8 @@ export async function setHabitOrder(ids) {
 }
 
 /**
- * Moves a habit one place up (-1) or down (+1) inside its own block.
- *
- * Positions are a single sequence across all habits, so the whole list is sent;
- * swapping the two entries rather than splicing keeps every habit outside this
- * block exactly where it was, whatever order the blocks happen to be in.
- *
- * The neighbours come from groupedHabits(), the same function the board draws
- * from, so "the row above" always means the row the user can actually see —
- * including habits whose category was deleted and that share the leftover block.
+ * Moves a habit one place up (-1) or down (+1) within its category, as shown
+ * on the board.
  */
 export async function moveHabit(id, delta) {
   const block = groupedHabits().find((b) => b.habits.some((h) => h.id === id));
@@ -351,12 +302,8 @@ export async function moveHabit(id, delta) {
 }
 
 /**
- * Writes a whole category order, the way a drag leaves it.
- *
- * The board has already rearranged itself — the dragged block sits where it was
- * dropped — so there is nothing to apply optimistically here; only the failure
- * path has work to do, and it puts the list back the way the server still has
- * it.
+ * Saves a new order of the categories. The board already shows it; on failure
+ * the server's order is restored.
  */
 export async function setCategoryOrder(ids) {
   const before = state.categories.map((c) => c.id);
@@ -369,12 +316,7 @@ export async function setCategoryOrder(ids) {
   }
 }
 
-/**
- * Moves a category one place up (-1) or down (+1).
- *
- * No undo step: the opposite arrow is the undo, and a toast after every nudge
- * would bury the board under messages.
- */
+/** Moves a category one place up (-1) or down (+1). No undo step is recorded. */
 export async function moveCategory(id, delta) {
   const before = state.categories.map((c) => c.id);
   const from = before.indexOf(id);
@@ -383,8 +325,7 @@ export async function moveCategory(id, delta) {
 
   const after = [...before];
   after.splice(to, 0, ...after.splice(from, 1));
-  // Applied first so the block moves under the click; put back if the server
-  // refuses.
+  // Apply locally first; restored if the request fails.
   reorderCategoriesLocal(after);
   try {
     await api.reorderCategories(after);
@@ -395,10 +336,8 @@ export async function moveCategory(id, delta) {
 }
 
 /**
- * Writes what the category dialog edits, as one step to undo.
- *
- * Throws on a rejection rather than toasting it: the edit dialog is still open
- * and shows the message in place, the way the habit editor does.
+ * Updates a category and records the undo step. Errors are thrown for the
+ * dialog to display.
  */
 export async function updateCategory(id, { name, color, icon, showProgress }) {
   const category = categoryById(id);
@@ -422,9 +361,8 @@ export async function updateCategory(id, { name, color, icon, showProgress }) {
 }
 
 /**
- * Deletes a category. The habits inside are not touched — they keep pointing at
- * it and fall into the "No category" block, so undo rebuilds the block
- * exactly as it was rather than having to reassign anything.
+ * Deletes a category. Its habits keep their category ID, so undo restores the
+ * category unchanged.
  */
 export async function deleteCategory(id) {
   const category = categoryById(id);

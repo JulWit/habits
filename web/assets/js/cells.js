@@ -1,5 +1,4 @@
-// Rendering of the individual pieces of a habit row: the label on the left, the
-// day header above, and the day cells themselves.
+// Rendering of a habit row: label, day header and day cells.
 
 import { dayOfMonth, WEEKDAY_SHORT, weekdayIndex, formatRelative, formatLong } from "./dates.js";
 import { state } from "./state.js";
@@ -15,9 +14,7 @@ export function dayCell(iso) {
   const classes = ["grid-head"];
   if (iso === state.today) classes.push("is-today");
   el.className = classes.join(" ");
-  // The header shows only the day of the month. Once the board can be paged
-  // back, that number no longer implies the current month, so the full date is
-  // one hover away.
+  // The full date as tooltip, since the cell only shows the day of the month.
   el.title = formatLong(iso);
   el.innerHTML =
     `<span class="dow">${WEEKDAY_SHORT[weekdayIndex(iso)]}</span>` +
@@ -40,14 +37,10 @@ export function habitLabel(habit) {
   meta.className = "habit-meta";
   const described = H.describeHabit(habit);
   const streak = habit.stats?.currentStreak ?? 0;
-  // The streak leads the line as a flame and a bare number - on every row, a
-  // zero included, so the count sits in the same place whether or not a run
-  // is going.
+  // The streak is always shown, even when it is 0.
   meta.append(streakBadge(streak), described ? ` · ${described}` : "");
 
-  // Whatever is still too long for the column stays readable on hover. Both
-  // lines, because a long habit name is clipped the same way. The streak is
-  // spelled out there, since the flame alone does not say days or weeks.
+  // Tooltip with the full text, including the streak in words.
   const metaText = [H.describeStreak(habit), described].filter(Boolean).join(" · ");
   el.title = `${habit.name}\n${metaText}`;
 
@@ -73,8 +66,7 @@ export function dayEntry(habit, iso) {
   const value = habit.entries[iso] ?? 0;
   const future = iso > state.today;
   const scheduled = H.isScheduled(habit, iso);
-  // How long the run this day belongs to had been going by then. A day ahead of
-  // today is in no run, so a plan never borrows the colours of a streak.
+  // Length of the run this day belongs to; 0 for future days.
   const streakDays = H.streakDaysOn(habit, iso);
 
   const btn = document.createElement("button");
@@ -85,8 +77,7 @@ export function dayEntry(habit, iso) {
   btn.dataset.role = "cell";
   btn.style.setProperty("--habit-color", habit.color);
   btn.setAttribute("aria-label", cellLabel(habit, iso, value, scheduled, streakDays));
-  // A day the habit is not scheduled on takes nothing. A leftover value from
-  // before the schedule changed stays tappable, so it can still be cleared.
+  // Unscheduled days are disabled unless they have a value to clear.
   if (!H.acceptsEntry(habit, iso) && value === 0) btn.disabled = true;
 
   const mark = document.createElement("span");
@@ -95,15 +86,13 @@ export function dayEntry(habit, iso) {
   mark.style.setProperty("--p", String(H.progress(habit, value)));
 
   if (!scheduled) mark.classList.add("is-off");
-  // A day ahead of today is drawn like any other, only dimmed: what is written
-  // there is a plan, and a plan should read as one.
+  // Future days are dimmed.
   if (future) mark.classList.add("is-future");
   if (H.isComplete(habit, value)) {
     mark.classList.remove("is-off");
     mark.classList.add("is-complete");
-    // The longer the run, the less of the habit's own colour is left over the
-    // gradient underneath. Level 0 sets nothing, so a day outside a run — and
-    // every day of a run in its first week — is drawn exactly as before.
+    // Longer runs are drawn with a stronger streak colour. Level 0 changes
+    // nothing.
     const level = H.streakLevel(streakDays);
     if (level > 0) mark.dataset.streak = String(level);
     if (habit.kind === "check") mark.innerHTML = CHECK_SVG;
@@ -117,14 +106,11 @@ export function dayEntry(habit, iso) {
   return btn;
 }
 
-// The number sits in an element rather than as a bare text node: the ring's
-// ::after knockout paints over the mark's own text, and only element children
-// can be lifted above it with z-index.
+// Wraps the number in an element so it can be layered above the ring's
+// ::after with z-index.
 function numberLabel(text) {
   const el = document.createElement("span");
-  // The hole inside the ring is about 17px wide, which fits two characters at
-  // the base size. Longer values step down rather than spilling over the ring:
-  // three for a count like 999, four for a distance like 12.5.
+  // Smaller font sizes for values with three or four characters.
   el.className = text.length >= 4
     ? "mark-value is-tiny"
     : text.length === 3
@@ -136,8 +122,7 @@ function numberLabel(text) {
 
 function cellLabel(habit, iso, value, scheduled, streakDays = 0) {
   const when = formatRelative(iso, state.today);
-  // "Done" would be a lie about a day that has not happened yet, so a day
-  // ahead reports what is planned instead.
+  // Future days are announced as planned rather than done.
   const ahead = iso > state.today;
   const reached = H.isComplete(habit, value);
   const vars = { value: H.formatValue(habit, value), target: H.formatValue(habit, H.target(habit)) };
@@ -152,9 +137,7 @@ function cellLabel(habit, iso, value, scheduled, streakDays = 0) {
           : scheduled
             ? t("open")
             : t("not scheduled");
-  // The colours of a streak are colour alone; a screen reader gets the same
-  // information as a number. Only on days that actually carry one, so an
-  // ordinary row does not gain a suffix on every cell.
+  // Announce the streak length on days that are part of a run.
   const run = reached && !ahead && streakDays > 0
     ? t(", day {n} of a streak", { n: streakDays })
     : "";

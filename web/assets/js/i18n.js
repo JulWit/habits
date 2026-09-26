@@ -1,29 +1,18 @@
-// Translation of the interface.
+// Translation of the UI. The English text is the key; untranslated texts are
+// shown in English. Placeholders are written {name}.
 //
-// The English text is its own key, the way gettext does it: the markup and the
-// scripts stay readable in the language they were written in, and a string
-// without a translation simply shows in English rather than as a key nobody
-// can read. Placeholders are written {name} and filled from the second
-// argument of t().
-//
-// The language is the one the server rendered into <html lang>, from the
-// user's setting or the browser's Accept-Language. It is fixed for the life of
-// the page: changing it reloads, because much of the interface is built once
-// and would otherwise keep the old words.
+// The language is taken from <html lang> and changes only on reload.
 
 import { state } from "./state.js";
 
 export const lang = document.documentElement.lang === "de" ? "de" : "en";
 
-/** The locale numbers and times are written in. en-GB for the day-month order. */
+/** Locale for formatting numbers and dates. */
 export const locale = lang === "de" ? "de-DE" : "en-GB";
 
 /**
- * German, keyed by the English text.
- *
- * An array holds the singular and the plural, picked by `n`. Only German needs
- * them where the English is the same either way ("5-day streak"); where English
- * differs too, the code already asks for each form by its own key.
+ * German translations, keyed by the English text. An array holds singular and
+ * plural, selected by `n`.
  */
 const de = {
   // ---------- shell: header, board, empty state ----------
@@ -48,7 +37,7 @@ const de = {
   "Icon": "Symbol",
   "Icon {name}": "Symbol {name}",
   "No icon": "Kein Symbol",
-  // The icons and the palette by name (icons.js), for screen readers and tooltips.
+  // Icon and colour names (icons.js).
   "Water drop": "Wassertropfen", "Apple": "Apfel", "Cutlery": "Besteck", "Coffee": "Kaffee",
   "Pill": "Tablette", "Heart": "Herz", "Dumbbell": "Hantel", "Bicycle": "Fahrrad",
   "Mountain": "Berg", "Flame": "Flamme", "Bed": "Bett", "Moon": "Mond", "Sun": "Sonne",
@@ -360,8 +349,7 @@ const de = {
   "Not found": "Nicht gefunden",
   "the image could not be read": "Das Bild konnte nicht gelesen werden",
 
-  // Validation, keyed by the server's templates (domain.Invalid). A string
-  // placeholder is translated on its own, a number written in German notation.
+  // Validation messages, keyed by the server's templates (domain.Invalid).
   "name must not be empty": "Der Name darf nicht leer sein.",
   "name is longer than {max} characters": "Der Name darf höchstens {max} Zeichen lang sein.",
   "unit is longer than {max} characters": "Die Einheit darf höchstens {max} Zeichen lang sein.",
@@ -416,14 +404,9 @@ const de = {
 const dictionary = lang === "de" ? de : {};
 
 /**
- * The text in the page's language, with {placeholders} filled in.
- *
- * An unknown text comes back as it is, so a sentence added without a
- * translation still reads - in English.
- *
- * `vars.context` tells apart one English word with two meanings: "Archive" is
- * a place on the settings tab and a verb on a button, and German needs a word
- * for each. The dictionary keys the second as "verb|Archive".
+ * Translates `text` and fills in its {placeholders} from `vars`. Unknown texts
+ * are returned unchanged. `vars.context` selects a variant of an ambiguous
+ * text, keyed as "context|text" (e.g. "verb|Archive").
  */
 export function t(text, vars = {}) {
   const inContext = vars.context ? dictionary[`${vars.context}|${text}`] : undefined;
@@ -433,9 +416,8 @@ export function t(text, vars = {}) {
 }
 
 /**
- * The zone the user's days are counted in: their own choice, else the
- * server's. Undefined - the browser's own - when neither is a name the browser
- * can format in, which is what "Local" from a server without HABITS_TZ is.
+ * Returns the user's time zone, the server's, or undefined (browser default)
+ * if the browser does not know either.
  */
 export function userTimeZone() {
   for (const zone of [state.settings?.timeZone, state.serverTimeZone]) {
@@ -444,22 +426,18 @@ export function userTimeZone() {
       new Intl.DateTimeFormat("en", { timeZone: zone });
       return zone;
     } catch {
-      // Not a zone this browser knows; try the next.
+      // Unknown to the browser; try the next one.
     }
   }
   return undefined;
 }
 
-/** The attributes that carry words a person reads or hears. */
+/** Attributes whose text is translated. */
 const TRANSLATED_ATTRIBUTES = ["title", "aria-label", "placeholder"];
 
 /**
- * Translates the static markup of the shell in place.
- *
- * index.html is written in English, and the server only fills in the language
- * attribute; rather than keying every element, the text nodes and the handful
- * of attributes above are looked up as they stand. Anything marked
- * translate="no" is left alone - the name of the app, for one.
+ * Translates the text nodes and TRANSLATED_ATTRIBUTES below `root` in place.
+ * Elements with translate="no" are skipped.
  */
 export function translateDocument(root = document.body) {
   if (lang === "en") return;
@@ -468,11 +446,10 @@ export function translateDocument(root = document.body) {
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
   for (let node = walker.nextNode(); node; node = walker.nextNode()) {
     const raw = node.nodeValue.trim();
-    // A sentence wrapped over two lines in the markup is one sentence here.
+    // Normalise whitespace.
     const text = raw.replace(/\s+/g, " ");
     if (!text || !(text in dictionary) || skip(node.parentElement)) continue;
-    // The whitespace around the text is kept: it is what separates an icon from
-    // its caption.
+    // Keep the surrounding whitespace.
     node.nodeValue = node.nodeValue.replace(raw, t(text));
   }
 

@@ -59,7 +59,7 @@ func TestSingleUserIgnoresHeaders(t *testing.T) {
 		UserHeader:  "Remote-User",
 	}
 	_, user, reached := run(cfg, func(r *http.Request) {
-		// A header in this mode means nothing; the user is pinned.
+		// In single-user mode the header is ignored.
 		r.Header.Set("Remote-User", "admin")
 	})
 	if !reached {
@@ -70,8 +70,7 @@ func TestSingleUserIgnoresHeaders(t *testing.T) {
 	}
 }
 
-// The header is only believed from a configured proxy. Without this check
-// anyone who can open a socket to the port could name themselves.
+// Identity headers from untrusted peers are rejected.
 func TestUntrustedPeerIsRefused(t *testing.T) {
 	cfg := autheliaConfig(t, "172.18.0.0/16")
 	for _, peer := range []string{"10.0.0.5:5000", "203.0.113.9:443", "[2001:db8::1]:443"} {
@@ -82,8 +81,7 @@ func TestUntrustedPeerIsRefused(t *testing.T) {
 		if reached {
 			t.Errorf("%s: the handler was reached anyway", peer)
 		}
-		// 403, not 401: the request did not fail to authenticate, it came from
-		// somewhere it must never come from.
+		// 403, not 401: the peer is not allowed at all.
 		if w.Code != http.StatusForbidden {
 			t.Errorf("%s: status %d, want 403", peer, w.Code)
 		}
@@ -101,15 +99,14 @@ func TestTrustedPeerIsBelieved(t *testing.T) {
 			t.Errorf("%s: rejected with %d", peer, w.Code)
 			continue
 		}
-		// Lower-cased, so "Alice" and "alice" cannot own two separate sets.
+		// User IDs are lower-cased.
 		if user.ID != "alice" {
 			t.Errorf("%s: user.ID = %q, want alice", peer, user.ID)
 		}
 	}
 }
 
-// A proxy on the same host often connects as ::ffff:127.0.0.1, which has to
-// match a 127.0.0.1/32 entry.
+// ::ffff:127.0.0.1 matches 127.0.0.1/32.
 func TestIPv4MappedPeerMatchesItsIPv4Prefix(t *testing.T) {
 	cfg := autheliaConfig(t, "127.0.0.1/32")
 	_, _, reached := run(cfg, func(r *http.Request) {
@@ -121,8 +118,7 @@ func TestIPv4MappedPeerMatchesItsIPv4Prefix(t *testing.T) {
 	}
 }
 
-// A trusted proxy that sends no identity is a session that has expired, which
-// is a 401 — a different thing from arriving at the wrong door.
+// A trusted peer without a user header gets 401.
 func TestTrustedPeerWithoutIdentityIs401(t *testing.T) {
 	cfg := autheliaConfig(t, "127.0.0.1/32")
 	for _, header := range []string{"", "   "} {
@@ -161,8 +157,7 @@ func TestOptionalHeadersAreCarriedThrough(t *testing.T) {
 	}
 }
 
-// Without a display name the identifier stands in, so the UI always has
-// something to greet.
+// Without a display name, the user ID is used as the name.
 func TestNameFallsBackToTheIdentifier(t *testing.T) {
 	cfg := autheliaConfig(t, "127.0.0.1/32")
 	_, user, _ := run(cfg, func(r *http.Request) {
@@ -174,8 +169,7 @@ func TestNameFallsBackToTheIdentifier(t *testing.T) {
 	}
 }
 
-// A handler mounted outside the middleware is a programming error, and should
-// say so loudly rather than quietly acting as nobody.
+// MustUser panics outside Middleware.
 func TestMustUserPanicsWithoutMiddleware(t *testing.T) {
 	defer func() {
 		if recover() == nil {
@@ -206,7 +200,7 @@ func TestPeerTrusted(t *testing.T) {
 			t.Errorf("peerTrusted(%q) = %v, want %v", tc.addr, got, tc.want)
 		}
 	}
-	// An empty list trusts nobody, which is what makes the config guard matter.
+	// An empty list trusts nobody.
 	if peerTrusted(nil, "127.0.0.1:1234") {
 		t.Error("an empty list must trust nobody")
 	}

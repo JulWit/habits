@@ -10,12 +10,11 @@ import (
 	"github.com/JulWit/habits/internal/domain"
 )
 
-// EntryMap holds one day's value per date for a single habit.
+// EntryMap maps dates to the recorded values of a habit.
 type EntryMap map[domain.Date]int
 
-// EntriesForUser loads every entry of every non-deleted habit of the user in a
-// single query, keyed by habit ID. One query rather than one per habit keeps
-// the overview at a constant number of round trips as the list grows.
+// EntriesForUser returns the entries of all non-deleted habits of the user,
+// keyed by habit ID.
 func (s *Store) EntriesForUser(ctx context.Context, userID string) (map[string]EntryMap, error) {
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT e.habit_id, e.date, e.value
@@ -29,7 +28,7 @@ func (s *Store) EntriesForUser(ctx context.Context, userID string) (map[string]E
 	return collectEntries(rows)
 }
 
-// EntriesForHabit loads the full history of one habit after checking ownership.
+// EntriesForHabit returns all entries of a habit of the user.
 func (s *Store) EntriesForHabit(ctx context.Context, userID, habitID string) (EntryMap, error) {
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT e.habit_id, e.date, e.value
@@ -51,6 +50,8 @@ func (s *Store) EntriesForHabit(ctx context.Context, userID, habitID string) (En
 	return EntryMap{}, nil
 }
 
+// collectEntries reads rows of (habit_id, date, value) into entry maps keyed
+// by habit ID.
 func collectEntries(rows *sql.Rows) (map[string]EntryMap, error) {
 	out := map[string]EntryMap{}
 	for rows.Next() {
@@ -74,14 +75,10 @@ func collectEntries(rows *sql.Rows) (map[string]EntryMap, error) {
 	return out, rows.Err()
 }
 
-// SetEntry records a value for one day and returns the value it replaced.
-//
-// Returning the previous value is what makes undo possible without any local
-// state: the client can always ask the server to put back exactly what was
-// there, even after a reload or from a second device.
+// SetEntry sets the value of a habit on date and returns the previous value
+// (for undo). A value of 0 deletes the entry.
 func (s *Store) SetEntry(ctx context.Context, userID, habitID string, date domain.Date, value int) (previous int, err error) {
-	// The value is checked against the habit's kind below, once the row that
-	// names that kind has been read.
+	// The value is validated below, once the habit's kind is known.
 	if date.IsZero() {
 		return 0, domain.Invalid("date is missing")
 	}
@@ -92,8 +89,7 @@ func (s *Store) SetEntry(ctx context.Context, userID, habitID string, date domai
 	}
 	defer tx.Rollback()
 
-	// The kind comes back with the ownership check, because it is what decides
-	// how large a day may be: the same per-kind ceiling a target is held to.
+	// Check ownership and load the kind.
 	var kind domain.Kind
 	err = tx.QueryRowContext(ctx,
 		`SELECT kind FROM habits WHERE id = ? AND user_id = ? AND deleted_at IS NULL`,
@@ -116,9 +112,7 @@ func (s *Store) SetEntry(ctx context.Context, userID, habitID string, date domai
 	}
 
 	if value == 0 {
-		// Keep the table sparse: an empty day is the absence of a row, not a
-		// row holding zero. Heatmaps and stats then never have to distinguish
-		// "not recorded" from "recorded as nothing".
+		// Days without a value have no row.
 		if _, err := tx.ExecContext(ctx,
 			`DELETE FROM entries WHERE habit_id = ? AND date = ?`, habitID, key); err != nil {
 			return 0, fmt.Errorf("deleting entry: %w", err)

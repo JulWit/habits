@@ -8,8 +8,7 @@ import (
 	"time"
 )
 
-// An out-of-range value is the client's mistake, not the server's: 422, and a
-// message rather than "Interner Serverfehler".
+// Invalid settings are answered with 422.
 func TestBadSettingsAnswer422(t *testing.T) {
 	h := newTestServer(t)
 	for _, body := range []string{
@@ -27,13 +26,13 @@ func TestBadSettingsAnswer422(t *testing.T) {
 			t.Errorf("%s: reported as a server error: %s", body, w.Body)
 		}
 	}
-	// An unknown field is a typo in the client, and says so.
+	// Unknown fields are answered with 400.
 	if w := do(t, h, "PATCH", "/api/settings", `{"thme":"dark"}`, "application/json"); w.Code != http.StatusBadRequest {
 		t.Errorf("unknown field: status %d, want 400", w.Code)
 	}
 }
 
-// A day beyond the per-kind ceiling is refused with a reason, not a 500.
+// Values above the kind's maximum are answered with 422.
 func TestEntryValueIsBounded(t *testing.T) {
 	h := newTestServer(t)
 	w := do(t, h, "POST", "/api/habits",
@@ -59,13 +58,12 @@ func TestEntryValueIsBounded(t *testing.T) {
 	if w := do(t, h, "PUT", path, `{"value":5000}`, "application/json"); w.Code != http.StatusOK {
 		t.Errorf("valid value: status %d, want 200 (%s)", w.Code, w.Body)
 	}
-	// Beyond the horizon is a different rejection, and also not a 500.
+	// Dates beyond the horizon are answered with 422.
 	far := "/api/habits/" + created.ID + "/entries/2099-01-01"
 	if w := do(t, h, "PUT", far, `{"value":1000}`, "application/json"); w.Code != http.StatusUnprocessableEntity {
 		t.Errorf("date beyond the horizon: status %d, want 422", w.Code)
 	}
-	// So is a day before the floor; clearing one is still allowed, so an entry
-	// stored before the floor existed can be removed.
+	// Dates before EarliestEntry are answered with 422, but may be cleared.
 	old := "/api/habits/" + created.ID + "/entries/1999-12-31"
 	if w := do(t, h, "PUT", old, `{"value":1000}`, "application/json"); w.Code != http.StatusUnprocessableEntity {
 		t.Errorf("date before the floor: status %d, want 422", w.Code)
@@ -79,8 +77,7 @@ func TestEntryValueIsBounded(t *testing.T) {
 	}
 }
 
-// A habit with chosen weekdays takes no entry on any other day, but a leftover
-// entry there can still be cleared.
+// Weekday habits reject values on other days, but allow clearing them.
 func TestEntryOnUnscheduledWeekdayIsRefused(t *testing.T) {
 	h := newTestServer(t)
 	// Monday and Friday.
@@ -145,8 +142,7 @@ func TestEntryBetweenCustomIntervalIsRefused(t *testing.T) {
 	}
 }
 
-// A write answers with the habit's new timestamp, so the detail view can show
-// the last change without reloading the habit.
+// The response contains the habit's new updatedAt.
 func TestEntryAnswersWithUpdatedAt(t *testing.T) {
 	h := newTestServer(t)
 	w := do(t, h, "POST", "/api/habits",

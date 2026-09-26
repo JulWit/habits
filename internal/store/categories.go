@@ -12,6 +12,7 @@ import (
 
 const categoryColumns = `id, name, icon, color, show_progress, position, created_at, updated_at`
 
+// scanCategory scans a row selected with categoryColumns.
 func scanCategory(row interface{ Scan(...any) error }) (domain.Category, error) {
 	var (
 		c       domain.Category
@@ -31,8 +32,8 @@ func scanCategory(row interface{ Scan(...any) error }) (domain.Category, error) 
 	return c, nil
 }
 
-// ListCategories returns the user's categories in display order. Soft-deleted
-// ones are excluded; they exist only so a deletion can be undone.
+// ListCategories returns the user's categories in display order, excluding
+// deleted categories.
 func (s *Store) ListCategories(ctx context.Context, userID string) ([]domain.Category, error) {
 	rows, err := s.db.QueryContext(ctx,
 		`SELECT `+categoryColumns+`
@@ -55,6 +56,7 @@ func (s *Store) ListCategories(ctx context.Context, userID string) ([]domain.Cat
 	return out, rows.Err()
 }
 
+// GetCategory returns a category of the user, or ErrNotFound.
 func (s *Store) GetCategory(ctx context.Context, userID, id string) (domain.Category, error) {
 	row := s.db.QueryRowContext(ctx,
 		`SELECT `+categoryColumns+` FROM categories
@@ -69,6 +71,8 @@ func (s *Store) GetCategory(ctx context.Context, userID, id string) (domain.Cate
 	return c, nil
 }
 
+// CreateCategory inserts the category at the end of the list and sets its ID,
+// position and timestamps.
 func (s *Store) CreateCategory(ctx context.Context, userID string, c *domain.Category) error {
 	now := time.Now().UTC()
 	c.ID = NewID()
@@ -100,6 +104,7 @@ func (s *Store) CreateCategory(ctx context.Context, userID string, c *domain.Cat
 	return tx.Commit()
 }
 
+// UpdateCategory updates all fields except the position.
 func (s *Store) UpdateCategory(ctx context.Context, userID string, c *domain.Category) error {
 	c.UpdatedAt = time.Now().UTC()
 	if err := c.Validate(); err != nil {
@@ -115,9 +120,8 @@ func (s *Store) UpdateCategory(ctx context.Context, userID string, c *domain.Cat
 	return expectOneRow(res)
 }
 
-// SoftDeleteCategory hides the category. Its habits keep their category_id and
-// simply render as uncategorised, so restoring the category puts the block back
-// together exactly as it was.
+// SoftDeleteCategory marks the category as deleted. Its habits keep their
+// category ID and are shown as uncategorised until it is restored.
 func (s *Store) SoftDeleteCategory(ctx context.Context, userID, id string) error {
 	now := formatTime(time.Now())
 	res, err := s.db.ExecContext(ctx,
@@ -129,6 +133,7 @@ func (s *Store) SoftDeleteCategory(ctx context.Context, userID, id string) error
 	return expectOneRow(res)
 }
 
+// RestoreCategory restores a soft-deleted category.
 func (s *Store) RestoreCategory(ctx context.Context, userID, id string) error {
 	res, err := s.db.ExecContext(ctx,
 		`UPDATE categories SET deleted_at = NULL, updated_at = ?
@@ -140,14 +145,14 @@ func (s *Store) RestoreCategory(ctx context.Context, userID, id string) error {
 	return expectOneRow(res)
 }
 
-// ReorderCategories applies a new block order; see reorder for what ids may
-// leave out.
+// ReorderCategories sets the display order of the user's categories (see
+// reorder).
 func (s *Store) ReorderCategories(ctx context.Context, userID string, ids []string) error {
 	return s.reorder(ctx, "categories", userID, ids, true)
 }
 
-// PurgeDeletedCategories removes categories past the undo retention window. The
-// ON DELETE SET NULL on habits.category_id then detaches their habits for good.
+// PurgeDeletedCategories permanently removes categories deleted more than
+// olderThan ago and returns their number. Their habits become uncategorised.
 func (s *Store) PurgeDeletedCategories(ctx context.Context, olderThan time.Duration) (int64, error) {
 	res, err := s.db.ExecContext(ctx,
 		`DELETE FROM categories WHERE deleted_at IS NOT NULL AND deleted_at < ?`,
@@ -158,8 +163,8 @@ func (s *Store) PurgeDeletedCategories(ctx context.Context, olderThan time.Durat
 	return res.RowsAffected()
 }
 
-// categoryBelongsTo reports whether the id names a live category of the user.
-// An empty id means "no category" and is always acceptable.
+// categoryBelongsTo reports whether categoryID is "" or a non-deleted category
+// of the user.
 func (s *Store) categoryBelongsTo(ctx context.Context, q queryer, userID, categoryID string) (bool, error) {
 	if categoryID == "" {
 		return true, nil
@@ -177,7 +182,7 @@ func (s *Store) categoryBelongsTo(ctx context.Context, q queryer, userID, catego
 	return true, nil
 }
 
-// queryer is satisfied by both *sql.DB and *sql.Tx.
+// queryer is implemented by *sql.DB and *sql.Tx.
 type queryer interface {
 	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
 }

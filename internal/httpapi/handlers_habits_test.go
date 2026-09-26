@@ -9,8 +9,7 @@ import (
 	"github.com/JulWit/habits/internal/store"
 )
 
-// The client needs these to read a stored value, which is why they are sent
-// rather than mirrored in JavaScript.
+// The state response contains the kind descriptors.
 func TestStateCarriesTheKindDescriptors(t *testing.T) {
 	h := newTestServer(t)
 	w := do(t, h, "GET", "/api/state", "", "")
@@ -50,9 +49,8 @@ func TestStateCarriesTheKindDescriptors(t *testing.T) {
 	}
 }
 
-// Changing the kind of a habit that has a history would silently reinterpret
-// every one of its days, so it is refused — and the refusal says why, in the
-// words the editor uses for the type.
+// Changing the kind of a habit with entries is rejected with a readable
+// message.
 func TestKindChangeWithHistoryIsRefusedReadably(t *testing.T) {
 	h := newTestServer(t)
 	w := do(t, h, "POST", "/api/habits",
@@ -89,9 +87,7 @@ func TestKindChangeWithHistoryIsRefusedReadably(t *testing.T) {
 		t.Errorf("message shows the raw key: %q", body.Error)
 	}
 
-	// A second day switches the sentence to its plural form, which is the half
-	// a reader sees most often and the half a naive "%d days" would get right
-	// by accident.
+	// With a second entry the message uses the plural.
 	if w := do(t, h, "PUT", "/api/habits/"+created.ID+"/entries/2026-09-17",
 		`{"value":4800}`, "application/json"); w.Code != http.StatusOK {
 		t.Fatalf("second entry: %d (%s)", w.Code, w.Body)

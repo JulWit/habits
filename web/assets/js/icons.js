@@ -1,10 +1,5 @@
-// Inline SVG icons, kept as markup strings in one place.
-//
-// SVG rather than emoji or symbol glyphs: those render as a colour emoji on one
-// platform and as a hairline on the next, so a row of buttons changed weight
-// from machine to machine. These inherit currentColor and draw identically
-// everywhere. All markup here is constant — it never contains user input, so
-// assigning it with innerHTML carries nothing to escape.
+// Inline SVG icons. They use currentColor. The markup is constant, so it is
+// safe to assign with innerHTML.
 
 import { t } from "./i18n.js";
 
@@ -22,11 +17,10 @@ export const icons = {
 
   moon: draw('<path d="M20.6 14.6A9 9 0 0 1 9.4 3.4a9 9 0 1 0 11.2 11.2Z"/>'),
 
-  // A screen on a stand: the appearance the device asks for.
+  // Screen on a stand: system theme.
   display: draw('<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M9 20h6M12 16v4"/>'),
 
-  // Settings sections. A painter's palette for how things look, and the board
-  // itself - a label column beside rows of days - for how it is laid out.
+  // Settings sections.
   palette: draw(
     '<path d="M12 3.2a8.8 8.8 0 1 0 0 17.6c1.1 0 1.8-.8 1.8-1.8 0-.5-.2-.9-.5-1.2' +
     "-.3-.3-.5-.7-.5-1.2 0-1 .8-1.8 1.8-1.8h2.1a4.1 4.1 0 0 0 4.1-4.1" +
@@ -37,16 +31,14 @@ export const icons = {
     '<rect x="3.2" y="4.2" width="17.6" height="15.6" rx="2.2"/>' +
     '<path d="M3.2 9.4h17.6M3.2 14.6h17.6M9.4 9.4v10.4"/>',
   ),
-  // A globe for region and language: where "today" is, and in which words.
+  // Globe: region and language.
   globe: draw(
     '<circle cx="12" cy="12" r="8.8"/>' +
     '<path d="M3.2 12h17.6M12 3.2c2.4 2.4 3.6 5.3 3.6 8.8s-1.2 6.4-3.6 8.8' +
     'M12 3.2C9.6 5.6 8.4 8.5 8.4 12s1.2 6.4 3.6 8.8"/>',
   ),
 
-  // Habit kinds. Each has to read at 15px, which rules out anything with fine
-  // detail — a running figure, for instance, becomes a smudge at that size, so
-  // distance uses the navigation arrow instead.
+  // Habit kinds. Must be legible at 15px.
   clock: draw('<circle cx="12" cy="12" r="8.6"/><path d="M12 7.1V12l3.3 2"/>'),
 
   calculator: draw(
@@ -60,8 +52,7 @@ export const icons = {
 
   edit: draw('<path d="M16.5 3.5a2.6 2.6 0 0 1 3.7 3.7L8 19.4 3.5 20.5 4.6 16z"/>'),
 
-  // A lidded box. The arrow inside says which way the habit is moving, so
-  // archiving and restoring are not the same picture with a different caption.
+  // Box with an arrow indicating archive or restore.
   archive: draw(
     '<rect x="2.5" y="3.5" width="19" height="4.5" rx="1"/>' +
     '<path d="M4.5 8v11.5a1 1 0 0 0 1 1h13a1 1 0 0 0 1-1V8"/>' +
@@ -76,11 +67,7 @@ export const icons = {
 
   check: draw('<path d="M4.5 12.5 9.5 17.5 19.5 6.5"/>'),
 
-  // The current streak, beside a habit's name. Filled rather than outlined,
-  // unlike the flame a habit can wear as its icon: at the size of the meta line
-  // an outline thins to a hairline, and the two must not read as the same
-  // thing. The inner tongue is cut out (evenodd), so the flame keeps a shape
-  // of its own instead of becoming a blot.
+  // Current streak. Filled, to be distinguishable from the flame habit icon.
   streak: draw(
     '<path fill="currentColor" stroke="none" fill-rule="evenodd" d="' +
     "M12 22C7.6 22 4.8 19 4.8 15.2 4.8 12 6.6 9.9 8.4 8.2 8.6 10 9.4 11.2 10.6 11.8" +
@@ -90,10 +77,7 @@ export const icons = {
     ' 13.4 14.9 13.9 14.2 14.4 13.7 15.1 14.7 15.6 15.8 15.6 17 15.6 18.7 14 19.8 12 19.8Z"/>',
   ),
 
-  // Eight teeth on a body of radius 7.35, tips at 9.75, every point generated
-  // from the same centre as the hub. The previous outline was a hand-edited
-  // one whose bounding box sat at 12.57/11.03, which read as a hub off-centre
-  // inside its gear.
+  // Gear with eight teeth, centred on the hub.
   gear: draw(
     '<circle cx="12" cy="12" r="3.2"/>' +
     '<path d="M9.85 4.97L10.47 2.37L13.53 2.37L14.15 4.97A7.35 7.35 0 0 1 15.45 5.51L17.73 4.11L19.89 6.27L18.49 8.55A7.35 7.35 0 0 1 19.03 9.85L21.63 10.47L21.63 13.53L19.03 14.15A7.35 7.35 0 0 1 18.49 15.45L19.89 17.73L17.73 19.89L15.45 18.49A7.35 7.35 0 0 1 14.15 19.03L13.53 21.63L10.47 21.63L9.85 19.03A7.35 7.35 0 0 1 8.55 18.49L6.27 19.89L4.11 17.73L5.51 15.45A7.35 7.35 0 0 1 4.97 14.15L2.37 13.53L2.37 10.47L4.97 9.85A7.35 7.35 0 0 1 5.51 8.55L4.11 6.27L6.27 4.11L8.55 5.51A7.35 7.35 0 0 1 9.85 4.97Z"/>',
@@ -103,8 +87,7 @@ export const icons = {
 
   chevron: draw('<path d="M6 9.5 12 15.5l6-6"/>'),
 
-  // Two columns of dots, the shape a draggable handle has everywhere. Filled
-  // circles rather than strokes, so it reads as texture and not as a control.
+  // Drag handle: two columns of dots.
   grip: draw(
     '<g fill="currentColor" stroke="none">' +
     '<circle cx="9" cy="6" r="1.4"/><circle cx="15" cy="6" r="1.4"/>' +
@@ -121,9 +104,7 @@ export const icons = {
 
   chevronRight: draw('<path d="M9.5 5.5 16 12l-6.5 6.5"/>'),
 
-  // Back to today. Not an arrow: the board pages in both directions now, so a
-  // chevron pointing one way would be wrong half the time. A calendar sheet
-  // with the day marked says where the button goes without saying which way.
+  // Calendar sheet: back to today.
   toToday: draw(
     '<rect x="3.4" y="5.2" width="17.2" height="15.4" rx="2.2"/>' +
     '<path d="M8 2.9v4.2M16 2.9v4.2M3.4 10.2h17.2"/>' +
@@ -132,11 +113,10 @@ export const icons = {
 
   search: draw('<circle cx="10.8" cy="10.8" r="6.3"/><path d="M15.4 15.4 20.5 20.5"/>'),
 
-  // A plus sign for the one control that adds something. Drawn on the same
-  // grid as the icons beside it, so the three read as one row.
+  // Plus sign.
   plus: draw('<path d="M12 5.2v13.6M5.2 12h13.6"/>'),
 
-  // A funnel: what a filter looks like everywhere.
+  // Funnel: filter.
   filter: draw('<path d="M3.6 5.2h16.8l-6.6 7.7v5.4l-3.6 2.1v-7.5z"/>'),
 
   trash: draw(
@@ -148,13 +128,8 @@ export const icons = {
 };
 
 /**
- * The icons a habit can wear, by the names the server validates against
- * (domain.HabitIcons). The server owns the list and its order; this owns only
- * the drawings. A name without a drawing here is left out of the picker and
- * drawn as nothing, rather than as a broken box.
- *
- * Drawn on the same 24px grid and stroke as the interface icons, and kept
- * simple for the same reason: they are read at about 16px beside a name.
+ * Drawings of the habit icons, keyed by the names in domain.HabitIcons. Names
+ * without a drawing are not offered.
  */
 export const habitIcons = {
   droplet: draw('<path d="M12 21.5a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5-2 1.6-3 3.5-3 5.5a7 7 0 0 0 7 7z"/>'),
@@ -220,11 +195,8 @@ export const habitIcons = {
 };
 
 /**
- * The rounded tile an icon sits on, or null for a name without a drawing.
- *
- * The colour comes from --habit-color on the tile itself, so it can be placed
- * anywhere without depending on what its parent happens to set. Without a
- * colour the tile is neutral: see .habit-icon.is-neutral.
+ * Returns the tile for an icon, or null if there is no drawing for `name`.
+ * Without a colour, the tile is neutral.
  */
 function iconBadge(name, color, className) {
   const svg = habitIcons[name];
@@ -237,21 +209,18 @@ function iconBadge(name, color, className) {
   return el;
 }
 
-/** A habit's icon, in the habit's colour. */
+/** Returns the icon tile of a habit, in the habit's colour. */
 export function habitIconBadge(habit, className = "habit-icon") {
   return iconBadge(habit.icon, habit.color, className);
 }
 
-/** A category's icon, in its colour, or in neutral ink when it has none. */
+/** Returns the icon tile of a category, in its colour or neutral. */
 export function categoryIconBadge(category, className = "habit-icon") {
   return iconBadge(category.icon, category.color || null, className);
 }
 
-// What an icon and a palette colour are called, for a screen reader and a
-// tooltip. The server's lists hold identifiers and hex values, neither of which
-// is a word a person says. Written in English and translated through the
-// dictionary like any label; one missing here falls back to its identifier
-// rather than to silence.
+// Names of the icons and colours, for screen readers and tooltips. Missing
+// entries fall back to the identifier.
 const ICON_LABELS = {
   droplet: "Water drop", apple: "Apple", utensils: "Cutlery", coffee: "Coffee",
   pill: "Pill", heart: "Heart", dumbbell: "Dumbbell", bike: "Bicycle",
@@ -279,11 +248,9 @@ export function colorLabel(hex) {
 }
 
 /**
- * Fills host with one radio button per icon, after a first one for "no icon",
- * and calls onPick with the chosen name ("" for none).
- *
- * The names are the server's (state.icons); one without a drawing here is
- * skipped rather than offered as an empty tile.
+ * Fills `host` with a radio button per icon, preceded by "no icon", and calls
+ * `onPick` with the chosen name ("" for none). Names without a drawing are
+ * skipped.
  */
 export function buildIconChoices(host, names, onPick) {
   const offered = ["", ...(names ?? []).filter((name) => habitIcons[name])];
@@ -296,7 +263,7 @@ export function buildIconChoices(host, names, onPick) {
       b.setAttribute("role", "radio");
       b.setAttribute("aria-label", name ? t("Icon {name}", { name: iconLabel(name) }) : t("No icon"));
       b.title = name ? iconLabel(name) : t("No icon");
-      // "No icon" is an empty, dashed tile: the absence it stands for.
+      // "No icon" is an empty tile.
       if (name) b.innerHTML = habitIcons[name];
       b.addEventListener("click", () => onPick(name));
       return b;
@@ -304,7 +271,7 @@ export function buildIconChoices(host, names, onPick) {
   );
 }
 
-/** Marks the choice for `name` as the selected one. */
+/** Selects the choice for `name`. */
 export function markIconChoice(host, name) {
   for (const el of host.querySelectorAll(".icon-choice")) {
     el.setAttribute("aria-checked", String(el.dataset.icon === name));
@@ -312,11 +279,8 @@ export function markIconChoice(host, name) {
 }
 
 /**
- * Fills every element carrying data-icon="<name>" with that icon, once.
- *
- * The markup stays declarative — the HTML names the icon it wants — while the
- * drawings live only here. Guarded against running twice, because a second pass
- * would stack a duplicate SVG in front of the label.
+ * Inserts the icon named in data-icon into each element below `root`. Elements
+ * that already have their icon are skipped.
  */
 export function paintIcons(root = document) {
   for (const el of root.querySelectorAll("[data-icon]")) {

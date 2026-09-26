@@ -7,16 +7,19 @@ import (
 	"github.com/JulWit/habits/internal/domain"
 )
 
+// categoryInput is the request body for creating and updating a category. Nil
+// fields are left unchanged.
 type categoryInput struct {
 	Name *string `json:"name"`
-	// Icon: absent leaves it alone, "" removes it.
+	// Icon "" removes the icon.
 	Icon *string `json:"icon"`
-	// Color: absent leaves it alone, "" returns to neutral.
+	// Color "" resets the icon colour to the default.
 	Color *string `json:"color"`
-	// ShowProgress: absent leaves it alone; a new category starts with it off.
+	// ShowProgress defaults to false for new categories.
 	ShowProgress *bool `json:"showProgress"`
 }
 
+// applyTo copies the set fields of in to c.
 func (in categoryInput) applyTo(c *domain.Category) {
 	if in.Name != nil {
 		c.Name = *in.Name
@@ -32,6 +35,7 @@ func (in categoryInput) applyTo(c *domain.Category) {
 	}
 }
 
+// handleCreateCategory creates a category. The name is required.
 func (s *Server) handleCreateCategory(w http.ResponseWriter, r *http.Request) {
 	var in categoryInput
 	if !decodeJSON(w, r, &in) {
@@ -52,6 +56,8 @@ func (s *Server) handleCreateCategory(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, c)
 }
 
+// handleUpdateCategory updates the fields of a category given in the request
+// body.
 func (s *Server) handleUpdateCategory(w http.ResponseWriter, r *http.Request) {
 	var in categoryInput
 	if !decodeJSON(w, r, &in) {
@@ -72,8 +78,7 @@ func (s *Server) handleUpdateCategory(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, c)
 }
 
-// handleDeleteCategory soft-deletes. The habits inside keep their assignment
-// and simply show as uncategorised, so a restore rebuilds the block unchanged.
+// handleDeleteCategory soft-deletes a category.
 func (s *Server) handleDeleteCategory(w http.ResponseWriter, r *http.Request) {
 	user := auth.MustUser(r.Context())
 	if err := s.store.SoftDeleteCategory(r.Context(), user.ID, r.PathValue("id")); err != nil {
@@ -83,6 +88,7 @@ func (s *Server) handleDeleteCategory(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusNoContent, nil)
 }
 
+// handleRestoreCategory restores a soft-deleted category.
 func (s *Server) handleRestoreCategory(w http.ResponseWriter, r *http.Request) {
 	user := auth.MustUser(r.Context())
 	id := r.PathValue("id")
@@ -99,6 +105,7 @@ func (s *Server) handleRestoreCategory(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, c)
 }
 
+// handleReorderCategories sets the order of the categories to the given IDs.
 func (s *Server) handleReorderCategories(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		IDs []string `json:"ids"`

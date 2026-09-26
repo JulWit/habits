@@ -6,8 +6,8 @@ import (
 	"testing"
 )
 
-// withEnv sets the given variables for one test and clears every other
-// HABITS_* one, so a case never inherits a neighbour's environment.
+// withEnv sets vars for the duration of the test and clears all other HABITS_*
+// variables.
 func withEnv(t *testing.T, vars map[string]string) {
 	t.Helper()
 	for _, key := range []string{
@@ -45,8 +45,7 @@ func TestLoadDefaultsToSingleUser(t *testing.T) {
 	}
 }
 
-// Whitespace-only is the same as unset: a value like HABITS_ADDR=" " comes from
-// a compose file with an empty interpolation, not from an intent.
+// A blank value is treated like an unset one.
 func TestBlankEnvFallsBackToTheDefault(t *testing.T) {
 	withEnv(t, map[string]string{"HABITS_ADDR": "   ", "HABITS_DB": "  data.db  "})
 	cfg, err := Load()
@@ -61,8 +60,7 @@ func TestBlankEnvFallsBackToTheDefault(t *testing.T) {
 	}
 }
 
-// The guard that makes header auth safe at all: without a trusted-proxy list
-// any client reaching the port could send its own Remote-User.
+// Authelia mode requires HABITS_TRUSTED_PROXIES.
 func TestAutheliaRefusesToStartWithoutTrustedProxies(t *testing.T) {
 	withEnv(t, map[string]string{"HABITS_AUTH_MODE": "authelia"})
 	_, err := Load()
@@ -128,8 +126,7 @@ func TestLoadRejects(t *testing.T) {
 	}
 }
 
-// The embedded tzdata is what makes this work on a host without a zoneinfo of
-// its own — Windows has none, and a scratch container usually has none either.
+// Named time zones resolve via the embedded tzdata.
 func TestNamedTimezoneResolves(t *testing.T) {
 	withEnv(t, map[string]string{"HABITS_TZ": "Europe/Berlin"})
 	cfg, err := Load()

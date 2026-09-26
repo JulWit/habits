@@ -1,27 +1,14 @@
 package domain
 
-// StreakRun is one unbroken stretch of a habit being kept up, as the first and
-// the last calendar day it covers.
-//
-// The board paints the days inside a run by how long the run had been going at
-// that point, which is why the run is shipped as a pair of dates rather than as
-// a count: the first day is often older than the history the client was sent,
-// and a count would have to be recomputed for every single cell.
+// StreakRun is an unbroken run of completed scheduled days, from its first to
+// its last day.
 type StreakRun struct {
 	From Date `json:"from"`
 	To   Date `json:"to"`
 }
 
-// StreakRuns lists every unbroken run in a habit's history, oldest first.
-//
-// A run is measured in calendar days rather than in the units the streak
-// counter uses. The levels the board paints are stated in weeks and months, and
-// a Mon/Wed/Fri habit should reach "a week" after a week rather than after
-// seven of its own days — a run of seven Mondays is over six weeks of history,
-// and colouring it as one week would say the opposite of what it is.
-//
-// The current run is included while it stands: today being still open never
-// ends a run, exactly as it never breaks the streak counter.
+// StreakRuns returns all streak runs of a habit up to today, oldest first. An
+// open today does not end a run.
 func StreakRuns(h Habit, entries map[Date]int, today Date) []StreakRun {
 	if h.Frequency.Kind == FreqTimesPerWeek {
 		return weeklyRuns(h, entries, today)
@@ -29,6 +16,7 @@ func StreakRuns(h Habit, entries map[Date]int, today Date) []StreakRun {
 	return dailyRuns(h, entries, today)
 }
 
+// dailyRuns returns the runs of a habit with fixed due days.
 func dailyRuns(h Habit, entries map[Date]int, today Date) []StreakRun {
 	start := historyStart(h, entries)
 	if start.IsZero() || start.After(today) {
@@ -48,7 +36,7 @@ func dailyRuns(h Habit, entries map[Date]int, today Date) []StreakRun {
 			}
 			open.To = d
 		case d == today:
-			// Today is still open; leave the run standing.
+			// Today is still open and does not end the run.
 		default:
 			if open != nil {
 				runs = append(runs, *open)
@@ -57,19 +45,15 @@ func dailyRuns(h Habit, entries map[Date]int, today Date) []StreakRun {
 		}
 	}
 	if open != nil {
-		// A run that is still standing reaches to today rather than to the last
-		// day the habit was due. Otherwise a Mon–Fri habit ticked off on the
-		// Saturday as well would show that extra day in plain colour, as though
-		// doing more than was asked had ended the run.
+		// A current run extends to today, including unscheduled days.
 		open.To = today
 		runs = append(runs, *open)
 	}
 	return runs
 }
 
-// weeklyRuns works in whole weeks, the unit an x-times-per-week habit is judged
-// in, and then reports the run in days so the caller does not have to know
-// which of the two a habit uses.
+// weeklyRuns returns the runs of a times-per-week habit, based on completed
+// weeks but expressed in days.
 func weeklyRuns(h Habit, entries map[Date]int, today Date) []StreakRun {
 	target := h.Frequency.TimesPerWeek
 	if target < 1 {
@@ -97,8 +81,7 @@ func weeklyRuns(h Habit, entries map[Date]int, today Date) []StreakRun {
 		switch {
 		case done >= target:
 			if open == nil {
-				// The week the habit was created in starts at the habit, not at
-				// its Monday: a run may not claim days that predate its owner.
+				// A run does not start before the habit's history.
 				first := week
 				if first.Before(start) {
 					first = start
@@ -107,8 +90,7 @@ func weeklyRuns(h Habit, entries map[Date]int, today Date) []StreakRun {
 			}
 			open.To = week.AddDays(6).Min(today)
 		case week == currentWeek:
-			// The current week can still be met, so a run reaching into it
-			// keeps colouring the days already ticked off in it.
+			// The current week can still be completed and does not end the run.
 			if open != nil {
 				open.To = today
 			}

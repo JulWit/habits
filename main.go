@@ -1,6 +1,5 @@
-// Command habits is a self-contained habit tracker: the HTTP server, the
-// frontend and the SQLite driver all live in this one binary. The only file it
-// needs at runtime is the database it creates itself.
+// Command habits is a habit tracker server. HTTP server, frontend and SQLite
+// driver are compiled into a single binary.
 package main
 
 import (
@@ -15,10 +14,8 @@ import (
 	"syscall"
 	"time"
 
-	// Embeds the IANA timezone database (~450 KB) so HABITS_TZ works on hosts
-	// without one of their own — Windows has no system zoneinfo at all, and a
-	// scratch container usually has none either. A self-contained binary must
-	// not depend on the host for this.
+	// Embedded time zone database for hosts without one (Windows, scratch
+	// images).
 	_ "time/tzdata"
 
 	"github.com/JulWit/habits/internal/config"
@@ -31,9 +28,7 @@ var webFiles embed.FS
 
 func main() {
 	log := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo}))
-	// Also the package default, so the few helpers that are too small to carry
-	// a logger — writing a response body, for one — still land in the same
-	// stream as everything else instead of going quietly nowhere.
+	// Used by helpers that have no logger of their own.
 	slog.SetDefault(log)
 	if err := run(log); err != nil {
 		log.Error("startup failed", "error", err)
@@ -41,6 +36,8 @@ func main() {
 	}
 }
 
+// run starts the server and blocks until it fails or receives a shutdown
+// signal.
 func run(log *slog.Logger) error {
 	cfg, err := config.Load()
 	if err != nil {
@@ -62,8 +59,8 @@ func run(log *slog.Logger) error {
 	}
 	defer st.Close()
 
-	// Habits deleted longer ago than the retention window are past any
-	// realistic undo, so their rows and entries go for good.
+	// Permanently remove habits and categories deleted before the retention
+	// period.
 	if n, err := st.PurgeDeleted(ctx, cfg.DeletedRetention); err != nil {
 		log.Warn("purging deleted habits failed", "error", err)
 	} else if n > 0 {
@@ -81,11 +78,8 @@ func run(log *slog.Logger) error {
 	}
 
 	srv := &http.Server{
-		Addr:    cfg.Addr,
-		Handler: handler,
-		// Generous but finite: a stalled client must not hold a connection
-		// open forever, and the single-connection SQLite pool makes slow
-		// handlers everyone's problem.
+		Addr:              cfg.Addr,
+		Handler:           handler,
 		ReadHeaderTimeout: 10 * time.Second,
 		ReadTimeout:       30 * time.Second,
 		WriteTimeout:      30 * time.Second,

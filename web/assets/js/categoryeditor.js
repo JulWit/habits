@@ -1,6 +1,5 @@
-// The edit dialog for a category: its name, colour and icon. Like the habit
-// editor it only collects the input and hands it to its caller, and stays open
-// with the server's message in place when a save is refused.
+// Category edit dialog. It passes the input to its caller and stays open with
+// the error message if saving fails.
 
 import { state, categoryById } from "./state.js";
 import { errorText } from "./undo.js";
@@ -26,8 +25,7 @@ export function initCategoryEditor() {
   iconHost = document.getElementById("category-icon-choices");
 
   form.addEventListener("submit", handleSubmit);
-  // A message about the old input is wrong once the input changes, so it goes.
-  // Colour and icon are plain buttons and fire neither event, hence click.
+  // Clear the error message on any input.
   for (const type of ["input", "change", "click"]) {
     form.addEventListener(type, (event) => {
       if (type === "click" && !event.target.closest("#category-color-choices, #category-icon-choices")) return;
@@ -38,6 +36,7 @@ export function initCategoryEditor() {
 }
 
 /**
+ * Opens the editor for a category.
  * @param {string} id  the category to edit
  * @param {(input: {name: string, color: string, icon: string, showProgress: boolean}) => Promise<void>} handler
  */
@@ -48,7 +47,7 @@ export function openCategoryEditor(id, handler) {
   errorBox.hidden = true;
 
   form.elements.name.value = category.name;
-  // Off unless switched on, which is also what a missing field means.
+  // A missing value means off.
   form.elements.showProgress.checked = category.showProgress === true;
   buildSwatches();
   buildIconChoices(iconHost, state.icons, selectIcon);
@@ -60,10 +59,7 @@ export function openCategoryEditor(id, handler) {
   form.elements.name.select();
 }
 
-/**
- * The habit palette, after a first swatch for "no colour" - the neutral ink a
- * category is drawn in until it is given one.
- */
+/** Builds the colour swatches: "no colour" followed by the habit palette. */
 function buildSwatches() {
   colorHost.replaceChildren(
     ...["", ...state.colors].map((color) => {
@@ -87,7 +83,7 @@ function selectColor(color) {
   for (const el of colorHost.querySelectorAll(".swatch")) {
     el.setAttribute("aria-checked", String(el.dataset.color === color));
   }
-  // The icons are drawn in the colour being picked, as the board will show them.
+  // Show the icons in the selected colour.
   iconHost.classList.toggle("is-neutral", !color);
   if (color) iconHost.style.setProperty("--habit-color", color);
   else iconHost.style.removeProperty("--habit-color");
@@ -99,7 +95,7 @@ function selectIcon(name) {
 }
 
 async function handleSubmit(event) {
-  // method="dialog" would close on submit; kept open until the server agrees.
+  // Keep the dialog open until the server accepts the input.
   event.preventDefault();
   if (!form.reportValidity()) return;
 
@@ -115,8 +111,7 @@ async function handleSubmit(event) {
   } catch (err) {
     errorBox.textContent = errorText(err);
     errorBox.hidden = false;
-    // The box sits at the end of the scrolling body, which on a phone is below
-    // the fold. Without this the save button seems to do nothing.
+    // The error message may be outside the visible area.
     errorBox.scrollIntoView({ block: "nearest" });
   } finally {
     submitButton.disabled = false;

@@ -1,9 +1,5 @@
-// The settings dialog.
-//
-// Every control writes through to the server immediately — there is no Save
-// button, because each setting is independent and a half-applied dialog is
-// worse than an instantly applied one. The state is updated first so the board
-// reacts at once; a rejected write rolls the change back.
+// Settings dialog. Every change is saved immediately: the state is updated
+// first and restored if the server rejects the change.
 
 import { api } from "./api.js";
 import { state, replaceState, subscribe } from "./state.js";
@@ -50,9 +46,9 @@ let timeZoneSelect;
 let timeZoneHint;
 let timeZoneDevice;
 
-/** Set by app.js: reports how many day columns the board is really drawing. */
+/** Returns the number of day columns actually shown. Set by app.js. */
 let effectiveDays = () => 0;
-/** Set by app.js: reloads the state from the server. */
+/** Reloads the state from the server. Set by app.js. */
 let reload = async () => {};
 
 export function initSettings(handlers = {}) {
@@ -144,16 +140,13 @@ export function initSettings(handlers = {}) {
   }
   bgFile.addEventListener("change", () => {
     const file = bgFile.files?.[0];
-    // The picker is emptied straight away, so choosing the same file twice in a
-    // row still counts as a change.
+    // Reset, so selecting the same file again triggers a change.
     bgFile.value = "";
     if (file) uploadBackground(file);
   });
   bgRemove.addEventListener("click", removeBackground);
 
-  // Both knobs write while the slider is still moving, which is the only way to
-  // judge a veil: the page behind the dialog changes under the thumb. The
-  // request is what waits - "input" would send one per pixel.
+  // Save while the slider moves, for live preview of the background.
   bgDim.addEventListener("input", () => {
     showKnob(bgDimOut, bgDim.value, "%");
     document.documentElement.style.setProperty("--bg-dim", `${bgDim.value}%`);
@@ -179,10 +172,7 @@ export function initSettings(handlers = {}) {
     () => saveSetting({ surfaceBlur: Number(surfaceBlur.value) }));
 
   languageSelect.addEventListener("change", async () => {
-    // Every text on the page was written in the old language, much of it into
-    // markup that is only built once - a reload is the one way to be sure none
-    // of it is left behind. Only after the server has the new choice, or the
-    // reload would render the old one again.
+    // Reload the page to apply the new language, once the server has it.
     if (await saveSetting({ language: languageSelect.value })) location.reload();
   });
   timeZoneSelect.addEventListener("change", () => saveTimeZone(timeZoneSelect.value));
@@ -190,13 +180,11 @@ export function initSettings(handlers = {}) {
 
   archivedInput.addEventListener("change", async () => {
     await saveSetting({ showArchived: archivedInput.checked });
-    // Unlike the theme and the day count, this one changes *which* habits the
-    // server sends, not merely how they are drawn, so the list is fetched again.
+    // This setting changes which habits the server sends.
     await reload();
   });
 
-  // The hint names the number actually on screen, which can be lower than the
-  // chosen one on a narrow window.
+  // Update the hint with the number of columns actually shown.
   subscribe(paint);
 }
 
@@ -219,8 +207,7 @@ function paint() {
   showBandInput.checked = state.settings?.showBand ?? true;
   bandFillOpacity.value = String(state.settings?.bandFillOpacity ?? 30);
   showKnob(bandFillOpacityOut, bandFillOpacity.value, "%");
-  // Without a band there is nothing for its slider to change, so it only shows
-  // once the band is switched on.
+  // The slider is only shown while the band is on.
   bandFillOpacity.closest(".slider").hidden = !showBandInput.checked;
   for (const input of reorderInputs) input.checked = input.value === reorder;
   reorderHint.textContent = reorder === "drag"
@@ -238,9 +225,7 @@ function paint() {
 
   const aligned = state.settings?.alignWeeks ?? false;
   alignInput.checked = aligned;
-  // Below a week of columns there is no Monday-aligned window that is sure to
-  // contain today, so the board ignores the switch rather than paging away from
-  // the current day. Said plainly instead of letting it look broken.
+  // Week alignment requires at least seven columns.
   alignHint.textContent = !aligned
     ? t("The overview ends on today.")
     : shown < 7
@@ -253,11 +238,9 @@ function paint() {
   const archived = state.archivedCount ?? 0;
   const on = state.settings?.showArchived ?? false;
   archivedInput.checked = on;
-  // Nothing archived and the switch off: the whole section would be a control
-  // that can never change anything. It stays while it is on, so there is always
-  // a way back out.
+  // Hidden if there are no archived habits and the switch is off.
   archiveField.hidden = archived === 0 && !on;
-  // A tab whose only section is hidden would open on nothing.
+  // Hide the tab if its section is hidden.
   const archiveTab = document.getElementById("tab-archive");
   archiveTab.hidden = archiveField.hidden;
   if (archiveField.hidden && openTab === "tab-archive") showTab("tab-look");
@@ -268,7 +251,7 @@ function paint() {
 
 // ---------- region & language ----------
 
-/** The zone the browser runs in, or "" if it will not say. */
+/** Returns the browser's time zone, or "". */
 function deviceTimeZone() {
   try {
     return Intl.DateTimeFormat().resolvedOptions().timeZone ?? "";
@@ -278,12 +261,8 @@ function deviceTimeZone() {
 }
 
 /**
- * Every zone the browser can name, for the list.
- *
- * Taken from the browser rather than shipped: it is the same IANA database the
- * server embeds, and the server still has the last word on every name. Older
- * browsers without supportedValuesOf get a short list around the zones that
- * matter here, which is better than no choice at all.
+ * Returns all time zones known to the browser, or a short fallback list for
+ * browsers without Intl.supportedValuesOf.
  */
 function knownTimeZones() {
   try {
@@ -294,11 +273,8 @@ function knownTimeZones() {
 }
 
 /**
- * The time-zone list: the server's zone first, then every zone grouped by the
- * part of the world before its slash - four hundred entries in one flat list
- * would be a scroll through the alphabet.
- *
- * Built once; after that only the selection changes.
+ * Builds the time zone list, grouped by region, with the server's time zone
+ * first. Built once.
  */
 function buildTimeZoneOptions() {
   if (timeZoneSelect.options.length > 0) return;
@@ -318,8 +294,7 @@ function buildTimeZoneOptions() {
     for (const zone of zones) {
       const option = document.createElement("option");
       option.value = zone;
-      // "America/Argentina/Buenos_Aires" reads better without the underscores
-      // and with the region it is already filed under left off.
+      // Without the region prefix and underscores.
       option.textContent = zone.slice(zone.indexOf("/") + 1).replaceAll("_", " ").replaceAll("/", " / ");
       group.append(option);
     }
@@ -332,15 +307,13 @@ function paintRegion() {
 
   buildTimeZoneOptions();
   const server = state.serverTimeZone ?? "";
-  // "Local" is what the server calls a zone it took from the host without a
-  // name; saying so is more honest than inventing one.
+  // "Local" is a server zone without a name.
   timeZoneSelect.options[0].textContent = server && server !== "Local"
     ? t("Server default ({zone})", { zone: server })
     : t("Server default");
 
   const chosen = state.settings?.timeZone ?? "";
-  // A zone the browser does not list (an older alias, say) is still the one in
-  // force, so it gets an entry of its own rather than the select showing a lie.
+  // Add the chosen zone if the browser does not list it.
   if (chosen && ![...timeZoneSelect.options].some((o) => o.value === chosen)) {
     const option = document.createElement("option");
     option.value = chosen;
@@ -351,43 +324,32 @@ function paintRegion() {
 
   timeZoneHint.textContent = timeZoneText();
 
-  // Offered only when it would change something: the device sits in another
-  // zone than the one in force.
+  // Only offered if the device is in a different time zone.
   const device = deviceTimeZone();
   const inForce = chosen || server;
   timeZoneDevice.hidden = !device || device === inForce;
   timeZoneDevice.textContent = t("Use this device's time zone ({zone})", { zone: device });
 }
 
-/** "Decides when a new day begins. It is 15:42 there now." */
+/** Returns the time zone hint, including the current time there. */
 function timeZoneText() {
   let now = "";
   try {
     now = new Date().toLocaleTimeString(locale,
       { hour: "2-digit", minute: "2-digit", timeZone: userTimeZone() });
   } catch {
-    // A zone the browser cannot format simply goes without the clock.
+    // Omit the time if the browser cannot format the zone.
   }
   const lead = t("Decides when a new day begins on the board.");
   return now ? `${lead} ${t("It is {time} there now.", { time: now })}` : lead;
 }
 
-/**
- * Writes the zone and fetches the state again: the server counts "today" in
- * it, so the board may now be a day further on or back.
- */
+/** Saves the time zone and reloads the state, as it changes "today". */
 async function saveTimeZone(zone) {
   if (await saveSetting({ timeZone: zone })) await reload();
 }
 
-/**
- * The tab strip at the top of the dialog.
- *
- * Which tab is open is remembered for as long as the page lives, so closing the
- * dialog to look at the board and opening it again lands where one left off -
- * but a reload starts at the front again rather than in a corner one has long
- * forgotten about.
- */
+/** The open settings tab, kept until the page is reloaded. */
 let openTab = "tab-look";
 
 function initTabs() {
@@ -398,8 +360,7 @@ function initTabs() {
     for (const tab of tabs) {
       const selected = tab.id === id;
       tab.setAttribute("aria-selected", String(selected));
-      // Only the open tab is in the tab order; the others are reached with the
-      // arrow keys, which is how a tab strip is expected to behave.
+      // Only the selected tab is focusable; arrow keys switch tabs.
       tab.tabIndex = selected ? 0 : -1;
       document.getElementById(tab.getAttribute("aria-controls")).hidden = !selected;
     }
@@ -408,8 +369,7 @@ function initTabs() {
   for (const [index, tab] of tabs.entries()) {
     tab.addEventListener("click", () => show(tab.id));
     tab.addEventListener("keydown", (event) => {
-      // Down and up for the list beside the settings, right and left for the
-      // strip it folds into on a phone; both work in either layout.
+      // Both arrow directions work in both layouts.
       const step = event.key === "ArrowDown" || event.key === "ArrowRight" ? 1
         : event.key === "ArrowUp" || event.key === "ArrowLeft" ? -1 : 0;
       if (step === 0) return;
@@ -424,19 +384,13 @@ function initTabs() {
   show(openTab);
 }
 
-/** Set by initTabs; paint() uses it to reopen the last tab. */
+/** Opens a tab. Set by initTabs. */
 let showTab = () => {};
 
-/** The value that leaves the today column grey, mirroring store.NeutralBand. */
+/** Band colour for a grey today band, as store.NeutralBand. */
 const NEUTRAL_BAND = "neutral";
 
-/**
- * The colours the today band may take: the habit palette, muted by the
- * stylesheet, with the plain grey in front of it.
- *
- * Built from the colours the server sent rather than from a list of its own, so
- * the board can never offer a shade the habit editor does not.
- */
+/** Builds the band colour choices: neutral, followed by the habit palette. */
 function paintBandChoices(chosen) {
   const wanted = [NEUTRAL_BAND, ...(state.colors ?? [])];
   if (bandChoices.childElementCount !== wanted.length) {
@@ -464,19 +418,13 @@ function paintBandChoices(chosen) {
 }
 
 /**
- * Writes one or more settings.
- *
- * Goes through replaceState rather than touching state.settings directly:
- * a direct write would change the value without notifying subscribers, and the
- * board would keep drawing the old one.
- *
- * Resolves to whether the server took the change, for the settings that have
- * more to do once it has.
+ * Saves settings. The state is updated immediately via replaceState and
+ * restored if the server rejects the change. Resolves to whether the change
+ * was saved.
  */
 async function saveSetting(patch) {
   const before = { ...state.settings };
-  // Applied before the request so the board redraws without waiting on a round
-  // trip; the server stays the authority and a rejection restores the old value.
+  // Apply immediately; restored on failure.
   replaceState({ settings: { ...state.settings, ...patch } });
   try {
     replaceState({ settings: await api.saveSettings(patch) });
@@ -489,13 +437,7 @@ async function saveSetting(patch) {
   }
 }
 
-/**
- * The background section: preview, buttons and the two knobs.
- *
- * Everything here hangs off one fact from the server - whether a picture exists
- * - which is why the version travels with the state rather than being asked for
- * separately.
- */
+/** Updates the background section: preview, buttons and sliders. */
 function paintBackground() {
   const version = state.backgroundVersion ?? "";
   const has = version !== "";
@@ -503,8 +445,7 @@ function paintBackground() {
   patternImageOption.disabled = !has;
   bgRemove.hidden = !has;
   bgKnobs.hidden = !has;
-  // The version in the URL is what makes a new upload show at once: without it
-  // the browser answers from the entry the old picture left behind.
+  // The version in the URL bypasses the browser cache after an upload.
   bgPreview.style.backgroundImage = has ? `url("/api/background?v=${version}")` : "";
   bgPreview.classList.toggle("is-empty", !has);
 
@@ -523,13 +464,8 @@ function showKnob(out, value, unit) {
 }
 
 /**
- * The blur as a length.
- *
- * The setting is a percentage — "how much of the picture is left" is the same
- * kind of choice as the veil, and pixels would say nothing to whoever pulls the
- * slider. What a hundred percent comes to on screen is the server's number,
- * sent with the state; the shell already applied the same one before any script
- * ran. The fallback only covers the first paint of a cold load.
+ * Converts a blur percentage to a CSS length, using state.blurAtFull from the
+ * server.
  */
 export function blurLength(percent) {
   const atFull = state.blurAtFull ?? 40;
@@ -537,9 +473,7 @@ export function blurLength(percent) {
 }
 
 async function uploadBackground(file) {
-  // A picture that is far too large is worth saying so about here rather than
-  // after it has been carried across the network; everything else - the format,
-  // the dimensions - the server decides, because only it sees the bytes.
+  // Check the size before uploading; the server checks everything else.
   if (file.size > 12 * 1024 * 1024) {
     report(t("The image may be at most 12 MB."));
     return;
@@ -548,8 +482,7 @@ async function uploadBackground(file) {
   try {
     const res = await api.uploadBackground(file);
     replaceState({ settings: res.settings, backgroundVersion: res.version });
-    // The page is showing the old picture from its cache; the version forces
-    // the new one without a reload.
+    // The new version bypasses the cached image.
     document.documentElement.style.setProperty(
       "--pattern-image", `url("/api/background?v=${res.version}")`);
     if (errorBox) errorBox.hidden = true;
@@ -571,10 +504,7 @@ async function removeBackground() {
   }
 }
 
-/**
- * A modal dialog renders in the browser's top layer, above the toasts, so a
- * failure while the dialog is open has to be shown inside it.
- */
+/** Shows an error inside the dialog, since modal dialogs cover the toasts. */
 function report(message) {
   if (dialog?.open) {
     errorBox.textContent = message;

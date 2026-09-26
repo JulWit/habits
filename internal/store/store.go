@@ -1,5 +1,4 @@
-// Package store is the persistence layer. It owns the SQL schema and is the
-// only package that knows the application uses SQLite.
+// Package store persists the application data in SQLite.
 package store
 
 import (
@@ -14,39 +13,34 @@ import (
 
 	"github.com/JulWit/habits/internal/domain"
 
-	_ "modernc.org/sqlite" // pure-Go driver: no cgo, so the binary links statically
+	_ "modernc.org/sqlite" // pure Go driver, no cgo
 )
 
 var (
+	// ErrNotFound is returned when a record does not exist for the user.
 	ErrNotFound = errors.New("not found")
+	// ErrConflict is returned when a change conflicts with the stored state.
 	ErrConflict = errors.New("conflict")
 )
 
-// invalidf marks a rejection as a validation failure rather than a fault, so
-// the HTTP layer answers 422 instead of 500. Its sentences are rendered here
-// and so reach the client without a template to translate by; that is right
-// for the backstops it serves, which the interface cannot trigger. A message a
-// person can meet goes through domain.Invalid with its placeholders instead.
+// invalidf returns a validation error with an untranslated message. Messages
+// the user can trigger through the UI use domain.Invalid instead.
 func invalidf(format string, args ...any) error {
 	return domain.Invalid(fmt.Sprintf(format, args...))
 }
 
-// execer is satisfied by both *sql.DB and *sql.Tx, so a write can be run either
-// on its own or as one step of a larger transaction.
+// execer is implemented by *sql.DB and *sql.Tx.
 type execer interface {
 	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
 }
 
+// Store provides access to the database.
 type Store struct {
 	db *sql.DB
 }
 
-// Open connects to the SQLite file and brings the schema up to date.
-//
-// The pool is capped at a single connection on purpose. SQLite allows only one
-// writer, and a larger pool buys nothing for a personal tracker while making
-// SQLITE_BUSY possible. If read throughput ever matters, the fix is a second
-// read-only pool rather than a bigger shared one.
+// Open opens the SQLite database at path and applies pending migrations. The
+// pool uses a single connection, since SQLite allows only one writer.
 func Open(ctx context.Context, path string) (*Store, error) {
 	dsn := "file:" + url.PathEscape(path) + "?" + url.Values{
 		"_pragma": {
@@ -77,10 +71,11 @@ func Open(ctx context.Context, path string) (*Store, error) {
 	return s, nil
 }
 
+// Close closes the database.
 func (s *Store) Close() error { return s.db.Close() }
 
-// migrations are applied in order and tracked with PRAGMA user_version. Never
-// edit an entry that has shipped — append a new one instead.
+// migrations are applied in order; PRAGMA user_version stores how many have
+// run. Do not change released migrations, append new ones.
 var migrations = []string{
 	`CREATE TABLE habits (
 		id                  TEXT    PRIMARY KEY,
@@ -119,9 +114,7 @@ var migrations = []string{
 		updated_at TEXT NOT NULL
 	);`,
 
-	// Drop the "system" theme. SQLite cannot alter a column default, so the
-	// table is rebuilt; anyone still on 'system' is moved to the light theme,
-	// which is now the default.
+	// Remove the "system" theme; the default becomes "light".
 	`CREATE TABLE user_settings_v2 (
 		user_id    TEXT PRIMARY KEY,
 		theme      TEXT NOT NULL DEFAULT 'light',
@@ -135,10 +128,7 @@ var migrations = []string{
 	DROP TABLE user_settings;
 	ALTER TABLE user_settings_v2 RENAME TO user_settings;`,
 
-	// Categories group habits into blocks on the overview. Like habits they are
-	// soft-deleted, which is what lets a deletion be undone; a habit whose
-	// category is soft-deleted simply shows as uncategorised until the category
-	// comes back, so no habit rows have to be touched either way.
+	// Add categories.
 	`CREATE TABLE categories (
 		id         TEXT    PRIMARY KEY,
 		user_id    TEXT    NOT NULL,
@@ -154,21 +144,13 @@ var migrations = []string{
 		REFERENCES categories(id) ON DELETE SET NULL;
 	CREATE INDEX idx_habits_category ON habits(category_id);`,
 
-	// How many day columns the board shows. 0 keeps the previous behaviour of
-	// filling whatever width is available.
+	// Number of day columns on the overview; 0 fills the available width.
 	`ALTER TABLE user_settings ADD COLUMN overview_days INTEGER NOT NULL DEFAULT 0;`,
 
-	// Whether archived habits are shown. Stored rather than kept in the client,
-	// so it survives a reload like every other setting and the first response
-	// already contains the right set of habits.
+	// Whether archived habits are shown.
 	`ALTER TABLE user_settings ADD COLUMN show_archived INTEGER NOT NULL DEFAULT 0;`,
 
-	// The habit palette was replaced. Existing habits still carry a colour from
-	// the old set, which would leave the board showing shades the editor no
-	// longer offers, so each is mapped to its nearest counterpart. The old
-	// palette had a yellow and a brown that the new one does not; those go to
-	// amber and to the neutral grey. Any colour outside the old palette is left
-	// untouched by the ELSE.
+	// Map habit colours from the old palette to the new one.
 	`UPDATE habits SET color = CASE color
 		WHEN '#e05252' THEN '#dc2626'
 		WHEN '#e07b52' THEN '#ea580c'
@@ -187,14 +169,10 @@ var migrations = []string{
 		ELSE color
 	END;`,
 
-	// Habit notes were removed from the product. Dropping the column rather than
-	// leaving it behind keeps the schema honest about what the app stores; any
-	// text still in it goes with it.
+	// Remove habit notes.
 	`ALTER TABLE habits DROP COLUMN notes;`,
 
-	// The habit kinds were renamed to match what the UI calls them, and a
-	// fourth was added. Only the stored strings change; the meaning of every
-	// row is untouched.
+	// Rename the habit kinds.
 	`UPDATE habits SET kind = CASE kind
 		WHEN 'bool' THEN 'check'
 		WHEN 'counter' THEN 'count'
@@ -202,29 +180,19 @@ var migrations = []string{
 		ELSE kind
 	END;`,
 
-	// The overview offers 28 days instead of 30, so that the longest range is a
-	// whole number of weeks. Anyone still on 30 is moved across: the value stays
-	// valid on its own, but the settings dialog would show no option selected.
+	// Replace the 30-day overview option with 28 days.
 	`UPDATE user_settings SET overview_days = 28 WHERE overview_days = 30;`,
 
-	// The amber in slot three read as orange next to the orange beside it, and
-	// was replaced by an actual yellow. Habits wearing the old value are moved
-	// across: it stays a valid colour on its own, but the editor would show no
-	// swatch selected for it.
+	// Replace amber with yellow in the palette.
 	`UPDATE habits SET color = '#eab308' WHERE color = '#cc7006';`,
 
-	// The typeface became a setting. Existing rows get the face the interface
-	// had been drawn with up to here, so nobody's app changes its look because
-	// of an upgrade.
+	// Font setting.
 	`ALTER TABLE user_settings ADD COLUMN font TEXT NOT NULL DEFAULT 'inter';`,
 
-	// How an order is changed became a setting. Dragging is the default, which
-	// is what the board did when the choice did not exist yet.
+	// Reorder mode setting.
 	`ALTER TABLE user_settings ADD COLUMN reorder_mode TEXT NOT NULL DEFAULT 'drag';`,
 
-	// How much a tap adds became a property of the habit. Existing rows get the
-	// step their kind had hard-coded until now, so nothing changes for anyone
-	// until they set a different one.
+	// Step per habit, initialised with the previous step of each kind.
 	`ALTER TABLE habits ADD COLUMN step_value INTEGER NOT NULL DEFAULT 1;
 	 UPDATE habits SET step_value = CASE kind
 		WHEN 'time' THEN 5
@@ -232,11 +200,7 @@ var migrations = []string{
 		ELSE 1
 	END;`,
 
-	// Counts and durations gained a decimal place. Values stay whole numbers in
-	// the database, so both kinds move to a unit ten times finer - tenths of a
-	// count, tenths of a minute - the way a distance has always been kept in
-	// metres. Multiplying every stored number by ten leaves what people see
-	// exactly as it was.
+	// Store counts and times in tenths to allow one decimal place.
 	`UPDATE entries SET value = value * 10
 	 WHERE habit_id IN (SELECT id FROM habits WHERE kind IN ('count', 'time'));
 	 UPDATE habits SET target_value = target_value * 10, step_value = step_value * 10
@@ -248,16 +212,12 @@ var migrations = []string{
 
 	`ALTER TABLE user_settings ADD COLUMN background TEXT NOT NULL DEFAULT 'default';`,
 
-	// The page colour was taken out again. The column goes with it rather than
-	// lingering as a value nothing reads.
+	// Remove the background colour setting.
 	`ALTER TABLE user_settings DROP COLUMN background;`,
 
 	`ALTER TABLE user_settings ADD COLUMN band_color TEXT NOT NULL DEFAULT 'neutral';`,
 
-	// The uploaded background, and the two knobs that make a photo behind a board
-	// readable. The image itself lives in the database rather than beside it: the
-	// application is one binary and one file, and a blob keeps it that way -
-	// backup, deletion and the user's own row all stay in one place.
+	// Background image with dimming and blur; the image is stored as a blob.
 	`ALTER TABLE user_settings ADD COLUMN bg_dim INTEGER NOT NULL DEFAULT 55;
 	 ALTER TABLE user_settings ADD COLUMN bg_blur INTEGER NOT NULL DEFAULT 0;
 	 CREATE TABLE backgrounds (
@@ -268,34 +228,23 @@ var migrations = []string{
 		updated_at TEXT NOT NULL
 	 );`,
 
-	// The blur went from pixels to percent, where a hundred is the same fully
-	// soft picture the old forty pixels gave. Existing values are converted
-	// rather than reinterpreted, so nobody's background changes behind them.
+	// Convert the background blur from pixels (max. 40) to percent.
 	`UPDATE user_settings SET bg_blur = MIN(100, CAST(bg_blur * 2.5 AS INTEGER));`,
 
-	// The surfaces over an uploaded picture: how solid the cards and the bars
-	// are, and how far they blur what shows through them. The defaults are what
-	// the title bar already did on its own - opaque enough to read, soft enough
-	// that the picture is still there behind it.
+	// Opacity and blur of surfaces over a background image.
 	`ALTER TABLE user_settings ADD COLUMN surface_opacity INTEGER NOT NULL DEFAULT 88;
 	 ALTER TABLE user_settings ADD COLUMN surface_blur INTEGER NOT NULL DEFAULT 30;`,
 
-	// How strongly today's column is marked. A hundred is what it has always
-	// been, so nothing changes for anyone who never touches the slider.
+	// Opacity of the today highlight.
 	`ALTER TABLE user_settings ADD COLUMN band_opacity INTEGER NOT NULL DEFAULT 100;`,
 
-	// How tightly the interface is packed. "standard" is the spacing it has always
-	// had, so nothing moves for anyone until they choose otherwise.
+	// Density setting.
 	`ALTER TABLE user_settings ADD COLUMN density TEXT NOT NULL DEFAULT 'standard';`,
 
-	// Whether today runs as a band through the cards. On is what it has always
-	// done, so nothing changes for anyone until they switch it off.
+	// Whether the today band is shown.
 	`ALTER TABLE user_settings ADD COLUMN show_band INTEGER NOT NULL DEFAULT 1;`,
 
-	// For a while the palette was extended well past the original twelve; it
-	// went back to them. Anything already painted with one of the extra shades -
-	// a habit or the today band - moves to the original of the same hue, rather
-	// than keeping a colour the editor no longer offers or falling back to grey.
+	// Map colours of the extended palette back to the original twelve.
 	`UPDATE habits SET color = CASE color
 		WHEN '#ff3b30' THEN '#dc2626'
 		WHEN '#ff6b6b' THEN '#dc2626'
@@ -385,52 +334,41 @@ var migrations = []string{
 		ELSE band_color
 	END;`,
 
-	// How strongly the band through the cards is drawn, apart from the accent's
-	// own opacity. Started at whatever that opacity was, so the band looks the
-	// same for everyone until they move the new slider.
+	// Separate opacity for the today band, initialised with band_opacity.
 	`ALTER TABLE user_settings ADD COLUMN band_fill_opacity INTEGER NOT NULL DEFAULT 100;
 	 UPDATE user_settings SET band_fill_opacity = band_opacity;`,
 
-	// Habits can wear an icon beside their name. Empty is "none", which every
-	// existing habit keeps until someone picks one.
+	// Habit icon; "" means none.
 	`ALTER TABLE habits ADD COLUMN icon TEXT NOT NULL DEFAULT '';`,
 
-	// Categories can wear an icon too, from the same set as habits.
+	// Category icon; "" means none.
 	`ALTER TABLE categories ADD COLUMN icon TEXT NOT NULL DEFAULT '';`,
 
-	// Whether a category's heading shows today's progress. On is what every
-	// block has done so far, so nothing changes until someone switches it off.
+	// Whether a category heading shows today's progress.
 	`ALTER TABLE categories ADD COLUMN show_progress INTEGER NOT NULL DEFAULT 1;`,
 
-	// The default turned out the other way round: a heading shows no progress
-	// until it is asked to. Every category is switched off, since none had been
-	// switched deliberately yet. The column keeps its DEFAULT 1 - SQLite cannot
-	// change a default without rebuilding the table, and every insert names the
-	// value anyway.
+	// Turn category progress off by default. The column default stays 1; every
+	// insert sets the value explicitly.
 	`UPDATE categories SET show_progress = 0;`,
 
-	// Categories can take a colour for their icon. Empty is neutral ink, which
-	// is how every existing category has been drawn so far.
+	// Category icon colour; "" means the default colour.
 	`ALTER TABLE categories ADD COLUMN color TEXT NOT NULL DEFAULT '';`,
 
-	// The "every n days" frequency is now called "custom interval". Only the
-	// stored string changes; interval and anchor date stay as they were.
+	// Rename frequency "every_n_days" to "custom_interval".
 	`UPDATE habits SET freq_kind = 'custom_interval' WHERE freq_kind = 'every_n_days';`,
 
-	// Chosen weekdays can be narrowed to every n-th week or to the n-th
-	// occurrence in the month. Every weekday habit so far was weekly, which is
-	// an interval of one; the other frequencies leave both at zero.
+	// Week interval and week of month for weekday schedules.
 	`ALTER TABLE habits ADD COLUMN freq_week_interval INTEGER NOT NULL DEFAULT 0;
 	 ALTER TABLE habits ADD COLUMN freq_week_of_month INTEGER NOT NULL DEFAULT 0;
 	 UPDATE habits SET freq_week_interval = 1 WHERE freq_kind = 'weekdays';`,
 
-	// The interface language and the user's own time zone. "system" follows
-	// the browser and "" the server's HABITS_TZ, so nothing changes for anyone
-	// until they choose.
+	// Language ("system": browser language) and time zone ("": HABITS_TZ).
 	`ALTER TABLE user_settings ADD COLUMN language TEXT NOT NULL DEFAULT 'system';
 	 ALTER TABLE user_settings ADD COLUMN time_zone TEXT NOT NULL DEFAULT '';`,
 }
 
+// migrate applies all migrations newer than the schema version, each in its
+// own transaction.
 func (s *Store) migrate(ctx context.Context) error {
 	var version int
 	if err := s.db.QueryRowContext(ctx, "PRAGMA user_version").Scan(&version); err != nil {
@@ -448,8 +386,7 @@ func (s *Store) migrate(ctx context.Context) error {
 			tx.Rollback()
 			return fmt.Errorf("applying migration %d: %w", i+1, err)
 		}
-		// PRAGMA does not accept placeholders, hence the formatted statement;
-		// the value is a loop index, never user input.
+		// PRAGMA does not support placeholders.
 		if _, err := tx.ExecContext(ctx, fmt.Sprintf("PRAGMA user_version = %d", i+1)); err != nil {
 			tx.Rollback()
 			return fmt.Errorf("setting schema version %d: %w", i+1, err)
@@ -461,8 +398,7 @@ func (s *Store) migrate(ctx context.Context) error {
 	return nil
 }
 
-// NewID returns a random opaque identifier. Random rather than sequential so
-// that IDs leak neither creation order nor how many habits exist.
+// NewID returns a random 128-bit ID in hex.
 func NewID() string {
 	var b [16]byte
 	if _, err := rand.Read(b[:]); err != nil {
@@ -471,21 +407,18 @@ func NewID() string {
 	return hex.EncodeToString(b[:])
 }
 
-// storedTimeLayout is RFC3339 in UTC with a fixed-width nanosecond field.
-//
-// The padding is the point. time.RFC3339Nano trims trailing zeros, which leaves
-// the fraction variable-width — and then text ordering stops agreeing with
-// chronological ordering, because "…:00.5Z" sorts after "…:00.5001Z" ('Z' is
-// above '0'). Two places rely on that ordering: the purge compares deleted_at
-// against a cutoff as text, and the habit and category lists break ties on
-// created_at. Parsing stays on RFC3339Nano, which reads both the padded form
-// and the trimmed rows already in existing databases.
+// storedTimeLayout is RFC 3339 with fixed-width nanoseconds, so that stored
+// timestamps sort chronologically as text.
 const storedTimeLayout = "2006-01-02T15:04:05.000000000Z07:00"
 
+// formatTime formats t in UTC for storage.
 func formatTime(t time.Time) string { return t.UTC().Format(storedTimeLayout) }
 
+// parseTime parses a stored timestamp, with or without fixed-width
+// nanoseconds.
 func parseTime(s string) (time.Time, error) { return time.Parse(time.RFC3339Nano, s) }
 
+// nullableTime parses a nullable stored timestamp; NULL and "" yield nil.
 func nullableTime(s sql.NullString) (*time.Time, error) {
 	if !s.Valid || s.String == "" {
 		return nil, nil

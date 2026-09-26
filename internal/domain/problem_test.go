@@ -23,9 +23,7 @@ func TestProblemFillsItsTemplate(t *testing.T) {
 	}
 }
 
-// A placeholder nobody filled is left in the sentence rather than dropped,
-// so a mismatch between template and params shows instead of reading as a
-// sentence with a hole in it.
+// Placeholders without a value are kept in the message.
 func TestProblemKeepsAnUnfilledPlaceholder(t *testing.T) {
 	err := Invalid("between {min} and {max}", "max", 7)
 	if got, want := err.(*Problem).Message(), "between {min} and 7"; got != want {
@@ -33,8 +31,7 @@ func TestProblemKeepsAnUnfilledPlaceholder(t *testing.T) {
 	}
 }
 
-// The HTTP layer tells the client's mistakes from its own faults by
-// ErrValidation, through any amount of wrapping.
+// A wrapped Problem matches ErrValidation.
 func TestProblemIsAValidationError(t *testing.T) {
 	err := fmt.Errorf("saving habit: %w", Invalid("name must not be empty"))
 	if !errors.Is(err, ErrValidation) {
@@ -46,8 +43,7 @@ func TestProblemIsAValidationError(t *testing.T) {
 	}
 }
 
-// Each kind states its own ceiling in the unit its values are typed in, and
-// the template says which, so the translation can say it too.
+// Errors for too large values name the unit of the kind.
 func TestTooLargeNamesTheUnit(t *testing.T) {
 	for _, tc := range []struct {
 		kind     Kind

@@ -1,6 +1,5 @@
-// The single client-side copy of the server state. It is a cache of the last
-// response, never a source of truth: every mutation goes to the server and the
-// answer replaces what is here.
+// Client-side copy of the server state. Every change goes to the server first;
+// its response replaces the local state.
 
 export const state = {
   user: null,
@@ -33,7 +32,7 @@ export function habitById(id) {
   return state.habits.find((h) => h.id === id) ?? null;
 }
 
-/** Swap in an updated habit view returned by a mutation. */
+/** Replaces a habit with the view returned by the server. */
 export function upsertHabit(view) {
   const i = state.habits.findIndex((h) => h.id === view.id);
   if (i === -1) state.habits.push(view);
@@ -42,10 +41,8 @@ export function upsertHabit(view) {
 }
 
 /**
- * Puts the habits in the given order.
- *
- * The counterpart to reorderCategoriesLocal: applied before the server has
- * confirmed, and rolled back by the caller if the request fails.
+ * Reorders the habits locally, before the server confirms. The caller restores
+ * the old order if the request fails.
  */
 export function reorderHabitsLocal(ids) {
   const byId = new Map(state.habits.map((h) => [h.id, h]));
@@ -65,11 +62,8 @@ export function removeHabit(id) {
 }
 
 /**
- * Apply a single day's value locally so the cell updates without a full reload.
- *
- * `answer` is the server's reply once it arrives: the derived numbers — the
- * stats and the streak runs behind the cells' colours — are only ever taken
- * from it, because they depend on history the client does not hold.
+ * Sets a day's value locally. Stats and streak runs are taken from the server's
+ * `answer` once it arrives.
  */
 export function setEntryLocal(habitId, date, value, answer) {
   const habit = habitById(habitId);
@@ -79,7 +73,7 @@ export function setEntryLocal(habitId, date, value, answer) {
   if (answer) {
     habit.stats = answer.stats;
     habit.streakRuns = answer.streakRuns ?? [];
-    // The server moves the habit's timestamp on with every write.
+    // The server updates the habit's timestamp on every write.
     if (answer.updatedAt) habit.updatedAt = answer.updatedAt;
   }
   notify();
@@ -97,18 +91,13 @@ export function upsertCategory(category) {
 }
 
 /**
- * Puts the categories in the given order.
- *
- * Applied before the server has confirmed, so the block moves under the click
- * rather than a moment later; the caller puts the old order back if the request
- * fails. The positions are renumbered too, so anything reading them agrees with
- * the order of the list.
+ * Reorders the categories locally, before the server confirms, and renumbers
+ * their positions. The caller restores the old order if the request fails.
  */
 export function reorderCategoriesLocal(ids) {
   const byId = new Map(state.categories.map((c) => [c.id, c]));
   const next = ids.map((id) => byId.get(id)).filter(Boolean);
-  // Anything the caller did not mention keeps its place at the end, so a
-  // category created in another tab cannot fall out of the list.
+  // Categories missing from `ids` are appended.
   for (const category of state.categories) {
     if (!ids.includes(category.id)) next.push(category);
   }
@@ -124,12 +113,8 @@ export function removeCategory(id) {
 }
 
 /**
- * Habits arranged into the blocks the overview draws: one per category in
- * display order, then the leftovers.
- *
- * A habit pointing at a category that is not in the live list — soft-deleted,
- * so still restorable — falls into the uncategorised block rather than
- * disappearing.
+ * Returns the habits grouped by category in display order, followed by the
+ * uncategorised habits. Habits of deleted categories count as uncategorised.
  */
 export function groupedHabits() {
   const blocks = state.categories.map((category) => ({ category, habits: [] }));

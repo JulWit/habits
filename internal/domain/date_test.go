@@ -27,8 +27,8 @@ func TestParseDateRejects(t *testing.T) {
 	}
 }
 
-// The reason Date exists at all: day arithmetic must not shift when the wall
-// clock does. Germany's 2026 transitions are 29 March and 25 October.
+// Day arithmetic is unaffected by DST transitions (in Germany in 2026: 29 March
+// and 25 October).
 func TestDayArithmeticIgnoresDaylightSaving(t *testing.T) {
 	for _, around := range []Date{
 		{2026, time.March, 28},
@@ -97,7 +97,7 @@ func TestWeekdayBitmaskIsMondayFirst(t *testing.T) {
 	}
 }
 
-// The wire format: a Date is a bare ISO string, and the zero Date is "".
+// A Date is encoded as "YYYY-MM-DD", the zero Date as "".
 func TestDateJSON(t *testing.T) {
 	type wrapper struct {
 		D Date `json:"d"`
@@ -118,8 +118,7 @@ func TestDateJSON(t *testing.T) {
 		t.Errorf("Unmarshal = %v", back.D)
 	}
 
-	// An empty string is the zero date, not an error: that is how the client
-	// says "no anchor".
+	// "" decodes to the zero Date.
 	if err := json.Unmarshal([]byte(`{"d":""}`), &back); err != nil {
 		t.Fatalf(`Unmarshal(""): %v`, err)
 	}
@@ -133,9 +132,8 @@ func TestDateJSON(t *testing.T) {
 }
 
 func TestTodayUsesTheGivenLocation(t *testing.T) {
-	// Compared against the clock read on either side of the call, so a midnight
-	// passing in between cannot fail the test: the answer must be the date in
-	// the given zone at one of the two instants.
+	// The result must match the date in loc before or after the call, in case
+	// midnight passes in between.
 	for _, loc := range []*time.Location{
 		time.FixedZone("UTC+14", 14*60*60),
 		time.FixedZone("UTC-12", -12*60*60),
@@ -148,9 +146,8 @@ func TestTodayUsesTheGivenLocation(t *testing.T) {
 		}
 	}
 
-	// The two ends of the offset range lie 26 hours apart, so their dates are
-	// always one or two days apart - never the same, never more. Only the zone
-	// argument being honoured can produce that.
+	// UTC+14 and UTC-12 are 26 hours apart, so their dates always differ by one
+	// or two days.
 	east := Today(time.FixedZone("UTC+14", 14*60*60))
 	west := Today(time.FixedZone("UTC-12", -12*60*60))
 	if d := east.DaysSince(west); d < 1 || d > 2 {

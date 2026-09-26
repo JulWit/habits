@@ -1,6 +1,5 @@
-// The create/edit dialog. It builds a habitInput payload matching the API and
-// leaves persistence to its caller, so the same dialog serves both POST and
-// PATCH without knowing which.
+// Habit dialog for creating and editing. It builds the request body and passes
+// it to its caller.
 
 import { WEEKDAY_SHORT, WEEKDAY_LONG } from "./dates.js";
 import { state, categoryById } from "./state.js";
@@ -31,8 +30,7 @@ export function initEditor() {
 
   buildWeekdayButtons();
   form.addEventListener("change", syncVisibility);
-  // A message about the old input is wrong once the input changes, so it goes.
-  // The weekday buttons are plain buttons and fire neither event, hence click.
+  // Clear the error message on any input.
   for (const type of ["input", "change", "click"]) {
     form.addEventListener(type, (event) => {
       if (type === "click" && !event.target.closest(".weekday")) return;
@@ -43,8 +41,7 @@ export function initEditor() {
   form.querySelector('[data-action="cancel"]').addEventListener("click", () => dialog.close());
 
   categoryButton.addEventListener("click", async () => {
-    // The picker opens on top of this dialog and resolves with the choice, or
-    // with null when it was dismissed — in which case nothing changes.
+    // null means the picker was cancelled.
     const chosen = await openCategoryPicker(selectedCategory);
     if (chosen !== null) {
       selectedCategory = chosen;
@@ -53,13 +50,12 @@ export function initEditor() {
   });
 }
 
-/** Shows the current choice on the field's button. */
+/** Shows the selected category on its button. */
 function paintCategory() {
   const none = selectedCategory === "";
   const label = document.createElement("span");
   label.className = none ? "picker-value is-empty" : "picker-value";
-  // A soft-deleted category is still a real assignment, so it is named rather
-  // than shown as "none".
+  // A deleted category is shown by name.
   label.textContent = none
     ? t("No category")
     : categoryById(selectedCategory)?.name ?? t("Deleted category");
@@ -115,8 +111,7 @@ function selectColor(color) {
   for (const el of document.querySelectorAll("#color-choices .swatch")) {
     el.setAttribute("aria-checked", String(el.dataset.color === color));
   }
-  // The icons are drawn in the colour being picked, so the choice is seen the
-  // way the board will show it.
+  // Show the icons in the selected colour.
   document.getElementById("icon-choices").style.setProperty("--habit-color", color);
 }
 
@@ -125,25 +120,12 @@ function selectIcon(name) {
   markIconChoice(document.getElementById("icon-choices"), name);
 }
 
-/**
- * What one unit in a target field is worth in stored units.
- *
- * A distance is typed in kilometres and stored in metres; a count and a
- * duration are typed whole and stored in tenths, so both can carry a decimal
- * place while every stored value stays an integer. The factors come from the
- * server with the state — see habit.js — rather than being written out again
- * here, so there is one place that decides what a stored number means.
- */
+/** Stored units per unit typed into a target field. */
 const unitsPerTyped = (kind) => H.scaleOf(kind);
 
 /**
- * Show only the inputs that belong to the selected type and frequency.
- *
- * Hidden inputs are also disabled, which takes them out of constraint
- * validation. Without that, a value that violates min/max/step on a field the
- * user cannot even see makes reportValidity() fail for the whole form — and
- * because the browser cannot focus a hidden control to point at the problem,
- * saving just stops with no visible reason.
+ * Shows only the fields of the selected kind and frequency. Hidden fields are
+ * disabled so they are excluded from form validation.
  */
 function syncVisibility() {
   const kind = form.elements.kind.value;
@@ -152,8 +134,7 @@ function syncVisibility() {
   for (const el of form.querySelectorAll("[data-when-kind]")) {
     setSectionActive(el, el.dataset.whenKind === kind);
   }
-  // A section may also wait for a repeat mode - the weeks between Mondays only
-  // matter once "every few weeks" is picked.
+  // Sections that depend on the repeat mode.
   for (const el of form.querySelectorAll("[data-when-freq]")) {
     const repeatMatches = !el.dataset.whenRepeat || el.dataset.whenRepeat === repeat;
     setSectionActive(el, el.dataset.whenFreq === freq && repeatMatches);
@@ -168,7 +149,8 @@ function setSectionActive(section, active) {
 }
 
 /**
- * @param {object|null} habit  null to create a new habit
+ * Opens the habit dialog.
+ * @param {object|null} habit  the habit to edit, or null to create one
  * @param {(input: object) => Promise<void>} handler
  */
 export function openEditor(habit, handler) {
@@ -185,18 +167,14 @@ export function openEditor(habit, handler) {
 
   f.name.value = habit?.name ?? "";
   f.kind.value = habit?.kind ?? "check";
-  // Each kind keeps its own target field, so switching type does not carry a
-  // count of glasses over into a number of metres.
+  // Each kind has its own target field.
   f.targetCount.value = habit?.kind === "count" ? habit.targetValue / unitsPerTyped(habit.kind) : 8;
   f.targetTime.value = habit?.kind === "time" ? habit.targetValue / unitsPerTyped(habit.kind) : 20;
   f.targetDistance.value = habit?.kind === "distance"
     ? habit.targetValue / unitsPerTyped(habit.kind)
     : 5;
   f.unit.value = habit?.kind === "count" ? habit.unit : "";
-  // The step travels with its target, for the same reason: one glass and half
-  // a kilometre have nothing to say to each other. Left empty for a habit that
-  // does not have one yet — the placeholder then shows what the type does on
-  // its own, and that is exactly what an empty field saves.
+  // Each kind has its own step field. Empty means the kind's default step.
   f.stepCount.value = habit?.kind === "count" && habit.stepValue
     ? habit.stepValue / unitsPerTyped(habit.kind)
     : "";
@@ -250,8 +228,7 @@ function collect() {
     },
   };
 
-  // An empty step field sends 0, which the server reads as "whatever this type
-  // steps by anyway" — the same value the placeholder advertises.
+  // An empty step field sends 0, i.e. the kind's default step.
   if (kind === "count") {
     input.targetValue = Math.round(Number(f.targetCount.value) * unitsPerTyped(kind));
     input.stepValue = Math.round(Number(f.stepCount.value) * unitsPerTyped(kind));
@@ -260,8 +237,7 @@ function collect() {
     input.targetValue = Math.round(Number(f.targetTime.value) * unitsPerTyped(kind));
     input.stepValue = Math.round(Number(f.stepTime.value) * unitsPerTyped(kind));
   }
-  // Rounded, because 0.1 km is 100.00000000000001 metres in binary floating
-  // point and the server takes whole metres.
+  // Round to whole metres.
   if (kind === "distance") {
     input.targetValue = Math.round(Number(f.targetDistance.value) * unitsPerTyped(kind));
     input.stepValue = Math.round(Number(f.stepDistance.value) * unitsPerTyped(kind));
@@ -292,8 +268,7 @@ function collect() {
 }
 
 async function handleSubmit(event) {
-  // The form is method="dialog"; preventing the default keeps it open while the
-  // request is in flight so a server-side rejection can be shown in place.
+  // Keep the dialog open until the server accepts the input.
   event.preventDefault();
   if (!form.reportValidity()) return;
 
@@ -316,7 +291,6 @@ async function handleSubmit(event) {
 function showError(message) {
   errorBox.textContent = message;
   errorBox.hidden = false;
-  // The box sits at the end of the scrolling body, below the fold on all but
-  // the shortest forms. Without this the submit button seems to do nothing.
+  // The error message may be outside the visible area.
   errorBox.scrollIntoView({ block: "nearest" });
 }

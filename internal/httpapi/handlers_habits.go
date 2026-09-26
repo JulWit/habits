@@ -9,80 +9,62 @@ import (
 	"github.com/JulWit/habits/internal/store"
 )
 
-// habitView is a habit plus everything the UI needs to draw it. The embedded
-// domain.Habit is flattened into the JSON object, so the client sees one flat
-// habit with a few extra fields.
+// habitView is the JSON representation of a habit with its statistics and
+// entries.
 type habitView struct {
 	domain.Habit
 	Stats   domain.Stats   `json:"stats"`
 	Entries map[string]int `json:"entries"`
-	// StreakRuns are the unbroken runs the board colours, oldest first. A run
-	// keeps its true first day even when that day is older than the shipped
-	// history, because the colour of a cell depends on how long its run had
-	// been going by then.
+	// StreakRuns are the streak runs that reach into the sent entries, oldest
+	// first.
 	StreakRuns []domain.StreakRun `json:"streakRuns"`
 }
 
+// stateResponse is the response of GET /api/state.
 type stateResponse struct {
 	User       auth.User         `json:"user"`
 	Settings   store.Settings    `json:"settings"`
 	Today      domain.Date       `json:"today"`
 	Categories []domain.Category `json:"categories"`
-	// ArchivedCount counts archived habits whether or not they are in Habits,
-	// so the client can show or hide its "archived" toggle.
+	// ArchivedCount is the number of archived habits, even if they are not
+	// included in Habits.
 	ArchivedCount int         `json:"archivedCount"`
 	Habits        []habitView `json:"habits"`
 	Colors        []string    `json:"colors"`
-	// Icons names every icon a habit may wear, in the order the editor offers
-	// them. The drawings are the client's; the list is the server's, which
-	// validates against it.
+	// Icons are the valid habit icons (domain.HabitIcons).
 	Icons []string `json:"icons"`
-	// Kinds carries the scale, step and ceiling of every habit kind, the same
-	// way Colors carries the palette: the client needs these numbers to read a
-	// stored value, and a copy of them in JavaScript is one that can drift.
+	// Kinds describes the value range of each habit kind.
 	Kinds map[domain.Kind]domain.KindInfo `json:"kinds"`
-	// BlurAtFull is what 100% of blur comes to in pixels. The stylesheet needs
-	// a length where the setting is a percentage.
+	// BlurAtFull is the blur radius in pixels at 100 percent.
 	BlurAtFull int `json:"blurAtFull"`
-	// EntriesFrom is the first day the entries in this response cover. The
-	// client needs it to know when paging further back would run past its data
-	// and it has to ask for a wider window.
+	// EntriesFrom is the first day covered by the sent entries.
 	EntriesFrom domain.Date `json:"entriesFrom"`
-	// EarliestEntry is the first day an entry may be dated. The board stops
-	// paging back there, so it never offers a day the server would refuse.
+	// EarliestEntry is the earliest date an entry may have.
 	EarliestEntry domain.Date `json:"earliestEntry"`
-	// BackgroundVersion is the hash of the uploaded background, or "" when there
-	// is none. It tells the settings dialog whether to offer the picture at all,
-	// and the page appends it to the URL so a new upload is never served from
-	// the entry the old one left in the cache.
+	// BackgroundVersion is the ETag of the background image, or "" if there is
+	// none.
 	BackgroundVersion string `json:"backgroundVersion"`
-	// ServerTimeZone is the zone "today" follows for a user who has not chosen
-	// one of their own (HABITS_TZ). The settings dialog names it, so "server
-	// default" means something.
+	// ServerTimeZone is the server's default time zone (HABITS_TZ).
 	ServerTimeZone string `json:"serverTimeZone"`
 }
 
-// entryWindowDays is how much history the overview ships. It covers the heatmap
-// on the detail view (about 26 weeks) with room to spare, while keeping the
-// payload small enough to send on every load.
+// entryWindowDays is the default number of days of entries sent by
+// GET /api/state.
 const entryWindowDays = 200
 
-// handleState returns everything the app needs for a cold start in one request.
+// handleState returns all data the client needs on startup. The query
+// parameter archived=1|0 overrides the ShowArchived setting; from=YYYY-MM-DD
+// extends the entry window into the past.
 func (s *Server) handleState(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	user := auth.MustUser(ctx)
 
-	// Settings come first: whether archived habits belong in the answer is one
-	// of them, so the client gets the right set on its very first request
-	// instead of having to read the preference and then ask again.
 	settings, err := s.store.GetSettings(ctx, user.ID)
 	if err != nil {
 		s.writeStoreError(w, err, "loading settings")
 		return
 	}
 	includeArchived := settings.ShowArchived
-	// An explicit ?archived= still wins, which keeps the endpoint usable from a
-	// script without touching the stored preference.
 	if v := r.URL.Query().Get("archived"); v != "" {
 		includeArchived = v == "1"
 	}
@@ -110,17 +92,13 @@ func (s *Server) handleState(w http.ResponseWriter, r *http.Request) {
 
 	today := domain.Today(s.location(settings))
 	from := today.AddDays(-(entryWindowDays - 1))
-	// Paging back through the board eventually leaves the default window. The
-	// client then repeats the request with the day it wants to reach, and gets
-	// a payload that starts there instead.
 	if v := r.URL.Query().Get("from"); v != "" {
 		asked, err := domain.ParseDate(v)
 		if err != nil {
 			writeError(w, http.StatusBadRequest, "Invalid date, expected YYYY-MM-DD")
 			return
 		}
-		// Only ever widens: a `from` inside the default window would ship less
-		// history than the detail view and the streak counters expect.
+		// from can only extend the window, not shorten it.
 		if asked.Before(from) {
 			from = asked
 		}
@@ -130,8 +108,6 @@ func (s *Server) handleState(w http.ResponseWriter, r *http.Request) {
 		views = append(views, s.viewFor(h, entries[h.ID], today, from))
 	}
 
-	// The hash, not the picture: a background can be megabytes, and this answer
-	// is fetched on every load.
 	bgVersion, err := s.store.BackgroundVersion(ctx, user.ID)
 	if err != nil {
 		s.writeStoreError(w, err, "loading background version")
@@ -156,9 +132,9 @@ func (s *Server) handleState(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// viewFor computes stats over the full history but ships only the entries from
-// `from` onwards, so old data still counts towards streaks without being sent.
-// A zero `from` means "send everything".
+// viewFor returns the view of a habit. Statistics are computed from all
+// entries, but only entries and streak runs from from onwards are included. A
+// zero from includes everything.
 func (s *Server) viewFor(h domain.Habit, all store.EntryMap, today, from domain.Date) habitView {
 	windowed := make(map[string]int, len(all))
 	for d, v := range all {
@@ -166,9 +142,6 @@ func (s *Server) viewFor(h domain.Habit, all store.EntryMap, today, from domain.
 			windowed[d.String()] = v
 		}
 	}
-	// A run that ended before the window is one no visible cell belongs to, so
-	// it is dropped rather than shipped; the run a visible day is part of
-	// survives whole, first day included.
 	runs := domain.StreakRuns(h, all, today)
 	visible := make([]domain.StreakRun, 0, len(runs))
 	for _, run := range runs {
@@ -184,8 +157,7 @@ func (s *Server) viewFor(h domain.Habit, all store.EntryMap, today, from domain.
 	}
 }
 
-// loadView fetches a habit together with its full history. Used by every
-// mutating endpoint so the client always gets fresh stats back.
+// loadView returns the view of a habit with all its entries.
 func (s *Server) loadView(r *http.Request, userID, habitID string) (habitView, error) {
 	h, err := s.store.GetHabit(r.Context(), userID, habitID)
 	if err != nil {
@@ -198,6 +170,7 @@ func (s *Server) loadView(r *http.Request, userID, habitID string) (habitView, e
 	return s.viewFor(h, entries, s.todayFor(r.Context(), userID), domain.Date{}), nil
 }
 
+// handleGetHabit returns a single habit.
 func (s *Server) handleGetHabit(w http.ResponseWriter, r *http.Request) {
 	user := auth.MustUser(r.Context())
 	view, err := s.loadView(r, user.ID, r.PathValue("id"))
@@ -208,17 +181,15 @@ func (s *Server) handleGetHabit(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, view)
 }
 
-// habitInput is the writable shape of a habit. It is a separate type from
-// domain.Habit so that server-owned fields (id, timestamps, position) can never
-// be set by a client. The pointer fields give PATCH its semantics: an absent
-// field means "unchanged", which differs from "set to empty".
+// habitInput is the request body for creating and updating a habit. Nil fields
+// are left unchanged.
 type habitInput struct {
 	Name  *string `json:"name"`
 	Color *string `json:"color"`
-	// Icon: absent leaves it alone, "" removes it.
+	// Icon "" removes the icon.
 	Icon *string      `json:"icon"`
 	Kind *domain.Kind `json:"kind"`
-	// CategoryID: absent leaves the assignment alone, "" removes it.
+	// CategoryID "" removes the habit from its category.
 	CategoryID  *string           `json:"categoryId"`
 	TargetValue *int              `json:"targetValue"`
 	StepValue   *int              `json:"stepValue"`
@@ -227,6 +198,7 @@ type habitInput struct {
 	Archived    *bool             `json:"archived"`
 }
 
+// applyTo copies the set fields of in to h.
 func (in habitInput) applyTo(h *domain.Habit) {
 	if in.Name != nil {
 		h.Name = *in.Name
@@ -266,6 +238,7 @@ func (in habitInput) applyTo(h *domain.Habit) {
 	}
 }
 
+// handleCreateHabit creates a habit. Name, kind and frequency are required.
 func (s *Server) handleCreateHabit(w http.ResponseWriter, r *http.Request) {
 	var in habitInput
 	if !decodeJSON(w, r, &in) {
@@ -287,6 +260,7 @@ func (s *Server) handleCreateHabit(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, s.viewFor(h, nil, s.todayFor(r.Context(), user.ID), domain.Date{}))
 }
 
+// handleUpdateHabit updates the fields of a habit given in the request body.
 func (s *Server) handleUpdateHabit(w http.ResponseWriter, r *http.Request) {
 	var in habitInput
 	if !decodeJSON(w, r, &in) {
@@ -312,8 +286,7 @@ func (s *Server) handleUpdateHabit(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, view)
 }
 
-// handleDeleteHabit soft-deletes. The row survives so the undo toast can bring
-// the habit back with its whole history intact.
+// handleDeleteHabit soft-deletes a habit.
 func (s *Server) handleDeleteHabit(w http.ResponseWriter, r *http.Request) {
 	user := auth.MustUser(r.Context())
 	if err := s.store.SoftDeleteHabit(r.Context(), user.ID, r.PathValue("id")); err != nil {
@@ -323,6 +296,7 @@ func (s *Server) handleDeleteHabit(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusNoContent, nil)
 }
 
+// handleRestoreHabit restores a soft-deleted habit.
 func (s *Server) handleRestoreHabit(w http.ResponseWriter, r *http.Request) {
 	user := auth.MustUser(r.Context())
 	id := r.PathValue("id")
@@ -339,6 +313,7 @@ func (s *Server) handleRestoreHabit(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, view)
 }
 
+// handleReorderHabits sets the order of the habits to the given IDs.
 func (s *Server) handleReorderHabits(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		IDs []string `json:"ids"`

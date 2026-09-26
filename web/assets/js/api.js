@@ -1,16 +1,13 @@
-// Thin wrapper around the JSON API. The application is online-first: there is
-// no local cache and no offline queue, so every call here is the single source
-// of truth and failures are surfaced rather than swallowed.
+// Client for the JSON API. Errors are thrown as ApiError.
 
 import { t } from "./i18n.js";
 
 export class ApiError extends Error {
   /**
-   * @param {string} message  the whole sentence, in English
+   * @param {string} message  the English message
    * @param {number} status
    * @param {{cause?: unknown, template?: string, params?: object}} [options]
-   *   what the server filled `message` from. The dictionary is keyed by the
-   *   template, not by the finished sentence, so these are what gets translated.
+   *   template and params of the message, used for translation
    */
   constructor(message, status, options = {}) {
     super(message, options);
@@ -22,10 +19,8 @@ export class ApiError extends Error {
 }
 
 /**
- * One request.
- *
- * `type` switches the body from JSON to whatever is passed: an upload sends the
- * file as it is, everything else is serialised.
+ * Sends a request. With `type`, `body` is sent as is with that content type;
+ * otherwise it is sent as JSON.
  */
 async function request(method, path, body, type) {
   let res;
@@ -43,8 +38,7 @@ async function request(method, path, body, type) {
   }
 
   if (res.status === 401 || res.status === 403) {
-    // Authelia's session expired behind our back. Reloading sends the user
-    // through the proxy's login flow instead of leaving a dead page behind.
+    // The Authelia session has expired.
     throw new ApiError(t("Session expired — please reload the page"), res.status);
   }
   if (res.status === 204) return null;
@@ -68,9 +62,7 @@ async function request(method, path, body, type) {
 }
 
 export const api = {
-  // Whether archived habits are included is a stored setting, so the server
-  // already knows. `from` widens the entry window when the board has been paged
-  // back past what the default window covers.
+  // `from` extends the entry window into the past.
   loadState: (from) =>
     request("GET", from ? `/api/state?from=${encodeURIComponent(from)}` : "/api/state"),
   getHabit: (id) => request("GET", `/api/habits/${encodeURIComponent(id)}`),
@@ -87,9 +79,7 @@ export const api = {
     ),
   saveSettings: (settings) => request("PATCH", "/api/settings", settings),
 
-  // The file itself as the body, not a form: there is one field, and this is
-  // what fetch sends when handed a File. The type travels with it, but the
-  // server decides from the bytes either way.
+  // Sends the file as the request body.
   uploadBackground: (file) => request("PUT", "/api/background", file, file.type),
   deleteBackground: () => request("DELETE", "/api/background"),
 

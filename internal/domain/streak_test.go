@@ -5,9 +5,8 @@ import (
 	"time"
 )
 
-// want compares a run list against dates given as offsets from friday, which is
-// how every case below is easiest to read: {-10, -6} is "ten days ago until six
-// days ago".
+// wantRuns compares got with runs given as day offsets from friday, e.g.
+// {-10, -6} for ten to six days ago.
 func wantRuns(t *testing.T, got []StreakRun, want [][2]int) {
 	t.Helper()
 	if len(got) != len(want) {
@@ -29,9 +28,7 @@ func TestDailyRunsSplitAtAGap(t *testing.T) {
 		entries[friday.AddDays(-back)] = 1
 	}
 
-	// Today is empty but still open, so the second run stands and reaches to it.
-	// Nothing is painted there — an empty day is never coloured — but a tick
-	// arriving later joins the run without the board having to be told twice.
+	// Today is still open, so the second run extends to it.
 	wantRuns(t, StreakRuns(h, entries, friday), [][2]int{{-10, -6}, {-4, 0}})
 }
 
@@ -45,9 +42,7 @@ func TestDailyRunReachesToday(t *testing.T) {
 	wantRuns(t, StreakRuns(h, entries, friday), [][2]int{{-3, 0}})
 }
 
-// The reason runs are dates and not counts: a run is as long as the stretch of
-// calendar it covers, so a habit due three times a week reaches "a week" after
-// a week rather than after seven of its own days.
+// Runs of weekday habits are measured in calendar days.
 func TestWeekdayRunIsMeasuredInCalendarDays(t *testing.T) {
 	h := Habit{
 		Kind: KindCheck, TargetValue: 1, CreatedAt: longAgo,
@@ -64,7 +59,7 @@ func TestWeekdayRunIsMeasuredInCalendarDays(t *testing.T) {
 	if len(runs) != 1 {
 		t.Fatalf("got %d runs %v, want 1", len(runs), runs)
 	}
-	// Nine ticked days, but three weeks of keeping it up.
+	// Nine completed days span 19 calendar days.
 	if days := runs[0].To.DaysSince(runs[0].From) + 1; days != 19 {
 		t.Errorf("run length = %d days, want 19", days)
 	}
@@ -73,8 +68,7 @@ func TestWeekdayRunIsMeasuredInCalendarDays(t *testing.T) {
 	}
 }
 
-// Doing more than the rhythm asks for must not fall outside the run: the
-// Saturday tick of a Mon–Fri habit is part of the streak it extends.
+// A completion on an unscheduled day is part of the run.
 func TestRunCoversAnExtraDayTheHabitIsNotDueOn(t *testing.T) {
 	saturday := friday.AddDays(1)
 	h := Habit{
@@ -95,7 +89,7 @@ func TestRunCoversAnExtraDayTheHabitIsNotDueOn(t *testing.T) {
 	}
 }
 
-// A day off in a rhythm that never asked for it leaves the run whole.
+// Unscheduled days do not break a run.
 func TestWeekdayRunIgnoresDaysItIsNotDueOn(t *testing.T) {
 	h := Habit{
 		Kind: KindCheck, TargetValue: 1, CreatedAt: longAgo,
@@ -108,8 +102,7 @@ func TestWeekdayRunIgnoresDaysItIsNotDueOn(t *testing.T) {
 		}
 	}
 
-	// Starts on the Monday a fortnight back and runs across the weekend in
-	// between without breaking.
+	// From Monday two weeks ago until today, including the weekend.
 	wantRuns(t, StreakRuns(h, entries, friday), [][2]int{{-11, 0}})
 }
 
@@ -124,8 +117,7 @@ func TestWeeklyRunsCoverWholeWeeks(t *testing.T) {
 	if runs[0].To != friday {
 		t.Errorf("run ends %s, want today (%s)", runs[0].To, friday)
 	}
-	// The run starts on a Monday even though the entries do not: a week is met
-	// as a whole, so it counts from its first day.
+	// A weekly run starts on the Monday of its first week.
 	if runs[0].From.Weekday() != time.Monday {
 		t.Errorf("run starts on %s, want a Monday", runs[0].From.Weekday())
 	}
@@ -134,8 +126,7 @@ func TestWeeklyRunsCoverWholeWeeks(t *testing.T) {
 	}
 }
 
-// An unfinished current week does not end the run — the same rule the streak
-// counter follows — so the days already ticked off in it stay coloured.
+// An incomplete current week does not end a weekly run.
 func TestWeeklyRunSurvivesAnOpenCurrentWeek(t *testing.T) {
 	h := weeklyHabit(3)
 	entries := fillWeekly(friday.AddDays(-27), friday, 3)
@@ -172,8 +163,7 @@ func TestWeeklyRunEndsAtAMissedWeek(t *testing.T) {
 	}
 }
 
-// A run may not claim days from before the habit existed: the week it was
-// created in starts at the habit, not at its Monday.
+// A weekly run does not start before the habit's history.
 func TestWeeklyRunStartsNoEarlierThanTheHabit(t *testing.T) {
 	created := friday.AddDays(-10) // a Tuesday
 	h := weeklyHabit(2)

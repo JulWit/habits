@@ -11,32 +11,28 @@ import (
 	"github.com/JulWit/habits/internal/store"
 )
 
-// EntryHorizonDays is how far ahead of today an entry may be recorded. The
-// board pages the same distance forward, so the two limits stay in step.
+// EntryHorizonDays is how many days after today an entry may be dated.
 const EntryHorizonDays = 365
 
-// EarliestEntry is the first day an entry may be dated. Backfilling history
-// from another tracker is welcome, but a typo in a script is not worth a row
-// in the year 1, which every streak scan would then walk two millennia to
-// reach. /api/state sends it along, so the board stops paging back there.
+// EarliestEntry is the earliest date an entry may have.
 var EarliestEntry = domain.Date{Year: 2000, Month: time.January, Day: 1}
 
+// setEntryResponse is the response of PUT /api/habits/{id}/entries/{date}.
 type setEntryResponse struct {
 	HabitID string      `json:"habitId"`
 	Date    domain.Date `json:"date"`
 	Value   int         `json:"value"`
-	// Previous is the value this write replaced. It is what makes undo work
-	// without any client-side persistence: to undo, write Previous back.
-	Previous int          `json:"previous"`
-	Stats    domain.Stats `json:"stats"`
-	// StreakRuns travel with every write: one tick can start, extend, join or
-	// end a run, and the board has to recolour without a full reload.
+	// Previous is the replaced value; writing it back undoes the change.
+	Previous   int                `json:"previous"`
+	Stats      domain.Stats       `json:"stats"`
 	StreakRuns []domain.StreakRun `json:"streakRuns"`
-	// UpdatedAt is the habit's own timestamp, which every write moves on. The
-	// detail view shows it as the last change.
+	// UpdatedAt is the habit's updated_at after the change.
 	UpdatedAt time.Time `json:"updatedAt"`
 }
 
+// handleSetEntry sets the value of a habit on a date. Values other than 0 are
+// only accepted on scheduled days between EarliestEntry and EntryHorizonDays
+// after today; 0 clears the entry.
 func (s *Server) handleSetEntry(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		Value int `json:"value"`
@@ -53,25 +49,19 @@ func (s *Server) handleSetEntry(w http.ResponseWriter, r *http.Request) {
 	habitID := r.PathValue("id")
 
 	today := s.todayFor(r.Context(), user.ID)
-	// Days ahead are allowed: a run that is already planned, a week filled in
-	// before a holiday. Only the horizon is capped, so a stray date cannot
-	// scatter entries into the next decade.
 	if date.After(today.AddDays(EntryHorizonDays)) {
 		writeError(w, http.StatusUnprocessableEntity, "Entries may be at most one year in the future")
 		return
 	}
-	// Only a value is held to the floor: an entry already stored before it can
-	// still be cleared, the same way as a day the schedule no longer covers.
 	if body.Value > 0 && date.Before(EarliestEntry) {
-		// The year as text: it is no quantity, and the client writes numbers
-		// in the reader's notation, which in German makes it "2.000".
+		// The year is passed as a string so the client does not format it as
+		// a number.
 		writeProblem(w, http.StatusUnprocessableEntity, domain.Invalid(
 			"Entries may not be dated before {year}", "year", strconv.Itoa(EarliestEntry.Year)))
 		return
 	}
 
-	// Clearing is always allowed, so an entry left over from before the days
-	// were changed can still be removed.
+	// Clearing an entry is allowed on any day.
 	if body.Value > 0 {
 		habit, err := s.store.GetHabit(r.Context(), user.ID, habitID)
 		if err != nil {
@@ -106,6 +96,7 @@ func (s *Server) handleSetEntry(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// handleGetSettings returns the user's settings.
 func (s *Server) handleGetSettings(w http.ResponseWriter, r *http.Request) {
 	user := auth.MustUser(r.Context())
 	settings, err := s.store.GetSettings(r.Context(), user.ID)
@@ -116,8 +107,9 @@ func (s *Server) handleGetSettings(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, settings)
 }
 
+// handleUpdateSettings updates the settings given in the request body.
 func (s *Server) handleUpdateSettings(w http.ResponseWriter, r *http.Request) {
-	// Pointers so a request may carry one setting without resetting the others.
+	// Nil fields are left unchanged.
 	var in struct {
 		Theme        *string `json:"theme"`
 		OverviewDays *int    `json:"overviewDays"`
@@ -146,10 +138,6 @@ func (s *Server) handleUpdateSettings(w http.ResponseWriter, r *http.Request) {
 	}
 	user := auth.MustUser(r.Context())
 
-	// Validated before anything is read or written: every rule here is about
-	// the incoming value alone, so it needs no knowledge of what is stored, and
-	// keeping it out of the transaction leaves the messages free to name the
-	// setting they are about.
 	if in.Theme != nil && !store.ValidTheme(*in.Theme) {
 		writeError(w, http.StatusUnprocessableEntity, "theme must be system, light or dark")
 		return
@@ -231,9 +219,6 @@ func (s *Server) handleUpdateSettings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Read and write in one transaction: the dialog writes every control the
-	// moment it moves, so two settings can be in flight at once and a
-	// read-modify-write over two statements would drop the earlier one.
 	settings, err := s.store.UpdateSettings(r.Context(), user.ID, func(cur *store.Settings) error {
 		setIf(&cur.Theme, in.Theme)
 		setIf(&cur.Font, in.Font)
@@ -262,8 +247,7 @@ func (s *Server) handleUpdateSettings(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, settings)
 }
 
-// setIf applies a PATCH field: a nil pointer means the client did not mention
-// the setting, which is different from setting it to its zero value.
+// setIf sets *dst to *src unless src is nil.
 func setIf[T any](dst *T, src *T) {
 	if src != nil {
 		*dst = *src

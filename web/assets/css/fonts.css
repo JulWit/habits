@@ -1,19 +1,7 @@
-/* Every typeface the settings dialog offers, carried inside the binary rather
-   than fetched from a CDN: the app runs offline behind Authelia, and a font
-   that arrived late would reflow the board after it was already on screen.
-
-   Roboto, Geist, Open Sans, Montserrat and Inter are variable fonts — one file
-   per subset covers every weight the interface uses, which is why their
-   font-weight is a range. Poppins and Lato are not published as variable
-   fonts, so they bring one file per weight; Lato has no 500 or 600, and text
-   at those weights falls to its bold.
-
-   The unicode-range values are the ones Google Fonts publishes for these
-   subsets, so a browser only fetches the extended Latin file when a character
-   from it actually appears. The extended file exists for the variable families
-   only — the two static ones would need four more files for it.
-
-   Licences and sources: LICENSES.md next to the font files. */
+/* Embedded fonts offered in the settings (see LICENSES.md for licences and
+   sources). Roboto, Geist, Open Sans, Montserrat and Inter are variable fonts;
+   Poppins and Lato have one file per weight (Lato has no 500 and 600). The
+   unicode-range values are those published by Google Fonts. */
 
 @font-face {
   font-family: "Roboto";
@@ -141,8 +129,7 @@
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 
-/* Inter is the default, and the only family that also carries the extended
-   Latin subset for its own text. */
+/* Inter is the default font and also includes the extended Latin subset. */
 
 @font-face {
   font-family: "Inter";

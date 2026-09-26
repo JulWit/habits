@@ -6,31 +6,26 @@ import (
 	"time"
 )
 
-// Date is a calendar date without a time or a zone. Habit tracking is a
-// calendar-day concept: "did I read yesterday" must not change meaning when the
-// process restarts in a different zone, so dates are deliberately kept free of
-// wall-clock information instead of being time.Time values that happen to be
-// truncated to midnight.
+// Date is a calendar date without time of day or time zone.
 type Date struct {
 	Year  int
 	Month time.Month
 	Day   int
 }
 
-// DateLayout is the wire and storage format for a Date (ISO 8601, sortable as
-// plain text, which is what lets SQLite range-query the entries table).
+// DateLayout is the ISO 8601 format used for Date in JSON and in the database.
 const DateLayout = "2006-01-02"
 
+// ErrInvalidDate is returned for strings that are not valid dates.
 var ErrInvalidDate = errors.New("invalid date")
 
+// DateFromTime returns the calendar date of t in t's location.
 func DateFromTime(t time.Time) Date {
 	y, m, d := t.Date()
 	return Date{Year: y, Month: m, Day: d}
 }
 
-// Today resolves the current calendar date in loc. The location comes from
-// configuration rather than from the request, so a self-hosted instance has one
-// unambiguous notion of "today".
+// Today returns the current date in loc, or in the local zone if loc is nil.
 func Today(loc *time.Location) Date {
 	if loc == nil {
 		loc = time.Local
@@ -38,6 +33,7 @@ func Today(loc *time.Location) Date {
 	return DateFromTime(time.Now().In(loc))
 }
 
+// ParseDate parses a date in DateLayout format.
 func ParseDate(s string) (Date, error) {
 	t, err := time.ParseInLocation(DateLayout, s, time.UTC)
 	if err != nil {
@@ -46,8 +42,10 @@ func ParseDate(s string) (Date, error) {
 	return DateFromTime(t), nil
 }
 
+// IsZero reports whether d is the zero Date.
 func (d Date) IsZero() bool { return d == Date{} }
 
+// String formats d in DateLayout, or returns "" for the zero Date.
 func (d Date) String() string {
 	if d.IsZero() {
 		return ""
@@ -55,25 +53,30 @@ func (d Date) String() string {
 	return fmt.Sprintf("%04d-%02d-%02d", d.Year, int(d.Month), d.Day)
 }
 
-// Time anchors the date at UTC midnight. UTC has no DST transitions, so day
-// arithmetic built on top of it is exact.
+// Time returns d at midnight UTC.
 func (d Date) Time() time.Time {
 	return time.Date(d.Year, d.Month, d.Day, 0, 0, 0, 0, time.UTC)
 }
 
+// AddDays returns d shifted by n days.
 func (d Date) AddDays(n int) Date { return DateFromTime(d.Time().AddDate(0, 0, n)) }
 
+// Weekday returns the day of the week of d.
 func (d Date) Weekday() time.Weekday { return d.Time().Weekday() }
 
-// DaysSince returns the whole number of days from other to d, negative if d is
+// DaysSince returns the number of days from other to d; negative if d is
 // earlier.
 func (d Date) DaysSince(other Date) int {
 	return int(d.Time().Sub(other.Time()) / (24 * time.Hour))
 }
 
+// Before reports whether d is earlier than o.
 func (d Date) Before(o Date) bool { return d.Time().Before(o.Time()) }
-func (d Date) After(o Date) bool  { return d.Time().After(o.Time()) }
 
+// After reports whether d is later than o.
+func (d Date) After(o Date) bool { return d.Time().After(o.Time()) }
+
+// Min returns the earlier of d and o.
 func (d Date) Min(o Date) Date {
 	if d.Before(o) {
 		return d
@@ -81,16 +84,17 @@ func (d Date) Min(o Date) Date {
 	return o
 }
 
-// StartOfWeek returns the Monday of d's week. Weeks start on Monday throughout
-// the application, including in the times-per-week frequency.
+// StartOfWeek returns the Monday of d's week.
 func (d Date) StartOfWeek() Date {
 	return d.AddDays(-((int(d.Weekday()) + 6) % 7))
 }
 
+// MarshalJSON encodes d as a DateLayout string.
 func (d Date) MarshalJSON() ([]byte, error) {
 	return []byte(`"` + d.String() + `"`), nil
 }
 
+// UnmarshalJSON decodes a DateLayout string; "" yields the zero Date.
 func (d *Date) UnmarshalJSON(b []byte) error {
 	if len(b) < 2 || b[0] != '"' || b[len(b)-1] != '"' {
 		return ErrInvalidDate

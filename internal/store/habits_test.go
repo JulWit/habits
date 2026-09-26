@@ -9,7 +9,7 @@ import (
 	"github.com/JulWit/habits/internal/domain"
 )
 
-// One user must never see, read or write another's rows.
+// Users can only access their own habits.
 func TestHabitsAreScopedToTheirUser(t *testing.T) {
 	ctx := context.Background()
 	st := openTestStore(t)
@@ -33,14 +33,13 @@ func TestHabitsAreScopedToTheirUser(t *testing.T) {
 	}
 }
 
-// The guard against silently reinterpreting a history: 5000 metres are not
-// 500 repetitions.
+// The kind of a habit with entries cannot be changed.
 func TestKindCannotChangeOnceThereIsAHistory(t *testing.T) {
 	ctx := context.Background()
 	st := openTestStore(t)
 	h := mustCreateHabit(t, st, "alice", countHabit(domain.KindDistance, 5000))
 
-	// No entries yet: correcting a freshly created habit stays possible.
+	// Without entries, the kind can be changed.
 	changed := h
 	changed.Kind = domain.KindCount
 	changed.TargetValue = 80
@@ -48,7 +47,7 @@ func TestKindCannotChangeOnceThereIsAHistory(t *testing.T) {
 		t.Fatalf("kind change without history must be allowed: %v", err)
 	}
 
-	// Now give it a history and try again.
+	// With an entry, the change is rejected.
 	if _, err := st.SetEntry(ctx, "alice", h.ID, day(2026, time.September, 18), 50); err != nil {
 		t.Fatalf("SetEntry: %v", err)
 	}
@@ -59,7 +58,7 @@ func TestKindCannotChangeOnceThereIsAHistory(t *testing.T) {
 		t.Errorf("kind change with history: %v, want ErrValidation", err)
 	}
 
-	// And the habit is untouched — the transaction rolled the whole thing back.
+	// The habit is unchanged.
 	after, err := st.GetHabit(ctx, "alice", h.ID)
 	if err != nil {
 		t.Fatalf("GetHabit: %v", err)
@@ -69,8 +68,7 @@ func TestKindCannotChangeOnceThereIsAHistory(t *testing.T) {
 	}
 }
 
-// Renaming, recolouring and rescheduling a habit that has a history is exactly
-// what the guard must not block.
+// All fields except the kind remain editable when a habit has entries.
 func TestEverythingButTheKindStaysEditable(t *testing.T) {
 	ctx := context.Background()
 	st := openTestStore(t)
@@ -100,7 +98,7 @@ func TestEverythingButTheKindStaysEditable(t *testing.T) {
 	}
 }
 
-// Both ways of narrowing chosen weekdays survive a write and a read.
+// Week interval and week of month are stored and read back.
 func TestNarrowedWeekdaysRoundTrip(t *testing.T) {
 	ctx := context.Background()
 	st := openTestStore(t)
@@ -121,8 +119,7 @@ func TestNarrowedWeekdaysRoundTrip(t *testing.T) {
 	}
 }
 
-// A habit may not be filed under someone else's category, and not under one
-// that does not exist.
+// A habit cannot be assigned to another user's or a non-existent category.
 func TestHabitCannotJoinAForeignCategory(t *testing.T) {
 	ctx := context.Background()
 	st := openTestStore(t)
@@ -144,7 +141,7 @@ func TestHabitCannotJoinAForeignCategory(t *testing.T) {
 	}
 }
 
-// Deleting is soft, so undo can bring the habit back with its history intact.
+// A soft-deleted habit can be restored with its entries.
 func TestSoftDeleteKeepsTheHistory(t *testing.T) {
 	ctx := context.Background()
 	st := openTestStore(t)
@@ -160,7 +157,7 @@ func TestSoftDeleteKeepsTheHistory(t *testing.T) {
 	if habits, _ := st.ListHabits(ctx, "alice", true); len(habits) != 0 {
 		t.Error("a deleted habit must no longer be listed")
 	}
-	// Purging only takes what is past the window.
+	// PurgeDeleted keeps habits deleted within the retention period.
 	if n, err := st.PurgeDeleted(ctx, 30*24*time.Hour); err != nil || n != 0 {
 		t.Errorf("PurgeDeleted removed %d rows too early (err %v)", n, err)
 	}
@@ -177,7 +174,7 @@ func TestSoftDeleteKeepsTheHistory(t *testing.T) {
 	}
 }
 
-// Past the retention window the row and its entries go for good.
+// PurgeDeleted removes expired habits and their entries.
 func TestPurgeRemovesWhatIsPastTheWindow(t *testing.T) {
 	ctx := context.Background()
 	st := openTestStore(t)
@@ -186,9 +183,8 @@ func TestPurgeRemovesWhatIsPastTheWindow(t *testing.T) {
 		t.Fatalf("SoftDeleteHabit: %v", err)
 	}
 
-	// A negative window puts the cutoff in the future, so the row is past it
-	// whatever the clock's resolution — on Windows two calls to time.Now() a
-	// few statements apart can return the very same instant.
+	// A negative duration puts the cutoff in the future, independent of the
+	// clock resolution.
 	n, err := st.PurgeDeleted(ctx, -time.Hour)
 	if err != nil {
 		t.Fatalf("PurgeDeleted: %v", err)
@@ -201,7 +197,7 @@ func TestPurgeRemovesWhatIsPastTheWindow(t *testing.T) {
 	}
 }
 
-// Reordering only touches the caller's own rows.
+// Reordering ignores other users' habits.
 func TestReorderIgnoresForeignIDs(t *testing.T) {
 	ctx := context.Background()
 	st := openTestStore(t)
@@ -219,15 +215,14 @@ func TestReorderIgnoresForeignIDs(t *testing.T) {
 	if len(habits) != 2 || habits[0].ID != b.ID || habits[1].ID != a.ID {
 		t.Errorf("order = %v", habits)
 	}
-	// The other user's habit kept its own position.
+	// The other user's habit keeps its position.
 	if other, _ := st.ListHabits(ctx, "someone-else", true); len(other) != 1 {
 		t.Error("the foreign list was touched")
 	}
 }
 
-// A client that leaves habits out of the order - archived ones while they are
-// hidden, say - must not leave two habits on the same position. The ones left
-// out follow the named ones, in the order they had.
+// Habits missing from the new order follow the given ones in their previous
+// order.
 func TestReorderPlacesUnnamedHabitsAfterTheNamedOnes(t *testing.T) {
 	ctx := context.Background()
 	st := openTestStore(t)
@@ -250,8 +245,7 @@ func TestReorderPlacesUnnamedHabitsAfterTheNamedOnes(t *testing.T) {
 	}
 }
 
-// Naming a habit twice is no order at all, and is refused as the client's
-// mistake rather than applied one way or the other.
+// An order containing a habit twice is rejected.
 func TestReorderRefusesADuplicate(t *testing.T) {
 	ctx := context.Background()
 	st := openTestStore(t)
@@ -268,7 +262,7 @@ func TestReorderRefusesADuplicate(t *testing.T) {
 	}
 }
 
-// Moving a habit is not a change to it, so its timestamp stays put.
+// Reordering does not change updated_at.
 func TestReorderKeepsUpdatedAt(t *testing.T) {
 	ctx := context.Background()
 	st := openTestStore(t)

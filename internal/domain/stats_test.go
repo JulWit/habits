@@ -5,8 +5,7 @@ import (
 	"time"
 )
 
-// 2026-09-18 is a Friday; every fixture below is anchored to it so the weekday
-// a case depends on is visible in the test rather than in the calendar.
+// Fixtures are relative to Friday, 2026-09-18.
 var (
 	friday   = Date{2026, time.September, 18}
 	monday   = Date{2026, time.September, 14}
@@ -42,10 +41,7 @@ func fillWeekly(from, today Date, n int) map[Date]int {
 	return entries
 }
 
-// The regression this file exists for: the rate used to be measured over a raw
-// 30-day window, which cut a week in half and then judged that week on the days
-// that happened to land inside the cut. Someone who met the target every single
-// week saw 80%.
+// A user who meets the weekly target every week reaches a rate of 100%.
 func TestWeeklyRateReaches100ForAPerfectUser(t *testing.T) {
 	for _, tc := range []struct {
 		name  string
@@ -71,8 +67,7 @@ func TestWeeklyRateReaches100ForAPerfectUser(t *testing.T) {
 	}
 }
 
-// The completed days sit on the far side of the window edge. Before the fix
-// this was the case that produced a missed week out of a met one.
+// The weekly rate does not depend on which days of the week are completed.
 func TestWeeklyRateIgnoresWhereInTheWeekTheDaysFall(t *testing.T) {
 	h := weeklyHabit(3)
 
@@ -88,8 +83,7 @@ func TestWeeklyRateIgnoresWhereInTheWeekTheDaysFall(t *testing.T) {
 
 	a := ComputeStats(h, early, friday, rateDays)
 	b := ComputeStats(h, late, friday, rateDays)
-	// The current week is short either way, so both are judged on what it can
-	// still offer; what must not differ is the verdict on the weeks behind it.
+	// Only the current week may differ.
 	if a.Expected != b.Expected {
 		t.Errorf("expected differs by placement: %d vs %d", a.Expected, b.Expected)
 	}
@@ -99,7 +93,7 @@ func TestWeeklyRateIgnoresWhereInTheWeekTheDaysFall(t *testing.T) {
 	}
 }
 
-// A week the user genuinely missed still has to cost them.
+// A missed week lowers the weekly rate.
 func TestWeeklyRateCountsAMissedWeek(t *testing.T) {
 	h := weeklyHabit(3)
 	entries := fillWeekly(friday.AddDays(-400), friday, 3)
@@ -118,7 +112,7 @@ func TestWeeklyRateCountsAMissedWeek(t *testing.T) {
 	}
 }
 
-// Overshooting a weekly target does not bank credit against other weeks.
+// Completions above the weekly target are not counted.
 func TestWeeklyRateCapsAWeekAtItsTarget(t *testing.T) {
 	h := weeklyHabit(3)
 	entries := fillWeekly(friday.AddDays(-400), friday, 7) // every single day
@@ -129,11 +123,11 @@ func TestWeeklyRateCapsAWeekAtItsTarget(t *testing.T) {
 	}
 }
 
-// An unfinished week never breaks the run, matching the daily rule for today.
+// An incomplete current week does not break the weekly streak.
 func TestWeeklyStreakSurvivesAnOpenCurrentWeek(t *testing.T) {
 	h := weeklyHabit(3)
 	entries := fillWeekly(friday.AddDays(-400), friday, 3)
-	// Clear only the current week: it is open, not failed.
+	// Clear the current week.
 	for i := 0; i < 7; i++ {
 		delete(entries, friday.StartOfWeek().AddDays(i))
 	}
@@ -166,7 +160,7 @@ func TestDailyRateAndStreak(t *testing.T) {
 	}
 }
 
-// Today is still open: it must not reset the run, but a gap before it must.
+// An open today does not break the streak, but a missed day before it does.
 func TestDailyStreakTreatsTodayAsOpen(t *testing.T) {
 	h := dailyHabit()
 	entries := map[Date]int{}
@@ -183,7 +177,7 @@ func TestDailyStreakTreatsTodayAsOpen(t *testing.T) {
 	}
 }
 
-// Only scheduled days count, so a weekday habit is not punished for Sundays.
+// Only scheduled days count.
 func TestWeekdayHabitOnlyCountsItsOwnDays(t *testing.T) {
 	h := Habit{
 		Kind: KindCheck, TargetValue: 1, CreatedAt: longAgo,
@@ -205,7 +199,7 @@ func TestWeekdayHabitOnlyCountsItsOwnDays(t *testing.T) {
 	}
 }
 
-// A planned run tomorrow is not an achievement today.
+// Future entries are not included in the total.
 func TestTotalExcludesTheFuture(t *testing.T) {
 	h := Habit{
 		Kind: KindDistance, TargetValue: 5000, CreatedAt: longAgo,
@@ -222,7 +216,7 @@ func TestTotalExcludesTheFuture(t *testing.T) {
 	}
 }
 
-// A habit with no history at all must not report a phantom streak.
+// A habit without entries has no streak.
 func TestEmptyHistory(t *testing.T) {
 	h := dailyHabit()
 	st := ComputeStats(h, map[Date]int{}, friday, rateDays)
@@ -234,7 +228,7 @@ func TestEmptyHistory(t *testing.T) {
 	}
 }
 
-// A habit created inside the window is judged only from its creation day on.
+// The rate of a habit younger than the window starts at its creation day.
 func TestHabitYoungerThanTheWindow(t *testing.T) {
 	created := friday.AddDays(-4)
 	h := Habit{

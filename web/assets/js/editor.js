@@ -1,4 +1,4 @@
-// Habit dialog for creating and editing. It builds the request body and passes
+// Habit page for creating and editing. It builds the request body and passes
 // it to its caller.
 
 import { WEEKDAY_SHORT, WEEKDAY_LONG } from "./dates.js";
@@ -8,6 +8,7 @@ import { openCategoryPicker } from "./categorypicker.js";
 import { icons, buildIconChoices, markIconChoice, categoryIconBadge, colorLabel } from "./icons.js";
 import * as H from "./habit.js";
 import { t } from "./i18n.js";
+import { openPage, closePage } from "./pages.js";
 
 let dialog;
 let form;
@@ -38,7 +39,6 @@ export function initEditor() {
     });
   }
   form.addEventListener("submit", handleSubmit);
-  form.querySelector('[data-action="cancel"]').addEventListener("click", () => dialog.close());
 
   categoryButton.addEventListener("click", async () => {
     // null means the picker was cancelled.
@@ -207,7 +207,7 @@ export function openEditor(habit, handler) {
   selectColor(habit?.color ?? state.colors[0]);
   selectIcon(habit?.icon ?? "");
   syncVisibility();
-  dialog.showModal();
+  openPage(dialog);
   f.name.focus();
 }
 
@@ -280,7 +280,7 @@ async function handleSubmit(event) {
   submitButton.disabled = true;
   try {
     await onSubmit(input);
-    dialog.close();
+    closePage(dialog);
   } catch (err) {
     showError(errorText(err));
   } finally {

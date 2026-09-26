@@ -69,13 +69,16 @@
 <!-- Style guide, only reachable at #/styleguide. -->
 <main id="view-styleguide" class="view" hidden></main>
 
-<dialog id="editor" class="dialog">
+<!-- Pages: full-screen dialogs with a back button, stacked (see pages.js). -->
+<dialog id="editor" class="dialog page" aria-labelledby="editor-title">
   <form id="editor-form" method="dialog">
-    <header class="dialog-head">
+    <header class="page-head">
+      <button type="button" class="icon-button" data-page-back data-icon="arrowLeft" title="Back" aria-label="Back"></button>
       <h2 id="editor-title">New habit</h2>
+      <button type="submit" class="button primary" id="editor-submit">Create</button>
     </header>
 
-    <div class="dialog-body">
+    <div class="page-body">
       <label class="field">
         <span class="field-label">Name</span>
         <input name="name" type="text" maxlength="80" required autocomplete="off" placeholder="e.g. drink water">
@@ -230,35 +233,75 @@
 
       <p id="editor-error" class="error" role="alert" hidden></p>
     </div>
-
-    <footer class="dialog-foot">
-      <button type="button" class="button ghost" data-action="cancel">Cancel</button>
-      <button type="submit" class="button primary" id="editor-submit">Create</button>
-    </footer>
   </form>
 </dialog>
 
-<dialog id="settings-dialog" class="dialog settings-dialog">
-  <header class="dialog-head">
-    <h2 data-icon="gear">Settings</h2>
+<!-- Settings: a list of sections, each opening its own page. -->
+<dialog id="settings-dialog" class="dialog page" aria-labelledby="settings-title">
+  <header class="page-head">
+    <button type="button" class="icon-button" data-page-back data-icon="arrowLeft" title="Back" aria-label="Back"></button>
+    <h2 id="settings-title">Settings</h2>
   </header>
-
-  <!-- Tab list on the left, the open section on the right; a tab strip on
-       phones. -->
-  <div class="settings-layout">
-  <div class="tabs" role="tablist" aria-label="Settings sections" aria-orientation="vertical">
-    <button type="button" class="tab" role="tab" id="tab-look"
-            aria-controls="panel-look" aria-selected="true"><span data-icon="palette">Appearance</span></button>
-    <button type="button" class="tab" role="tab" id="tab-board"
-            aria-controls="panel-board" aria-selected="false" tabindex="-1"><span data-icon="board">Overview</span></button>
-    <button type="button" class="tab" role="tab" id="tab-region"
-            aria-controls="panel-region" aria-selected="false" tabindex="-1"><span data-icon="globe">Language &amp; time</span></button>
-    <button type="button" class="tab" role="tab" id="tab-archive"
-            aria-controls="panel-archive" aria-selected="false" tabindex="-1"><span data-icon="archive">Archive</span></button>
+  <div class="page-body">
+    <!-- The signed-in user, filled by settings.js. -->
+    <section class="account" aria-label="Current user">
+      <span class="account-avatar" id="account-avatar" aria-hidden="true"></span>
+      <div class="account-text">
+        <p class="account-name" id="account-name"></p>
+        <p class="account-detail" id="account-detail"></p>
+        <p class="account-groups" id="account-groups" hidden></p>
+      </div>
+    </section>
+    <nav class="menu" aria-label="Settings sections">
+      <button type="button" class="menu-item" data-open-page="settings-look">
+        <span class="menu-icon" data-icon="palette" aria-hidden="true"></span>
+        <span class="menu-text"><span class="menu-title">Appearance</span><span class="menu-hint">Theme, font, colours and background</span></span>
+        <span class="menu-caret" data-icon="chevronRight" aria-hidden="true"></span>
+      </button>
+      <button type="button" class="menu-item" data-open-page="settings-board">
+        <span class="menu-icon" data-icon="board" aria-hidden="true"></span>
+        <span class="menu-text"><span class="menu-title">Overview</span><span class="menu-hint">Reordering and days shown</span></span>
+        <span class="menu-caret" data-icon="chevronRight" aria-hidden="true"></span>
+      </button>
+      <button type="button" class="menu-item" data-open-page="settings-region">
+        <span class="menu-icon" data-icon="globe" aria-hidden="true"></span>
+        <span class="menu-text"><span class="menu-title">Language &amp; time</span><span class="menu-hint">Language and time zone</span></span>
+        <span class="menu-caret" data-icon="chevronRight" aria-hidden="true"></span>
+      </button>
+      <button type="button" class="menu-item" data-open-page="settings-archive" id="settings-archive-item">
+        <span class="menu-icon" data-icon="archive" aria-hidden="true"></span>
+        <span class="menu-text"><span class="menu-title">Archive</span><span class="menu-hint">Archived habits</span></span>
+        <span class="menu-caret" data-icon="chevronRight" aria-hidden="true"></span>
+      </button>
+    </nav>
+    <nav class="menu" aria-label="About the app">
+      <button type="button" class="menu-item" data-open-page="settings-version">
+        <span class="menu-icon" data-icon="info" aria-hidden="true"></span>
+        <!-- The hint shows the version (settings.js). -->
+        <span class="menu-text"><span class="menu-title">Version</span><span class="menu-hint" id="settings-version-hint"></span></span>
+        <span class="menu-caret" data-icon="chevronRight" aria-hidden="true"></span>
+      </button>
+    </nav>
   </div>
+</dialog>
 
-  <div class="dialog-body">
-    <div id="panel-look" class="tab-panel" role="tabpanel" aria-labelledby="tab-look">
+<dialog id="settings-version" class="dialog page" aria-labelledby="settings-version-title">
+  <header class="page-head">
+    <button type="button" class="icon-button" data-page-back data-icon="arrowLeft" title="Back" aria-label="Back"></button>
+    <h2 id="settings-version-title">Version</h2>
+  </header>
+  <div class="page-body">
+    <!-- Filled by settings.js. -->
+    <dl class="facts" id="version-facts"></dl>
+  </div>
+</dialog>
+
+<dialog id="settings-look" class="dialog page" aria-labelledby="settings-look-title">
+  <header class="page-head">
+    <button type="button" class="icon-button" data-page-back data-icon="arrowLeft" title="Back" aria-label="Back"></button>
+    <h2 id="settings-look-title">Appearance</h2>
+  </header>
+  <div class="page-body">
     <fieldset class="field">
       <legend class="field-label">Theme</legend>
       <div class="segmented" role="radiogroup" aria-label="Theme">
@@ -326,6 +369,10 @@
         <option value="grid">Grid</option>
         <option value="diagonal">Diagonal</option>
         <option value="cross">Cross-hatch</option>
+        <option value="lines">Lines</option>
+        <option value="checks">Checks</option>
+        <option value="gradient">Gradient</option>
+        <option value="glow">Glow</option>
         <!-- Enabled by the script once an image has been uploaded. -->
         <option value="image" id="pattern-image-option" disabled>Own image</option>
       </select>
@@ -372,10 +419,15 @@
         </label>
       </div>
     </fieldset>
+  </div>
+</dialog>
 
-    </div>
-
-    <div id="panel-board"class="tab-panel" role="tabpanel" aria-labelledby="tab-board" hidden>
+<dialog id="settings-board" class="dialog page" aria-labelledby="settings-board-title">
+  <header class="page-head">
+    <button type="button" class="icon-button" data-page-back data-icon="arrowLeft" title="Back" aria-label="Back"></button>
+    <h2 id="settings-board-title">Overview</h2>
+  </header>
+  <div class="page-body">
     <fieldset class="field">
       <legend class="field-label">Reordering</legend>
       <label class="switch">
@@ -406,10 +458,15 @@
       </label>
       <p class="field-hint" id="settings-align-hint"></p>
     </fieldset>
+  </div>
+</dialog>
 
-    </div>
-
-    <div id="panel-region" class="tab-panel" role="tabpanel" aria-labelledby="tab-region" hidden>
+<dialog id="settings-region" class="dialog page" aria-labelledby="settings-region-title">
+  <header class="page-head">
+    <button type="button" class="icon-button" data-page-back data-icon="arrowLeft" title="Back" aria-label="Back"></button>
+    <h2 id="settings-region-title">Language &amp; time</h2>
+  </header>
+  <div class="page-body">
     <div class="field">
       <label>
         <span class="field-label">Language</span>
@@ -432,10 +489,16 @@
       <p class="field-hint" id="settings-timezone-hint"></p>
       <button type="button" class="button" id="settings-timezone-device" hidden></button>
     </div>
-    </div>
+  </div>
+</dialog>
 
-    <div id="panel-archive" class="tab-panel" role="tabpanel" aria-labelledby="tab-archive" hidden>
-    <fieldset class="field" id="settings-archive-field">
+<dialog id="settings-archive" class="dialog page" aria-labelledby="settings-archive-title">
+  <header class="page-head">
+    <button type="button" class="icon-button" data-page-back data-icon="arrowLeft" title="Back" aria-label="Back"></button>
+    <h2 id="settings-archive-title">Archive</h2>
+  </header>
+  <div class="page-body">
+    <fieldset class="field">
       <legend class="field-label">Archive</legend>
       <label class="switch">
         <input type="checkbox" id="settings-archived" autocomplete="off">
@@ -443,20 +506,18 @@
       </label>
       <p class="field-hint" id="settings-archive-hint"></p>
     </fieldset>
-    </div>
-
-    <p id="settings-error" class="error" hidden></p>
   </div>
-  </div>
-
-  <footer class="dialog-foot">
-    <button type="button" class="button primary" data-action="close">Done</button>
-  </footer>
 </dialog>
 
-<dialog id="category-dialog" class="dialog compact">
-  <h2 class="dialog-head">Category</h2>
-  <div class="dialog-body">
+<!-- Settings errors; settings.js moves it into the open settings page. -->
+<p id="settings-error" class="error" hidden></p>
+
+<dialog id="category-dialog" class="dialog page" aria-labelledby="category-dialog-title">
+  <header class="page-head">
+    <button type="button" class="icon-button" data-page-back data-icon="arrowLeft" title="Back" aria-label="Back"></button>
+    <h2 id="category-dialog-title">Category</h2>
+  </header>
+  <div class="page-body">
     <div id="category-list" class="picker-list" role="listbox" aria-label="Choose category"></div>
     <form id="category-create" class="picker-create">
       <input name="name" type="text" maxlength="60" autocomplete="off"
@@ -465,19 +526,18 @@
     </form>
     <p id="category-error" class="error" hidden></p>
   </div>
-  <footer class="dialog-foot">
-    <button type="button" class="button ghost" data-action="cancel">Cancel</button>
-  </footer>
 </dialog>
 
 <!-- Category dialog, opened from the category view (see categoryeditor.js). -->
-<dialog id="category-editor" class="dialog compact">
+<dialog id="category-editor" class="dialog page" aria-labelledby="category-editor-title">
   <form id="category-editor-form" method="dialog">
-    <header class="dialog-head">
-      <h2>Edit category</h2>
+    <header class="page-head">
+      <button type="button" class="icon-button" data-page-back data-icon="arrowLeft" title="Back" aria-label="Back"></button>
+      <h2 id="category-editor-title">Edit category</h2>
+      <button type="submit" class="button primary" id="category-editor-submit">Save</button>
     </header>
 
-    <div class="dialog-body">
+    <div class="page-body">
       <label class="field">
         <span class="field-label">Name</span>
         <input name="name" type="text" maxlength="60" required autocomplete="off">
@@ -504,11 +564,6 @@
 
       <p id="category-editor-error" class="error" role="alert" hidden></p>
     </div>
-
-    <footer class="dialog-foot">
-      <button type="button" class="button ghost" data-action="cancel">Cancel</button>
-      <button type="submit" class="button primary" id="category-editor-submit">Save</button>
-    </footer>
   </form>
 </dialog>
 

@@ -1,9 +1,10 @@
-// Category edit dialog. It passes the input to its caller and stays open with
+// Category edit page. It passes the input to its caller and stays open with
 // the error message if saving fails.
 
 import { state, categoryById } from "./state.js";
 import { errorText } from "./undo.js";
 import { t } from "./i18n.js";
+import { openPage, closePage } from "./pages.js";
 import { buildIconChoices, markIconChoice, colorLabel } from "./icons.js";
 
 let dialog;
@@ -32,7 +33,6 @@ export function initCategoryEditor() {
       errorBox.hidden = true;
     });
   }
-  form.querySelector('[data-action="cancel"]').addEventListener("click", () => dialog.close());
 }
 
 /**
@@ -54,7 +54,7 @@ export function openCategoryEditor(id, handler) {
   selectColor(category.color ?? "");
   selectIcon(category.icon ?? "");
 
-  dialog.showModal();
+  openPage(dialog);
   form.elements.name.focus();
   form.elements.name.select();
 }
@@ -107,7 +107,7 @@ async function handleSubmit(event) {
       icon: selectedIcon,
       showProgress: form.elements.showProgress.checked,
     });
-    dialog.close();
+    closePage(dialog);
   } catch (err) {
     errorBox.textContent = errorText(err);
     errorBox.hidden = false;

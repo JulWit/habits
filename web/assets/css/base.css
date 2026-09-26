@@ -21,8 +21,8 @@
   --text: light-dark(#1b1d21, #ececec);
   --text-muted: light-dark(#6b7280, #a3a3a3);
   --text-faint: light-dark(#9aa1ad, #7a7a7a);
-  /* Neutral accent for buttons, selections, checkboxes and the focus ring; the
-     only colours in the UI are the habit colours. */
+  /* Accent for buttons, selections, checkboxes and the focus ring. Neutral,
+     unless an accent colour is chosen (see the today band below). */
   --primary: light-dark(#24262b, #e3e3e3);
   --primary-text: light-dark(#ffffff, #121212);
   /* Darker on light, brighter on dark. */
@@ -178,6 +178,17 @@ html[data-band]:not([data-band="neutral"]) {
   --today: var(--band-ink, var(--today-neutral));
 }
 
+/* A chosen accent colour also colours buttons, selections and the focus ring;
+   the neutral one keeps the neutral --primary. */
+html[data-band]:not([data-band="neutral"]) {
+  --primary: var(--band-ink, light-dark(#24262b, #e3e3e3));
+  --primary-text: #ffffff;
+  --primary-hover: color-mix(in srgb, var(--primary) 85%, #000);
+}
+
+/* White text is too faint on yellow. */
+html[data-band="#eab308"] { --primary-text: #1b1d21; }
+
 /* ---------- background patterns ----------
 
    Faint gradient patterns, mixed from the text colour so they follow the
@@ -209,6 +220,43 @@ html[data-pattern="cross"] {
   --pattern-image:
     repeating-linear-gradient(45deg, var(--pattern-ink) 0 1px, transparent 1px 14px),
     repeating-linear-gradient(-45deg, var(--pattern-ink) 0 1px, transparent 1px 14px);
+}
+
+/* Ruled lines, as on writing paper. */
+html[data-pattern="lines"] {
+  --pattern-image: linear-gradient(var(--pattern-ink) 1px, transparent 1px);
+  --pattern-size: 100% 28px;
+}
+
+/* A checkerboard, fainter than the lines, as its squares are filled. */
+html[data-pattern="checks"] {
+  --pattern-image: conic-gradient(var(--pattern-ink-soft) 25%, transparent 0 50%,
+    var(--pattern-ink-soft) 0 75%, transparent 0);
+  --pattern-size: 28px 28px;
+}
+
+/* The two colour washes, tinted with the accent colour (grey if neutral).
+   They span the viewport, as every pattern layer is fixed to it. */
+:root {
+  --pattern-ink-soft: color-mix(in srgb, var(--text) 5%, transparent);
+  --pattern-tint: var(--band-ink, var(--text));
+}
+
+/* A diagonal wash from the top left corner. */
+html[data-pattern="gradient"] {
+  --pattern-image: linear-gradient(155deg,
+    color-mix(in srgb, var(--pattern-tint) 24%, transparent),
+    color-mix(in srgb, var(--pattern-tint) 6%, transparent) 55%,
+    transparent 85%);
+}
+
+/* Soft light from two opposite corners. */
+html[data-pattern="glow"] {
+  --pattern-image:
+    radial-gradient(70% 55% at 0% 0%,
+      color-mix(in srgb, var(--pattern-tint) 30%, transparent), transparent 70%),
+    radial-gradient(60% 50% at 100% 100%,
+      color-mix(in srgb, var(--pattern-tint) 20%, transparent), transparent 70%);
 }
 
 /* ---------- the uploaded background ----------

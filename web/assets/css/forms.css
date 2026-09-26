@@ -19,12 +19,6 @@
   font-weight: var(--weight-bold);
 }
 
-.dialog-body {
-  padding: calc(.75 * var(--space)) calc(1.15 * var(--space));
-  max-height: min(70dvh, 40rem);
-  overflow-y: auto;
-}
-
 .dialog-foot {
   display: flex;
   justify-content: flex-end;
@@ -32,119 +26,231 @@
   padding: calc(.85 * var(--space)) calc(1.15 * var(--space)) calc(1.1 * var(--space));
 }
 
-/* ---------- dialog tabs ---------- */
+/* ---------- pages ---------- */
 
-/* Tab strip between dialog heading and body. The open tab is underlined. */
-.tabs {
-  display: flex;
-  gap: calc(.15 * var(--space));
-  padding: 0 calc(1.15 * var(--space));
+/* Full-screen dialogs, stacked like app screens (see pages.js). The dialog
+   itself scrolls; the title bar stays at the top. Like the overview, flat
+   cards lie on the page background, which the backdrop paints. */
+.dialog.page {
+  --page-width: 42rem;
+  /* Head and body share the column, however wide the window. */
+  --page-inset: max(var(--gutter), calc((100% - var(--page-width)) / 2));
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  border-radius: 0;
+  background: transparent;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
-.tab {
-  appearance: none;
-  border: none;
-  background: none;
-  color: var(--text-muted);
-  font: inherit;
-  font-size: .86rem;
-  font-weight: var(--weight-emphasis);
-  padding: calc(.55 * var(--space)) calc(.7 * var(--space));
-  cursor: pointer;
-  border-bottom: 2px solid transparent;
+/* The page background, as behind the overview (see body::before): colour and
+   pattern, fixed in place. Opaque, so it hides the page below. */
+.dialog.page::backdrop {
+  background-color: var(--bg);
+  background-image: var(--pattern-image);
+  background-size: var(--pattern-size);
 }
 
-.tab:hover { color: var(--text); }
-
-.tab[aria-selected="true"] {
-  color: var(--text);
-  border-bottom-color: var(--primary);
+/* Background image with veil and blur. The layer extends beyond the viewport
+   by twice the blur radius, so the edges do not fade. */
+html[data-pattern="image"] .dialog.page::backdrop {
+  inset: calc(-2 * var(--bg-blur));
+  background-image: linear-gradient(var(--bg-veil), var(--bg-veil)), var(--pattern-image);
+  background-size: auto, cover;
+  background-position: center, center;
+  background-repeat: no-repeat, no-repeat;
+  filter: blur(var(--bg-blur));
 }
 
-.tab[hidden] { display: none; }
+/* Slides in from the right, as a new screen does. */
+.dialog.page[open] { animation: page-in .22s cubic-bezier(.2, .8, .2, 1); }
 
-/* ---------- settings: list beside the settings ---------- */
+@keyframes page-in {
+  from { transform: translateX(2.5rem); opacity: 0; }
+}
 
-/* Wider than other dialogs, to fit the tab list. */
-.dialog.settings-dialog { width: min(46rem, calc(100vw - 2rem)); }
+@media (prefers-reduced-motion: reduce) {
+  .dialog.page[open] { animation: none; }
+}
 
-.settings-dialog .dialog-head { padding-bottom: calc(.75 * var(--space)); }
+/* Pages cover the view, so it need not scroll behind them. */
+html:has(.dialog.page[open]) { overflow: hidden; }
 
-/* Gear icon in the heading, like the button that opens the dialog. */
-.settings-dialog .dialog-head h2 {
+/* Title bar: back button, title and an optional action. Like the app's title
+   bar, it uses the page background, so cards scrolling underneath are hidden. */
+.page-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
   display: flex;
   align-items: center;
   gap: calc(.5 * var(--space));
+  min-height: var(--topbar-row);
+  padding: env(safe-area-inset-top, 0px) var(--page-inset) 0;
+  /* The back button's icon lines up with the card's edge. */
+  padding-left: calc(var(--page-inset) - .5rem);
+  background-color: var(--bg);
+  background-image: var(--pattern-image);
+  background-size: var(--pattern-size);
+  background-attachment: fixed;
 }
 
-.settings-dialog .dialog-head h2 svg { width: 1.15em; height: 1.15em; flex: none; }
-
-.settings-layout {
-  display: grid;
-  grid-template-columns: 11rem minmax(0, 1fr);
-  border-block: 1px solid var(--border);
+/* A pane over a background image, as the app's title bar has. */
+html[data-pattern="image"] .page-head {
+  background: var(--topbar-bg);
+  backdrop-filter: blur(var(--surface-blur));
 }
 
-.settings-layout .tabs {
+.page-head h2 {
+  flex: 1;
+  min-width: 0;
+  font-size: 1.1rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.page-head .icon-button svg { width: 1.25rem; height: 1.25rem; }
+.page-head .icon-button:hover { background: var(--surface-2); }
+
+/* The content: one flat card on the page background, like the overview's. */
+.page-body {
+  margin: calc(.5 * var(--space)) var(--page-inset)
+    calc(3 * var(--space) + env(safe-area-inset-bottom, 0px));
+  padding: calc(1.25 * var(--space)) calc(1.15 * var(--space)) calc(.25 * var(--space));
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+html[data-pattern="image"] .page-body {
+  background: var(--surface-veil);
+  backdrop-filter: blur(var(--surface-blur));
+}
+
+/* The settings menu's rows reach to the card's edge. */
+/* ---------- settings menu ---------- */
+
+/* The settings menu has a card per section instead of one for the page. */
+.page-body:has(> .menu),
+html[data-pattern="image"] .page-body:has(> .menu) {
+  display: flex;
+  flex-direction: column;
+  gap: calc(.85 * var(--space));
+  padding: 0;
+  background: none;
+  backdrop-filter: none;
+}
+
+/* A section, each row opening its page. The rows reach to the card's edge. */
+.menu {
+  display: flex;
   flex-direction: column;
   gap: 2px;
-  padding: calc(.75 * var(--space)) calc(.6 * var(--space));
-  border-right: 1px solid var(--border);
+  padding: calc(.35 * var(--space));
+  border-radius: var(--radius);
+  background: var(--surface);
 }
 
-/* Tabs as list rows; the open one is filled. */
-.settings-layout .tab {
+html[data-pattern="image"] .menu,
+html[data-pattern="image"] .account {
+  background: var(--surface-veil);
+  backdrop-filter: blur(var(--surface-blur));
+}
+
+/* The signed-in user, a card above the sections. */
+.account {
+  display: flex;
+  align-items: center;
+  gap: var(--space);
+  padding: var(--space) calc(1.1 * var(--space));
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+/* Initials on the accent colour. */
+.account-avatar {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 50%;
+  background: var(--primary);
+  color: var(--primary-text);
+  font-size: 1.05rem;
+  font-weight: var(--weight-bold);
+  letter-spacing: .02em;
+}
+
+.account-text { min-width: 0; }
+
+.account-text p {
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-name { font-size: 1.1rem; font-weight: var(--weight-bold); }
+.account-detail { color: var(--text-muted); font-size: .88rem; }
+.account-text .account-groups { color: var(--text-faint); font-size: .8rem; margin-top: 2px; }
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space);
+  width: 100%;
   text-align: left;
-  border-bottom: none;
+  border: none;
+  background: transparent;
   border-radius: var(--radius-sm);
-  padding: calc(.55 * var(--space)) calc(.75 * var(--space));
+  padding: calc(.8 * var(--space)) calc(.75 * var(--space));
+  cursor: pointer;
   transition: background .12s ease;
 }
 
-/* Tab icon in the text colour. */
-.settings-layout .tab > span {
+.menu-item:hover { background: var(--surface-2); }
+
+.menu-icon,
+.menu-caret { display: flex; flex: none; }
+.menu-icon { color: var(--text-muted); }
+.menu-icon svg { width: 1.3rem; height: 1.3rem; }
+.menu-caret { color: var(--text-faint); }
+.menu-caret svg { width: 1.1rem; height: 1.1rem; }
+
+.menu-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.menu-title { font-weight: var(--weight-emphasis); }
+.menu-hint { font-size: .82rem; color: var(--text-muted); }
+
+/* ---------- facts ---------- */
+
+/* Label and value rows, e.g. on the version page. */
+.facts { margin: 0 0 calc(1.1 * var(--space)); }
+
+.facts > div {
   display: flex;
-  align-items: center;
-  gap: calc(.5 * var(--space));
+  justify-content: space-between;
+  gap: var(--space);
+  padding: calc(.6 * var(--space)) 0;
 }
 
-.settings-layout .tab svg { width: 1rem; height: 1rem; flex: none; }
-
-.settings-layout .tab:hover { background: var(--surface-2); }
-
-.settings-layout .tab[aria-selected="true"] { background: var(--surface-2); }
-
-/* Fixed height, so the dialog does not resize when switching tabs. */
-.settings-layout .dialog-body {
-  height: min(70dvh, 36rem);
-  max-height: none;
-  padding-top: calc(1.1 * var(--space));
+/* Dotted separators, like below the board's category headings. */
+.facts > div + div {
+  background: radial-gradient(circle, var(--border) 1px, transparent 1.3px)
+    left top / 10px 3px repeat-x;
 }
 
-/* On phones, the tab list becomes a strip above the settings. */
-@media (max-width: 40rem) {
-  .settings-layout { grid-template-columns: minmax(0, 1fr); }
+.facts dt { color: var(--text-muted); }
 
-  .settings-layout .tabs {
-    flex-direction: row;
-    overflow-x: auto;
-    padding: 0 calc(1.15 * var(--space));
-    border-right: none;
-    border-bottom: 1px solid var(--border);
-  }
-
-  .settings-layout .tab {
-    border-radius: 0;
-    border-bottom: 2px solid transparent;
-    white-space: nowrap;
-  }
-
-  .settings-layout .tab:hover { background: none; }
-
-  .settings-layout .tab[aria-selected="true"] {
-    background: none;
-    border-bottom-color: var(--primary);
-  }
+.facts dd {
+  margin: 0;
+  min-width: 0;
+  text-align: right;
+  overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
 }
 
 /* ---------- form fields ---------- */
@@ -196,11 +302,13 @@
 /* ---------- segmented control ---------- */
 
 .segmented {
+  /* Inset of the options, so the selected one stands clear of the edge. */
+  --segment-inset: 4px;
   display: flex;
-  gap: 2px;
+  gap: var(--segment-inset);
   background: var(--surface-2);
   border-radius: var(--radius-sm);
-  padding: 2px;
+  padding: var(--segment-inset);
 }
 
 .segmented.wrap { flex-wrap: wrap; }
@@ -221,8 +329,9 @@
   align-items: center;
   justify-content: center;
   gap: calc(.35 * var(--space));
-  padding: calc(.4 * var(--space)) calc(.6 * var(--space));
-  border-radius: calc(var(--radius-sm) - 2px);
+  padding: calc(.6 * var(--space)) calc(.5 * var(--space));
+  /* Rounded a little less than the container. */
+  border-radius: calc(var(--radius-sm) - var(--segment-inset) / 2);
   font-size: .85rem;
   color: var(--text-muted);
   cursor: pointer;
@@ -230,8 +339,8 @@
 }
 
 .segmented input:checked + span {
-  background: var(--surface);
-  color: var(--text);
+  background: var(--primary);
+  color: var(--primary-text);
   font-weight: var(--weight-semibold);
 }
 
@@ -325,19 +434,100 @@
 }
 
 /* Dropdown styled like the text fields. The native arrow follows color-scheme. */
+/* Dropdown styled like the category picker: flat, with its own chevron. */
 .select {
+  appearance: none;
   width: 100%;
   border: 1px solid transparent;
   border-radius: var(--radius-sm);
-  background: var(--bg);
-  padding: calc(.5 * var(--space)) calc(.6 * var(--space));
+  /* The chevron in a grey that reads in both themes, as an image cannot use
+     the colour tokens. */
+  background: var(--bg) no-repeat right calc(.6 * var(--space)) center / 1rem
+    url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="%238b909a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9.5 12 15.5l6-6"/></svg>');
+  padding: calc(.5 * var(--space)) calc(1.2 * var(--space) + 1rem) calc(.5 * var(--space))
+    calc(.6 * var(--space));
   cursor: pointer;
+  transition: background-color .12s ease;
 }
 
-.select:focus {
+.select:hover { background-color: var(--surface-2); }
+
+/* The ring only for the keyboard; a click opens the list instead. */
+.select:focus { outline: none; }
+
+.select:focus-visible {
   border-color: var(--primary);
-  outline: none;
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 22%, transparent);
+}
+
+/* Where the list can be styled too: a flat pane, the chosen option in the
+   accent colour. */
+@supports (appearance: base-select) {
+  .select,
+  .select::picker(select) { appearance: base-select; }
+
+  .select {
+    display: flex;
+    align-items: center;
+    background-image: none;
+    padding-right: calc(.6 * var(--space));
+  }
+
+  /* The chevron of the category picker, in the token colour. */
+  .select::picker-icon {
+    content: "";
+    width: 1rem;
+    height: 1rem;
+    margin-left: auto;
+    background: var(--text-faint);
+    mask: no-repeat center / contain
+      url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="%23000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9.5 12 15.5l6-6"/></svg>');
+    transition: rotate .15s ease;
+  }
+
+  .select:open::picker-icon { rotate: 180deg; }
+
+  .select:open { background-color: var(--surface-2); }
+
+  .select::picker(select) {
+    border: none;
+    border-radius: var(--radius-sm);
+    background: var(--surface-2);
+    color: var(--text);
+    padding: 4px;
+    margin-block: 4px;
+    box-shadow: none;
+    /* Below the field; above only if it does not fit there. The default
+       picks the side with more room, often above. */
+    position-try-order: normal;
+  }
+
+  .select option {
+    padding: calc(.45 * var(--space)) calc(.6 * var(--space));
+    border-radius: calc(var(--radius-sm) - 2px);
+    cursor: pointer;
+  }
+
+  /* The selection is shown by its colour. */
+  .select option::checkmark { display: none; }
+
+  .select option:hover,
+  .select option:focus-visible {
+    background: color-mix(in srgb, var(--primary) 18%, transparent);
+    outline: none;
+  }
+
+  .select option:checked {
+    background: var(--primary);
+    color: var(--primary-text);
+    font-weight: var(--weight-semibold);
+  }
+
+  .select option:disabled {
+    color: var(--text-faint);
+    background: none;
+    cursor: default;
+  }
 }
 
 /* Font preview: the field and each option use their own font. */
@@ -459,8 +649,6 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
-  max-height: 15rem;
-  overflow-y: auto;
   margin-bottom: calc(.85 * var(--space));
 }
 
@@ -481,7 +669,7 @@
 .picker-option.is-stale { color: var(--text-faint); font-style: italic; }
 
 .picker-option-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.picker-option-mark { display: flex; color: var(--text); }
+.picker-option-mark { display: flex; color: var(--primary); }
 .picker-option-mark svg { width: 1rem; height: 1rem; }
 
 /* Creating a category in the picker. */

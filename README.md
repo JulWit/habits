@@ -33,6 +33,15 @@ GOOS=linux GOARCH=arm64 go build -trimpath -ldflags="-s -w" -o dist/habits-linux
 `-trimpath` removes local paths, `-s -w` removes debug symbols (about a third
 of the size).
 
+The version page in the settings shows the commit and time `go build` stamps
+from a Git checkout. A release version is set at link time, as the image
+workflow does through the Dockerfile's `VERSION`, `REVISION` and `BUILD_TIME`
+arguments:
+
+```bash
+go build -ldflags="-X github.com/JulWit/habits/internal/httpapi.Version=1.2.3" -o habits .
+```
+
 ## Running
 
 ```bash
@@ -341,7 +350,7 @@ Settings are stored per user on the server and saved immediately.
 | `alignWeeks` | bool | Align the board to calendar weeks |
 | `showArchived` | bool | Show archived habits |
 | `reorderMode` | `drag`, `buttons` | Reorder by drag and drop or with arrow buttons |
-| `pattern` | `none`, `dots`, `grid`, `diagonal`, `cross`, `image` | Page background; `image` is the uploaded image |
+| `pattern` | `none`, `dots`, `grid`, `diagonal`, `cross`, `lines`, `checks`, `gradient`, `glow`, `image` | Page background; `image` is the uploaded image |
 | `bandColor` | `neutral` or a palette colour | Colour of the today highlight |
 | `bandOpacity` | 0–100 | Opacity of the today highlight in the header |
 | `bandFillOpacity` | 0–100 | Opacity of the today band in the cards |

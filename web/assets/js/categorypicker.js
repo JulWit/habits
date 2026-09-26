@@ -1,9 +1,10 @@
-// Category picker, opened as a nested dialog from the habit editor.
+// Category picker, a page opened on top of the habit editor.
 
 import { state } from "./state.js";
 import { icons, categoryIconBadge } from "./icons.js";
 import { errorText } from "./undo.js";
 import { t } from "./i18n.js";
+import { openPage, closePage } from "./pages.js";
 
 const NONE = "";
 
@@ -33,8 +34,7 @@ export function initCategoryPicker(handlers) {
   });
 
   createForm.addEventListener("submit", onCreate);
-  dialog.querySelector('[data-action="cancel"]').addEventListener("click", () => choose(null));
-  // Escape and backdrop clicks cancel.
+  // Leaving the page by its back button, Escape or the system back cancels.
   dialog.addEventListener("close", () => finish(null));
 }
 
@@ -48,7 +48,7 @@ export function openCategoryPicker(selected) {
   errorBox.hidden = true;
   nameInput.value = "";
   paintList();
-  dialog.showModal();
+  openPage(dialog);
   return new Promise((resolve) => {
     settle = resolve;
   });
@@ -110,7 +110,7 @@ async function onCreate(event) {
 
 function choose(value) {
   finish(value);
-  if (dialog.open) dialog.close();
+  closePage(dialog);
 }
 
 function finish(value) {

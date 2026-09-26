@@ -59,6 +59,12 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          # For the settings' version page: the release or branch, the commit
+          # and the build time the image labels carry too.
+          build-args: |
+            VERSION=${{ steps.meta.outputs.version }}
+            REVISION=${{ github.sha }}
+            BUILD_TIME=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
           # The module download and the standard library survive between two
           # runs this way.
           cache-from: type=gha

@@ -43,7 +43,7 @@ function knownDensity(density) {
 }
 
 /** Known background patterns, as in store.Patterns. */
-const PATTERNS = ["none", "dots", "grid", "diagonal", "cross", "image"];
+const PATTERNS = ["none", "dots", "grid", "diagonal", "cross", "lines", "checks", "gradient", "glow", "image"];
 const DEFAULT_PATTERN = "none";
 
 function knownPattern(pattern) {

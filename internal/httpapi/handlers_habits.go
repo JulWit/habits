@@ -46,6 +46,8 @@ type stateResponse struct {
 	BackgroundVersion string `json:"backgroundVersion"`
 	// ServerTimeZone is the server's default time zone (HABITS_TZ).
 	ServerTimeZone string `json:"serverTimeZone"`
+	// Build describes the running binary.
+	Build buildInfo `json:"build"`
 }
 
 // entryWindowDays is the default number of days of entries sent by
@@ -129,6 +131,7 @@ func (s *Server) handleState(w http.ResponseWriter, r *http.Request) {
 		EarliestEntry:     EarliestEntry,
 		BackgroundVersion: bgVersion,
 		ServerTimeZone:    s.cfg.Location.String(),
+		Build:             currentBuild(),
 	})
 }
 

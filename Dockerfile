@@ -17,8 +17,17 @@ COPY . .
 # Set by buildx, once per target platform.
 ARG TARGETOS
 ARG TARGETARCH
+# Shown on the settings' version page. Passed by the workflow, as .git is not
+# in the build context; empty for a local build.
+ARG VERSION=""
+ARG REVISION=""
+ARG BUILD_TIME=""
 RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH \
-    go build -trimpath -ldflags="-s -w" -o /out/habits .
+    go build -trimpath -o /out/habits \
+    -ldflags="-s -w \
+      -X github.com/JulWit/habits/internal/httpapi.Version=$VERSION \
+      -X github.com/JulWit/habits/internal/httpapi.Revision=$REVISION \
+      -X github.com/JulWit/habits/internal/httpapi.BuildTime=$BUILD_TIME" .
 
 # The data directory is created here because scratch has no mkdir and
 # store.Open does not create the path itself.

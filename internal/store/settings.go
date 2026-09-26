@@ -104,7 +104,7 @@ func ValidBandColor(c string) bool {
 
 // Patterns are the valid page backgrounds. "image" is the uploaded background
 // image.
-var Patterns = []string{"none", "dots", "grid", "diagonal", "cross", "image"}
+var Patterns = []string{"none", "dots", "grid", "diagonal", "cross", "lines", "checks", "gradient", "glow", "image"}
 
 // ValidPattern reports whether p is one of Patterns.
 func ValidPattern(p string) bool {

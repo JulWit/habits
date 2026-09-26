@@ -1,4 +1,4 @@
-// Settings dialog. Every change is saved immediately: the state is updated
+// Settings pages. Every change is saved immediately: the state is updated
 // first and restored if the server rejects the change.
 
 import { api } from "./api.js";
@@ -6,6 +6,7 @@ import { state, replaceState, subscribe } from "./state.js";
 import { icons, colorLabel } from "./icons.js";
 import { errorText, toast } from "./undo.js";
 import { t, locale, userTimeZone } from "./i18n.js";
+import { openPage, topPage } from "./pages.js";
 
 let dialog;
 let themeInputs;
@@ -25,7 +26,7 @@ let daysHint;
 let archivedInput;
 let alignInput;
 let alignHint;
-let archiveField;
+let archiveItem;
 let archiveHint;
 let errorBox;
 let bgFile;
@@ -56,9 +57,9 @@ export function initSettings(handlers = {}) {
   if (handlers.reload) reload = handlers.reload;
 
   dialog = document.getElementById("settings-dialog");
-  themeInputs = [...dialog.querySelectorAll('input[name="settings-theme"]')];
+  themeInputs = [...document.querySelectorAll('input[name="settings-theme"]')];
   fontSelect = document.getElementById("settings-font");
-  densityInputs = [...dialog.querySelectorAll('input[name="settings-density"]')];
+  densityInputs = [...document.querySelectorAll('input[name="settings-density"]')];
   patternSelect = document.getElementById("settings-pattern");
   bandChoices = document.getElementById("band-choices");
   bandOpacity = document.getElementById("band-opacity");
@@ -66,14 +67,14 @@ export function initSettings(handlers = {}) {
   bandFillOpacity = document.getElementById("band-fill-opacity");
   bandFillOpacityOut = document.getElementById("band-fill-opacity-out");
   showBandInput = document.getElementById("settings-show-band");
-  reorderInputs = [...dialog.querySelectorAll('input[name="settings-reorder"]')];
+  reorderInputs = [...document.querySelectorAll('input[name="settings-reorder"]')];
   reorderHint = document.getElementById("settings-reorder-hint");
-  dayInputs = [...dialog.querySelectorAll('input[name="settings-days"]')];
+  dayInputs = [...document.querySelectorAll('input[name="settings-days"]')];
   daysHint = document.getElementById("settings-days-hint");
   archivedInput = document.getElementById("settings-archived");
   alignInput = document.getElementById("settings-align-weeks");
   alignHint = document.getElementById("settings-align-hint");
-  archiveField = document.getElementById("settings-archive-field");
+  archiveItem = document.getElementById("settings-archive-item");
   archiveHint = document.getElementById("settings-archive-hint");
   errorBox = document.getElementById("settings-error");
   bgFile = document.getElementById("bg-file");
@@ -99,11 +100,8 @@ export function initSettings(handlers = {}) {
   openButton.addEventListener("click", () => {
     errorBox.hidden = true;
     paint();
-    dialog.showModal();
+    openPage(dialog);
   });
-
-  dialog.querySelector('[data-action="close"]').addEventListener("click", () => dialog.close());
-  initTabs();
 
   for (const input of themeInputs) {
     input.addEventListener("change", () => saveSetting({ theme: input.value }));
@@ -234,19 +232,82 @@ function paint() {
 
   paintBackground();
   paintRegion();
+  paintAccount();
+  paintVersion();
 
   const archived = state.archivedCount ?? 0;
   const on = state.settings?.showArchived ?? false;
   archivedInput.checked = on;
   // Hidden if there are no archived habits and the switch is off.
-  archiveField.hidden = archived === 0 && !on;
-  // Hide the tab if its section is hidden.
-  const archiveTab = document.getElementById("tab-archive");
-  archiveTab.hidden = archiveField.hidden;
-  if (archiveField.hidden && openTab === "tab-archive") showTab("tab-look");
+  archiveItem.hidden = archived === 0 && !on;
   archiveHint.textContent = archived === 1
     ? t("1 habit is archived.")
     : t("{n} habits are archived.", { n: archived });
+}
+
+// ---------- account ----------
+
+/** Fills the card of the signed-in user from state.user. */
+function paintAccount() {
+  const user = state.user ?? {};
+  // Without a display name (e.g. single-user mode), the ID stands in.
+  const name = user.name || user.id || t("Unknown");
+  // The ID is only worth a line if the name does not show it already.
+  const detail = user.email || (user.id !== name ? user.id : "");
+  const groups = user.groups ?? [];
+
+  document.getElementById("account-avatar").textContent = initials(name);
+  document.getElementById("account-name").textContent = name;
+  const detailEl = document.getElementById("account-detail");
+  detailEl.textContent = detail;
+  detailEl.hidden = !detail;
+  const groupsEl = document.getElementById("account-groups");
+  groupsEl.textContent = t("Groups: {list}", { list: groups.join(", ") });
+  groupsEl.hidden = groups.length === 0;
+}
+
+/** Up to two initials: first and last word, or the first letter alone. */
+function initials(name) {
+  const words = name.split(/[\s._@-]+/).filter(Boolean);
+  const letters = words.length > 1 ? [words[0], words.at(-1)] : words.slice(0, 1);
+  return letters.map((w) => [...w][0].toUpperCase()).join("");
+}
+
+// ---------- version ----------
+
+/** Fills the version page and the version row's hint from state.build. */
+function paintVersion() {
+  const build = state.build ?? {};
+  const version = build.version || t("Development build");
+  // Twelve characters identify a commit well enough.
+  const revision = build.revision
+    ? build.revision.slice(0, 12) + (build.modified ? ` (${t("modified")})` : "")
+    : t("Unknown");
+
+  document.getElementById("settings-version-hint").textContent = version;
+
+  const facts = [
+    [t("Version"), version],
+    [t("Commit"), revision],
+    [t("Built"), formatBuildTime(build.time)],
+    [t("Go version"), build.goVersion || t("Unknown")],
+  ];
+  document.getElementById("version-facts").replaceChildren(...facts.map(([label, value]) => {
+    const row = document.createElement("div");
+    const dt = document.createElement("dt");
+    const dd = document.createElement("dd");
+    dt.textContent = label;
+    dd.textContent = value;
+    row.append(dt, dd);
+    return row;
+  }));
+}
+
+/** Formats the RFC 3339 build time in the user's language, or "Unknown". */
+function formatBuildTime(time) {
+  const date = time ? new Date(time) : null;
+  if (!date || Number.isNaN(date.getTime())) return t("Unknown");
+  return date.toLocaleString(locale, { dateStyle: "medium", timeStyle: "short" });
 }
 
 // ---------- region & language ----------
@@ -348,44 +409,6 @@ function timeZoneText() {
 async function saveTimeZone(zone) {
   if (await saveSetting({ timeZone: zone })) await reload();
 }
-
-/** The open settings tab, kept until the page is reloaded. */
-let openTab = "tab-look";
-
-function initTabs() {
-  const tabs = [...dialog.querySelectorAll('[role="tab"]')];
-
-  const show = (id) => {
-    openTab = id;
-    for (const tab of tabs) {
-      const selected = tab.id === id;
-      tab.setAttribute("aria-selected", String(selected));
-      // Only the selected tab is focusable; arrow keys switch tabs.
-      tab.tabIndex = selected ? 0 : -1;
-      document.getElementById(tab.getAttribute("aria-controls")).hidden = !selected;
-    }
-  };
-
-  for (const [index, tab] of tabs.entries()) {
-    tab.addEventListener("click", () => show(tab.id));
-    tab.addEventListener("keydown", (event) => {
-      // Both arrow directions work in both layouts.
-      const step = event.key === "ArrowDown" || event.key === "ArrowRight" ? 1
-        : event.key === "ArrowUp" || event.key === "ArrowLeft" ? -1 : 0;
-      if (step === 0) return;
-      event.preventDefault();
-      const next = tabs[(index + step + tabs.length) % tabs.length];
-      show(next.id);
-      next.focus();
-    });
-  }
-
-  showTab = show;
-  show(openTab);
-}
-
-/** Opens a tab. Set by initTabs. */
-let showTab = () => {};
 
 /** Band colour for a grey today band, as store.NeutralBand. */
 const NEUTRAL_BAND = "neutral";
@@ -504,9 +527,11 @@ async function removeBackground() {
   }
 }
 
-/** Shows an error inside the dialog, since modal dialogs cover the toasts. */
+/** Shows an error in the open settings page, since pages cover the toasts. */
 function report(message) {
-  if (dialog?.open) {
+  const page = topPage();
+  if (page?.id.startsWith("settings-")) {
+    page.querySelector(".page-body").append(errorBox);
     errorBox.textContent = message;
     errorBox.hidden = false;
     return;

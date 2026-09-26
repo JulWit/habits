@@ -21,7 +21,7 @@ import (
 // The icon itself, in the 24x24 coordinates the title bar's mark is drawn in -
 // icon.svg shows the same shape at the 0.72 its tile leaves it.
 var (
-	background = color.NRGBA{R: 0x1b, G: 0x1d, B: 0x21, A: 0xff}
+	background = color.NRGBA{R: 0x33, G: 0x36, B: 0x3d, A: 0xff}
 	ink        = color.NRGBA{R: 0xff, G: 0xff, B: 0xff, A: 0xff}
 	check      = [][2]float64{{8, 12.3}, {10.9, 15.2}, {16.1, 9.2}}
 	ringC      = [2]float64{12, 12}

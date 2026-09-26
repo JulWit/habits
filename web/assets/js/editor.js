@@ -8,7 +8,7 @@ import { openCategoryPicker } from "./categorypicker.js";
 import { icons, buildIconChoices, markIconChoice, categoryIconBadge, colorLabel } from "./icons.js";
 import * as H from "./habit.js";
 import { t } from "./i18n.js";
-import { openPage, closePage } from "./pages.js";
+import { openPage, closePage, guardPage } from "./pages.js";
 
 let dialog;
 let form;
@@ -20,6 +20,8 @@ let selectedColor = null;
 let selectedIcon = "";
 let selectedCategory = "";
 let onSubmit = null;
+/** The input as opened, to detect unsaved changes. */
+let initial = "";
 
 export function initEditor() {
   dialog = document.getElementById("editor");
@@ -39,6 +41,7 @@ export function initEditor() {
     });
   }
   form.addEventListener("submit", handleSubmit);
+  guardPage(dialog, () => JSON.stringify(collect()) !== initial);
 
   categoryButton.addEventListener("click", async () => {
     // null means the picker was cancelled.
@@ -95,7 +98,7 @@ function buildSwatches() {
       const b = document.createElement("button");
       b.type = "button";
       b.className = "swatch";
-      b.style.background = color;
+      b.style.setProperty("--swatch", color);
       b.dataset.color = color;
       b.setAttribute("role", "radio");
       b.setAttribute("aria-label", t("Colour {color}", { color: colorLabel(color) }));
@@ -207,6 +210,7 @@ export function openEditor(habit, handler) {
   selectColor(habit?.color ?? state.colors[0]);
   selectIcon(habit?.icon ?? "");
   syncVisibility();
+  initial = JSON.stringify(collect());
   openPage(dialog);
   f.name.focus();
 }
@@ -280,7 +284,7 @@ async function handleSubmit(event) {
   submitButton.disabled = true;
   try {
     await onSubmit(input);
-    closePage(dialog);
+    closePage(dialog, { force: true });
   } catch (err) {
     showError(errorText(err));
   } finally {

@@ -4,7 +4,7 @@
 import { state, categoryById } from "./state.js";
 import { errorText } from "./undo.js";
 import { t } from "./i18n.js";
-import { openPage, closePage } from "./pages.js";
+import { openPage, closePage, guardPage } from "./pages.js";
 import { buildIconChoices, markIconChoice, colorLabel } from "./icons.js";
 
 let dialog;
@@ -16,6 +16,8 @@ let iconHost;
 let selectedColor = "";
 let selectedIcon = "";
 let onSubmit = null;
+/** The input as opened, to detect unsaved changes. */
+let initial = "";
 
 export function initCategoryEditor() {
   dialog = document.getElementById("category-editor");
@@ -26,6 +28,7 @@ export function initCategoryEditor() {
   iconHost = document.getElementById("category-icon-choices");
 
   form.addEventListener("submit", handleSubmit);
+  guardPage(dialog, () => JSON.stringify(collect()) !== initial);
   // Clear the error message on any input.
   for (const type of ["input", "change", "click"]) {
     form.addEventListener(type, (event) => {
@@ -53,6 +56,7 @@ export function openCategoryEditor(id, handler) {
   buildIconChoices(iconHost, state.icons, selectIcon);
   selectColor(category.color ?? "");
   selectIcon(category.icon ?? "");
+  initial = JSON.stringify(collect());
 
   openPage(dialog);
   form.elements.name.focus();
@@ -66,7 +70,7 @@ function buildSwatches() {
       const b = document.createElement("button");
       b.type = "button";
       b.className = color ? "swatch" : "swatch is-none";
-      if (color) b.style.background = color;
+      if (color) b.style.setProperty("--swatch", color);
       b.dataset.color = color;
       b.setAttribute("role", "radio");
       b.setAttribute("aria-label",
@@ -94,6 +98,16 @@ function selectIcon(name) {
   markIconChoice(iconHost, name);
 }
 
+/** Returns the input of the form. */
+function collect() {
+  return {
+    name: form.elements.name.value.trim(),
+    color: selectedColor,
+    icon: selectedIcon,
+    showProgress: form.elements.showProgress.checked,
+  };
+}
+
 async function handleSubmit(event) {
   // Keep the dialog open until the server accepts the input.
   event.preventDefault();
@@ -101,13 +115,8 @@ async function handleSubmit(event) {
 
   submitButton.disabled = true;
   try {
-    await onSubmit({
-      name: form.elements.name.value.trim(),
-      color: selectedColor,
-      icon: selectedIcon,
-      showProgress: form.elements.showProgress.checked,
-    });
-    closePage(dialog);
+    await onSubmit(collect());
+    closePage(dialog, { force: true });
   } catch (err) {
     errorBox.textContent = errorText(err);
     errorBox.hidden = false;

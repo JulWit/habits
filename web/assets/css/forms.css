@@ -32,7 +32,8 @@
    itself scrolls; the title bar stays at the top. Like the overview, flat
    cards lie on the page background, which the backdrop paints. */
 .dialog.page {
-  --page-width: 42rem;
+  /* A readable column for forms, but never wider than the overview's cards. */
+  --page-width: min(42rem, calc(var(--board-width) - var(--tools-outset)));
   /* Head and body share the column, however wide the window. */
   --page-inset: max(var(--gutter), calc((100% - var(--page-width)) / 2));
   width: 100%;
@@ -72,8 +73,16 @@ html[data-pattern="image"] .dialog.page::backdrop {
   from { transform: translateX(2.5rem); opacity: 0; }
 }
 
+/* The editors are full-screen dialogs, which rise from below. */
+.dialog.page.is-sheet[open] { animation: sheet-in .26s cubic-bezier(.2, .8, .2, 1); }
+
+@keyframes sheet-in {
+  from { transform: translateY(3rem); opacity: 0; }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .dialog.page[open] { animation: none; }
+  .dialog.page[open],
+  .dialog.page.is-sheet[open] { animation: none; }
 }
 
 /* Pages cover the view, so it need not scroll behind them. */
@@ -358,16 +367,20 @@ html[data-pattern="image"] .account {
   border-radius: 50%;
   border: 2px solid transparent;
   cursor: pointer;
-  padding: 0;
-  background-clip: content-box;
+  /* Room between the colour and the selection ring; set on touch screens. */
+  padding: var(--swatch-pad, 0);
+  /* The colour is set by the script. */
+  background: var(--swatch, transparent) content-box;
 }
 
-/* "No colour": a struck-through empty ring. */
+/* "No colour": a struck-through empty ring, drawn in the content box, so it
+   has the size of the colour discs. */
 .swatch.is-none {
   background:
     linear-gradient(to top right, transparent 46%, var(--text-muted) 46% 54%, transparent 54%)
+    content-box,
+    radial-gradient(closest-side, transparent calc(100% - 1.5px), var(--text-muted) calc(100% - 1px))
     content-box;
-  box-shadow: inset 0 0 0 1.5px var(--text-muted);
 }
 
 .swatch[aria-checked="true"] {
@@ -615,10 +628,6 @@ html[data-pattern="image"] .account {
   .brand { font-size: 1.05rem; }
   .field.row,
   .field-row { flex-direction: column; gap: var(--space); }
-
-  /* Icon-only buttons; each keeps its aria-label. */
-  .detail-head .button .label { display: none; }
-  .detail-head .button { padding-inline: calc(.6 * var(--space)); }
 }
 
 /* ---------- category picker ---------- */
@@ -779,3 +788,96 @@ html[data-pattern="image"] .account {
 }
 
 .knob-group + .slider { margin-top: calc(.5 * var(--space)); }
+
+/* ---------- pressed state ----------
+
+   Touch has no hover, so rows and fields darken one step beyond their hover
+   fill while pressed. Here, after the hover rules of all three files. */
+.menu-item:active,
+.picker:active,
+.picker-option:active,
+.search-option:active,
+.cat-habit:active,
+.block-link:active,
+.habit-cell .habit-main:active,
+.cell:active:not(:disabled) { background: var(--border); }
+
+/* The today column keeps its band colour, a step darker than on hover. */
+.cell.is-today:active:not(:disabled) {
+  background: color-mix(in srgb, var(--band-shown) 76%, var(--text));
+}
+
+html[data-today-band="off"] .cell.is-today:active:not(:disabled) { background: var(--border); }
+
+/* ---------- touch screens ----------
+
+   Every control is at least 48px in both directions, the larger of Apple's
+   44pt and Material's 48dp. The mouse keeps the compact sizes. Not enlarged:
+   the day cells, whose width comes from the board layout (they span the full
+   column and row), and the reorder handles, whose column overview.js sizes. */
+@media (pointer: coarse) {
+  :root {
+    --hit: 48px;
+    /* The title bar grows with its buttons. After the narrow-screen rule. */
+    --topbar-row: calc(var(--hit) + .85 * var(--space));
+  }
+
+  .icon-button:not(.habit-tools *, .block-tools *),
+  .button {
+    min-width: var(--hit);
+    min-height: var(--hit);
+  }
+
+  /* The buttons bring their own room. */
+  .topbar-actions { gap: calc(.15 * var(--space)); }
+  html[data-tight] .day-nav,
+  .day-nav { gap: 0; }
+  html[data-tight] .day-nav .icon-button svg,
+  .day-nav .icon-button svg { width: 1.2rem; height: 1.2rem; }
+
+  .menu-item,
+  .picker,
+  .picker-option,
+  .search-option,
+  .cat-habit,
+  .block-link,
+  .select,
+  .switch,
+  .overflow-item,
+  .field input,
+  .picker-create input { min-height: var(--hit); }
+
+  /* The segment fills the control's inset too, so the whole height counts. */
+  .segmented label { position: relative; }
+
+  .segmented label::after {
+    content: "";
+    position: absolute;
+    inset: calc(-1 * var(--segment-inset)) 0;
+  }
+
+  .segmented span { min-height: calc(var(--hit) - 2 * var(--segment-inset)); }
+
+  /* A ring of room around each colour; the selection ring lies on it. */
+  .swatches { gap: 0; }
+  .swatch { --swatch-pad: 5px; width: var(--hit); height: var(--hit); }
+
+  .icon-choices { grid-template-columns: repeat(auto-fill, minmax(var(--hit), 1fr)); }
+
+  /* Seven equal columns, shrinking slightly on very narrow cards instead of
+     wrapping a day into a second row. */
+  .weekdays {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, var(--hit)));
+    gap: 2px;
+  }
+
+  .weekday { width: auto; height: auto; aspect-ratio: 1; }
+
+  /* iOS zooms into fields below 16px when they are focused. */
+  .field input,
+  .field textarea,
+  .select,
+  .picker-create input,
+  #search-input { font-size: max(16px, 1rem); }
+}

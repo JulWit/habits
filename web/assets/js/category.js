@@ -5,7 +5,8 @@ import { addDays, formatDayMonth } from "./dates.js";
 import { t } from "./i18n.js";
 import { state } from "./state.js";
 import * as H from "./habit.js";
-import { icons, habitIconBadge, categoryIconBadge } from "./icons.js";
+import { habitIconBadge, categoryIconBadge } from "./icons.js";
+import { appBar } from "./appbar.js";
 import { openCategoryEditor } from "./categoryeditor.js";
 
 let root;
@@ -44,30 +45,14 @@ function habitsOf(id) {
   return state.habits.filter((h) => h.categoryId === id && !h.archivedAt);
 }
 
+/** The view's title bar: back, name and habit count, edit, and delete in the menu. */
 function header(category, habits) {
-  const head = document.createElement("div");
-  head.className = "detail-head";
-  head.innerHTML = `
-    <button class="icon-button is-back" type="button" data-action="back" aria-label="${t("Back")}">${icons.arrowLeft}</button>
-    <div class="detail-title">
-      <h2><span class="name"></span></h2>
-      <span class="sub"></span>
-    </div>
-    <div class="topbar-actions">
-      <button type="button" class="button" data-action="edit" aria-label="${t("Edit")}">
-        ${icons.edit}<span class="label">${t("Edit")}</span>
-      </button>
-      <button type="button" class="button danger" data-action="delete" aria-label="${t("Delete")}">
-        ${icons.trash}<span class="label">${t("Delete")}</span>
-      </button>
-    </div>`;
-  head.querySelector(".name").textContent = category.name;
-  const badge = categoryIconBadge(category, "habit-icon is-large");
-  if (badge) head.querySelector("h2").prepend(badge);
-  head.querySelector(".sub").textContent = habits.length === 1
-    ? t("1 habit")
-    : t("{n} habits", { n: habits.length });
-  return head;
+  return appBar({
+    title: category.name,
+    sub: habits.length === 1 ? t("1 habit") : t("{n} habits", { n: habits.length }),
+    badge: categoryIconBadge(category, "habit-icon"),
+    menu: [{ action: "delete", label: t("Delete"), icon: "trash", danger: true }],
+  });
 }
 
 /**

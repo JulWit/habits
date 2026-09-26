@@ -20,7 +20,9 @@
   /* Not pure white, to avoid halation on dark backgrounds. */
   --text: light-dark(#1b1d21, #ececec);
   --text-muted: light-dark(#6b7280, #a3a3a3);
-  --text-faint: light-dark(#9aa1ad, #7a7a7a);
+  /* At least 4.5:1 on the surfaces (WCAG AA), barely lighter than
+     --text-muted on light, darker on dark. */
+  --text-faint: light-dark(#6f7682, #8c8c8c);
   /* Accent for buttons, selections, checkboxes and the focus ring. Neutral,
      unless an accent colour is chosen (see the today band below). */
   --primary: light-dark(#24262b, #e3e3e3);
@@ -29,8 +31,13 @@
   --primary-hover: light-dark(#15161a, #f4f4f4);
   /* The red of the habit colours. */
   --danger: #dc2626;
+  /* The red as text on the grey panes (menus), at 4.5:1. */
+  --danger-text: light-dark(#b91c1c, #f87171);
   /* Completed day or category. */
   --done: light-dark(#16a34a, #22c55e);
+  /* Tooltips, inverted: dark on light, light on dark. */
+  --tooltip-bg: light-dark(#24262b, #e3e3e3);
+  --tooltip-text: light-dark(#ffffff, #121212);
   /* Neutral colour of the today band. */
   --today-neutral: light-dark(#c2c7d1, #424242);
   --today: var(--today-neutral);
@@ -182,12 +189,26 @@ html[data-band]:not([data-band="neutral"]) {
    the neutral one keeps the neutral --primary. */
 html[data-band]:not([data-band="neutral"]) {
   --primary: var(--band-ink, light-dark(#24262b, #e3e3e3));
+  /* Replaced below where relative colours work. */
   --primary-text: #ffffff;
   --primary-hover: color-mix(in srgb, var(--primary) 85%, #000);
 }
 
 /* White text is too faint on yellow. */
 html[data-band="#eab308"] { --primary-text: #1b1d21; }
+
+/* Where relative colours work, the text follows the accent: white on dark
+   colours, near-black on light ones. The threshold (OKLCH lightness) is where
+   near-black starts to reach more contrast than white; above it are orange,
+   yellow, lime, green and teal. Behind @supports, as a custom property holding
+   an unsupported colour would make every use of it invalid. */
+:root { --ink-flip: .595; }
+
+@supports (color: oklch(from red l c h)) {
+  html[data-band]:not([data-band="neutral"]) {
+    --primary-text: oklch(from var(--primary) clamp(.2, calc((var(--ink-flip) - l) * 1000), 1) 0 0);
+  }
+}
 
 /* ---------- background patterns ----------
 
@@ -407,14 +428,20 @@ html, body {
   padding: 0;
   color: var(--text);
   font-family: var(--font);
-  font-size: 15px;
   line-height: var(--leading);
   -webkit-text-size-adjust: 100%;
 }
 
 /* The page colour is set on <html>, as a body background would cover the
-   body::before pattern layer. */
-html { background-color: var(--bg); }
+   body::before pattern layer. The root font size is 15px at the browser's
+   default of 16px, and follows a larger or smaller text size set there. */
+html {
+  background-color: var(--bg);
+  font-size: 93.75%;
+  /* Room for the scrollbar also on short views, so switching between views
+     does not shift the centred content. */
+  scrollbar-gutter: stable;
+}
 
 body {
   min-height: 100dvh;
@@ -469,10 +496,11 @@ button, input, textarea, select { font: inherit; color: inherit; }
   padding: 0 var(--gutter);
 }
 
-/* The detail view is narrower. */
-html.route-detail .topbar-inner,
-html.route-detail .view {
-  max-width: 82rem;
+/* The habit and category views are as wide as the overview's cards (the board
+   without its reorder column), so switching views keeps the width. */
+#view-detail,
+#view-category {
+  max-width: calc(var(--board-width) - var(--tools-outset) + 2 * var(--gutter));
 }
 
 /* Brand and buttons. */
@@ -557,6 +585,10 @@ html.route-detail .view {
 
 .button.ghost:hover { background: var(--surface-2); color: var(--text); }
 
+/* Pressed, one step beyond hover. */
+.button:active:not(.primary, .ghost) { background: var(--border-strong); }
+.button.ghost:active { background: var(--border); }
+
 .button.danger { color: var(--danger); }
 .button.danger:hover { background: color-mix(in srgb, var(--danger) 12%, var(--surface)); }
 
@@ -591,6 +623,12 @@ html.route-detail .view {
 }
 
 .icon-button:hover { background: var(--surface-2); }
+
+/* Pressed, one step beyond hover, so a tap shows (touch has no hover). Not on
+   pressed toggles, and not on the reorder handles, which have their own. */
+.icon-button:active:not(:disabled):not([aria-pressed="true"], .habit-tools *, .block-tools *) {
+  background: var(--border);
+}
 
 /* SVG icons need an explicit size. */
 .icon-button svg { width: 1.15rem; height: 1.15rem; display: block; }

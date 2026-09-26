@@ -16,6 +16,7 @@ import { initSearch, openSearch } from "./search.js";
 import * as actions from "./actions.js";
 import { paintIcons } from "./icons.js";
 import { translateDocument } from "./i18n.js";
+import { initTooltips } from "./tooltip.js";
 
 // Theme labels.
 const THEME_LABEL = { system: "System", light: "Light", dark: "Dark" };
@@ -66,9 +67,9 @@ const categoryView = document.getElementById("view-category");
 const styleguideView = document.getElementById("view-styleguide");
 
 const handlers = {
-  openHabit: (id) => { location.hash = `#/habit/${id}`; },
+  openHabit: (id) => openView(`#/habit/${id}`),
   closeHabit: goHome,
-  openCategory: (id) => { location.hash = `#/category/${id}`; },
+  openCategory: (id) => openView(`#/category/${id}`),
   closeCategory: goHome,
   createHabit: actions.createHabit,
   editHabit: actions.editHabit,
@@ -143,6 +144,7 @@ async function main() {
   initServiceWorker();
   initSettings({ effectiveDays: currentDays, reload: refresh });
   initShortcuts();
+  initTooltips();
 
   document.getElementById("add-habit").addEventListener("click", actions.createHabit);
 
@@ -226,10 +228,27 @@ function currentCategoryId() {
 }
 
 /**
- * Returns to the overview. Uses pushState, as setting location.hash to ""
- * leaves a "#" and does not reliably fire hashchange.
+ * Opens a habit or category view as a new history entry, marked as opened by
+ * the app, so that its back button can return through the history.
+ */
+function openView(hash) {
+  history.pushState({ view: true }, "", hash);
+  syncRoute();
+}
+
+/**
+ * Leaves the current view. A view opened in the app goes back one entry, as
+ * the system back button does, so the next back does not return to it; this
+ * also returns from a habit to the category it was opened from. Otherwise
+ * (a view opened by its URL) it goes to the overview. Uses pushState, as
+ * setting location.hash to "" leaves a "#" and does not reliably fire
+ * hashchange.
  */
 function goHome() {
+  if (history.state?.view) {
+    history.back();
+    return;
+  }
   if (location.hash) history.pushState(null, "", location.pathname + location.search);
   syncRoute();
 }
@@ -370,7 +389,7 @@ function initShortcuts() {
     } else if (((key === "/" && !mod) || (mod && key === "k")) && !inField && !inDialog) {
       event.preventDefault();
       openSearch();
-    } else if (event.key === "Escape" && !inDialog && currentHabitId()) {
+    } else if (event.key === "Escape" && !inDialog && (currentHabitId() || currentCategoryId())) {
       goHome();
     }
   });

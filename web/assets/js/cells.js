@@ -76,7 +76,11 @@ export function dayEntry(habit, iso) {
   btn.dataset.date = iso;
   btn.dataset.role = "cell";
   btn.style.setProperty("--habit-color", habit.color);
-  btn.setAttribute("aria-label", cellLabel(habit, iso, value, scheduled, streakDays));
+  const label = cellLabel(habit, iso, value, scheduled, streakDays);
+  btn.setAttribute("aria-label", label);
+  // The same text as a tooltip, so the state is not told by the mark's colour
+  // and pattern alone (e.g. hatched: planned ahead).
+  btn.title = label;
   // Unscheduled days are disabled unless they have a value to clear.
   if (!H.acceptsEntry(habit, iso) && value === 0) btn.disabled = true;
 

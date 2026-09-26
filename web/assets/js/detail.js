@@ -7,7 +7,9 @@ import {
 import { t, locale, userTimeZone } from "./i18n.js";
 import { state } from "./state.js";
 import * as H from "./habit.js";
-import { icons, habitIconBadge } from "./icons.js";
+import { habitIconBadge } from "./icons.js";
+import { appBar } from "./appbar.js";
+import { showTooltip, hideTooltip } from "./tooltip.js";
 
 let root;
 let actions;
@@ -53,59 +55,33 @@ function showToday(panel) {
   scroller.scrollLeft += at.left - box.left - (box.width - at.width) / 2;
 }
 
-function header(habit) {
-  const wrap = document.createElement("div");
-
-  const head = document.createElement("div");
-  head.className = "detail-head";
-  head.innerHTML = `
-    <button class="icon-button is-back" type="button" data-action="back" aria-label="${t("Back")}">${icons.arrowLeft}</button>
-    <div class="detail-title">
-      <h2><span class="dot"></span><span class="name"></span></h2>
-      <span class="sub"></span>
-    </div>`;
-  head.querySelector(".name").textContent = habit.name;
-  const badge = habitIconBadge(habit, "habit-icon is-large");
-  if (badge) head.querySelector(".dot").replaceWith(badge);
-  // Frequency, then target, as on the board.
-  const target = H.describeTarget(habit);
-  head.querySelector(".sub").textContent =
-    H.describeFrequency(habit) + (target ? ` · ${target}` : "") +
-    (habit.archivedAt ? ` · ${t("archived")}` : "");
-
-  const archived = habit.archivedAt != null;
-  const buttons = document.createElement("div");
-  buttons.className = "topbar-actions";
-  buttons.append(
-    actionButton("edit", t("Edit"), icons.edit),
-    archived
-      ? actionButton("archive", t("Reactivate"), icons.unarchive)
-      : actionButton("archive", t("Archive", { context: "verb" }), icons.archive),
-    actionButton("delete", t("Delete"), icons.trash, "danger"),
-  );
-  head.append(buttons);
-  wrap.append(head);
-
-  return wrap;
-}
-
 /**
- * Creates a header button with icon and caption. The aria-label is needed as
- * the caption is hidden on narrow screens.
+ * The view's title bar: back, name with frequency and target, edit, and the
+ * overflow menu with archive and delete.
  */
-function actionButton(action, label, icon, variant = "") {
-  const b = document.createElement("button");
-  b.type = "button";
-  b.className = variant ? `button ${variant}` : "button";
-  b.dataset.action = action;
-  b.setAttribute("aria-label", label);
-  b.innerHTML = icon;
+function header(habit) {
+  const archived = habit.archivedAt != null;
+  // Frequency, then target, as on the board. Empty parts are left out.
+  const sub = [H.describeFrequency(habit), H.describeTarget(habit), archived ? t("archived") : ""];
 
-  const text = document.createElement("span");
-  text.className = "label";
-  text.textContent = label;
-  b.append(text);
-  return b;
+  // Without an icon, a dot in the habit's colour.
+  let badge = habitIconBadge(habit, "habit-icon");
+  if (!badge) {
+    badge = document.createElement("span");
+    badge.className = "dot";
+  }
+
+  return appBar({
+    title: habit.name,
+    sub,
+    badge,
+    menu: [
+      archived
+        ? { action: "archive", label: t("Reactivate"), icon: "unarchive" }
+        : { action: "archive", label: t("Archive", { context: "verb" }), icon: "archive" },
+      { action: "delete", label: t("Delete"), icon: "trash", danger: true },
+    ],
+  });
 }
 
 /** Formats a streak with its unit: "1 day", "6 days", "1 week". */
@@ -298,19 +274,20 @@ function heatCell(habit, iso, yearStart, yearEnd) {
   }
   // Used by showToday().
   if (iso === state.today) el.classList.add("is-today");
-  if (iso > state.today) {
-    el.classList.add("is-future");
-  } else if (!H.isScheduled(habit, iso) && value === 0) {
-    el.classList.add("is-off");
-  } else {
-    el.dataset.level = String(H.heatLevel(habit, value));
-  }
+  const ahead = iso > state.today;
+  // Unscheduled days are marked in the future too, so the schedule stays
+  // visible.
+  const off = !H.isScheduled(habit, iso) && value === 0;
+  if (ahead) el.classList.add("is-future");
+  if (off) el.classList.add("is-off");
+  else if (!ahead) el.dataset.level = String(H.heatLevel(habit, value));
 
   el.dataset.date = iso;
   // Future days only show planned values.
-  const ahead = iso > state.today;
   el.dataset.status = ahead
-    ? value > 0 ? t("{value} planned", { value: H.formatValue(habit, value) }) : t("still ahead")
+    ? value > 0
+      ? t("{value} planned", { value: H.formatValue(habit, value) })
+      : off ? t("not scheduled") : t("still ahead")
     : value > 0
       ? t("{value} of {target}",
         { value: H.formatValue(habit, value), target: H.formatValue(habit, H.target(habit)) })
@@ -340,27 +317,12 @@ function legend(yearStart, year) {
 
 // ---------- heatmap tooltip ----------
 //
-// Custom tooltip that appears immediately. It is position: fixed, so that the
-// scrolling grid does not clip it.
-
-let tooltip = null;
+// Chart tooltips appear at once, in the app's tooltip pane (tooltip.js).
 
 /** Elements with a tooltip: heatmap squares and chart bars. */
 const TIP_TARGETS = ".heat[data-date], .cum-col[data-tip]";
 
-function tooltipElement() {
-  if (!tooltip?.isConnected) {
-    tooltip = document.createElement("div");
-    tooltip.className = "chart-tooltip";
-    tooltip.hidden = true;
-    document.body.append(tooltip);
-  }
-  return tooltip;
-}
-
-function showTooltip(cell) {
-  const tip = tooltipElement();
-
+function showChartTooltip(cell) {
   const date = document.createElement("div");
   date.className = "tip-date";
   // Bars have their own label; squares show their date.
@@ -370,33 +332,13 @@ function showTooltip(cell) {
   status.className = "tip-status";
   status.textContent = cell.dataset.status;
 
-  tip.replaceChildren(date, status);
-  tip.hidden = false;
-
-  // Measure after filling in the text.
-  const anchor = cell.getBoundingClientRect();
-  const box = tip.getBoundingClientRect();
-  const margin = 8;
-
-  let left = anchor.left + anchor.width / 2 - box.width / 2;
-  left = Math.max(margin, Math.min(left, window.innerWidth - box.width - margin));
-
-  // Above the element, or below if there is not enough space.
-  let top = anchor.top - box.height - margin;
-  if (top < margin) top = anchor.bottom + margin;
-
-  tip.style.left = `${Math.round(left)}px`;
-  tip.style.top = `${Math.round(top)}px`;
-}
-
-export function hideTooltip() {
-  if (tooltip) tooltip.hidden = true;
+  showTooltip(cell, [date, status]);
 }
 
 function initTooltip(container) {
   container.addEventListener("mouseover", (event) => {
     const cell = event.target.closest(TIP_TARGETS);
-    if (cell) showTooltip(cell);
+    if (cell) showChartTooltip(cell);
   });
   container.addEventListener("mouseout", (event) => {
     if (event.target.closest(TIP_TARGETS)) hideTooltip();

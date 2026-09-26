@@ -118,22 +118,30 @@ export function initOverview(handlers) {
 
   // Re-render when the available width changes, including when the view
   // becomes visible again. Observes the container, as the board's own width
-  // depends on the day count.
-  new ResizeObserver(() => {
+  // depends on the day count, and the body, as the other views take their
+  // width from the board's (--board-width) while the overview is hidden.
+  const observer = new ResizeObserver(() => {
     const width = availableWidth();
     if (width > 0 && visibleDays(width) !== renderedDays) render();
-  }).observe(board.parentElement);
+  });
+  observer.observe(board.parentElement);
+  observer.observe(document.body);
 }
 
 /**
  * Returns the available width, measured on the container, as the board's own
- * width depends on the number of columns.
+ * width depends on the number of columns. While the overview is hidden, the
+ * width it would have: the window, up to its maximum width, less its padding.
+ * Not measured on the other views, as they are only as wide as the board.
  */
 function availableWidth() {
   const parent = board.parentElement;
   if (!parent) return 0;
   const cs = getComputedStyle(parent);
-  return parent.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+  const outer = parent.hidden
+    ? Math.min(document.documentElement.clientWidth, parseFloat(cs.maxWidth) || Infinity)
+    : parent.clientWidth;
+  return outer - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
 }
 
 /** Returns the maximum number of day columns that fit into `width`. */

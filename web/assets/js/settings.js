@@ -424,11 +424,11 @@ function paintBandChoices(chosen) {
       b.dataset.color = color;
       b.setAttribute("role", "radio");
       if (color === NEUTRAL_BAND) {
-        b.style.background = "var(--today-neutral)";
+        b.style.setProperty("--swatch", "var(--today-neutral)");
         b.setAttribute("aria-label", t("Neutral"));
         b.title = t("Neutral");
       } else {
-        b.style.background = color;
+        b.style.setProperty("--swatch", color);
         b.setAttribute("aria-label", t("Colour {color}", { color: colorLabel(color) }));
         b.title = colorLabel(color);
       }

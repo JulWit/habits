@@ -70,10 +70,12 @@
 <main id="view-styleguide" class="view" hidden></main>
 
 <!-- Pages: full-screen dialogs with a back button, stacked (see pages.js). -->
-<dialog id="editor" class="dialog page" aria-labelledby="editor-title">
+<!-- The two editors are full-screen dialogs: they slide up, close with ✕ and
+     ask before discarding changes (see pages.js). -->
+<dialog id="editor" class="dialog page is-sheet" aria-labelledby="editor-title">
   <form id="editor-form" method="dialog">
     <header class="page-head">
-      <button type="button" class="icon-button" data-page-back data-icon="arrowLeft" title="Back" aria-label="Back"></button>
+      <button type="button" class="icon-button" data-page-back data-icon="close" title="Close" aria-label="Close"></button>
       <h2 id="editor-title">New habit</h2>
       <button type="submit" class="button primary" id="editor-submit">Create</button>
     </header>
@@ -529,10 +531,10 @@
 </dialog>
 
 <!-- Category dialog, opened from the category view (see categoryeditor.js). -->
-<dialog id="category-editor" class="dialog page" aria-labelledby="category-editor-title">
+<dialog id="category-editor" class="dialog page is-sheet" aria-labelledby="category-editor-title">
   <form id="category-editor-form" method="dialog">
     <header class="page-head">
-      <button type="button" class="icon-button" data-page-back data-icon="arrowLeft" title="Back" aria-label="Back"></button>
+      <button type="button" class="icon-button" data-page-back data-icon="close" title="Close" aria-label="Close"></button>
       <h2 id="category-editor-title">Edit category</h2>
       <button type="submit" class="button primary" id="category-editor-submit">Save</button>
     </header>
@@ -594,6 +596,18 @@
     <footer class="dialog-foot">
       <button type="button" class="button ghost" data-action="clear">Clear</button>
       <button type="submit" class="button primary">Save</button>
+    </footer>
+  </form>
+</dialog>
+
+<!-- Asks before an editor with unsaved changes closes (see pages.js). The
+     first button, keeping the changes, gets the focus. -->
+<dialog id="discard-dialog" class="dialog compact" aria-labelledby="discard-title">
+  <form method="dialog">
+    <h2 id="discard-title" class="dialog-head"></h2>
+    <footer class="dialog-foot">
+      <button type="submit" class="button ghost" value="keep">Keep editing</button>
+      <button type="submit" class="button primary" value="discard">Discard</button>
     </footer>
   </form>
 </dialog>

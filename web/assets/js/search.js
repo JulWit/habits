@@ -24,7 +24,11 @@ export function initSearch(handlers) {
   list = document.getElementById("search-results");
   empty = document.getElementById("search-empty");
 
-  document.getElementById("open-search").addEventListener("click", openSearch);
+  const button = document.getElementById("open-search");
+  button.addEventListener("click", openSearch);
+  // Without a keyboard the shortcut in the title means nothing; screen readers
+  // would still read it out.
+  if (matchMedia("(pointer: coarse)").matches) button.title = t("Search");
   input.addEventListener("input", () => {
     active = 0;
     draw();

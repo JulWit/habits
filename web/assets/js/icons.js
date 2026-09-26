@@ -88,6 +88,16 @@ export const icons = {
 
   arrowLeft: draw('<path d="M20 12H4.4M11 5 4 12l7 7"/>'),
 
+  // Closes a full-screen dialog without saving.
+  close: draw('<path d="M6 6l12 12M18 6 6 18"/>'),
+
+  // Three dots: the overflow menu of a title bar.
+  moreVertical: draw(
+    '<circle cx="12" cy="5.5" r=".9" fill="currentColor"/>' +
+    '<circle cx="12" cy="12" r=".9" fill="currentColor"/>' +
+    '<circle cx="12" cy="18.5" r=".9" fill="currentColor"/>',
+  ),
+
   chevron: draw('<path d="M6 9.5 12 15.5l6-6"/>'),
 
   // Drag handle: two columns of dots.

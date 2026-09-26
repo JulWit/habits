@@ -370,7 +370,7 @@ html[data-scrolled="on"] .day-header-backdrop {
 
 /* Same icon size as in the habit rows (rem, as the heading font is smaller). */
 .block-link .habit-icon {
-  --tile: calc(.82 * (var(--leading) * (1rem + .74rem) + .1 * var(--space)));
+  --tile: calc(.82 * (var(--leading) * (1rem + .75rem) + .1 * var(--space)));
   width: var(--tile);
   height: var(--tile);
   /* Align with the icons of the rows. */
@@ -597,7 +597,7 @@ html[data-scrolled="on"] .day-header-backdrop {
   inset: 0;
   display: grid;
   place-items: center;
-  font-size: .64rem;
+  font-size: .75rem;
   font-weight: var(--weight-semibold);
   font-variant-numeric: tabular-nums;
 }
@@ -613,7 +613,7 @@ html[data-scrolled="on"] .day-header-backdrop {
 .month-label {
   align-self: end;
   padding: 0 calc(.3 * var(--space)) calc(.15 * var(--space));
-  font-size: .68rem;
+  font-size: .75rem;
   font-weight: var(--weight-semibold);
   letter-spacing: .04em;
   color: var(--text-muted);
@@ -669,9 +669,9 @@ html[data-scrolled="on"] .day-header-backdrop {
    sizes and shrinks the paging buttons. */
 html[data-tight] .habit-main .habit-icon { display: none; }
 html[data-tight] .habit-name { font-size: .85rem; }
-html[data-tight] .habit-meta { font-size: .66rem; }
+html[data-tight] .habit-meta { font-size: .75rem; }
 html[data-tight] .habit-main { padding-inline: calc(.25 * var(--space)); }
-html[data-tight] .grid-head { font-size: .62rem; }
+html[data-tight] .grid-head { font-size: .75rem; }
 html[data-tight] .grid-head .dom { font-size: .78rem; }
 html[data-tight] .day-nav { gap: 0; padding-left: 0; }
 html[data-tight] .day-nav .icon-button { width: 1.5rem; height: 1.5rem; }
@@ -699,7 +699,7 @@ html[data-tight] .habit-tools .icon-button svg { width: .95rem; height: .95rem; 
   border-radius: var(--radius-sm);
   /* Same text colour as the habit names. */
   color: var(--text);
-  font-size: .7rem;
+  font-size: .75rem;
   /* Medium weight for legibility at this small size. */
   font-weight: var(--weight-medium);
   line-height: 1.25;
@@ -728,7 +728,7 @@ html[data-pattern="image"][data-scrolled="on"] .day-header-backdrop {
      background. Used to pick the text colour. */
   --today-disc: color-mix(in srgb, var(--today) var(--today-opacity), var(--today-under, var(--bg)));
   /* White on dark discs, near-black on light ones (threshold: lightness 0.7). */
-  color: oklch(from var(--today-disc) clamp(.2, calc((.7 - l) * 1000), 1) 0 0);
+  color: oklch(from var(--today-disc) clamp(.2, calc((var(--ink-flip) - l) * 1000), 1) 0 0);
 }
 
 .grid-head.is-today::before {
@@ -744,6 +744,17 @@ html[data-pattern="image"][data-scrolled="on"] .day-header-backdrop {
   background: var(--today-shown);
   z-index: -1;
   pointer-events: none;
+}
+
+/* In narrow columns a square is lower than the two lines of text. The disc
+   then spans the column and the header's height, leaving room around the
+   text. */
+@media (max-width: 40rem) {
+  .grid-head.is-today::before {
+    width: var(--cell);
+    height: calc(100% - .5 * var(--space));
+    aspect-ratio: auto;
+  }
 }
 
 .grid-head .dow { text-transform: uppercase; letter-spacing: .04em; }
@@ -856,7 +867,7 @@ html[data-filtering="on"] {
 /* Icon tile on the board, sized from the height of the two text lines, so it
    follows the density. */
 .habit-main .habit-icon {
-  --tile: calc(.82 * (var(--leading) * (1em + .74rem) + .1 * var(--space)));
+  --tile: calc(.82 * (var(--leading) * (1em + .75rem) + .1 * var(--space)));
   width: var(--tile);
   height: var(--tile);
 }
@@ -877,7 +888,7 @@ html[data-filtering="on"] {
 
 .habit-meta {
   color: var(--text-faint);
-  font-size: .74rem;
+  font-size: .75rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -905,7 +916,7 @@ html[data-filtering="on"] {
   margin-top: -.1em;
 }
 
-.habit-main .habit-text { min-height: calc(var(--leading) * (1em + .74rem) + .1 * var(--space)); }
+.habit-main .habit-text { min-height: calc(var(--leading) * (1em + .75rem) + .1 * var(--space)); }
 
 .habit-main.is-archived .habit-name { color: var(--text-faint); font-style: italic; }
 
@@ -1037,28 +1048,149 @@ html[data-filtering="on"] {
 /* Future days are dimmed. */
 .mark.is-future { opacity: .6; }
 
-/* Future days that reach the target are hatched. */
+/* Future days that reach the target are hatched. Fine stripes, so the value
+   on top stays readable; the shadow lifts it off the stripes. */
 .mark.is-future.is-complete {
   background-image: repeating-linear-gradient(
     -45deg,
-    color-mix(in srgb, var(--surface) 70%, transparent) 0 2px,
-    transparent 2px 5px
+    color-mix(in srgb, var(--surface) 45%, transparent) 0 1.5px,
+    transparent 1.5px 4.5px
   );
 }
 
+.mark.is-future.is-complete .mark-value { text-shadow: 0 0 2px rgb(0 0 0 / .5); }
+
 /* ---------- detail view ---------- */
 
-.detail-head {
+/* The habit and category views have their own title bar (appbar.js), as
+   Material's top app bar, instead of the app's. */
+html.route-detail .topbar { display: none; }
+html.route-detail .view { padding-top: 0; }
+
+/* Sticky, on the page background like the pages' title bars, and across the
+   view's gutter, so content scrolling underneath is hidden. The icons of the
+   outer buttons line up with the cards' edges. */
+.app-bar {
+  --bar-inset: max(0px, calc(var(--gutter) - .5rem));
+  position: sticky;
+  top: 0;
+  z-index: 20;
   display: flex;
-  align-items: flex-start;
-  gap: calc(.75 * var(--space));
-  margin-bottom: calc(1.25 * var(--space));
+  align-items: center;
+  gap: calc(.4 * var(--space));
+  min-height: var(--topbar-row);
+  margin: 0 calc(-1 * var(--gutter)) var(--space);
+  padding: env(safe-area-inset-top, 0px) var(--bar-inset) 0;
+  background-color: var(--bg);
+  background-image: var(--pattern-image);
+  background-size: var(--pattern-size);
+  background-attachment: fixed;
 }
 
-.detail-title { display: flex; flex-direction: column; gap: calc(.15 * var(--space)); flex: 1; min-width: 0; }
-.detail-title h2 { font-size: 1.4rem; display: flex; align-items: center; gap: calc(.5 * var(--space)); }
-.detail-title .dot { width: .7rem; height: .7rem; border-radius: 50%; background: var(--habit-color); flex: none; }
-.detail-title .sub { color: var(--text-muted); font-size: .85rem; }
+/* A pane over a background image, as the app's title bar has. */
+html[data-pattern="image"] .app-bar {
+  background: var(--topbar-bg);
+  backdrop-filter: blur(var(--surface-blur));
+}
+
+.app-bar .icon-button svg { width: 1.25rem; height: 1.25rem; }
+
+/* Icon, name and details in one row. The name keeps its width; the details
+   get what is left and are cut off first. */
+.app-bar-title {
+  display: flex;
+  align-items: center;
+  /* No gap: the details bring their own spacing (see .sub::before). */
+  gap: 0;
+  flex: 1;
+  min-width: 0;
+}
+
+.app-bar-title h2 {
+  display: flex;
+  align-items: center;
+  gap: calc(.5 * var(--space));
+  flex: 0 1 auto;
+  min-width: 0;
+  font-size: 1.1rem;
+}
+
+.app-bar-title .sub { flex: 1 1 0; min-width: 0; }
+
+/* A dot before each detail, also between name and details, all with the same
+   room: about 20px from word to word at the details' font size. Screen
+   readers hear a comma instead. */
+.app-bar-title .sub-part::before {
+  content: "·";
+  content: "·" / ", ";
+  margin-inline: .75em;
+}
+
+.app-bar-title .name,
+.app-bar-title .sub {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-bar-title .sub { color: var(--text-muted); font-size: .8rem; }
+.app-bar-title .dot { width: .7rem; height: .7rem; border-radius: 50%; background: var(--habit-color); flex: none; }
+
+.app-bar-actions { display: flex; align-items: center; flex: none; }
+
+/* The overflow menu: a popover below its button, placed by appbar.js. Unlike
+   the flat surfaces it floats over the view, so it casts a shadow. */
+.overflow-menu {
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  min-width: 12rem;
+  padding: 4px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  color: var(--text);
+  box-shadow: 0 8px 24px rgb(0 0 0 / .22);
+}
+
+/* Only while open, as the closed popover is hidden by display. */
+.overflow-menu:popover-open {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  animation: menu-in .12s ease-out;
+}
+
+@keyframes menu-in {
+  from { opacity: 0; transform: translateY(-4px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .overflow-menu:popover-open { animation: none; }
+}
+
+.overflow-item {
+  display: flex;
+  align-items: center;
+  gap: calc(.7 * var(--space));
+  width: 100%;
+  padding: calc(.6 * var(--space)) calc(.8 * var(--space));
+  border: none;
+  border-radius: calc(var(--radius-sm) - 2px);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.overflow-item svg { width: 1.15rem; height: 1.15rem; flex: none; color: var(--text-muted); }
+
+.overflow-item:hover,
+.overflow-item:focus-visible { background: var(--border); outline: none; }
+
+.overflow-item:active { background: var(--border-strong); }
+
+.overflow-item.is-danger,
+.overflow-item.is-danger svg { color: var(--danger-text); }
 
 .stat-row {
   display: grid;
@@ -1074,7 +1206,7 @@ html[data-filtering="on"] {
 }
 
 .stat .value { font-size: 1.5rem; font-weight: var(--weight-bold); letter-spacing: -.02em; }
-.stat .label { color: var(--text-faint); font-size: .74rem; text-transform: uppercase; letter-spacing: .05em; }
+.stat .label { color: var(--text-faint); font-size: .75rem; text-transform: uppercase; letter-spacing: .05em; }
 
 .panel {
   background: var(--surface);
@@ -1094,7 +1226,7 @@ html[data-filtering="on"] {
   margin: 0;
 }
 
-.activity-list dt { color: var(--text-faint); font-size: .74rem; text-transform: uppercase; letter-spacing: .05em; }
+.activity-list dt { color: var(--text-faint); font-size: .75rem; text-transform: uppercase; letter-spacing: .05em; }
 .activity-list dd { margin: 0; font-weight: var(--weight-medium); }
 .activity-list .note { display: block; color: var(--text-muted); font-size: .85rem; font-weight: normal; }
 
@@ -1112,7 +1244,7 @@ html[data-filtering="on"] {
   margin-bottom: calc(.25 * var(--space));
   height: .9rem;
   color: var(--text-faint);
-  font-size: .68rem;
+  font-size: .75rem;
   line-height: 1;
 }
 
@@ -1142,6 +1274,9 @@ html[data-filtering="on"] {
 .heat.is-off { background: transparent; box-shadow: inset 0 0 0 1px var(--border); }
 /* Future days of the year, strongly dimmed. */
 .heat.is-future { background: var(--surface-2); opacity: .4; }
+/* Unscheduled future days keep their outline, dimmed about as much as the
+   other future days. Less than their .4, as a thin line would vanish. */
+.heat.is-future.is-off { background: transparent; opacity: .6; }
 /* Days of the neighbouring years: keep their space, but hidden. */
 .heat.is-outside { visibility: hidden; }
 
@@ -1151,28 +1286,48 @@ html[data-filtering="on"] {
   gap: calc(.35 * var(--space));
   margin-top: calc(.6 * var(--space));
   color: var(--text-faint);
-  font-size: .72rem;
+  font-size: .75rem;
 }
 
 
-/* Tooltip for heatmap and chart. position: fixed, so the scrolling container
-   does not clip it. */
-.chart-tooltip {
+/* ---------- tooltips ----------
+
+   One pane for every tooltip (tooltip.js), from titles as from the charts. In
+   inverted colours, so it stands apart from the flat surfaces. A popover, so
+   position: fixed and above dialogs; the UA's popover box is reset. */
+.tooltip {
   position: fixed;
-  z-index: 70;
+  inset: auto;
+  margin: 0;
+  border: none;
+  max-width: min(20rem, calc(100vw - 16px));
+  padding: calc(.35 * var(--space)) calc(.6 * var(--space));
+  border-radius: calc(var(--radius-sm) - 2px);
+  background: var(--tooltip-bg);
+  color: var(--tooltip-text);
+  box-shadow: 0 4px 14px rgb(0 0 0 / .2);
+  font-size: .8rem;
+  line-height: 1.35;
+  /* Line breaks in a title (name and details of a habit) are kept. */
+  white-space: pre-line;
+  overflow-wrap: anywhere;
   /* Does not capture the pointer. */
   pointer-events: none;
-  background: var(--surface-2);
-  color: var(--text);
-  border-radius: var(--radius-sm);
-  padding: calc(.4 * var(--space)) calc(.6 * var(--space));
-  font-size: .78rem;
-  line-height: 1.35;
-  white-space: nowrap;
 }
 
-.chart-tooltip .tip-date { font-weight: var(--weight-semibold); }
-.chart-tooltip .tip-status { color: var(--text-muted); }
+.tooltip:popover-open { animation: tooltip-in .1s ease-out; }
+
+@keyframes tooltip-in {
+  from { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tooltip:popover-open { animation: none; }
+}
+
+/* Chart tooltips: the date, then the value. */
+.tooltip .tip-date { font-weight: var(--weight-semibold); }
+.tooltip .tip-status { opacity: .78; }
 
 /* Tooltip targets. */
 .heat[data-date],
@@ -1183,7 +1338,7 @@ html[data-filtering="on"] {
 .toasts {
   position: fixed;
   left: 50%;
-  bottom: 1.25rem;
+  bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px));
   transform: translateX(-50%);
   z-index: 60;
   display: flex;
@@ -1330,7 +1485,7 @@ html[data-filtering="on"] {
 /* Scale line at the year's total (the tallest bar). */
 .cum-scale {
   text-align: right;
-  font-size: .72rem;
+  font-size: .75rem;
   color: var(--text-faint);
   padding-bottom: calc(.2 * var(--space));
   border-bottom: 1px dashed var(--border);
@@ -1372,7 +1527,7 @@ html[data-filtering="on"] {
   grid-template-columns: repeat(var(--cols), 1fr);
   gap: calc(.3 * var(--space));
   margin-top: calc(.4 * var(--space));
-  font-size: .68rem;
+  font-size: .75rem;
   color: var(--text-faint);
   text-align: center;
 }

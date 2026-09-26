@@ -151,7 +151,7 @@ function fields() {
   for (const color of state.colors) {
     const s = el("button", "swatch");
     s.type = "button";
-    s.style.background = color;
+    s.style.setProperty("--swatch", color);
     s.setAttribute("role", "radio");
     s.setAttribute("aria-checked", String(color === state.colors[0]));
     s.setAttribute("aria-label", color);

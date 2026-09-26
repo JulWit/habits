@@ -39,21 +39,16 @@ export function habitLabel(habit) {
   meta.className = "habit-meta";
   const described = H.describeHabit(habit);
   const streak = habit.stats?.currentStreak ?? 0;
-  // The running streak leads the line as a flame and a bare number. Only while
-  // one is going: a row without a streak keeps its line as it was, rather than
-  // carrying a flame beside a zero.
-  if (streak > 0) {
-    meta.append(streakBadge(streak), described ? ` · ${described}` : "");
-  } else {
-    meta.textContent = described;
-  }
+  // The streak leads the line as a flame and a bare number - on every row, a
+  // zero included, so the count sits in the same place whether or not a run
+  // is going.
+  meta.append(streakBadge(streak), described ? ` · ${described}` : "");
 
   // Whatever is still too long for the column stays readable on hover. Both
   // lines, because a long habit name is clipped the same way. The streak is
   // spelled out there, since the flame alone does not say days or weeks.
-  const metaText = [streak > 0 ? H.describeStreak(habit) : "", described]
-    .filter(Boolean).join(" · ");
-  el.title = metaText ? `${habit.name}\n${metaText}` : habit.name;
+  const metaText = [H.describeStreak(habit), described].filter(Boolean).join(" · ");
+  el.title = `${habit.name}\n${metaText}`;
 
   const text = document.createElement("span");
   text.className = "habit-text";

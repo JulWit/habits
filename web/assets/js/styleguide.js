@@ -290,7 +290,7 @@ function typography() {
     specimen("h2", el("h2", null, "Heading")),
     specimen(".block-title", el("h2", "block-title", "Category")),
     specimen("p", el("p", null, "Body text, as it appears in empty states.")),
-    specimen(".habit-meta", el("span", "habit-meta", "🔥 12 days · 20 min · daily")),
+    specimen(".habit-meta", el("span", "habit-meta", "20 min · daily")),
     specimen(".field-hint", el("p", "field-hint", "A hint below a field.")),
   );
 }

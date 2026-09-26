@@ -3,7 +3,7 @@
 
 import { dayOfMonth, WEEKDAY_SHORT, weekdayIndex, formatRelative, formatLong } from "./dates.js";
 import { state } from "./state.js";
-import { habitIconBadge } from "./icons.js";
+import { habitIconBadge, icons } from "./icons.js";
 import * as H from "./habit.js";
 
 const CHECK_SVG =
@@ -37,11 +37,23 @@ export function habitLabel(habit) {
 
   const meta = document.createElement("span");
   meta.className = "habit-meta";
-  meta.textContent = H.describeHabit(habit);
+  const described = H.describeHabit(habit);
+  const streak = habit.stats?.currentStreak ?? 0;
+  // The running streak leads the line as a flame and a bare number. Only while
+  // one is going: a row without a streak keeps its line as it was, rather than
+  // carrying a flame beside a zero.
+  if (streak > 0) {
+    meta.append(streakBadge(streak), described ? ` · ${described}` : "");
+  } else {
+    meta.textContent = described;
+  }
 
   // Whatever is still too long for the column stays readable on hover. Both
-  // lines, because a long habit name is clipped the same way.
-  el.title = meta.textContent ? `${habit.name}\n${meta.textContent}` : habit.name;
+  // lines, because a long habit name is clipped the same way. The streak is
+  // spelled out there, since the flame alone does not say days or weeks.
+  const metaText = [streak > 0 ? H.describeStreak(habit) : "", described]
+    .filter(Boolean).join(" · ");
+  el.title = metaText ? `${habit.name}\n${metaText}` : habit.name;
 
   const text = document.createElement("span");
   text.className = "habit-text";
@@ -50,6 +62,14 @@ export function habitLabel(habit) {
   const badge = habitIconBadge(habit);
   if (badge) el.append(badge);
   el.append(text);
+  return el;
+}
+
+function streakBadge(count) {
+  const el = document.createElement("span");
+  el.className = "habit-streak";
+  el.innerHTML = icons.streak;
+  el.append(String(count));
   return el;
 }
 

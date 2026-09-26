@@ -294,10 +294,18 @@ export function describeHabit(habit) {
   // Only the daily target. The frequency was taken out: the board already shows
   // it, in the days a habit is not due on, and the detail view still spells it
   // out. A plain tick has no target, so its line is empty - see .habit-meta.
-  // No streak either: it is readable on the detail view under "Current streak".
+  // The streak is not part of this text: the board draws it in front as a
+  // flame (see habitLabel in cells.js), and describeStreak spells it out.
   const t = describeTarget(habit);
   if (t) parts.push(t);
   return parts.join(" · ");
+}
+
+/** The current streak in words, e.g. "12-day streak" or "3-week streak". */
+export function describeStreak(habit) {
+  const s = habit.stats;
+  const unit = s?.streakUnit === "weeks" ? "week" : "day";
+  return `${s?.currentStreak ?? 0}-${unit} streak`;
 }
 
 /**

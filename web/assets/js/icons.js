@@ -68,6 +68,20 @@ export const icons = {
 
   check: draw('<path d="M4.5 12.5 9.5 17.5 19.5 6.5"/>'),
 
+  // The current streak, beside a habit's name. Filled rather than outlined,
+  // unlike the flame a habit can wear as its icon: at the size of the meta line
+  // an outline thins to a hairline, and the two must not read as the same
+  // thing. The inner tongue is cut out (evenodd), so the flame keeps a shape
+  // of its own instead of becoming a blot.
+  streak: draw(
+    '<path fill="currentColor" stroke="none" fill-rule="evenodd" d="' +
+    "M12 22C7.6 22 4.8 19 4.8 15.2 4.8 12 6.6 9.9 8.4 8.2 8.6 10 9.4 11.2 10.6 11.8" +
+    " 10.4 8 11.8 4.6 14.6 2.4 15 5.4 16.4 7.4 17.7 9.1 18.8 10.6 19.4 12.4 19.4 14.6" +
+    " 19.4 18.9 16.3 22 12 22Z" +
+    "M12 19.8C10.5 19.8 9.4 18.7 9.4 17.3 9.4 15.8 10.4 14.8 11.5 13.8 11.7 14.8 12.3 15.4 13 15.7" +
+    ' 13.4 14.9 13.9 14.2 14.4 13.7 15.1 14.7 15.6 15.8 15.6 17 15.6 18.7 14 19.8 12 19.8Z"/>',
+  ),
+
   // Eight teeth on a body of radius 7.35, tips at 9.75, every point generated
   // from the same centre as the hub. The previous outline was a hand-edited
   // one whose bounding box sat at 12.57/11.03, which read as a hub off-centre

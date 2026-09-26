@@ -5,8 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Habits</title>
 <link rel="icon" href="/assets/images/icon.svg" type="image/svg+xml">
-<link rel="manifest" href="/manifest.webmanifest">
+<!-- use-credentials: a manifest is otherwise fetched without cookies, even from
+     the same origin. Behind Authelia that request is answered with the login
+     page, the browser finds no manifest, and "Add to home screen" falls back to
+     a plain bookmark that opens with the address bar. -->
+<link rel="manifest" href="/manifest.webmanifest" crossorigin="use-credentials">
 <link rel="apple-touch-icon" href="/assets/images/icon-192.png">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Habits">
 <!-- Two of them: the browser picks the one matching the scheme in use, so the

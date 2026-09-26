@@ -3,6 +3,7 @@
   "short_name": "Habits",
   "description": "Track habits — daily, on certain weekdays or every few days.",
   "lang": "en",
+  "id": "/",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

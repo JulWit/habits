@@ -58,6 +58,35 @@ func TestValidationMessagesReachTheUserPlain(t *testing.T) {
 	}
 }
 
+// A message with a number in it is sent as its template as well, since that is
+// what the interface's dictionary is keyed by.
+func TestValidationMessagesCarryTheirTemplate(t *testing.T) {
+	h := newTestServer(t)
+	w := do(t, h, "POST", "/api/habits",
+		`{"name":"`+strings.Repeat("x", 81)+`","kind":"check","frequency":{"kind":"daily"}}`,
+		"application/json")
+	if w.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("status %d, want 422 (%s)", w.Code, w.Body)
+	}
+	var body struct {
+		Error   string         `json:"error"`
+		Message string         `json:"message"`
+		Params  map[string]any `json:"params"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+		t.Fatalf("reading response: %v", err)
+	}
+	if body.Error != "name is longer than 80 characters" {
+		t.Errorf("error = %q", body.Error)
+	}
+	if body.Message != "name is longer than {max} characters" {
+		t.Errorf("message = %q", body.Message)
+	}
+	if body.Params["max"] != float64(80) {
+		t.Errorf("params = %v, want max 80", body.Params)
+	}
+}
+
 func TestUnknownAPIPathAnswersJSON(t *testing.T) {
 	h := newTestServer(t)
 	w := do(t, h, "GET", "/api/gibtesnicht", "", "")

@@ -64,6 +64,19 @@ func TestEntryValueIsBounded(t *testing.T) {
 	if w := do(t, h, "PUT", far, `{"value":1000}`, "application/json"); w.Code != http.StatusUnprocessableEntity {
 		t.Errorf("date beyond the horizon: status %d, want 422", w.Code)
 	}
+	// So is a day before the floor; clearing one is still allowed, so an entry
+	// stored before the floor existed can be removed.
+	old := "/api/habits/" + created.ID + "/entries/1999-12-31"
+	if w := do(t, h, "PUT", old, `{"value":1000}`, "application/json"); w.Code != http.StatusUnprocessableEntity {
+		t.Errorf("date before the floor: status %d, want 422", w.Code)
+	}
+	if w := do(t, h, "PUT", old, `{"value":0}`, "application/json"); w.Code != http.StatusOK {
+		t.Errorf("clearing before the floor: status %d, want 200 (%s)", w.Code, w.Body)
+	}
+	first := "/api/habits/" + created.ID + "/entries/2000-01-01"
+	if w := do(t, h, "PUT", first, `{"value":1000}`, "application/json"); w.Code != http.StatusOK {
+		t.Errorf("the floor itself: status %d, want 200 (%s)", w.Code, w.Body)
+	}
 }
 
 // A habit with chosen weekdays takes no entry on any other day, but a leftover

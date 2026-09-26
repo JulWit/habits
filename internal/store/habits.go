@@ -149,7 +149,7 @@ func (s *Store) requireOwnCategory(ctx context.Context, q queryer, userID, categ
 		return err
 	}
 	if !ok {
-		return fmt.Errorf("%w: unknown category", domain.ErrValidation)
+		return domain.Invalid("unknown category")
 	}
 	return nil
 }
@@ -246,15 +246,16 @@ func (s *Store) requireKindKeepsHistoryMeaningful(ctx context.Context, q queryer
 	}
 	if entries > 0 {
 		// Spelled with the noun and the verb agreeing: the message is read in a
-		// dialog, where "1 days are already recorded" reads as a bug.
-		recorded := fmt.Sprintf("%d days are already recorded, and their values", entries)
+		// dialog, where "1 days are already recorded" reads as a bug. Two
+		// templates rather than one, so each has a translation of its own.
 		if entries == 1 {
-			recorded = "1 day is already recorded, and its value"
+			return domain.Invalid(`The kind can no longer be changed: 1 day is already recorded, `+
+				`and its value would mean something else as "{kind}". Create a new habit instead.`,
+				"kind", h.Kind.Label())
 		}
-		return invalidf(
-			"The kind can no longer be changed: %s would mean something else "+
-				"as %q. Create a new habit instead.",
-			recorded, h.Kind.Label())
+		return domain.Invalid(`The kind can no longer be changed: {count} days are already recorded, `+
+			`and their values would mean something else as "{kind}". Create a new habit instead.`,
+			"count", entries, "kind", h.Kind.Label())
 	}
 	return nil
 }
@@ -281,31 +282,11 @@ func (s *Store) RestoreHabit(ctx context.Context, userID, id string) error {
 	return expectOneRow(res)
 }
 
-// ReorderHabits applies a new display order. IDs not belonging to the user are
-// ignored by the WHERE clause rather than rejected, so a stale client cannot
-// fail the whole request.
+// ReorderHabits applies a new display order; see reorder for what ids may
+// leave out. updated_at stays as it is: the detail view shows it as the habit's
+// last change, and moving a habit on the board does not change the habit.
 func (s *Store) ReorderHabits(ctx context.Context, userID string, ids []string) error {
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return fmt.Errorf("starting transaction: %w", err)
-	}
-	defer tx.Rollback()
-
-	// updated_at stays as it is: the detail view shows it as the habit's last
-	// change, and moving a habit on the board does not change the habit.
-	stmt, err := tx.PrepareContext(ctx,
-		`UPDATE habits SET position = ? WHERE id = ? AND user_id = ? AND deleted_at IS NULL`)
-	if err != nil {
-		return fmt.Errorf("preparing reorder: %w", err)
-	}
-	defer stmt.Close()
-
-	for i, id := range ids {
-		if _, err := stmt.ExecContext(ctx, i, id, userID); err != nil {
-			return fmt.Errorf("saving order: %w", err)
-		}
-	}
-	return tx.Commit()
+	return s.reorder(ctx, "habits", userID, ids, false)
 }
 
 // PurgeDeleted removes soft-deleted habits past the undo retention window,

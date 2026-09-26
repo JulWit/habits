@@ -23,9 +23,12 @@ var (
 )
 
 // invalidf marks a rejection as a validation failure rather than a fault, so
-// the HTTP layer answers 422 instead of 500.
+// the HTTP layer answers 422 instead of 500. Its sentences are rendered here
+// and so reach the client without a template to translate by; that is right
+// for the backstops it serves, which the interface cannot trigger. A message a
+// person can meet goes through domain.Invalid with its placeholders instead.
 func invalidf(format string, args ...any) error {
-	return fmt.Errorf("%w: %s", domain.ErrValidation, fmt.Sprintf(format, args...))
+	return domain.Invalid(fmt.Sprintf(format, args...))
 }
 
 // execer is satisfied by both *sql.DB and *sql.Tx, so a write can be run either

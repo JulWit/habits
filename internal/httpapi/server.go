@@ -236,10 +236,10 @@ func (s *Server) logRequests(next http.Handler) http.Handler {
 			level = slog.LevelError
 		}
 		s.log.Log(r.Context(), level, "request",
-			"methode", r.Method,
-			"pfad", r.URL.Path,
+			"method", r.Method,
+			"path", r.URL.Path,
 			"status", rec.status,
-			"dauer", time.Since(start).Round(time.Millisecond).String())
+			"duration", time.Since(start).Round(time.Millisecond).String())
 	})
 }
 
@@ -327,10 +327,16 @@ func newAssetHandler(webFS fs.FS) (http.Handler, error) {
 
 	files := http.FileServerFS(webFS)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if tag, ok := etags[strings.TrimPrefix(path.Clean(r.URL.Path), "/")]; ok {
-			w.Header().Set("ETag", tag)
-			w.Header().Set("Cache-Control", "no-cache")
+		// Only the files themselves. A directory would otherwise be answered
+		// with a listing of its contents, which no page links to and nobody
+		// needs to browse.
+		tag, ok := etags[strings.TrimPrefix(path.Clean(r.URL.Path), "/")]
+		if !ok {
+			http.NotFound(w, r)
+			return
 		}
+		w.Header().Set("ETag", tag)
+		w.Header().Set("Cache-Control", "no-cache")
 		files.ServeHTTP(w, r)
 	}), nil
 }

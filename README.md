@@ -163,8 +163,9 @@ without identity headers.
 
 | Action | How |
 |---|---|
-| Tick off | Tap the day |
-| Increase count/time/distance | Tapping adds one step (time: 5 min, distance: 500 m), back to 0 once past the target |
+| Tick off | Tap the day; tap again to take the tick back |
+| Increase count/time/distance | Tapping adds one step (count: 1, time: 5 min, distance: 500 m — each can be changed in the editor) and keeps going past the target, up to the kind's ceiling |
+| Clear a count/time/distance | Long press or right-click, then "Delete" or 0 |
 | Set an exact value | Long press or right-click |
 | Undo / redo | `Ctrl+Z` / `Ctrl+Shift+Z`, or the "Undo" button in the toast |
 | New habit | `N` |
@@ -236,13 +237,13 @@ All endpoints live under `/api` and answer with JSON.
 | `PATCH` | `/api/habits/{id}` | Change (only the fields sent) |
 | `DELETE` | `/api/habits/{id}` | Soft delete |
 | `POST` | `/api/habits/{id}/restore` | Undo a soft delete |
-| `POST` | `/api/habits/reorder` | Set the order |
-| `PUT` | `/api/habits/{id}/entries/{date}` | Set a day's value |
+| `POST` | `/api/habits/reorder` | Set the order; habits left out follow in the order they had, an id named twice is refused |
+| `PUT` | `/api/habits/{id}/entries/{date}` | Set a day's value, from 2000-01-01 up to a year ahead (clearing works on any day) |
 | `POST` | `/api/categories` | Create a category |
 | `PATCH` | `/api/categories/{id}` | Rename, set the icon |
 | `DELETE` | `/api/categories/{id}` | Soft delete |
 | `POST` | `/api/categories/{id}/restore` | Undo a soft delete |
-| `POST` | `/api/categories/reorder` | Set the order |
+| `POST` | `/api/categories/reorder` | Set the order, by the same rules as for habits |
 | `GET`/`PATCH` | `/api/settings` | Settings, see below |
 | `GET` | `/api/background` | Serve the background image (404 if none is stored) |
 | `PUT` | `/api/background` | Upload an image (raw body, JPEG or PNG, at most 12 MB) |
@@ -253,6 +254,14 @@ mere formality: without this condition a `POST` would be reachable from a
 foreign page, because a form is allowed to send `text/plain` and such a body can
 be valid JSON. With the condition the browser has to send a preflight first,
 which the same-origin policy refuses.
+
+An error answers with `{"error": "..."}`, the sentence in English. A
+validation failure also sends the template it was filled from and what filled
+it — `{"error": "name is longer than 80 characters", "message": "name is longer
+than {max} characters", "params": {"max": 80}}` — because the interface
+translates by the English text, and only the template is a key a dictionary can
+hold. A new message therefore goes through `domain.Invalid` with placeholders
+rather than `fmt.Sprintf`, and gets its entry in `i18n.js`.
 
 Alongside the habits, `/api/state` also delivers the tables the client needs in
 order to read a stored value: `colors` (the palette) and `kinds` (per kind

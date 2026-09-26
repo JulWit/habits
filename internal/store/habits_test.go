@@ -225,6 +225,49 @@ func TestReorderIgnoresForeignIDs(t *testing.T) {
 	}
 }
 
+// A client that leaves habits out of the order - archived ones while they are
+// hidden, say - must not leave two habits on the same position. The ones left
+// out follow the named ones, in the order they had.
+func TestReorderPlacesUnnamedHabitsAfterTheNamedOnes(t *testing.T) {
+	ctx := context.Background()
+	st := openTestStore(t)
+	a := mustCreateHabit(t, st, "alice", countHabit(domain.KindCheck, 1))
+	b := mustCreateHabit(t, st, "alice", countHabit(domain.KindCheck, 1))
+	c := mustCreateHabit(t, st, "alice", countHabit(domain.KindCheck, 1))
+
+	if err := st.ReorderHabits(ctx, "alice", []string{c.ID}); err != nil {
+		t.Fatalf("ReorderHabits: %v", err)
+	}
+	habits, err := st.ListHabits(ctx, "alice", true)
+	if err != nil {
+		t.Fatalf("ListHabits: %v", err)
+	}
+	want := []string{c.ID, a.ID, b.ID}
+	for i, h := range habits {
+		if h.ID != want[i] || h.Position != i {
+			t.Errorf("habits[%d] = %s at %d, want %s at %d", i, h.ID, h.Position, want[i], i)
+		}
+	}
+}
+
+// Naming a habit twice is no order at all, and is refused as the client's
+// mistake rather than applied one way or the other.
+func TestReorderRefusesADuplicate(t *testing.T) {
+	ctx := context.Background()
+	st := openTestStore(t)
+	a := mustCreateHabit(t, st, "alice", countHabit(domain.KindCheck, 1))
+	b := mustCreateHabit(t, st, "alice", countHabit(domain.KindCheck, 1))
+
+	err := st.ReorderHabits(ctx, "alice", []string{b.ID, a.ID, b.ID})
+	if !errors.Is(err, domain.ErrValidation) {
+		t.Fatalf("err = %v, want a validation error", err)
+	}
+	habits, _ := st.ListHabits(ctx, "alice", true)
+	if habits[0].ID != a.ID || habits[1].ID != b.ID {
+		t.Error("a refused order was applied anyway")
+	}
+}
+
 // Moving a habit is not a change to it, so its timestamp stays put.
 func TestReorderKeepsUpdatedAt(t *testing.T) {
 	ctx := context.Background()

@@ -106,8 +106,11 @@
       </fieldset>
 
       <div class="field">
-        <span class="field-label">Category</span>
-        <button type="button" class="picker" id="category-picker" aria-haspopup="dialog">
+        <span class="field-label" id="category-picker-label">Category</span>
+        <!-- Named by the field label and then its own text: "Category, No
+             category" rather than a bare value nobody knows the question to. -->
+        <button type="button" class="picker" id="category-picker" aria-haspopup="dialog"
+                aria-labelledby="category-picker-label category-picker">
           <span class="picker-value"></span>
         </button>
       </div>
@@ -190,8 +193,8 @@
       </div>
 
       <div class="field" data-when-freq="weekdays" hidden>
-        <span class="field-label">On these days</span>
-        <div id="weekday-choices" class="weekdays"></div>
+        <span class="field-label" id="weekday-choices-label">On these days</span>
+        <div id="weekday-choices" class="weekdays" role="group" aria-labelledby="weekday-choices-label"></div>
       </div>
 
       <div class="field" data-when-freq="weekdays" hidden>
@@ -241,7 +244,7 @@
         </label>
       </div>
 
-      <p id="editor-error" class="error" hidden></p>
+      <p id="editor-error" class="error" role="alert" hidden></p>
     </div>
 
     <footer class="dialog-foot">
@@ -520,7 +523,7 @@
         <p class="field-hint">The bar and the count beside the name on the board.</p>
       </fieldset>
 
-      <p id="category-editor-error" class="error" hidden></p>
+      <p id="category-editor-error" class="error" role="alert" hidden></p>
     </div>
 
     <footer class="dialog-foot">

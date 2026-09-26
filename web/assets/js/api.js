@@ -5,10 +5,19 @@
 import { t } from "./i18n.js";
 
 export class ApiError extends Error {
-  constructor(message, status, options) {
+  /**
+   * @param {string} message  the whole sentence, in English
+   * @param {number} status
+   * @param {{cause?: unknown, template?: string, params?: object}} [options]
+   *   what the server filled `message` from. The dictionary is keyed by the
+   *   template, not by the finished sentence, so these are what gets translated.
+   */
+  constructor(message, status, options = {}) {
     super(message, options);
     this.name = "ApiError";
     this.status = status;
+    this.template = options.template;
+    this.params = options.params;
   }
 }
 
@@ -50,7 +59,10 @@ async function request(method, path, body, type) {
     }
   }
   if (!res.ok) {
-    throw new ApiError(data?.error ?? `${res.status} ${res.statusText}`, res.status);
+    throw new ApiError(data?.error ?? `${res.status} ${res.statusText}`, res.status, {
+      template: data?.message,
+      params: data?.params,
+    });
   }
   return data;
 }

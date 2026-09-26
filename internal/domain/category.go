@@ -29,11 +29,11 @@ func (c *Category) Validate() error {
 		return invalid("category name must not be empty")
 	}
 	if len([]rune(c.Name)) > MaxCategoryNameLen {
-		return invalid("category name is longer than %d characters", MaxCategoryNameLen)
+		return invalid("category name is longer than {max} characters", "max", MaxCategoryNameLen)
 	}
 	c.Icon = strings.TrimSpace(c.Icon)
 	if c.Icon != "" && !ValidIcon(c.Icon) {
-		return invalid("unknown icon %q", c.Icon)
+		return invalid(`unknown icon "{icon}"`, "icon", c.Icon)
 	}
 	c.Color = strings.ToLower(strings.TrimSpace(c.Color))
 	if c.Color != "" && !colorPattern.MatchString(c.Color) {

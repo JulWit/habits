@@ -265,7 +265,18 @@ export function currentDays() {
 }
 
 /**
- * Moves the window to `next` days before today, clamped at the horizon ahead.
+ * The largest offset that still starts the board on or after the first day the
+ * server takes an entry for (`earliestEntry`). Week alignment only ever moves
+ * the start forward, so the plain window is the one to measure.
+ */
+function maxBackDays() {
+  if (!state.earliestEntry) return Infinity;
+  return Math.max(0, daysBetween(state.earliestEntry, state.today) - (renderedDays - 1));
+}
+
+/**
+ * Moves the window to `next` days before today, clamped at the horizon ahead
+ * and at the earliest day behind.
  *
  * Entries arrive in a window around today, so paging far enough back leaves it.
  * The missing history is fetched before the move is drawn: rendering first
@@ -274,7 +285,7 @@ export function currentDays() {
  * state carries every entry from its start date onwards, however far out.
  */
 async function showWindow(next) {
-  const wanted = Math.max(-MAX_AHEAD_DAYS, next);
+  const wanted = Math.min(maxBackDays(), Math.max(-MAX_AHEAD_DAYS, next));
   if (wanted === offset) return;
   offset = wanted;
 
@@ -520,6 +531,7 @@ function dayNav() {
   // The forward arrow stops at the horizon rather than disappearing, so the row
   // does not jump about.
   newer.disabled = offset <= -MAX_AHEAD_DAYS;
+  older.disabled = offset >= maxBackDays();
   nav.append(older, newer);
 
   if (offset !== 0) {

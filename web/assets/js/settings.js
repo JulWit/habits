@@ -7,7 +7,7 @@
 
 import { api } from "./api.js";
 import { state, replaceState, subscribe } from "./state.js";
-import { icons } from "./icons.js";
+import { icons, colorLabel } from "./icons.js";
 import { errorText, toast } from "./undo.js";
 import { t, locale, userTimeZone } from "./i18n.js";
 
@@ -452,7 +452,8 @@ function paintBandChoices(chosen) {
         b.title = t("Neutral");
       } else {
         b.style.background = color;
-        b.setAttribute("aria-label", t("Colour {color}", { color }));
+        b.setAttribute("aria-label", t("Colour {color}", { color: colorLabel(color) }));
+        b.title = colorLabel(color);
       }
       return b;
     }));

@@ -83,7 +83,7 @@ func (s *Store) SetEntry(ctx context.Context, userID, habitID string, date domai
 	// The value is checked against the habit's kind below, once the row that
 	// names that kind has been read.
 	if date.IsZero() {
-		return 0, fmt.Errorf("%w: date is missing", domain.ErrValidation)
+		return 0, domain.Invalid("date is missing")
 	}
 
 	tx, err := s.db.BeginTx(ctx, nil)

@@ -6,7 +6,7 @@ import { WEEKDAY_SHORT, WEEKDAY_LONG } from "./dates.js";
 import { state, categoryById } from "./state.js";
 import { errorText } from "./undo.js";
 import { openCategoryPicker } from "./categorypicker.js";
-import { icons, buildIconChoices, markIconChoice, categoryIconBadge } from "./icons.js";
+import { icons, buildIconChoices, markIconChoice, categoryIconBadge, colorLabel } from "./icons.js";
 import * as H from "./habit.js";
 import { t } from "./i18n.js";
 
@@ -31,6 +31,14 @@ export function initEditor() {
 
   buildWeekdayButtons();
   form.addEventListener("change", syncVisibility);
+  // A message about the old input is wrong once the input changes, so it goes.
+  // The weekday buttons are plain buttons and fire neither event, hence click.
+  for (const type of ["input", "change", "click"]) {
+    form.addEventListener(type, (event) => {
+      if (type === "click" && !event.target.closest(".weekday")) return;
+      errorBox.hidden = true;
+    });
+  }
   form.addEventListener("submit", handleSubmit);
   form.querySelector('[data-action="cancel"]').addEventListener("click", () => dialog.close());
 
@@ -94,7 +102,8 @@ function buildSwatches() {
       b.style.background = color;
       b.dataset.color = color;
       b.setAttribute("role", "radio");
-      b.setAttribute("aria-label", t("Colour {color}", { color }));
+      b.setAttribute("aria-label", t("Colour {color}", { color: colorLabel(color) }));
+      b.title = colorLabel(color);
       b.addEventListener("click", () => selectColor(color));
       return b;
     }),
@@ -307,4 +316,7 @@ async function handleSubmit(event) {
 function showError(message) {
   errorBox.textContent = message;
   errorBox.hidden = false;
+  // The box sits at the end of the scrolling body, below the fold on all but
+  // the shortest forms. Without this the submit button seems to do nothing.
+  errorBox.scrollIntoView({ block: "nearest" });
 }

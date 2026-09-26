@@ -19,6 +19,12 @@ const maxBodyBytes = 64 << 10
 
 type errorBody struct {
 	Error string `json:"error"`
+	// Message is the template Error was filled from and Params what filled it,
+	// sent when the sentence has placeholders or may be translated. The
+	// interface looks the template up in its dictionary; Error stays the whole
+	// sentence in English for anything else that reads the API.
+	Message string         `json:"message,omitempty"`
+	Params  map[string]any `json:"params,omitempty"`
 }
 
 func writeJSON(w http.ResponseWriter, status int, payload any) {
@@ -40,6 +46,17 @@ func writeJSON(w http.ResponseWriter, status int, payload any) {
 
 func writeError(w http.ResponseWriter, status int, msg string) {
 	writeJSON(w, status, errorBody{Error: msg})
+}
+
+// writeProblem answers with a sentence the interface can translate: err is
+// normally a *domain.Problem, anything else is sent as it reads.
+func writeProblem(w http.ResponseWriter, status int, err error) {
+	var p *domain.Problem
+	if !errors.As(err, &p) {
+		writeError(w, status, err.Error())
+		return
+	}
+	writeJSON(w, status, errorBody{Error: p.Message(), Message: p.Template, Params: p.Params})
 }
 
 func notFoundJSON(w http.ResponseWriter, r *http.Request) {
@@ -84,6 +101,11 @@ func (s *Server) writeStoreError(w http.ResponseWriter, err error, context strin
 	case errors.Is(err, store.ErrNotFound):
 		writeError(w, http.StatusNotFound, "Not found")
 	case errors.Is(err, domain.ErrValidation):
+		var p *domain.Problem
+		if errors.As(err, &p) {
+			writeProblem(w, http.StatusUnprocessableEntity, p)
+			return
+		}
 		// The sentinel prefix is how the layers below say "this is the client's
 		// mistake, not ours". It has done its job by the time we are here, and
 		// "validation error: name must not be empty" is not a sentence to

@@ -2,7 +2,6 @@ package domain
 
 import (
 	"errors"
-	"fmt"
 	"math/bits"
 	"regexp"
 	"strings"
@@ -205,8 +204,8 @@ type Habit struct {
 	CategoryID  string `json:"categoryId"`
 	TargetValue int    `json:"targetValue"`
 	// StepValue is how much one tap, or one press of + or -, adds. It starts at
-	// the kind's natural step and only a count lets the user change it: "one
-	// glass" is the obvious increment for water, "ten" is for push-ups.
+	// the kind's natural step and every kind but a tick lets the user change
+	// it: "one glass" is the obvious increment for water, "ten" is for push-ups.
 	StepValue  int        `json:"stepValue"`
 	Unit       string     `json:"unit"`
 	Frequency  Frequency  `json:"frequency"`
@@ -228,41 +227,42 @@ const (
 
 // The bounds messages are phrased per kind, so the reader is told about
 // minutes or metres rather than about an abstract "target".
-func minTargetMessage(k Kind) string {
+func targetTooSmall(k Kind) error {
 	switch k {
 	case KindTime:
-		return "time must be at least 0.1 minutes"
+		return invalid("time must be at least 0.1 minutes")
 	case KindDistance:
-		return "distance must be at least 1 metre"
+		return invalid("distance must be at least 1 metre")
 	}
-	return "target must be at least 0.1"
+	return invalid("target must be at least 0.1")
 }
 
-// limitText spells a kind s ceiling the way the reader wrote it: the stored
-// number divided back down, with the unit it is entered in.
-func limitText(k Kind) string {
+// tooLarge names a kind's ceiling the way the reader wrote it: the stored
+// number divided back down, with the unit it is entered in. what is the thing
+// being bounded - "target", "step", "value" - and is part of the template, so
+// every combination is a sentence of its own for the translation to key on.
+func tooLarge(what string, k Kind) error {
+	limit := k.MaxTarget() / k.Scale()
 	switch k {
 	case KindTime:
-		return fmt.Sprintf("%d minutes", k.MaxTarget()/k.Scale())
+		return invalid(what+" may be at most {max} minutes", "max", limit)
 	case KindDistance:
-		return fmt.Sprintf("%d kilometres", k.MaxTarget()/k.Scale())
+		return invalid(what+" may be at most {max} kilometres", "max", limit)
 	}
-	return fmt.Sprintf("%d", k.MaxTarget()/k.Scale())
+	return invalid(what+" may be at most {max}", "max", limit)
 }
 
-func maxTargetMessage(k Kind) string {
+func targetTooLarge(k Kind) error {
 	switch k {
 	case KindTime:
-		return "time may be at most " + limitText(k)
+		return tooLarge("time", k)
 	case KindDistance:
-		return "distance may be at most " + limitText(k)
+		return tooLarge("distance", k)
 	}
-	return "target may be at most " + limitText(k)
+	return tooLarge("target", k)
 }
 
-func invalid(format string, args ...any) error {
-	return fmt.Errorf("%w: %s", ErrValidation, fmt.Sprintf(format, args...))
-}
+var invalid = Invalid
 
 // Validate normalises the habit in place and reports why it is unacceptable.
 // Normalising here rather than in the HTTP layer means the invariants hold for
@@ -275,10 +275,10 @@ func (h *Habit) Validate() error {
 		return invalid("name must not be empty")
 	}
 	if len([]rune(h.Name)) > MaxNameLen {
-		return invalid("name is longer than %d characters", MaxNameLen)
+		return invalid("name is longer than {max} characters", "max", MaxNameLen)
 	}
 	if len([]rune(h.Unit)) > MaxUnitLen {
-		return invalid("unit is longer than %d characters", MaxUnitLen)
+		return invalid("unit is longer than {max} characters", "max", MaxUnitLen)
 	}
 	if h.Color == "" {
 		h.Color = DefaultColors[0]
@@ -290,20 +290,20 @@ func (h *Habit) Validate() error {
 
 	h.Icon = strings.TrimSpace(h.Icon)
 	if h.Icon != "" && !ValidIcon(h.Icon) {
-		return invalid("unknown icon %q", h.Icon)
+		return invalid(`unknown icon "{icon}"`, "icon", h.Icon)
 	}
 
 	if !h.Kind.Valid() {
-		return invalid("unknown habit kind %q", h.Kind)
+		return invalid(`unknown habit kind "{kind}"`, "kind", h.Kind)
 	}
 	if h.Kind == KindCheck {
 		// A tick is done or it is not; there is nothing to configure.
 		h.TargetValue = 1
 	} else if h.TargetValue < 1 {
-		return invalid("%s", minTargetMessage(h.Kind))
+		return targetTooSmall(h.Kind)
 	}
 	if h.TargetValue > h.Kind.MaxTarget() {
-		return invalid("%s", maxTargetMessage(h.Kind))
+		return targetTooLarge(h.Kind)
 	}
 	// A tick has nothing to count, so its step stays one whatever a client
 	// sends. The counting kinds start at the step of their unit and may be set
@@ -313,7 +313,7 @@ func (h *Habit) Validate() error {
 	} else if h.StepValue < 1 {
 		h.StepValue = h.Kind.Step()
 	} else if h.StepValue > h.Kind.MaxTarget() {
-		return invalid("step may be at most %s", limitText(h.Kind))
+		return tooLarge("step", h.Kind)
 	}
 	// Kinds with a fixed unit own it; only a count lets the user name one.
 	if u := h.Kind.Unit(); u != "" || h.Kind == KindCheck {
@@ -326,7 +326,7 @@ func (h *Habit) Validate() error {
 func (h *Habit) normaliseFrequency() error {
 	f := &h.Frequency
 	if !f.Kind.Valid() {
-		return invalid("unknown frequency %q", f.Kind)
+		return invalid(`unknown frequency "{frequency}"`, "frequency", f.Kind)
 	}
 	switch f.Kind {
 	case FreqDaily:
@@ -388,13 +388,13 @@ func (h *Habit) normaliseFrequency() error {
 // value would overflow the sum in Stats.Total long before it meant anything.
 func ValidateEntryValue(k Kind, value int) error {
 	if !k.Valid() {
-		return invalid("unknown habit kind %q", k)
+		return invalid(`unknown habit kind "{kind}"`, "kind", k)
 	}
 	if value < 0 {
 		return invalid("value must not be negative")
 	}
 	if value > k.MaxTarget() {
-		return invalid("value may be at most %s", limitText(k))
+		return tooLarge("value", k)
 	}
 	return nil
 }

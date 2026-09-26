@@ -5,7 +5,7 @@
 // change. That keeps undo correct across reloads of *other* clients and means
 // the history never disagrees with the database.
 
-import { t } from "./i18n.js";
+import { t, locale } from "./i18n.js";
 
 const MAX_HISTORY = 50;
 
@@ -77,9 +77,18 @@ export async function redoLast() {
 }
 
 export function errorText(err) {
-  // Through the dictionary as well: the server's messages are fixed English
-  // sentences, and the common ones have a translation there.
-  return err?.message ? t(String(err.message)) : t("Unknown error");
+  if (!err?.message) return t("Unknown error");
+  // A message with placeholders comes with its template, which is the key the
+  // dictionary holds; the finished sentence would never be found there.
+  // Without one it is a fixed sentence and looked up as it is.
+  if (!err.template) return t(String(err.message));
+  const vars = {};
+  for (const [name, value] of Object.entries(err.params ?? {})) {
+    // Numbers in the reader's notation, words through the dictionary too: a
+    // kind's label arrives in English. A word without an entry stays as sent.
+    vars[name] = typeof value === "number" ? value.toLocaleString(locale) : t(String(value));
+  }
+  return t(err.template, vars);
 }
 
 const DEFAULT_TIMEOUT = 7000;
@@ -103,7 +112,9 @@ export function toast(text, opts = {}) {
   el.append(label);
 
   let timer;
+  let gone = false;
   const dismiss = () => {
+    gone = true;
     clearTimeout(timer);
     el.remove();
   };
@@ -130,7 +141,28 @@ export function toast(text, opts = {}) {
   close.addEventListener("click", dismiss);
   el.append(close);
 
+  // The clock stops while the pointer rests on the toast or focus is inside
+  // it, and starts over once both have left: whoever is reaching for "Undo",
+  // or reading the message slowly, should not lose it halfway.
+  const timeout = opts.timeout ?? DEFAULT_TIMEOUT;
+  let hovered = false;
+  let focused = false;
+  const hold = () => clearTimeout(timer);
+  const resume = () => {
+    if (gone || hovered || focused) return;
+    clearTimeout(timer);
+    timer = setTimeout(dismiss, timeout);
+  };
+  el.addEventListener("pointerenter", () => { hovered = true; hold(); });
+  el.addEventListener("pointerleave", () => { hovered = false; resume(); });
+  el.addEventListener("focusin", () => { focused = true; hold(); });
+  el.addEventListener("focusout", (event) => {
+    if (el.contains(event.relatedTarget)) return;
+    focused = false;
+    resume();
+  });
+
   container.append(el);
-  timer = setTimeout(dismiss, opts.timeout ?? DEFAULT_TIMEOUT);
+  timer = setTimeout(dismiss, timeout);
   return dismiss;
 }

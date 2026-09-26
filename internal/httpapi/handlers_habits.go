@@ -48,6 +48,9 @@ type stateResponse struct {
 	// client needs it to know when paging further back would run past its data
 	// and it has to ask for a wider window.
 	EntriesFrom domain.Date `json:"entriesFrom"`
+	// EarliestEntry is the first day an entry may be dated. The board stops
+	// paging back there, so it never offers a day the server would refuse.
+	EarliestEntry domain.Date `json:"earliestEntry"`
 	// BackgroundVersion is the hash of the uploaded background, or "" when there
 	// is none. It tells the settings dialog whether to offer the picture at all,
 	// and the page appends it to the URL so a new upload is never served from
@@ -147,6 +150,7 @@ func (s *Server) handleState(w http.ResponseWriter, r *http.Request) {
 		Kinds:             domain.KindDescriptors(),
 		BlurAtFull:        store.BackgroundBlurAtFull,
 		EntriesFrom:       from,
+		EarliestEntry:     EarliestEntry,
 		BackgroundVersion: bgVersion,
 		ServerTimeZone:    s.cfg.Location.String(),
 	})

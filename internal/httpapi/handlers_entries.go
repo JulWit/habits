@@ -3,6 +3,7 @@ package httpapi
 import (
 	"fmt"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/JulWit/habits/internal/auth"
@@ -13,6 +14,12 @@ import (
 // EntryHorizonDays is how far ahead of today an entry may be recorded. The
 // board pages the same distance forward, so the two limits stay in step.
 const EntryHorizonDays = 365
+
+// EarliestEntry is the first day an entry may be dated. Backfilling history
+// from another tracker is welcome, but a typo in a script is not worth a row
+// in the year 1, which every streak scan would then walk two millennia to
+// reach. /api/state sends it along, so the board stops paging back there.
+var EarliestEntry = domain.Date{Year: 2000, Month: time.January, Day: 1}
 
 type setEntryResponse struct {
 	HabitID string      `json:"habitId"`
@@ -51,6 +58,15 @@ func (s *Server) handleSetEntry(w http.ResponseWriter, r *http.Request) {
 	// scatter entries into the next decade.
 	if date.After(today.AddDays(EntryHorizonDays)) {
 		writeError(w, http.StatusUnprocessableEntity, "Entries may be at most one year in the future")
+		return
+	}
+	// Only a value is held to the floor: an entry already stored before it can
+	// still be cleared, the same way as a day the schedule no longer covers.
+	if body.Value > 0 && date.Before(EarliestEntry) {
+		// The year as text: it is no quantity, and the client writes numbers
+		// in the reader's notation, which in German makes it "2.000".
+		writeProblem(w, http.StatusUnprocessableEntity, domain.Invalid(
+			"Entries may not be dated before {year}", "year", strconv.Itoa(EarliestEntry.Year)))
 		return
 	}
 
@@ -210,8 +226,8 @@ func (s *Server) handleUpdateSettings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if in.TimeZone != nil && !store.ValidTimeZone(*in.TimeZone) {
-		writeError(w, http.StatusUnprocessableEntity,
-			fmt.Sprintf("unknown time zone %q", *in.TimeZone))
+		writeProblem(w, http.StatusUnprocessableEntity,
+			domain.Invalid(`unknown time zone "{zone}"`, "zone", *in.TimeZone))
 		return
 	}
 

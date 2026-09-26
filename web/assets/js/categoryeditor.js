@@ -5,7 +5,7 @@
 import { state, categoryById } from "./state.js";
 import { errorText } from "./undo.js";
 import { t } from "./i18n.js";
-import { buildIconChoices, markIconChoice } from "./icons.js";
+import { buildIconChoices, markIconChoice, colorLabel } from "./icons.js";
 
 let dialog;
 let form;
@@ -26,6 +26,14 @@ export function initCategoryEditor() {
   iconHost = document.getElementById("category-icon-choices");
 
   form.addEventListener("submit", handleSubmit);
+  // A message about the old input is wrong once the input changes, so it goes.
+  // Colour and icon are plain buttons and fire neither event, hence click.
+  for (const type of ["input", "change", "click"]) {
+    form.addEventListener(type, (event) => {
+      if (type === "click" && !event.target.closest("#category-color-choices, #category-icon-choices")) return;
+      errorBox.hidden = true;
+    });
+  }
   form.querySelector('[data-action="cancel"]').addEventListener("click", () => dialog.close());
 }
 
@@ -65,8 +73,9 @@ function buildSwatches() {
       if (color) b.style.background = color;
       b.dataset.color = color;
       b.setAttribute("role", "radio");
-      b.setAttribute("aria-label", color ? t("Colour {color}", { color }) : t("No colour"));
-      b.title = color || t("No colour");
+      b.setAttribute("aria-label",
+        color ? t("Colour {color}", { color: colorLabel(color) }) : t("No colour"));
+      b.title = color ? colorLabel(color) : t("No colour");
       b.addEventListener("click", () => selectColor(color));
       return b;
     }),
@@ -106,6 +115,9 @@ async function handleSubmit(event) {
   } catch (err) {
     errorBox.textContent = errorText(err);
     errorBox.hidden = false;
+    // The box sits at the end of the scrolling body, which on a phone is below
+    // the fold. Without this the save button seems to do nothing.
+    errorBox.scrollIntoView({ block: "nearest" });
   } finally {
     submitButton.disabled = false;
   }

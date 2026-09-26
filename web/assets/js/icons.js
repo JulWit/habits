@@ -247,6 +247,37 @@ export function categoryIconBadge(category, className = "habit-icon") {
   return iconBadge(category.icon, category.color || null, className);
 }
 
+// What an icon and a palette colour are called, for a screen reader and a
+// tooltip. The server's lists hold identifiers and hex values, neither of which
+// is a word a person says. Written in English and translated through the
+// dictionary like any label; one missing here falls back to its identifier
+// rather than to silence.
+const ICON_LABELS = {
+  droplet: "Water drop", apple: "Apple", utensils: "Cutlery", coffee: "Coffee",
+  pill: "Pill", heart: "Heart", dumbbell: "Dumbbell", bike: "Bicycle",
+  mountain: "Mountain", flame: "Flame", bed: "Bed", moon: "Moon", sun: "Sun",
+  book: "Book", pencil: "Pencil", lightbulb: "Light bulb", code: "Code",
+  globe: "Globe", music: "Music", palette: "Paint palette", camera: "Camera",
+  leaf: "Leaf", home: "House", wallet: "Wallet", users: "People",
+  smartphone: "Smartphone", ban: "No entry", smile: "Smile", star: "Star",
+  target: "Target", clock: "Clock", check: "Check mark",
+};
+
+const COLOR_LABELS = {
+  "#dc2626": "Red", "#ea580c": "Orange", "#eab308": "Yellow", "#65a30d": "Lime",
+  "#16a34a": "Green", "#0d9488": "Teal", "#0284c7": "Sky blue", "#2563eb": "Blue",
+  "#4f46e5": "Indigo", "#7c3aed": "Violet", "#db2777": "Pink", "#64748b": "Slate",
+};
+
+export function iconLabel(name) {
+  return t(ICON_LABELS[name] ?? name);
+}
+
+export function colorLabel(hex) {
+  const label = COLOR_LABELS[hex?.toLowerCase()];
+  return label ? t(label) : hex;
+}
+
 /**
  * Fills host with one radio button per icon, after a first one for "no icon",
  * and calls onPick with the chosen name ("" for none).
@@ -263,8 +294,8 @@ export function buildIconChoices(host, names, onPick) {
       b.className = name ? "icon-choice" : "icon-choice is-none";
       b.dataset.icon = name;
       b.setAttribute("role", "radio");
-      b.setAttribute("aria-label", name ? t("Icon {name}", { name }) : t("No icon"));
-      b.title = name || t("No icon");
+      b.setAttribute("aria-label", name ? t("Icon {name}", { name: iconLabel(name) }) : t("No icon"));
+      b.title = name ? iconLabel(name) : t("No icon");
       // "No icon" is an empty, dashed tile: the absence it stands for.
       if (name) b.innerHTML = habitIcons[name];
       b.addEventListener("click", () => onPick(name));

@@ -167,3 +167,17 @@ func TestLanguageAndTimeZoneSettings(t *testing.T) {
 		t.Errorf("state without the server zone")
 	}
 }
+
+// The asset handler serves files and nothing else: a directory is not
+// answered with a listing of what is in it.
+func TestAssetDirectoriesAreNotListed(t *testing.T) {
+	h := newTestServer(t)
+	for _, path := range []string{"/assets/", "/assets/js/", "/assets/js", "/assets/nope.js"} {
+		if w := do(t, h, "GET", path, "", ""); w.Code != http.StatusNotFound {
+			t.Errorf("GET %s: status %d, want 404", path, w.Code)
+		}
+	}
+	if w := do(t, h, "GET", "/assets/js/app.js", "", ""); w.Code != http.StatusOK {
+		t.Errorf("GET /assets/js/app.js: status %d, want 200", w.Code)
+	}
+}

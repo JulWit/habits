@@ -140,28 +140,10 @@ func (s *Store) RestoreCategory(ctx context.Context, userID, id string) error {
 	return expectOneRow(res)
 }
 
+// ReorderCategories applies a new block order; see reorder for what ids may
+// leave out.
 func (s *Store) ReorderCategories(ctx context.Context, userID string, ids []string) error {
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return fmt.Errorf("starting transaction: %w", err)
-	}
-	defer tx.Rollback()
-
-	stmt, err := tx.PrepareContext(ctx,
-		`UPDATE categories SET position = ?, updated_at = ?
-		 WHERE id = ? AND user_id = ? AND deleted_at IS NULL`)
-	if err != nil {
-		return fmt.Errorf("preparing reorder: %w", err)
-	}
-	defer stmt.Close()
-
-	now := formatTime(time.Now())
-	for i, id := range ids {
-		if _, err := stmt.ExecContext(ctx, i, now, id, userID); err != nil {
-			return fmt.Errorf("saving order: %w", err)
-		}
-	}
-	return tx.Commit()
+	return s.reorder(ctx, "categories", userID, ids, true)
 }
 
 // PurgeDeletedCategories removes categories past the undo retention window. The

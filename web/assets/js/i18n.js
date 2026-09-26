@@ -48,6 +48,18 @@ const de = {
   "Icon": "Symbol",
   "Icon {name}": "Symbol {name}",
   "No icon": "Kein Symbol",
+  // The icons and the palette by name (icons.js), for screen readers and tooltips.
+  "Water drop": "Wassertropfen", "Apple": "Apfel", "Cutlery": "Besteck", "Coffee": "Kaffee",
+  "Pill": "Tablette", "Heart": "Herz", "Dumbbell": "Hantel", "Bicycle": "Fahrrad",
+  "Mountain": "Berg", "Flame": "Flamme", "Bed": "Bett", "Moon": "Mond", "Sun": "Sonne",
+  "Book": "Buch", "Pencil": "Stift", "Light bulb": "Glühbirne", "Code": "Code",
+  "Globe": "Globus", "Music": "Musik", "Paint palette": "Farbpalette", "Camera": "Kamera",
+  "Leaf": "Blatt", "House": "Haus", "Wallet": "Geldbörse", "People": "Personen",
+  "Smartphone": "Smartphone", "No entry": "Verbotsschild", "Smile": "Lächeln",
+  "Star": "Stern", "Target": "Zielscheibe", "Clock": "Uhr", "Check mark": "Häkchen",
+  "Red": "Rot", "Orange": "Orange", "Yellow": "Gelb", "Lime": "Hellgrün", "Green": "Grün",
+  "Teal": "Petrol", "Sky blue": "Himmelblau", "Blue": "Blau", "Indigo": "Indigo",
+  "Violet": "Violett", "Pink": "Pink", "Slate": "Schiefergrau",
   "Category": "Kategorie",
   "Kind": "Art",
   "Check": "Abhaken",
@@ -342,9 +354,63 @@ const de = {
   "Entries may be at most one year in the future":
     "Einträge dürfen höchstens ein Jahr in der Zukunft liegen",
   "The habit is not scheduled on this day": "Die Gewohnheit ist an diesem Tag nicht geplant",
+  "Entries may not be dated before {year}": "Einträge dürfen nicht vor dem Jahr {year} liegen.",
+  "The new order names the same entry twice.": "Die neue Reihenfolge nennt einen Eintrag doppelt.",
   "Internal server error": "Interner Serverfehler",
   "Not found": "Nicht gefunden",
   "the image could not be read": "Das Bild konnte nicht gelesen werden",
+
+  // Validation, keyed by the server's templates (domain.Invalid). A string
+  // placeholder is translated on its own, a number written in German notation.
+  "name must not be empty": "Der Name darf nicht leer sein.",
+  "name is longer than {max} characters": "Der Name darf höchstens {max} Zeichen lang sein.",
+  "unit is longer than {max} characters": "Die Einheit darf höchstens {max} Zeichen lang sein.",
+  "category name must not be empty": "Der Name der Kategorie darf nicht leer sein.",
+  "category name is longer than {max} characters":
+    "Der Name der Kategorie darf höchstens {max} Zeichen lang sein.",
+  "colour must be a hex value like #4caf50": "Die Farbe muss ein Hex-Wert wie #4caf50 sein.",
+  "unknown icon \"{icon}\"": "Unbekanntes Symbol „{icon}“.",
+  "unknown habit kind \"{kind}\"": "Unbekannte Art „{kind}“.",
+  "unknown frequency \"{frequency}\"": "Unbekannte Häufigkeit „{frequency}“.",
+  "unknown category": "Diese Kategorie gibt es nicht mehr.",
+  "date is missing": "Das Datum fehlt.",
+  "target must be at least 0.1": "Das Tagesziel muss mindestens 0,1 sein.",
+  "time must be at least 0.1 minutes": "Die Zeit muss mindestens 0,1 Minuten betragen.",
+  "distance must be at least 1 metre": "Die Strecke muss mindestens 1 Meter betragen.",
+  "target may be at most {max}": "Das Tagesziel darf höchstens {max} sein.",
+  "time may be at most {max} minutes": "Die Zeit darf höchstens {max} Minuten betragen.",
+  "distance may be at most {max} kilometres": "Die Strecke darf höchstens {max} Kilometer betragen.",
+  "step may be at most {max}": "Der Schritt darf höchstens {max} sein.",
+  "step may be at most {max} minutes": "Der Schritt darf höchstens {max} Minuten betragen.",
+  "step may be at most {max} kilometres": "Der Schritt darf höchstens {max} Kilometer betragen.",
+  "value must not be negative": "Der Wert darf nicht negativ sein.",
+  "value may be at most {max}": "Der Wert darf höchstens {max} sein.",
+  "value may be at most {max} minutes": "Der Wert darf höchstens {max} Minuten betragen.",
+  "value may be at most {max} kilometres": "Der Wert darf höchstens {max} Kilometer betragen.",
+  "times per week must be between 1 and 7": "„Mal pro Woche“ muss zwischen 1 und 7 liegen.",
+  "at least one weekday must be selected": "Bitte wähle mindestens einen Wochentag.",
+  "invalid weekday selection": "Ungültige Auswahl der Wochentage.",
+  "week interval must be between 1 and 52 weeks":
+    "Der Wochenabstand muss zwischen 1 und 52 Wochen liegen.",
+  "week of the month must be 1 to 4 or the last":
+    "Die Woche im Monat muss die erste bis vierte oder die letzte sein.",
+  "a week interval and a week of the month cannot be combined":
+    "Ein Wochenabstand und eine Woche im Monat lassen sich nicht kombinieren.",
+  "interval must be between 1 and 365 days": "Der Abstand muss zwischen 1 und 365 Tagen liegen.",
+  "The kind can no longer be changed: 1 day is already recorded, and its value would mean something else as \"{kind}\". Create a new habit instead.":
+    "Die Art lässt sich nicht mehr ändern: Es ist schon 1 Tag erfasst, und sein Wert hätte als „{kind}“ eine andere Bedeutung. Leg stattdessen eine neue Gewohnheit an.",
+  "The kind can no longer be changed: {count} days are already recorded, and their values would mean something else as \"{kind}\". Create a new habit instead.":
+    "Die Art lässt sich nicht mehr ändern: Es sind schon {count} Tage erfasst, und ihre Werte hätten als „{kind}“ eine andere Bedeutung. Leg stattdessen eine neue Gewohnheit an.",
+  "the image may be at most {max} MB": "Das Bild darf höchstens {max} MB groß sein.",
+  "the file is not a jpeg or png image": "Die Datei ist kein JPEG- oder PNG-Bild.",
+  "only jpeg and png are supported, not {format}":
+    "Nur JPEG und PNG werden unterstützt, nicht {format}.",
+  "the image has no area": "Das Bild hat keine Fläche.",
+  "the image may be at most {max} pixels per edge":
+    "Das Bild darf höchstens {max} Pixel pro Kante haben.",
+  "the image has too many pixels (at most {max} million)":
+    "Das Bild hat zu viele Pixel (höchstens {max} Millionen).",
+  "unknown time zone \"{zone}\"": "Unbekannte Zeitzone „{zone}“.",
 };
 
 const dictionary = lang === "de" ? de : {};

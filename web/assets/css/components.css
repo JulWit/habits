@@ -1143,34 +1143,50 @@ html[data-filtering="on"] {
 .mark.is-complete svg { width: .95rem; height: .95rem; }
 
 /* A day inside a streak keeps the habit's colour, but the longer the run has
-   been going the thinner that colour is spread over a spectrum underneath: a
-   week shows a hint of it, a year is the full rainbow.
+   been going the thinner that flat colour is spread over a gradient underneath:
+   a week shows a hint of it, a year is the full gradient.
+
+   The gradient is built around the habit's own colour: lighter and turned a
+   little one way round the colour wheel at the top left, deeper and turned the
+   other way at the bottom right. The hue shift is what makes it glow rather
+   than merely shade, while the middle stays the habit's colour, so a long
+   streak still reads as the same habit.
 
    Two background layers rather than a colour mix, because color-mix() takes
-   colours and the spectrum is a gradient. The habit's colour is painted over it
+   colours and the gradient is an image. The habit's colour is painted over it
    as a flat veil, so a single variable per level is the whole difference
    between the steps — and at level 6 the veil is gone rather than merely pale.
 
-   The spectrum starts at the top of the circle and comes back round to its
-   first hue, so the ring has no seam where red meets violet. */
+   The first background is a fallback for browsers without relative colour
+   syntax: the same light-to-deep run, just without the hue shift. */
 .mark.is-complete[data-streak] {
-  --veil: 75%;
+  --veil: 70%;
+  --streak-veil: linear-gradient(
+    color-mix(in srgb, var(--habit-color) var(--veil), transparent) 0 100%);
   background:
+    var(--streak-veil),
     linear-gradient(
-      color-mix(in srgb, var(--habit-color) var(--veil), transparent) 0 100%),
-    conic-gradient(
-      from -90deg,
-      #f43f5e, #f97316, #facc15, #22c55e, #06b6d4, #3b82f6, #a855f7, #f43f5e);
-  /* White on the spectrum's yellow is the one place the mark could lose its
-     check; a shadow the size of the stroke keeps it readable at every level
-     without darkening the colours themselves. */
+      135deg,
+      color-mix(in oklab, var(--habit-color), #fff 55%),
+      var(--habit-color) 45%,
+      color-mix(in oklab, var(--habit-color), #000 55%));
+  background:
+    var(--streak-veil),
+    linear-gradient(
+      135deg,
+      oklch(from var(--habit-color) calc(l + .25) calc(c * 1.15) calc(h - 75)),
+      var(--habit-color) 45%,
+      oklch(from var(--habit-color) calc(l - .25) calc(c * 1.1) calc(h + 70)));
+  /* White on the light end of the gradient is the one place the mark could
+     lose its check; a shadow the size of the stroke keeps it readable at every
+     level without darkening the colours themselves. */
   text-shadow: 0 0 2px rgb(0 0 0 / .45);
 }
 
-.mark.is-complete[data-streak="2"] { --veil: 60%; }
-.mark.is-complete[data-streak="3"] { --veil: 45%; }
-.mark.is-complete[data-streak="4"] { --veil: 30%; }
-.mark.is-complete[data-streak="5"] { --veil: 15%; }
+.mark.is-complete[data-streak="2"] { --veil: 52%; }
+.mark.is-complete[data-streak="3"] { --veil: 36%; }
+.mark.is-complete[data-streak="4"] { --veil: 22%; }
+.mark.is-complete[data-streak="5"] { --veil: 10%; }
 .mark.is-complete[data-streak="6"] { --veil: 0%; }
 
 .mark.is-complete[data-streak] svg { filter: drop-shadow(0 0 1.5px rgb(0 0 0 / .45)); }

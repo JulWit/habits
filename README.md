@@ -207,8 +207,11 @@ the week and not the individual day that is the target.
 **Streak colours** — the board paints a completed day by how long the run it
 belongs to had been going *by that day*, so a row shows a streak building up and
 starting over. Six levels, and each one leaves less of the habit's own colour
-over a spectrum underneath: one week, two weeks, a month, three months, six
-months, a year — at a year the circle is the full rainbow.
+over a gradient underneath (built around the habit's colour, lighter and
+shifted one way round the colour wheel at one end, deeper and shifted the other
+way at the other): one
+week, two weeks, a month, three months, six months, a year — at a year the
+circle is the full gradient.
 
 The levels are measured in calendar days rather than in the days a habit is due
 on, so a Mon–Fri habit reaches "a week" after a week rather than after seven of

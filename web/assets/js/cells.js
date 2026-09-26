@@ -86,7 +86,7 @@ export function dayEntry(habit, iso) {
     mark.classList.remove("is-off");
     mark.classList.add("is-complete");
     // The longer the run, the less of the habit's own colour is left over the
-    // spectrum underneath. Level 0 sets nothing, so a day outside a run — and
+    // gradient underneath. Level 0 sets nothing, so a day outside a run — and
     // every day of a run in its first week — is drawn exactly as before.
     const level = H.streakLevel(streakDays);
     if (level > 0) mark.dataset.streak = String(level);

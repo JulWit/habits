@@ -31,10 +31,12 @@ export function isScheduled(habit, iso) {
 
 /**
  * Whether a value may be recorded on a day. Mirrors domain.Habit.AcceptsEntry:
- * only a habit with chosen weekdays closes the other days.
+ * a habit with fixed days (chosen weekdays, every n days) closes the others.
  */
 export function acceptsEntry(habit, iso) {
-  return habit.frequency.kind !== "weekdays" || isScheduled(habit, iso);
+  const kind = habit.frequency.kind;
+  if (kind === "weekdays" || kind === "every_n_days") return isScheduled(habit, iso);
+  return true;
 }
 
 /**

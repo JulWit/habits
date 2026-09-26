@@ -166,6 +166,7 @@ without identity headers.
 | Set an exact value | Long press or right-click |
 | Undo / redo | `Ctrl+Z` / `Ctrl+Shift+Z`, or the "Undo" button in the toast |
 | New habit | `N` |
+| Find a habit or category | Magnifier in the header, `/` or `Ctrl+K`; arrow keys and `Enter` open a result |
 | Settings | Cog in the header |
 | Theme, days in the overview, archive | all in the settings dialog |
 | Assign or create a category | The "Category" field in the habit editor |
@@ -202,6 +203,19 @@ has to tell "not recorded" apart from "recorded as 0".
 **Streaks** — a today that is still open does not break a streak. With
 `times_per_week` the streak counts in weeks rather than days, because there it is
 the week and not the individual day that is the target.
+
+**Streak colours** — the board paints a completed day by how long the run it
+belongs to had been going *by that day*, so a row shows a streak building up and
+starting over. Six levels, and each one leaves less of the habit's own colour
+over a spectrum underneath: one week, two weeks, a month, three months, six
+months, a year — at a year the circle is the full rainbow.
+
+The levels are measured in calendar days rather than in the days a habit is due
+on, so a Mon–Fri habit reaches "a week" after a week rather than after seven of
+its own days. The server sends the runs behind this as `streakRuns` per habit
+(`domain.StreakRuns`), each with its true first day even when that day is older
+than the shipped history; how a run is then coloured is the client's business
+and lives in `habit.js` next to `heatLevel`.
 
 ## API
 

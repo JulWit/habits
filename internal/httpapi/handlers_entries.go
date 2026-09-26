@@ -59,7 +59,7 @@ func (s *Server) handleSetEntry(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if !habit.AcceptsEntry(date) {
-			writeError(w, http.StatusUnprocessableEntity, "The habit is not scheduled on this weekday")
+			writeError(w, http.StatusUnprocessableEntity, "The habit is not scheduled on this day")
 			return
 		}
 	}
@@ -108,6 +108,7 @@ func (s *Server) handleUpdateSettings(w http.ResponseWriter, r *http.Request) {
 		AlignWeeks   *bool   `json:"alignWeeks"`
 		BandColor    *string `json:"bandColor"`
 		BandOpacity  *int    `json:"bandOpacity"`
+		ShowBand     *bool   `json:"showBand"`
 
 		BackgroundDim  *int `json:"backgroundDim"`
 		BackgroundBlur *int `json:"backgroundBlur"`
@@ -200,6 +201,7 @@ func (s *Server) handleUpdateSettings(w http.ResponseWriter, r *http.Request) {
 		setIf(&cur.AlignWeeks, in.AlignWeeks)
 		setIf(&cur.BandColor, in.BandColor)
 		setIf(&cur.BandOpacity, in.BandOpacity)
+		setIf(&cur.ShowBand, in.ShowBand)
 		setIf(&cur.OverviewDays, in.OverviewDays)
 		setIf(&cur.ShowArchived, in.ShowArchived)
 		setIf(&cur.BackgroundDim, in.BackgroundDim)

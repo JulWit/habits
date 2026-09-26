@@ -9,10 +9,11 @@
    browser how to paint scrollbars and native controls — letting the OS decide
    those would clash with a light page on a dark desktop.
 
-   The dark palette is a pure black ground with grey elements and no blue cast.
-   On black a drop shadow is invisible, so cards are separated by their own
-   lighter fill and border instead — which is why the surfaces step up in even
-   increments rather than being near-black themselves.
+   The dark palette is a very dark grey ground with lighter grey elements and
+   no blue cast. The design is flat: no outlines and no drop shadows in either
+   theme, so cards, fields and buttons are told apart by their fill alone.
+   That is why the ground is not pure black and the surfaces step up from it
+   in clear, even increments — on black the steps were too faint to read.
 
    [data-theme] is matched without an html prefix so a theme can be scoped to a
    subtree: that is what lets the styleguide put light and dark next to each
@@ -20,20 +21,16 @@
 :root {
   color-scheme: light dark;
 
-  --bg: light-dark(#f4f5f7, #000000);
-  --surface: light-dark(#ffffff, #131313);
-  /* The title bar, and the search field inside it. In the light theme the bar
-     is a white surface and the field takes the colour the bar used to have, so
-     the two still tell each other apart; in the dark theme both stay as they
-     were. Written out rather than mixed from --bg and --surface: those are
-     light-dark() values themselves, and one inside another does not resolve.
-     The alpha is what the backdrop blur needs something to work on. */
-  --topbar-base: light-dark(#ffffff, #000000);
-  --topbar-bg: color-mix(in srgb, var(--topbar-base) 88%, transparent);
-  --search-bg: light-dark(#f4f5f7, #131313);
-  --surface-2: light-dark(#eceef2, #1f1f1f);
-  --border: light-dark(#dcdfe6, #2b2b2b);
-  --border-strong: light-dark(#c3c8d2, #3f3f3f);
+  --bg: light-dark(#e6e8ec, #0f0f0f);
+  --surface: light-dark(#ffffff, #191919);
+  /* The title bar has no colour of its own: it wears the page (see .topbar).
+     Only over a picture does it need a pane, and that pane is the page colour
+     made translucent - written out rather than taken from --bg, because --bg
+     is a light-dark() value itself and one inside another does not resolve. */
+  --topbar-base: light-dark(#e6e8ec, #0f0f0f);
+  --surface-2: light-dark(#eceef2, #252525);
+  --border: light-dark(#dcdfe6, #323232);
+  --border-strong: light-dark(#c3c8d2, #454545);
   /* The dark text is not pure white: at full contrast on black, light type
      haloes on an LCD. */
   --text: light-dark(#1b1d21, #ececec);
@@ -63,18 +60,13 @@
      are lighter than the page in the light theme, and a step measured against
      the page all but vanished on them. The slider takes it back down for whoever
      wants a whisper. */
-  --today-neutral: light-dark(#c2c7d1, #3d3d3d);
+  --today-neutral: light-dark(#c2c7d1, #424242);
   --today: var(--today-neutral);
   /* How strongly the marking is drawn. Written by the shell and the script like
      the background's knobs; --today-shown is what everything actually paints,
      so the colour and its strength stay one decision. */
   --today-opacity: 100%;
   --today-shown: color-mix(in srgb, var(--today) var(--today-opacity), transparent);
-  /* light-dark() takes a colour, not a whole shadow, so the two layers keep
-     their colours in tokens of their own and --shadow assembles them. */
-  --shadow-near: light-dark(rgba(16, 18, 22, .08), rgba(0, 0, 0, .6));
-  --shadow-far: light-dark(rgba(16, 18, 22, .06), rgba(0, 0, 0, .5));
-  --shadow: 0 1px 2px var(--shadow-near), 0 8px 24px var(--shadow-far);
   --radius: 12px;
   --radius-sm: 8px;
   /* A category card's padding. Wider at the sides than at the ends on purpose:
@@ -191,7 +183,6 @@ html[data-font="lato"] { --font: "Lato", var(--font-system); }
   --weight-emphasis: 550;
   --weight-semibold: 600;
   --weight-bold: 650;
-  --weight-heavy: 700;
 }
 
 html[data-density="compact"] {
@@ -202,7 +193,6 @@ html[data-density="compact"] {
   --weight-emphasis: 500;
   --weight-semibold: 550;
   --weight-bold: 600;
-  --weight-heavy: 650;
 }
 
 html[data-density="comfortable"] {
@@ -213,7 +203,6 @@ html[data-density="comfortable"] {
   --weight-emphasis: 600;
   --weight-semibold: 650;
   --weight-bold: 700;
-  --weight-heavy: 750;
 }
 
 /* The phone's narrower columns, per density. The standard one lives with the
@@ -331,8 +320,13 @@ html[data-pattern="image"] {
 /* One fixed layer behind everything, rather than a background on the body: the
    page scrolls, and a texture that slides under the cards draws the eye to the
    scrolling instead of to the board. Behind the content, above the page
-   colour, and out of reach of the pointer. */
-body::before {
+   colour, and out of reach of the pointer.
+
+   The parked day header holds a second instance of the layer over a picture,
+   cut down to the strips around it; sharing the rules is what keeps the two
+   identical to the pixel. */
+body::before,
+html[data-pattern="image"][data-scrolled="on"] .day-header-backdrop::before {
   content: "";
   position: fixed;
   inset: 0;
@@ -349,7 +343,8 @@ body::before {
    And the layer reaches past the viewport by twice the blur radius, because a
    blur pulls transparency in from beyond the edge - without it the picture
    would fade out along all four sides. */
-html[data-pattern="image"] body::before {
+html[data-pattern="image"] body::before,
+html[data-pattern="image"][data-scrolled="on"] .day-header-backdrop::before {
   inset: calc(-2 * var(--bg-blur));
   background-image: linear-gradient(var(--bg-veil), var(--bg-veil)), var(--pattern-image);
   background-size: auto, cover;
@@ -371,14 +366,22 @@ html[data-pattern="image"] {
   --topbar-bg: color-mix(in srgb, var(--topbar-base) var(--surface-opacity), transparent);
 }
 
+/* The one place the title bar keeps a pane: the page it would otherwise wear
+   is a photograph, which would show up there unveiled and unblurred. */
+html[data-pattern="image"] .topbar {
+  background: var(--topbar-bg);
+}
+
 html[data-pattern="image"] .topbar,
 html[data-pattern="image"] .block::after,
+html[data-pattern="image"] .day-summary,
 html[data-pattern="image"] .panel,
 html[data-pattern="image"] .stat {
   backdrop-filter: blur(var(--surface-blur));
 }
 
 html[data-pattern="image"] .block::after,
+html[data-pattern="image"] .day-summary,
 html[data-pattern="image"] .panel,
 html[data-pattern="image"] .stat {
   background: var(--surface-veil);
@@ -406,10 +409,9 @@ html[data-pattern="image"] .day-header {
   background-color: transparent;
 }
 
-/* The dates sit directly on the picture, where the faint grey they wear over a
-   plain page is a guess rather than a date. Over a picture every line in the
-   header moves up the text scale - and takes its colour from the veil rather
-   than from the theme.
+/* The dates sit directly on the picture, where the theme's own ink they wear
+   over a plain page can vanish. Over a picture every line in the header takes
+   its colour from the veil rather than from the theme.
 
    The reason is that the strip behind them is not the page: it is the picture,
    darkened by however much the veil says. At a heavy veil it is nearly black
@@ -454,6 +456,30 @@ html[data-pattern="image"] .day-nav .icon-button:disabled {
 }
 
 * { box-sizing: border-box; }
+
+/* Every scrollbar in the app, the page's own included: thin, no track, no
+   arrow buttons, and a thumb in the muted ink so it reads in both themes
+   without competing with the content.
+
+   Chromium on Windows keeps its arrows under the standard properties, and
+   ignores the ::-webkit-scrollbar rules the moment either standard property is
+   set - so the standard pair is only the fallback for browsers without them. */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-corner { background: transparent; }
+::-webkit-scrollbar-button { display: none; }
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 999px;
+}
+
+@supports not selector(::-webkit-scrollbar) {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-strong) transparent;
+  }
+}
 
 html, body {
   margin: 0;
@@ -503,9 +529,16 @@ button, input, textarea, select { font: inherit; color: inherit; }
   position: sticky;
   top: 0;
   z-index: 20;
-  background: var(--topbar-bg);
-  backdrop-filter: blur(10px);
-  border-bottom: 1px solid var(--border);
+  /* No bar of its own: the page itself, pattern included and anchored to the
+     viewport like the pattern layer, so the bar is invisible against it and
+     still hides the rows that scroll underneath. The day header does the
+     same. */
+  background-color: var(--bg);
+  background-image: var(--pattern-image);
+  background-size: var(--pattern-size);
+  background-attachment: fixed;
+  /* Transparent rather than gone: --topbar-h counts this pixel. */
+  border-bottom: 1px solid transparent;
 }
 
 /* The shell width. Header and view always share it, so their edges line up.
@@ -529,10 +562,11 @@ html.route-detail .view {
   max-width: 82rem;
 }
 
-/* Three tracks: brand, search, buttons. */
+/* Two tracks: brand, buttons. Search is one of the buttons and opens a dialog,
+   so nothing sits in the middle of the bar. */
 .topbar-inner {
   display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  grid-template-columns: 1fr auto;
   align-items: center;
   gap: var(--space);
   min-height: var(--topbar-row);
@@ -540,44 +574,12 @@ html.route-detail .view {
   /* A query container, because the bar is not as wide as the window: it is
      capped to the board, so at seven day columns it is a few hundred pixels
      wide on the largest monitor. What fits in it therefore has to be asked of
-     the bar itself - a window-width media query would put the full brand, a
-     centred search and four controls into a bar half their width. */
+     the bar itself - a window-width media query would put the full brand and
+     four controls into a bar half their width. */
   container: topbar / inline-size;
 }
 
-/* Each of the three named explicitly, because one of them leaves the flow on a
-   wide screen: with automatic placement the buttons would slide into the column
-   the search just vacated and end up in the middle of the bar. */
-.topbar-inner .brand { grid-column: 1; }
-.topbar-inner .board-filter { grid-column: 2; }
-
-.topbar-inner .topbar-actions {
-  grid-column: 3;
-  justify-self: end;
-}
-
-/* Wide enough to be sure nothing collides: the search leaves the grid and is
-   centred on the bar itself. In the grid it would sit between the brand and the
-   buttons, and those two are not the same width - the middle column lands a
-   few pixels off the middle of the bar, which is exactly where the eye notices
-   it. Below this width the grid keeps it, because there the columns are what
-   stops the three from overlapping.
-
-   A centred field needs room for the wider of the two sides twice over: the
-   three controls measure 116px, the field 210px, plus the two gaps - 472px,
-   rounded up for air. */
-@container topbar (min-width: 490px) {
-  .topbar-inner .board-filter {
-    position: absolute;
-    /* Spanning every column on purpose: an absolutely positioned grid item is
-       placed against its own grid area, so pinned to column two it would be
-       centred on that column rather than on the bar. Across all three the area
-       is the bar, which is what 50% should mean here. */
-    grid-column: 1 / -1;
-    left: 50%;
-    transform: translateX(-50%);
-  }
-}
+.topbar-inner .topbar-actions { justify-self: end; }
 
 .view { padding-top: calc(1.25 * var(--space)); }
 
@@ -607,8 +609,8 @@ html.route-detail .view {
   align-items: center;
   justify-content: center;
   gap: calc(.4 * var(--space));
-  border: 1px solid var(--border-strong);
-  background: var(--surface);
+  border: 1px solid transparent;
+  background: var(--surface-2);
   border-radius: var(--radius-sm);
   padding: calc(.45 * var(--space)) calc(.8 * var(--space));
   cursor: pointer;
@@ -617,7 +619,7 @@ html.route-detail .view {
   transition: background .12s ease, border-color .12s ease, transform .06s ease;
 }
 
-.button:hover { background: var(--surface-2); }
+.button:hover { background: var(--border); }
 .button:active { transform: translateY(1px); }
 
 .button.primary {
@@ -641,7 +643,7 @@ html.route-detail .view {
 
 .button.ghost:hover { background: var(--surface-2); color: var(--text); }
 
-.button.danger { color: var(--danger); border-color: var(--border); }
+.button.danger { color: var(--danger); }
 .button.danger:hover { background: color-mix(in srgb, var(--danger) 12%, var(--surface)); }
 
 .button.round {

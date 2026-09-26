@@ -1,43 +1,113 @@
-/* The filter bar, in the middle of the title bar. Kept narrow on purpose: the
-   title bar is only as wide as the board, and a centred bar has to leave the
-   same room on both sides - so its width is capped by whichever of the two,
-   brand or buttons, is the wider one. */
-.board-filter {
-  display: flex;
-  align-items: center;
-  gap: calc(.5 * var(--space));
-  min-width: 0;
+/* ---------- search dialog ----------
+   A field and the list it narrows, nothing else: no heading, no footer. The
+   dialog is centred by the browser, as every modal <dialog> is. */
+/* Two classes, because forms.css comes later and zeroes every dialog's padding. */
+.dialog.search-dialog {
+  width: min(32rem, calc(100vw - 2rem));
+  padding: calc(.6 * var(--space));
 }
 
 /* The magnifier sits in the field rather than beside it: it labels the box, and
    a box that says what it is needs no caption next to it. */
-.board-filter { position: relative; }
+.search-field { position: relative; }
 
 .search-icon {
   position: absolute;
-  left: calc(.6 * var(--space));
+  left: calc(.7 * var(--space));
+  top: 50%;
+  translate: 0 -50%;
   display: flex;
   color: var(--text-faint);
   pointer-events: none;
 }
 
-.search-icon svg { width: 1rem; height: 1rem; }
+.search-icon svg { width: 1.1rem; height: 1.1rem; }
 
-.board-filter .search {
-  flex: 1;
-  min-width: 0;
-  width: 14rem;
-  background: var(--search-bg);
-  border: 1px solid var(--border);
+#search-input {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid transparent;
   border-radius: var(--radius-sm);
   /* The left padding clears the magnifier: its offset, which follows the
      density, plus the icon and a fixed half rem of air after it. */
-  padding: calc(.45 * var(--space)) calc(.7 * var(--space)) calc(.45 * var(--space)) calc(.6 * var(--space) + 1.5rem);
+  padding: calc(.6 * var(--space)) calc(.7 * var(--space)) calc(.6 * var(--space)) calc(.7 * var(--space) + 1.6rem);
+  font-size: 1rem;
   color: inherit;
 }
 
-.board-filter .search::placeholder { color: var(--text-faint); }
-.board-filter .search:focus { outline: none; border-color: var(--border-strong); }
+#search-input::placeholder { color: var(--text-faint); }
+#search-input:focus { outline: none; }
+
+.search-results {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: min(55dvh, 26rem);
+  overflow-y: auto;
+  margin-top: calc(.5 * var(--space));
+}
+
+
+.search-results[hidden] { display: none; }
+
+.search-option {
+  display: flex;
+  align-items: center;
+  gap: calc(.6 * var(--space));
+  padding: calc(.5 * var(--space)) calc(.7 * var(--space));
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+/* Once the list scrolls, the rows stop short of the scrollbar, so a highlighted
+   row's rounded end stands clear of it rather than running into the track.
+   Set by search.js, because only a list that overflows has a bar to clear -
+   padding it always would leave a short list lopsided. */
+.search-results.is-scrolling { padding-right: calc(.4 * var(--space)); }
+
+.search-option[aria-selected="true"] { background: var(--surface-2); }
+
+.search-option .dot {
+  width: .7rem;
+  height: .7rem;
+  flex: none;
+  border-radius: 50%;
+  background: var(--habit-color);
+}
+
+/* A category has no colour of its own: a hollow ring in the muted ink tells it
+   apart from the habits without borrowing a hue. */
+.search-option .dot.is-category {
+  background: transparent;
+  box-shadow: inset 0 0 0 2px var(--text-faint);
+}
+
+.search-option-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: var(--weight-emphasis);
+}
+
+.search-option-meta {
+  flex: none;
+  max-width: 45%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: .8rem;
+  color: var(--text-faint);
+}
+
+.search-option.is-archived .search-option-name { color: var(--text-faint); font-style: italic; }
+
+.search-empty {
+  padding: calc(.8 * var(--space)) calc(.7 * var(--space)) calc(.4 * var(--space));
+  color: var(--text-faint);
+  font-size: .9rem;
+}
 
 /* ---------- overview board ----------
    The board is a stack of cards, one per category. The day header is rendered
@@ -57,7 +127,10 @@
 .board {
   display: flex;
   flex-direction: column;
-  gap: calc(.85 * var(--space));
+  gap: var(--board-gap);
+  /* Named because the parked day header keeps exactly this much page below
+     itself. */
+  --board-gap: calc(.85 * var(--space));
   /* A stacking context, so the cards' own layers stay contained. */
   position: relative;
   isolation: isolate;
@@ -113,21 +186,21 @@ html:not(.route-detail):not(.route-styleguide) .topbar-inner {
 
 /* Today runs as one band through the rows of each card: a single column is
    easier to follow down a list than a highlight repeated in every row. It
-   leaves the heading alone and runs from the line below it to the bottom edge
-   of the card - square at both ends, which the card's side padding earns: the
-   last column stops far enough from the corner that no curve cuts into it.
+   leaves the heading alone and runs from right below it - or from the top edge
+   of a card without one - to the bottom edge of the card. Square at both ends,
+   which the card's side padding earns: the column stops far enough from the
+   corners that no curve cuts into it.
 
    Behind the rows and above the card's surface, which is why the card is a
    stacking context of its own. */
 .board.has-today .block-rows::before {
   content: "";
   position: absolute;
-  /* Out of the rows box at both ends: up to the line under the heading, down
-     through the card's bottom padding - but stopping one pixel short of the
-     card's edge, which is where its own border is drawn. Running the full way
-     would paint over that line and leave the card looking cut open. */
-  top: calc(-1 * var(--head-gap));
-  bottom: calc(1px - var(--block-pad));
+  /* Out of the rows box at both ends, through the card's padding to its very
+     edge: the card has no outline, so anything short of that shows a sliver
+     of card between the band and the page. */
+  top: calc(-1 * var(--block-pad));
+  bottom: calc(-1 * var(--block-pad));
   /* --today-x is measured from the card's padding edge, the rows start one
      card padding further in. */
   left: calc(var(--today-x) - var(--block-pad-x));
@@ -136,6 +209,18 @@ html:not(.route-detail):not(.route-styleguide) .topbar-inner {
   z-index: -1;
   pointer-events: none;
 }
+
+/* Under a heading the band starts where the heading ends: the air below it. */
+.board.has-today .block-head ~ .block-rows::before {
+  top: calc(-1 * var(--head-gap));
+}
+
+/* The band switched off: the date in the header is marker enough. The cells
+   of the today column then behave like any other - they have no band behind
+   them to blend their hover and their marks' knockout into. */
+html[data-today-band="off"] .board.has-today .block-rows::before { display: none; }
+html[data-today-band="off"] .cell.is-today:hover:not(:disabled) { background: var(--surface-2); }
+html[data-today-band="off"] .cell.is-today .mark::after { background: var(--surface); }
 
 /* No gap between the month row and the dates: the divider is a border on both,
    and two pixels of air would break the line in half. The label carries a
@@ -152,14 +237,20 @@ html:not(.route-detail):not(.route-styleguide) .topbar-inner {
      header has no card of its own, so it has to imitate one, or its columns
      stop sitting over the days below.
 
-     Plus a little air above the month name. It is there at every scroll
-     position rather than only where it is needed - parked under the title bar -
-     because a padding that appears on scrolling would push the whole board down
-     by its own height the moment the page moves. */
-  padding: calc(.4 * var(--space)) var(--block-pad-x) 0;
-  /* Sticky so the dates stay readable while scrolling past several blocks. */
+     Plus air above the month name and below the dates, the same on both sides
+     so the lines sit in the middle of the card the header becomes when
+     scrolled. It is there at every scroll position rather than only where it
+     is needed, because a padding that appears on scrolling would push the whole
+     board down by its own height the moment the page moves. */
+  --header-pad-y: calc(.7 * var(--space));
+  padding: var(--header-pad-y) var(--block-pad-x);
+  /* Sticky so the dates stay readable while scrolling past several blocks.
+     Parked one board gap below the title bar, the same air it keeps above the
+     rows. At rest the header sits lower than that anyway - the view's top
+     padding is the larger of the two at every density - so this only ever
+     applies once the page moves. */
   position: sticky;
-  top: var(--topbar-h);
+  top: calc(var(--topbar-h) + var(--board-gap));
   z-index: 5;
   /* Opaque, so rows passing underneath do not show through - but carrying the
      background pattern as well, or the header would slide over the texture as
@@ -169,6 +260,89 @@ html:not(.route-detail):not(.route-styleguide) .topbar-inner {
   background-image: var(--pattern-image);
   background-size: var(--pattern-size);
   background-attachment: fixed;
+}
+
+/* Scrolled, the header becomes a card of its own: the habits' surface, drawn
+   the same way as theirs - a pseudo-element short of the handle column - with
+   all four corners rounded.
+
+   Below the card the header reaches down across the board's gap, so a strip of
+   page stays between the dates and the rows sliding underneath. The padding
+   that does it is paid back by a margin of the same size, so the board does not
+   move when the page starts scrolling.
+
+   Above the card the same gap to the title bar comes from the sticky offset;
+   the page layer behind the card reaches up across it, so the rows passing
+   there are hidden too. That layer is the page itself - pattern or picture -
+   and is what both strips and the card's cut-out corners show. */
+html[data-scrolled="on"] .day-header {
+  padding-bottom: calc(var(--header-pad-y) + var(--board-gap));
+  margin-bottom: calc(-1 * var(--board-gap));
+  /* The rounding is the card's now; on the page behind it, rounded corners
+     would only let the rows peek out at the ends of the strip. */
+  border-radius: 0;
+}
+
+html[data-scrolled="on"] .day-header::before {
+  content: "";
+  position: absolute;
+  inset: 0 var(--tools-outset) var(--board-gap) 0;
+  border-radius: var(--radius);
+  background: var(--surface);
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* The layer also reaches one corner radius further down, and there keeps only
+   the two outer corners, each cut to a quarter circle: the rows disappear
+   under the strip through the rounded top of a card rather than along a
+   straight cut. The corners sit on the edges of the habits' surface - one pixel
+   in from the left, the handle column in from the right - and everything
+   outside those edges stays covered.
+
+   Hidden at rest: there is nothing underneath to cover yet. */
+.day-header-backdrop { display: none; }
+
+html[data-scrolled="on"] .day-header-backdrop {
+  display: block;
+  position: absolute;
+  --corner: var(--radius);
+  /* Out through the transparent border on every side, up across the gap to
+     the title bar, and down by the corner. */
+  inset:
+    calc(-1px - var(--board-gap))
+    -1px
+    calc(-1px - var(--corner));
+  background-color: var(--bg);
+  background-image: var(--pattern-image);
+  background-size: var(--pattern-size);
+  background-attachment: fixed;
+  /* Everything above the corner band; the two quarter-circle corners; the
+     slivers outside them, left and right. */
+  mask-image:
+    linear-gradient(#000, #000),
+    radial-gradient(circle at 100% 100%, transparent calc(var(--corner) - .5px), #000 var(--corner)),
+    radial-gradient(circle at 0 100%, transparent calc(var(--corner) - .5px), #000 var(--corner)),
+    linear-gradient(#000, #000),
+    linear-gradient(#000, #000);
+  mask-size:
+    100% calc(100% - var(--corner)),
+    var(--corner) var(--corner),
+    var(--corner) var(--corner),
+    1px var(--corner),
+    calc(var(--tools-outset) + 1px) var(--corner);
+  /* Four-value positions throughout: mask-position does not take the
+     three-value form, and one invalid layer drops the whole list. */
+  mask-position:
+    left 0 top 0,
+    left 1px bottom 0,
+    right calc(var(--tools-outset) + 1px) bottom 0,
+    left 0 bottom 0,
+    right 0 bottom 0;
+  mask-repeat: no-repeat;
+  /* Beneath the card. */
+  z-index: -2;
+  pointer-events: none;
 }
 
 /* The card's surface is drawn by a pseudo-element, not by the block itself: it
@@ -196,10 +370,8 @@ html:not(.route-detail):not(.route-styleguide) .topbar-inner {
      the padding box, so the card's own padding counts towards the distance -
      without it the surface would reach a few pixels under the handles. */
   inset: 0 var(--tools-outset) 0 0;
-  border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--surface);
-  box-shadow: var(--shadow);
   z-index: -2;
   pointer-events: none;
 }
@@ -215,10 +387,6 @@ html:not(.route-detail):not(.route-styleguide) .topbar-inner {
      below. */
   padding: calc(.4 * var(--space)) 0 calc(.5 * var(--space)) calc(.55 * var(--space));
   margin-right: var(--tools-inset);
-  /* Separates the heading from the rows below. Inset by the card's own padding
-     rather than bleeding to the edges, so it sits inside the rounded corners
-     instead of running into them. */
-  border-bottom: 1px solid var(--border);
   margin-bottom: var(--head-gap);
 }
 
@@ -308,7 +476,6 @@ html:not(.route-detail):not(.route-styleguide) .topbar-inner {
   cursor: pointer;
 }
 
-.cat-habit + .cat-habit { border-top: 1px solid var(--border); border-radius: 0; }
 .cat-habit:hover { background: var(--surface-2); }
 
 .cat-habit .dot {
@@ -377,6 +544,105 @@ html:not(.route-detail):not(.route-styleguide) .topbar-inner {
 /* Everything due today is done: the one state worth a colour of its own. */
 .block-progress.is-complete { color: var(--text); }
 .block-progress.is-complete .block-progress-seg.is-done { background: var(--done); }
+
+/* Today at a glance, between the day header and the first card. Drawn like a
+   card, and exactly as wide as a card's surface: 1px in from the left where
+   the block's transparent border sits, and stopping short of the handle column
+   on the right, the way .block::after does. */
+.day-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space);
+  margin: 0 calc(var(--tools-outset) + 1px) 0 1px;
+  padding: calc(.7 * var(--space)) calc(var(--block-pad-x) + .55 * var(--space));
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.day-summary-text {
+  display: flex;
+  flex-direction: column;
+  gap: calc(.15 * var(--space));
+  min-width: 0;
+}
+
+.day-summary-date {
+  font-size: 1.05rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.day-summary-count {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: .85rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.day-summary-ring {
+  position: relative;
+  flex: none;
+  width: 3.5rem;
+  height: 3.5rem;
+}
+
+.day-summary-ring svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  /* The wave swings a little past the box it was drawn in at its crests. */
+  overflow: visible;
+}
+
+.day-summary-ring svg > * { fill: none; }
+
+/* A plain, thin circle for the way still to go, so the wave has something to
+   wind around. */
+.day-summary-ring-track {
+  stroke: var(--surface-2);
+  stroke-width: 1.6;
+}
+
+/* The colour of the today marker, so the ring reads as today's. At full
+   strength rather than through the opacity slider: the band behind a column
+   can afford to be a whisper, a thin stroke cannot.
+
+   The path starts at twelve o'clock itself, so there is no rotation here. */
+.day-summary-ring-fill {
+  stroke: var(--today);
+  stroke-width: 2.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  /* --from and --to are set per render: the ring is a new element every time,
+     and it winds on from where the last one stood. */
+  stroke-dasharray: var(--to) 100;
+  animation: ring-wind .7s cubic-bezier(.3, .7, .2, 1);
+}
+
+.day-summary-ring-fill.is-empty { opacity: 0; }
+
+@keyframes ring-wind {
+  from {
+    stroke-dasharray: var(--from) 100;
+    opacity: var(--from-opacity, 1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .day-summary-ring-fill { animation: none; }
+}
+
+.day-summary-percent {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: .72rem;
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums;
+}
 
 .block-empty {
   margin: 0;
@@ -462,17 +728,15 @@ html:not(.route-detail):not(.route-styleguide) .topbar-inner {
 .day-nav .icon-button {
   width: 2.15rem;
   height: 2.15rem;
-  /* The same ink as the weekday labels beside them. The arrows belong to the
-     header's lettering, not to the data in it: at the day numbers' tone they
-     were the loudest thing in a strip whose job is to label the columns. */
-  color: var(--text-faint);
+  /* The same ink as the dates beside them and the habit names below. Hover is
+     shown by the button's fill. */
+  color: var(--text);
 }
 
-.day-nav .icon-button:hover:not(:disabled) { color: var(--text); }
 .day-nav .icon-button svg { width: 1.3rem; height: 1.3rem; }
 
+/* Disabled stays a step back through the opacity alone. */
 .day-nav .icon-button:disabled {
-  color: var(--text-faint);
   opacity: .45;
   cursor: default;
   background: transparent;
@@ -485,35 +749,39 @@ html:not(.route-detail):not(.route-styleguide) .topbar-inner {
   justify-content: center;
   padding: calc(.35 * var(--space)) 0 calc(.5 * var(--space));
   border-radius: var(--radius-sm);
-  color: var(--text-faint);
+  /* The same ink as the habit names beside them. */
+  color: var(--text);
   font-size: .7rem;
   /* A step above regular, weekday and number alike: at this size the dates are
      the smallest lettering on the board, and the extra weight is what keeps
-     them legible - over a photograph as much as over a plain page. Mondays and
-     today go further still, in the rules below. */
+     them legible - over a photograph as much as over a plain page. Today goes
+     further still, in the rules below. */
   font-weight: var(--weight-medium);
   line-height: 1.25;
 }
 
-/* Scrolled, the header is no longer part of the page but a strip lying over it:
-   it takes the title bar's own colour and blur - the two are parked against
-   each other up there and should read as one piece - and a shadow, because a
-   strip that lies over something casts one. The same shadow the cards use, so
-   the board keeps one light source.
+/* Over a picture, scrolled, the header stays without a pane of its own - a
+   pane under the card would stack two veils and leave the card all but opaque.
+   Instead the card wears the habits' own glass, tint and blur, so it reads the
+   same as theirs at every setting.
+
+   The page layer behind it shows the picture and hides the rows passing
+   underneath, as the page colour does over a plain page. The picture there is
+   not a copy drawn to fit the strip but a second instance of the page's own
+   fixed layer - same box, same veil, same blur, see body::before - which the
+   backdrop's mask cuts down to the strip. Anything drawn to the strip's own
+   measure came out scaled a few percent differently from the page, and showed
+   a seam along every edge.
 
    In components rather than in base, so it lands after the rule that leaves the
-   header transparent over a picture: same specificity, and this one has to win
-   the moment the page moves. */
-html[data-scrolled="on"] .day-header {
-  background-color: var(--topbar-bg);
-  backdrop-filter: blur(10px);
-  box-shadow: var(--shadow);
+   header transparent over a picture. */
+html[data-pattern="image"][data-scrolled="on"] .day-header::before {
+  background: var(--surface-veil);
+  backdrop-filter: blur(var(--surface-blur));
 }
 
-/* Over a picture the blur follows the surfaces knob, exactly as the title bar's
-   does. */
-html[data-pattern="image"][data-scrolled="on"] .day-header {
-  backdrop-filter: blur(var(--surface-blur));
+html[data-pattern="image"][data-scrolled="on"] .day-header-backdrop {
+  background: none;
 }
 
 /* Today is marked on the date itself: a disc behind the weekday and the number,
@@ -525,43 +793,31 @@ html[data-pattern="image"][data-scrolled="on"] .day-header {
 .grid-head.is-today {
   position: relative;
   isolation: isolate;
-  color: var(--text);
   font-weight: var(--weight-bold);
 }
 
 .grid-head.is-today::before {
   content: "";
   position: absolute;
-  /* A little wider than the column, and as tall - a circle, not a rounded box.
-     The extra covers the two-pixel gaps beside the column, which is as far as
-     it can grow without reaching under the neighbouring dates. Centred on the
-     text rather than on the cell: the cell carries more padding below its lines
-     than above, and the disc has to follow the lines. */
+  /* A little wider than the column, and as tall - a rounded box, with the same
+     corners as the buttons and fields. The extra covers the two-pixel gaps
+     beside the column, which is as far as it can grow without reaching under
+     the neighbouring dates. Centred on the text rather than on the cell: the
+     cell carries more padding below its lines than above, and the box has to
+     follow the lines. */
   width: calc(var(--cell) + 4px);
   aspect-ratio: 1;
   left: 50%;
   top: calc(50% - .075 * var(--space));
   translate: -50% -50%;
-  border-radius: 50%;
+  border-radius: var(--radius-sm);
   background: var(--today-shown);
   z-index: -1;
   pointer-events: none;
 }
 
 .grid-head .dow { text-transform: uppercase; letter-spacing: .04em; }
-.grid-head .dom { font-size: .85rem; color: var(--text-muted); }
-.grid-head.is-today .dom { color: var(--text); }
-
-/* Mondays start the week and are set in bold — weekday and date both, so the
-   whole column reads as the marker. No colour: the interface carries no hue of
-   its own, and weight alone is enough to count weeks across a wide row.
-
-   Placed after the today rule so a Monday that is also today keeps its
-   background; a fill and a weight do not fight over the same cell. */
-.grid-head.is-week-start .dow,
-.grid-head.is-week-start .dom {
-  font-weight: var(--weight-heavy);
-}
+.grid-head .dom { font-size: .85rem; }
 
 /* The name column of a row: the label fills it, the arrows lie on top of its
    right end. Absolute rather than in the flow, so a row is exactly as tall and
@@ -845,7 +1101,6 @@ html[data-filtering="on"] {
 
 .stat {
   background: var(--surface);
-  border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: calc(.8 * var(--space)) calc(.9 * var(--space));
 }
@@ -855,11 +1110,9 @@ html[data-filtering="on"] {
 
 .panel {
   background: var(--surface);
-  border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: var(--space);
   margin-bottom: calc(1.25 * var(--space));
-  box-shadow: var(--shadow);
 }
 
 .panel h3 { font-size: .9rem; color: var(--text-muted); margin-bottom: calc(.85 * var(--space)); }
@@ -931,13 +1184,12 @@ html[data-filtering="on"] {
 .chart-tooltip {
   position: fixed;
   z-index: 70;
-  /* Never steals the hover from the square underneath it. */
+  /* Never steals the hover from the square underneath it. A step above the
+     panel it floats over, since there is no outline to set it apart. */
   pointer-events: none;
-  background: var(--surface);
+  background: var(--surface-2);
   color: var(--text);
-  border: 1px solid var(--border-strong);
   border-radius: var(--radius-sm);
-  box-shadow: var(--shadow);
   padding: calc(.4 * var(--space)) calc(.6 * var(--space));
   font-size: .78rem;
   line-height: 1.35;
@@ -969,16 +1221,14 @@ html[data-filtering="on"] {
   display: flex;
   align-items: center;
   gap: calc(.75 * var(--space));
-  background: var(--surface);
-  border: 1px solid var(--border-strong);
+  background: var(--surface-2);
   border-radius: var(--radius);
-  box-shadow: var(--shadow);
   padding: calc(.6 * var(--space)) calc(.6 * var(--space)) calc(.6 * var(--space)) calc(.9 * var(--space));
   animation: toast-in .16s ease-out;
 }
 
 .toast .text { flex: 1; min-width: 0; font-size: .88rem; }
-.toast.is-error { border-color: var(--danger); }
+.toast.is-error { background: color-mix(in srgb, var(--danger) 16%, var(--surface-2)); }
 
 @keyframes toast-in {
   from { opacity: 0; transform: translateY(.5rem); }
@@ -1016,7 +1266,6 @@ html[data-filtering="on"] {
 .sg-theme {
   background: var(--bg);
   color: var(--text);
-  border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: var(--space) calc(1.15 * var(--space)) calc(1.5 * var(--space));
 }
@@ -1027,7 +1276,6 @@ html[data-filtering="on"] {
   letter-spacing: .08em;
   color: var(--text-muted);
   padding-bottom: calc(.75 * var(--space));
-  border-bottom: 1px solid var(--border);
 }
 
 .sg-section { padding-top: calc(1.5 * var(--space)); }

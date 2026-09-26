@@ -11,6 +11,7 @@ import { initEditor } from "./editor.js";
 import { initCategoryPicker } from "./categorypicker.js";
 import { initSettings, blurLength } from "./settings.js";
 import { initValueDialog } from "./value.js";
+import { initSearch, openSearch } from "./search.js";
 import * as actions from "./actions.js";
 import { paintIcons } from "./icons.js";
 
@@ -156,6 +157,7 @@ async function main() {
   initEditor();
   initValueDialog();
   initOverview(handlers);
+  initSearch(handlers);
   initDetail(handlers);
   initCategory(handlers);
   initEditMode();
@@ -379,6 +381,7 @@ function initAppearance() {
     root.dataset.band = state.colors?.includes(band) ? band : "neutral";
     root.style.setProperty("--today-opacity",
       `${clampNumber(state.settings?.bandOpacity, 0, 100, 100)}%`);
+    root.dataset.todayBand = state.settings?.showBand === false ? "off" : "on";
 
     // The two knobs of the uploaded background. Written as custom properties
     // rather than data attributes, because the stylesheet has to compute with
@@ -414,6 +417,9 @@ function initShortcuts() {
     } else if (key === "n" && !mod && !inField && !inDialog) {
       event.preventDefault();
       actions.createHabit();
+    } else if (((key === "/" && !mod) || (mod && key === "k")) && !inField && !inDialog) {
+      event.preventDefault();
+      openSearch();
     } else if (event.key === "Escape" && !inDialog && currentHabitId()) {
       goHome();
     }

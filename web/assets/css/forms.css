@@ -1,13 +1,12 @@
 /* ---------- dialogs ---------- */
 
 .dialog {
-  border: 1px solid var(--border);
+  border: none;
   border-radius: var(--radius);
   background: var(--surface);
   color: var(--text);
   padding: 0;
   width: min(34rem, calc(100vw - 2rem));
-  box-shadow: var(--shadow);
 }
 
 .dialog.compact { width: min(20rem, calc(100vw - 2rem)); }
@@ -31,21 +30,16 @@
   justify-content: flex-end;
   gap: calc(.5 * var(--space));
   padding: calc(.85 * var(--space)) calc(1.15 * var(--space)) calc(1.1 * var(--space));
-  border-top: 1px solid var(--border);
 }
-
-.dialog.compact .dialog-foot { border-top: none; }
 
 /* ---------- dialog tabs ---------- */
 
-/* Sits between the dialog's heading and its body, carrying the line that
-   separates them: the strip is part of the frame, not of the scrolling
-   content. */
+/* Sits between the dialog's heading and its body: the strip is part of the
+   frame, not of the scrolling content. Only the open tab is underlined. */
 .tabs {
   display: flex;
   gap: calc(.15 * var(--space));
   padding: 0 calc(1.15 * var(--space));
-  border-bottom: 1px solid var(--border);
 }
 
 .tab {
@@ -58,10 +52,7 @@
   font-weight: var(--weight-emphasis);
   padding: calc(.55 * var(--space)) calc(.7 * var(--space));
   cursor: pointer;
-  /* The underline of the open tab sits on the strip's own border, so the two
-     never add up to a double line. */
   border-bottom: 2px solid transparent;
-  margin-bottom: -1px;
 }
 
 .tab:hover { color: var(--text); }
@@ -72,6 +63,77 @@
 }
 
 .tab[hidden] { display: none; }
+
+/* ---------- settings: list beside the settings ---------- */
+
+/* Wider than the other dialogs: the list takes a column of its own, and the
+   settings beside it keep the width they had before. */
+.dialog.settings-dialog { width: min(46rem, calc(100vw - 2rem)); }
+
+.settings-dialog .dialog-head { padding-bottom: calc(.75 * var(--space)); }
+
+.settings-layout {
+  display: grid;
+  grid-template-columns: 11rem minmax(0, 1fr);
+  border-block: 1px solid var(--border);
+}
+
+.settings-layout .tabs {
+  flex-direction: column;
+  gap: 2px;
+  padding: calc(.75 * var(--space)) calc(.6 * var(--space));
+  border-right: 1px solid var(--border);
+}
+
+/* A row in a list rather than a tab in a strip: the open one is filled, with
+   no line underneath. */
+.settings-layout .tab {
+  text-align: left;
+  border-bottom: none;
+  border-radius: var(--radius-sm);
+  padding: calc(.55 * var(--space)) calc(.75 * var(--space));
+  transition: background .12s ease;
+}
+
+.settings-layout .tab:hover { background: var(--surface-2); }
+
+.settings-layout .tab[aria-selected="true"] { background: var(--surface-2); }
+
+/* A fixed height rather than a cap: the sections differ a lot in length, and
+   a dialog that grows and shrinks with each one moves the list under the
+   pointer. */
+.settings-layout .dialog-body {
+  height: min(70dvh, 36rem);
+  max-height: none;
+  padding-top: calc(1.1 * var(--space));
+}
+
+/* On a phone two columns leave the settings no room, so the list folds back
+   into the strip it used to be, above them. */
+@media (max-width: 40rem) {
+  .settings-layout { grid-template-columns: minmax(0, 1fr); }
+
+  .settings-layout .tabs {
+    flex-direction: row;
+    overflow-x: auto;
+    padding: 0 calc(1.15 * var(--space));
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .settings-layout .tab {
+    border-radius: 0;
+    border-bottom: 2px solid transparent;
+    white-space: nowrap;
+  }
+
+  .settings-layout .tab:hover { background: none; }
+
+  .settings-layout .tab[aria-selected="true"] {
+    background: none;
+    border-bottom-color: var(--primary);
+  }
+}
 
 /* ---------- form fields ---------- */
 
@@ -108,7 +170,7 @@
 .field textarea {
   width: 100%;
   background: var(--bg);
-  border: 1px solid var(--border-strong);
+  border: 1px solid transparent;
   border-radius: var(--radius-sm);
   padding: calc(.5 * var(--space)) calc(.6 * var(--space));
   resize: vertical;
@@ -161,7 +223,6 @@
   background: var(--surface);
   color: var(--text);
   font-weight: var(--weight-semibold);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, .12);
 }
 
 .segmented span svg { width: .95rem; height: .95rem; flex: none; }
@@ -180,7 +241,6 @@
   cursor: pointer;
   padding: 0;
   background-clip: content-box;
-  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .12);
 }
 
 .swatch[aria-checked="true"] {
@@ -196,9 +256,10 @@
   width: 2.4rem;
   height: 2.4rem;
   border-radius: 50%;
-  /* Same ring thickness as the marks on the board, from the same token. */
-  border: var(--ring) solid var(--border-strong);
-  background: var(--surface);
+  /* The ring is kept, invisible, so a day does not change size when it is
+     picked: same thickness as the marks on the board, from the same token. */
+  border: var(--ring) solid transparent;
+  background: var(--surface-2);
   cursor: pointer;
   font-size: .8rem;
   font-weight: var(--weight-semibold);
@@ -216,9 +277,9 @@
    dark on the dark theme without any of this having to know about it. */
 .select {
   width: 100%;
-  border: 1px solid var(--border-strong);
+  border: 1px solid transparent;
   border-radius: var(--radius-sm);
-  background: var(--surface);
+  background: var(--bg);
   padding: calc(.5 * var(--space)) calc(.6 * var(--space));
   cursor: pointer;
 }
@@ -258,7 +319,7 @@
   font-size: 1.4rem;
   font-weight: var(--weight-bold);
   background: var(--bg);
-  border: 1px solid var(--border-strong);
+  border: 1px solid transparent;
   border-radius: var(--radius-sm);
   padding: calc(.4 * var(--space));
 }
@@ -282,19 +343,15 @@
 
 /* ---------- narrow screens ---------- */
 
-/* The bar keeps its brand word far longer than it used to. With no caption on
-   the add button the controls are three icons of a constant 116px, so the word
-   is no longer what decides whether a centred field clears both sides - the
-   controls are. It only has to go once the field rejoins the grid below 490px
-   and the three sit in one row: 87px of logo and word (the mark, its gap, and
-   "Habits" at 57px in Montserrat - the widest of the eight faces on offer),
-   210px of field, 116px of controls and two 15px gaps come to 443px. Rounded
-   up for air, that is where the word goes and the mark stays on alone. In
-   practice that is a phone: the bar is capped to the board, and seven day
-   columns hold it near 530px, so on a desktop the name now stays. Nothing is
-   lost to a screen reader - the heading keeps its text, just not on the
-   screen. */
-@container topbar (max-width: 450px) {
+/* The bar holds the brand and four icon controls of a constant 155px. The word
+   only has to go once those two no longer fit side by side: 87px of logo and
+   word (the mark, its gap, and "Habits" at 57px in Montserrat - the widest of
+   the eight faces on offer), the controls and a 15px gap come to 257px. Rounded
+   up for air, that is where the word goes and the mark stays on alone - in
+   practice never, since the bar is capped to the board and seven day columns
+   hold it wider than that even on a phone. Nothing is lost to a screen reader -
+   the heading keeps its text, just not on the screen. */
+@container topbar (max-width: 270px) {
   .brand-text {
     position: absolute;
     width: 1px;
@@ -303,19 +360,6 @@
     clip-path: inset(50%);
     white-space: nowrap;
   }
-}
-
-/* Narrower still, and there is no room for a field at all: what is left after
-   the logo, the three controls and the two gaps would be a slot a couple of
-   characters wide. It goes away rather than shrink into uselessness - a board
-   this narrow shows a handful of habits, which one reads rather than searches,
-   and the open-only filter beside it still narrows the list. The field keeps
-   its value while hidden, so nothing is lost by turning the phone sideways.
-
-   The threshold is what the row needs with a field worth typing in: 19px logo,
-   116px controls, two 15px gaps - and about 190px left for the field itself. */
-@container topbar (max-width: 360px) {
-  .board-filter { display: none; }
 }
 
 @media (max-width: 40rem) {
@@ -335,11 +379,6 @@
   .day-nav .icon-button { width: 1.8rem; height: 1.8rem; }
   .day-nav .icon-button svg { width: 1.05rem; height: 1.05rem; }
 
-  /* One row, here as everywhere: the field shares the line while it still fits
-     and is hidden once it does not. A row of its own for the search would cost
-     more height than it is worth on a screen this size - and --topbar-h, which
-     the day header sticks to, assumes the bar is one row tall. */
-  .board-filter .search { width: auto; }
   .brand { font-size: 1.05rem; }
   .field.row,
   .field-row { flex-direction: column; gap: var(--space); }
@@ -361,13 +400,13 @@
   width: 100%;
   text-align: left;
   background: var(--bg);
-  border: 1px solid var(--border-strong);
+  border: 1px solid transparent;
   border-radius: var(--radius-sm);
   padding: calc(.5 * var(--space)) calc(.6 * var(--space));
   cursor: pointer;
 }
 
-.picker:hover { border-color: var(--text-faint); }
+.picker:hover { background: var(--surface-2); }
 
 .picker-value { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .picker-value.is-empty { color: var(--text-faint); }
@@ -408,7 +447,6 @@
 .picker-create {
   display: flex;
   gap: calc(.5 * var(--space));
-  border-top: 1px solid var(--border);
   padding-top: calc(.85 * var(--space));
 }
 
@@ -416,7 +454,7 @@
   flex: 1;
   min-width: 0;
   background: var(--bg);
-  border: 1px solid var(--border-strong);
+  border: 1px solid transparent;
   border-radius: var(--radius-sm);
   padding: calc(.45 * var(--space)) calc(.6 * var(--space));
 }
@@ -459,7 +497,6 @@
   height: 3.4rem;
   flex: none;
   border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
   background-color: var(--surface-2);
   background-size: cover;
   background-position: center;

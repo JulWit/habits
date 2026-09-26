@@ -284,6 +284,10 @@ var migrations = []string{
 	// How tightly the interface is packed. "standard" is the spacing it has always
 	// had, so nothing moves for anyone until they choose otherwise.
 	`ALTER TABLE user_settings ADD COLUMN density TEXT NOT NULL DEFAULT 'standard';`,
+
+	// Whether today runs as a band through the cards. On is what it has always
+	// done, so nothing changes for anyone until they switch it off.
+	`ALTER TABLE user_settings ADD COLUMN show_band INTEGER NOT NULL DEFAULT 1;`,
 }
 
 func (s *Store) migrate(ctx context.Context) error {

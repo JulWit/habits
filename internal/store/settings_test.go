@@ -28,6 +28,8 @@ func TestSettingsRoundTripAndValidation(t *testing.T) {
 	want.Density = "compact"
 	want.OverviewDays = 21
 	want.BandOpacity = 40
+	// Off, because on is the default and would pass without being stored.
+	want.ShowBand = false
 	if err := st.SaveSettings(ctx, "alice", want); err != nil {
 		t.Fatalf("SaveSettings: %v", err)
 	}

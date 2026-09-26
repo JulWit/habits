@@ -18,6 +18,7 @@ let patternSelect;
 let bandChoices;
 let bandOpacity;
 let bandOpacityOut;
+let showBandInput;
 let reorderInputs;
 let reorderHint;
 let dayInputs;
@@ -59,6 +60,7 @@ export function initSettings(handlers = {}) {
   bandChoices = document.getElementById("band-choices");
   bandOpacity = document.getElementById("band-opacity");
   bandOpacityOut = document.getElementById("band-opacity-out");
+  showBandInput = document.getElementById("settings-show-band");
   reorderInputs = [...dialog.querySelectorAll('input[name="settings-reorder"]')];
   reorderHint = document.getElementById("settings-reorder-hint");
   dayInputs = [...dialog.querySelectorAll('input[name="settings-days"]')];
@@ -112,6 +114,7 @@ export function initSettings(handlers = {}) {
   });
   bandOpacity.addEventListener("change",
     () => saveSetting({ bandOpacity: Number(bandOpacity.value) }));
+  showBandInput.addEventListener("change", () => saveSetting({ showBand: showBandInput.checked }));
 
   alignInput.addEventListener("change", () => saveSetting({ alignWeeks: alignInput.checked }));
   for (const input of reorderInputs) {
@@ -184,6 +187,7 @@ function paint() {
   paintBandChoices(state.settings?.bandColor ?? NEUTRAL_BAND);
   bandOpacity.value = String(state.settings?.bandOpacity ?? 100);
   showKnob(bandOpacityOut, bandOpacity.value, "%");
+  showBandInput.checked = state.settings?.showBand ?? true;
   for (const input of reorderInputs) input.checked = input.value === reorder;
   reorderHint.textContent = reorder === "drag"
     ? "Categories and habits are moved by their handle."
@@ -254,7 +258,10 @@ function initTabs() {
   for (const [index, tab] of tabs.entries()) {
     tab.addEventListener("click", () => show(tab.id));
     tab.addEventListener("keydown", (event) => {
-      const step = event.key === "ArrowRight" ? 1 : event.key === "ArrowLeft" ? -1 : 0;
+      // Down and up for the list beside the settings, right and left for the
+      // strip it folds into on a phone; both work in either layout.
+      const step = event.key === "ArrowDown" || event.key === "ArrowRight" ? 1
+        : event.key === "ArrowUp" || event.key === "ArrowLeft" ? -1 : 0;
       if (step === 0) return;
       event.preventDefault();
       const next = tabs[(index + step + tabs.length) % tabs.length];

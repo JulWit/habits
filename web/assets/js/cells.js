@@ -10,10 +10,7 @@ const CHECK_SVG =
 
 export function dayCell(iso) {
   const el = document.createElement("div");
-  // Monday carries the week marker: with up to a month of columns in one row, a
-  // coloured label every seventh column is what lets the eye count weeks.
   const classes = ["grid-head"];
-  if (weekdayIndex(iso) === 0) classes.push("is-week-start");
   if (iso === state.today) classes.push("is-today");
   el.className = classes.join(" ");
   // The header shows only the day of the month. Once the board can be paged
@@ -65,8 +62,8 @@ export function dayEntry(habit, iso) {
   btn.dataset.role = "cell";
   btn.style.setProperty("--habit-color", habit.color);
   btn.setAttribute("aria-label", cellLabel(habit, iso, value, scheduled, streakDays));
-  // A day outside the chosen weekdays takes nothing. A leftover value from
-  // before the days changed stays tappable, so it can still be cleared.
+  // A day the habit is not scheduled on takes nothing. A leftover value from
+  // before the schedule changed stays tappable, so it can still be cleared.
   if (!H.acceptsEntry(habit, iso) && value === 0) btn.disabled = true;
 
   const mark = document.createElement("span");

@@ -43,6 +43,10 @@ type Settings struct {
 	// BandOpacity is how strongly that marking is drawn, in percent. Some
 	// backgrounds want a whisper rather than a band.
 	BandOpacity int `json:"bandOpacity"`
+	// ShowBand draws the today column as a band through the cards. Off, only
+	// the date in the header is marked; the colour still tints that and the
+	// progress ring.
+	ShowBand bool `json:"showBand"`
 	// BackgroundDim and BackgroundBlur belong to the uploaded background: how
 	// far it is veiled, and how far it is blurred. Both in percent, because both
 	// are the same kind of choice - how much of the picture is left - and a
@@ -201,6 +205,7 @@ func DefaultSettings() Settings {
 		AlignWeeks:   false,
 		BandColor:    NeutralBand,
 		BandOpacity:  100,
+		ShowBand:     true,
 		// Enough veil to read the board over most photographs, and no blur:
 		// whoever uploads a picture should see it first, then decide.
 		BackgroundDim:  55,
@@ -251,11 +256,13 @@ func (s *Store) getSettings(ctx context.Context, q queryer, userID string) (Sett
 	out := DefaultSettings()
 	err := q.QueryRowContext(ctx,
 		`SELECT theme, overview_days, show_archived, font, reorder_mode, pattern, align_weeks,
-		        band_color, band_opacity, bg_dim, bg_blur, surface_opacity, surface_blur, density
+		        band_color, band_opacity, bg_dim, bg_blur, surface_opacity, surface_blur, density,
+		        show_band
 		 FROM user_settings WHERE user_id = ?`,
 		userID).Scan(&out.Theme, &out.OverviewDays, &out.ShowArchived, &out.Font, &out.ReorderMode,
 		&out.Pattern, &out.AlignWeeks, &out.BandColor, &out.BandOpacity,
-		&out.BackgroundDim, &out.BackgroundBlur, &out.SurfaceOpacity, &out.SurfaceBlur, &out.Density)
+		&out.BackgroundDim, &out.BackgroundBlur, &out.SurfaceOpacity, &out.SurfaceBlur, &out.Density,
+		&out.ShowBand)
 	if errors.Is(err, sql.ErrNoRows) {
 		return DefaultSettings(), nil
 	}
@@ -351,8 +358,8 @@ func (s *Store) saveSettings(ctx context.Context, q execer, userID string, in Se
 		INSERT INTO user_settings
 			(user_id, theme, overview_days, show_archived, font, reorder_mode, pattern,
 			 align_weeks, band_color, band_opacity, bg_dim, bg_blur, surface_opacity,
-			 surface_blur, density, updated_at)
-			VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+			 surface_blur, density, show_band, updated_at)
+			VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
 		ON CONFLICT(user_id) DO UPDATE SET
 			theme = excluded.theme,
 			overview_days = excluded.overview_days,
@@ -368,10 +375,11 @@ func (s *Store) saveSettings(ctx context.Context, q execer, userID string, in Se
 			surface_opacity = excluded.surface_opacity,
 			surface_blur = excluded.surface_blur,
 			density = excluded.density,
+			show_band = excluded.show_band,
 			updated_at = excluded.updated_at`,
 		userID, in.Theme, in.OverviewDays, in.ShowArchived, in.Font, in.ReorderMode, in.Pattern,
 		in.AlignWeeks, in.BandColor, in.BandOpacity, in.BackgroundDim, in.BackgroundBlur,
-		in.SurfaceOpacity, in.SurfaceBlur, in.Density, formatTime(time.Now()))
+		in.SurfaceOpacity, in.SurfaceBlur, in.Density, in.ShowBand, formatTime(time.Now()))
 	if err != nil {
 		return fmt.Errorf("saving settings: %w", err)
 	}

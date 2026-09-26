@@ -145,6 +145,7 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 		Pattern    string
 		BandColor  string
 		BandOp     int
+		ShowBand   bool
 		Dim        int
 		Blur       string
 		SurfaceOp  int
@@ -157,6 +158,7 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 		Pattern:   settings.Pattern,
 		BandColor: settings.BandColor,
 		BandOp:    settings.BandOpacity,
+		ShowBand:  settings.ShowBand,
 		Dim:       settings.BackgroundDim,
 		// The stylesheet needs a length where the setting is a percentage, and
 		// the shell is the one place that has to get it right before any script

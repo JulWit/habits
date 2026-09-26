@@ -202,15 +202,13 @@ function board(s) {
   const dates = [day(2), day(1), day(0), addDays(state.today, 1)];
 
   const header = el("div", "sg-cells");
-  header.append(dayCell(day(0)));
-  // A Monday and a day that is neither, so both header states are visible.
-  const monday = addDays(state.today, -((new Date(state.today + "T00:00:00Z").getUTCDay() + 6) % 7));
-  header.append(dayCell(monday), dayCell(addDays(monday, 2)));
+  // Today and an ordinary day, so both header states are visible.
+  header.append(dayCell(day(0)), dayCell(day(1)));
 
   return section(
     "Board",
     "Built with the same functions as the overview — dayCell(), habitLabel(), dayEntry().",
-    specimen("dayCell: today / Monday / normal", header),
+    specimen("dayCell: today / normal", header),
     specimen("habitLabel()", habitLabel(s.time)),
     specimen("habitLabel(): archived", habitLabel(s.archived)),
     specimen("Check", cells(s.check, dates)),

@@ -95,3 +95,38 @@ func TestEntryOnUnscheduledWeekdayIsRefused(t *testing.T) {
 		t.Errorf("clearing an unscheduled day: status %d, want 200 (%s)", w.Code, w.Body)
 	}
 }
+
+// An every-n-days habit takes no entry on the days in between either.
+func TestEntryBetweenEveryNDaysIsRefused(t *testing.T) {
+	h := newTestServer(t)
+	w := do(t, h, "POST", "/api/habits",
+		`{"name":"Run","kind":"check","frequency":{"kind":"every_n_days","intervalDays":3,"anchorDate":"2026-09-14"}}`,
+		"application/json")
+	if w.Code != http.StatusCreated {
+		t.Fatalf("creating habit: %d (%s)", w.Code, w.Body)
+	}
+	var created struct {
+		ID string `json:"id"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &created); err != nil {
+		t.Fatalf("reading response: %v", err)
+	}
+
+	base := "/api/habits/" + created.ID + "/entries/"
+	for _, c := range []struct {
+		date string
+		want int
+	}{
+		{"2026-09-14", http.StatusOK},
+		{"2026-09-15", http.StatusUnprocessableEntity},
+		{"2026-09-16", http.StatusUnprocessableEntity},
+		{"2026-09-17", http.StatusOK},
+	} {
+		if w := do(t, h, "PUT", base+c.date, `{"value":1}`, "application/json"); w.Code != c.want {
+			t.Errorf("%s: status %d, want %d (%s)", c.date, w.Code, c.want, w.Body)
+		}
+	}
+	if w := do(t, h, "PUT", base+"2026-09-15", `{"value":0}`, "application/json"); w.Code != http.StatusOK {
+		t.Errorf("clearing a day in between: status %d, want 200 (%s)", w.Code, w.Body)
+	}
+}

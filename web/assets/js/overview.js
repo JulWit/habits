@@ -7,6 +7,7 @@
 
 import {
   addDays, dayOfMonth, monthIndex, yearOf, weekdayIndex, MONTH_LONG, MONTH_SHORT,
+  WEEKDAY_LONG,
 } from "./dates.js";
 import { state, subscribe, groupedHabits } from "./state.js";
 import * as H from "./habit.js";
@@ -227,24 +228,20 @@ async function showWindow(next) {
 }
 
 /**
- * What the board is filtered by right now.
+ * Whether the board shows only what is still open today.
  *
  * Deliberately not stored: a filter is something one looks through and then
  * puts down again. Surviving a reload it would eventually be mistaken for the
- * habits one has left.
+ * habits one has left. Searching is not a filter here: the search dialog jumps
+ * to a habit rather than narrowing the board.
  */
-let query = "";
 let onlyOpen = false;
 
-const filtering = () => query !== "" || onlyOpen;
+const filtering = () => onlyOpen;
 
 /** Whether a habit survives the current filter. */
-function matches(habit, categoryName) {
-  if (onlyOpen && H.isComplete(habit, habit.entries[state.today] ?? 0)) return false;
-  if (query === "") return true;
-  // The category name counts too: typing "Sport" should find the block as
-  // readily as the habit.
-  return `${habit.name} ${categoryName ?? ""}`.toLowerCase().includes(query);
+function matches(habit) {
+  return !(onlyOpen && H.isComplete(habit, habit.entries[state.today] ?? 0));
 }
 
 /**
@@ -257,40 +254,21 @@ function matches(habit, categoryName) {
 let dragging = false;
 
 /**
- * The search field and the filter button in the title bar.
+ * The filter button in the title bar.
  *
- * Wired once; everything they change goes through render(), which is the only
- * place that decides what the board shows. Neither needs a "clear" of its own:
- * the button is a toggle, and a search field empties with the control the
- * browser puts in it.
+ * Wired once; what it changes goes through render(), which is the only place
+ * that decides what the board shows. It needs no "clear" of its own: it is a
+ * toggle.
  */
 function initFilter() {
-  const search = document.getElementById("habit-search");
   const openOnly = document.getElementById("filter-open");
   openOnly.innerHTML = icons.filter;
 
-  search.addEventListener("input", () => {
-    query = search.value.trim().toLowerCase();
-    render();
-  });
   openOnly.addEventListener("click", () => {
     onlyOpen = !onlyOpen;
     openOnly.setAttribute("aria-pressed", String(onlyOpen));
     render();
   });
-
-  // On a bar too narrow for it the stylesheet hides the field. A search typed
-  // before that - by turning a phone upright, say - would go on filtering the
-  // board with nothing on screen to say why, so it is dropped when the field
-  // goes. Watching the bar rather than the window: what hides the field is the
-  // bar's own width, and the bar is only as wide as the board.
-  new ResizeObserver(() => {
-    if (query && search.getClientRects().length === 0) {
-      search.value = "";
-      query = "";
-      render();
-    }
-  }).observe(document.querySelector(".topbar-inner"));
 }
 
 export function render() {
@@ -300,7 +278,7 @@ export function render() {
   // what one looks at, not what the day asked for - and carries the surviving
   // habits separately for the rows.
   const blocks = all
-    .map((b) => ({ ...b, visible: b.habits.filter((h) => matches(h, b.category?.name)) }))
+    .map((b) => ({ ...b, visible: b.habits.filter(matches) }))
     .filter((b) => !filtering() || b.visible.length > 0);
 
   // Reordering while a filter is on would send the server an order with the
@@ -343,7 +321,7 @@ export function render() {
   const labelled = all.length > 1 || all[0].category !== null;
 
   const frag = document.createDocumentFragment();
-  frag.append(dayHeader(dates));
+  frag.append(dayHeader(dates), daySummary(all.flatMap((b) => b.habits)));
   for (const block of blocks) frag.append(renderBlock(block, dates, labelled));
 
   const focused = focusedControl();
@@ -395,6 +373,15 @@ function restoreFocus(target) {
 function dayHeader(dates) {
   const el = document.createElement("div");
   el.className = "day-header";
+
+  // The page behind the header while it is parked: an element rather than a
+  // pseudo-element, because over a picture it has to hold a fixed layer of its
+  // own and clip it - which takes two boxes. Absolutely positioned, so it
+  // takes no cell in the grid.
+  const backdrop = document.createElement("div");
+  backdrop.className = "day-header-backdrop";
+  backdrop.setAttribute("aria-hidden", "true");
+  el.append(backdrop);
 
   // The cell above the habit names carries the paging controls: they belong to
   // the day columns, and this is the one spot in the row with no date in it.
@@ -604,6 +591,133 @@ function blockProgress(habits) {
   if (done === due) wrap.classList.add("is-complete");
   wrap.append(track, count);
   return wrap;
+}
+
+/**
+ * The card under the day header: today spelled out, how much of it is done,
+ * and the same as a ring.
+ *
+ * Always today, wherever the board has been paged to - it answers "how is my
+ * day going", not "what am I looking at". And always every habit, filter or
+ * not, for the same reason the block headings ignore the filter.
+ */
+function daySummary(habits) {
+  const { due, done } = todayProgress(habits);
+  const percent = due === 0 ? 0 : Math.round((done / due) * 100);
+
+  const el = document.createElement("section");
+  el.className = "day-summary";
+  el.setAttribute("aria-label", "Today");
+
+  const text = document.createElement("div");
+  text.className = "day-summary-text";
+
+  const date = document.createElement("h2");
+  date.className = "day-summary-date";
+  date.textContent = `${WEEKDAY_LONG[weekdayIndex(state.today)]}, ` +
+    `${dayOfMonth(state.today)} ${MONTH_LONG[monthIndex(state.today)]}`;
+
+  const count = document.createElement("p");
+  count.className = "day-summary-count";
+  count.textContent = due === 0 ? "Nothing due today" : `${done} of ${due} done`;
+  text.append(date, count);
+  el.append(text);
+
+  // No ring on a day with nothing due: an empty one would read as "nothing
+  // done", a full one as an achievement nobody made.
+  if (due > 0) el.append(progressRing(percent));
+  return el;
+}
+
+// The ring's geometry, in viewBox units (0 0 40 40). The wave swings this far
+// either side of the radius, this many times around - a whole number, so the
+// line meets itself at twelve o'clock without a kink.
+const RING_R = 15.5;
+const RING_WAVE = 0.9;
+const RING_WAVES = 16;
+
+/**
+ * The wavy line the progress is drawn along: a circle whose radius swings
+ * around RING_R, starting at twelve o'clock and running clockwise.
+ *
+ * Computed once. A couple of hundred points are plenty at this size, and the
+ * stroke's round joins smooth over what is left of the corners.
+ */
+const WAVY_RING_PATH = (() => {
+  const steps = 240;
+  const points = [];
+  for (let i = 0; i <= steps; i++) {
+    const t = (i / steps) * 2 * Math.PI;
+    const r = RING_R + RING_WAVE * Math.sin(RING_WAVES * t);
+    // -π/2 puts the start at the top; x and y grow clockwise from there.
+    const x = 20 + r * Math.cos(t - Math.PI / 2);
+    const y = 20 + r * Math.sin(t - Math.PI / 2);
+    points.push(`${x.toFixed(2)} ${y.toFixed(2)}`);
+  }
+  return `M${points.join("L")}Z`;
+})();
+
+/**
+ * What the ring showed at the last render.
+ *
+ * The board is rebuilt from scratch on every change, so the ring is a new
+ * element each time. Starting it at the previous value and letting it move to
+ * the new one is what makes a tick visibly push the wave on, instead of the
+ * ring simply appearing at its new length - or replaying from zero on every tap.
+ */
+let lastRingPercent = null;
+
+/**
+ * A wavy line winding around a plain ring, as far as `percent`, with the number
+ * in its middle.
+ *
+ * pathLength="100" lets the dash pattern be written in percent directly: the
+ * wave is a good deal longer than the circle it follows, and this way nobody
+ * has to know by how much.
+ */
+function progressRing(percent) {
+  const ring = document.createElement("div");
+  ring.className = "day-summary-ring";
+  ring.setAttribute("role", "progressbar");
+  ring.setAttribute("aria-valuemin", "0");
+  ring.setAttribute("aria-valuemax", "100");
+  ring.setAttribute("aria-valuenow", String(percent));
+  ring.setAttribute("aria-label", "Done today");
+
+  const ns = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(ns, "svg");
+  svg.setAttribute("viewBox", "0 0 40 40");
+  svg.setAttribute("aria-hidden", "true");
+
+  const track = document.createElementNS(ns, "circle");
+  track.setAttribute("class", "day-summary-ring-track");
+  track.setAttribute("cx", "20");
+  track.setAttribute("cy", "20");
+  track.setAttribute("r", String(RING_R));
+
+  const fill = document.createElementNS(ns, "path");
+  fill.setAttribute("class", "day-summary-ring-fill");
+  fill.setAttribute("d", WAVY_RING_PATH);
+  fill.setAttribute("pathLength", "100");
+  svg.append(track, fill);
+
+  // A keyframe animation rather than a transition: it runs from the moment the
+  // new element reaches the page, with no frame to wait for in between.
+  const from = lastRingPercent ?? 0;
+  lastRingPercent = percent;
+  fill.style.setProperty("--from", String(from));
+  fill.style.setProperty("--to", String(percent));
+  // A round cap on a zero-length dash still draws a dot at twelve o'clock, so
+  // an empty ring fades the line out rather than leaving that dot behind.
+  fill.style.setProperty("--from-opacity", from === 0 ? "0" : "1");
+  fill.classList.toggle("is-empty", percent === 0);
+
+  const label = document.createElement("span");
+  label.className = "day-summary-percent";
+  label.textContent = `${percent}%`;
+
+  ring.append(svg, label);
+  return ring;
 }
 
 function blockHead(category, habits = []) {

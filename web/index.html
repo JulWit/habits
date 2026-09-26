@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-theme="{{.Theme}}" data-font="{{.Font}}" data-density="{{.Density}}" data-pattern="{{.Pattern}}" data-band="{{.BandColor}}" style="--today-opacity: {{.BandOp}}%; --bg-dim: {{.Dim}}%; --bg-blur: {{.Blur}}px; --surface-opacity: {{.SurfaceOp}}%; --surface-blur: {{.SurfaceBlr}}px">
+<html lang="en" data-theme="{{.Theme}}" data-font="{{.Font}}" data-density="{{.Density}}" data-pattern="{{.Pattern}}" data-band="{{.BandColor}}" data-today-band="{{if .ShowBand}}on{{else}}off{{end}}" style="--today-opacity: {{.BandOp}}%; --bg-dim: {{.Dim}}%; --bg-blur: {{.Blur}}px; --surface-opacity: {{.SurfaceOp}}%; --surface-blur: {{.SurfaceBlr}}px">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -11,8 +11,8 @@
 <meta name="apple-mobile-web-app-title" content="Habits">
 <!-- Two of them: the browser picks the one matching the scheme in use, so the
      system bars follow the app instead of standing out above it. -->
-<meta name="theme-color" content="#f4f5f7" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#e6e8ec" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0f0f0f" media="(prefers-color-scheme: dark)">
 <link rel="stylesheet" href="/assets/css/fonts.css">
 <link rel="stylesheet" href="/assets/css/base.css">
 <link rel="stylesheet" href="/assets/css/components.css">
@@ -48,13 +48,9 @@
       </svg>
       <span class="brand-text">Habits</span>
     </h1>
-    <div class="board-filter" id="board-filter">
-      <span class="search-icon" data-icon="search" aria-hidden="true"></span>
-      <input id="habit-search" class="search" type="search" placeholder="Search…"
-             autocomplete="off" spellcheck="false" aria-label="Search habits">
-    </div>
     <div class="topbar-actions">
       <button id="add-habit" class="icon-button" type="button" data-icon="plus" title="New habit" aria-label="New habit"></button>
+      <button id="open-search" class="icon-button" type="button" data-icon="search" title="Search (/)" aria-label="Search" aria-haspopup="dialog"></button>
       <button id="filter-open" class="icon-button" type="button" title="Show only open" aria-label="Show only open" aria-pressed="false"></button>
       <button id="open-settings" class="icon-button" type="button" title="Settings" aria-label="Settings" aria-haspopup="dialog"></button>
     </div>
@@ -66,7 +62,7 @@
        a live region around it would read the whole grid out again on each
        change. What changed is announced through #board-status instead. -->
   <div id="overview-grid" class="board"></div>
-  <p id="no-match" class="empty" hidden>No habit matches the search.</p>
+  <p id="no-match" class="empty" hidden>Nothing left open today.</p>
   <div id="empty-state" class="empty" hidden>
     <h2>No habits yet</h2>
     <p>Create your first habit — daily, on certain weekdays or every few days.</p>
@@ -208,12 +204,15 @@
   </form>
 </dialog>
 
-<dialog id="settings-dialog" class="dialog">
+<dialog id="settings-dialog" class="dialog settings-dialog">
   <header class="dialog-head">
     <h2>Settings</h2>
   </header>
 
-  <div class="tabs" role="tablist" aria-label="Settings sections">
+  <!-- Two panes: the sections on the left, the open one on the right. On a
+       phone the list folds back into a strip above the settings. -->
+  <div class="settings-layout">
+  <div class="tabs" role="tablist" aria-label="Settings sections" aria-orientation="vertical">
     <button type="button" class="tab" role="tab" id="tab-look"
             aria-controls="panel-look" aria-selected="true">Appearance</button>
     <button type="button" class="tab" role="tab" id="tab-board"
@@ -261,13 +260,18 @@
     </fieldset>
 
     <fieldset class="field">
-      <legend class="field-label">Today's marker</legend>
-      <div id="band-choices" class="swatches" role="radiogroup" aria-label="Colour of the day marker"></div>
+      <legend class="field-label">Accent colour</legend>
+      <div id="band-choices" class="swatches" role="radiogroup" aria-label="Accent colour"></div>
       <label class="slider">
         <span class="field-label">Opacity</span>
         <input type="range" id="band-opacity" min="0" max="100" step="5" autocomplete="off">
         <output id="band-opacity-out"></output>
       </label>
+      <label class="switch">
+        <input type="checkbox" id="settings-show-band" autocomplete="off">
+        <span>Band through today's column</span>
+      </label>
+      <p class="field-hint">Off, only today's date in the header is marked.</p>
     </fieldset>
 
     <label class="field">
@@ -376,6 +380,7 @@
 
     <p id="settings-error" class="error" hidden></p>
   </div>
+  </div>
 
   <footer class="dialog-foot">
     <button type="button" class="button primary" data-action="close">Done</button>
@@ -396,6 +401,20 @@
   <footer class="dialog-foot">
     <button type="button" class="button ghost" data-action="cancel">Cancel</button>
   </footer>
+</dialog>
+
+<!-- A quick jump rather than a filter: type, pick, and the habit or category
+     opens. The list is filled by search.js; the field drives it the way a
+     combobox does, so the pointer never has to leave the keyboard. -->
+<dialog id="search-dialog" class="dialog search-dialog" aria-label="Search">
+  <div class="search-field">
+    <span class="search-icon" data-icon="search" aria-hidden="true"></span>
+    <input id="search-input" type="search" placeholder="Search habits and categories…"
+           autocomplete="off" spellcheck="false" aria-label="Search habits and categories"
+           role="combobox" aria-expanded="true" aria-autocomplete="list" aria-controls="search-results">
+  </div>
+  <div id="search-results" class="search-results" role="listbox" aria-label="Results"></div>
+  <p id="search-empty" class="search-empty" hidden>No habit or category matches.</p>
 </dialog>
 
 <dialog id="value-popover" class="dialog compact">

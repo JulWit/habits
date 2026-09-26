@@ -401,12 +401,13 @@ func (h Habit) IsScheduled(d Date) bool {
 
 // AcceptsEntry reports whether a value may be recorded on d.
 //
-// Only FreqWeekdays closes days: picking the days is the whole point of that
-// frequency, so a tick on any other day is a mistake. Every other frequency
-// stays open on all days — for times-per-week any day counts anyway, and an
-// every-n-days rhythm is allowed to slip by a day.
+// Frequencies with fixed days — chosen weekdays and every n days — close all
+// other days: the days are the whole point of those frequencies, so a tick in
+// between is a mistake. Daily and times-per-week stay open on every day, since
+// any day counts for them anyway.
 func (h Habit) AcceptsEntry(d Date) bool {
-	if h.Frequency.Kind == FreqWeekdays {
+	switch h.Frequency.Kind {
+	case FreqWeekdays, FreqEveryNDays:
 		return h.IsScheduled(d)
 	}
 	return true

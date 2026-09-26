@@ -75,8 +75,8 @@ export function editEntry(habitId, iso) {
 }
 
 /**
- * A day outside the chosen weekdays can only lose a value left over from
- * before the days changed; there is nothing to set there.
+ * A day the habit is not scheduled on can only lose a value left over from
+ * before the schedule changed; there is nothing to set there.
  */
 function clearClosedDay(habit, iso) {
   if ((habit.entries[iso] ?? 0) > 0) writeEntry(habit, iso, 0);

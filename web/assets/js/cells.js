@@ -3,6 +3,7 @@
 
 import { dayOfMonth, WEEKDAY_SHORT, weekdayIndex, formatRelative, formatLong } from "./dates.js";
 import { state } from "./state.js";
+import { habitIconBadge } from "./icons.js";
 import * as H from "./habit.js";
 
 const CHECK_SVG =
@@ -40,9 +41,15 @@ export function habitLabel(habit) {
 
   // Whatever is still too long for the column stays readable on hover. Both
   // lines, because a long habit name is clipped the same way.
-  el.title = `${habit.name}\n${meta.textContent}`;
+  el.title = meta.textContent ? `${habit.name}\n${meta.textContent}` : habit.name;
 
-  el.append(name, meta);
+  const text = document.createElement("span");
+  text.className = "habit-text";
+  text.append(name, meta);
+
+  const badge = habitIconBadge(habit);
+  if (badge) el.append(badge);
+  el.append(text);
   return el;
 }
 

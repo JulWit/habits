@@ -23,6 +23,19 @@ export const icons = {
   // A screen on a stand: the appearance the device asks for.
   display: draw('<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M9 20h6M12 16v4"/>'),
 
+  // Settings sections. A painter's palette for how things look, and the board
+  // itself - a label column beside rows of days - for how it is laid out.
+  palette: draw(
+    '<path d="M12 3.2a8.8 8.8 0 1 0 0 17.6c1.1 0 1.8-.8 1.8-1.8 0-.5-.2-.9-.5-1.2' +
+    "-.3-.3-.5-.7-.5-1.2 0-1 .8-1.8 1.8-1.8h2.1a4.1 4.1 0 0 0 4.1-4.1" +
+    'C20.8 6.6 16.9 3.2 12 3.2Z"/>' +
+    '<path d="M7.6 12.2h.01M9 8h.01M13.6 7h.01M17 9.8h.01"/>',
+  ),
+  board: draw(
+    '<rect x="3.2" y="4.2" width="17.6" height="15.6" rx="2.2"/>' +
+    '<path d="M3.2 9.4h17.6M3.2 14.6h17.6M9.4 9.4v10.4"/>',
+  ),
+
   // Habit kinds. Each has to read at 15px, which rules out anything with fine
   // detail — a running figure, for instance, becomes a smudge at that size, so
   // distance uses the navigation arrow instead.
@@ -111,6 +124,139 @@ export const icons = {
     '<path d="M10 10.5v6M14 10.5v6"/>',
   ),
 };
+
+/**
+ * The icons a habit can wear, by the names the server validates against
+ * (domain.HabitIcons). The server owns the list and its order; this owns only
+ * the drawings. A name without a drawing here is left out of the picker and
+ * drawn as nothing, rather than as a broken box.
+ *
+ * Drawn on the same 24px grid and stroke as the interface icons, and kept
+ * simple for the same reason: they are read at about 16px beside a name.
+ */
+export const habitIcons = {
+  droplet: draw('<path d="M12 21.5a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5-2 1.6-3 3.5-3 5.5a7 7 0 0 0 7 7z"/>'),
+  apple: draw(
+    '<path d="M12 20.9c1.5 0 2.8 1.1 4 1.1 3 0 6-8 6-12.2A4.9 4.9 0 0 0 17 5c-2.2 0-4 1.4-5 2-1-.6-2.8-2-5-2a4.9 4.9 0 0 0-5 4.8C2 14 5 22 8 22c1.2 0 2.5-1.1 4-1.1z"/>' +
+    '<path d="M10 2c1 .5 2 2 2 5"/>',
+  ),
+  utensils: draw('<path d="M3 2v7a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V2M7 2v20M21 15V2a5 5 0 0 0-5 5v6a2 2 0 0 0 2 2h3zm0 0v7"/>'),
+  coffee: draw(
+    '<path d="M17 8h1a4 4 0 1 1 0 8h-1"/>' +
+    '<path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4z"/>' +
+    '<path d="M6 2v2M10 2v2M14 2v2"/>',
+  ),
+  pill: draw('<path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7z"/><path d="m8.5 8.5 7 7"/>'),
+  heart: draw('<path d="M19 14c1.5-1.5 3-3.2 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.8 0-3 .5-4.5 2-1.5-1.5-2.7-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4 3 5.5l7 7z"/>'),
+  dumbbell: draw('<path d="M6.5 6.5v11M17.5 6.5v11M3.5 9v6M20.5 9v6M6.5 12h11"/>'),
+  bike: draw(
+    '<circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/>' +
+    '<circle cx="15" cy="5" r="1"/><path d="M12 17.5V14l-3-3 4-3 2 3h2"/>',
+  ),
+  mountain: draw('<path d="m8 3 4 8 5-5 5 15H2z"/>'),
+  flame: draw('<path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.4-.5-2-1-3-1.1-2.1-.2-4 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.2.4-2.3 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>'),
+  bed: draw('<path d="M2 4v16M2 8h18a2 2 0 0 1 2 2v10M2 17h20M6 8v9"/>'),
+  moon: icons.moon,
+  sun: icons.sun,
+  book: draw('<path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2zM22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>'),
+  pencil: icons.edit,
+  lightbulb: draw(
+    '<path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/>' +
+    '<path d="M9 18h6M10 22h4"/>',
+  ),
+  code: draw('<path d="m16 18 6-6-6-6M8 6l-6 6 6 6"/>'),
+  globe: draw(
+    '<circle cx="12" cy="12" r="10"/>' +
+    '<path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>',
+  ),
+  music: draw('<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>'),
+  palette: icons.palette,
+  camera: draw(
+    '<path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3z"/>' +
+    '<circle cx="12" cy="13" r="3"/>',
+  ),
+  leaf: draw(
+    '<path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.5 19 2c1 2 2 4.2 2 8 0 5.5-4.8 10-10 10z"/>' +
+    '<path d="M2 21c0-3 1.9-5.4 5.1-6C9.5 14.5 12 13 13 12"/>',
+  ),
+  home: draw('<path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/>'),
+  wallet: draw(
+    '<path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/>' +
+    '<path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/>',
+  ),
+  users: draw(
+    '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>' +
+    '<path d="M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/>',
+  ),
+  smartphone: draw('<rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/>'),
+  ban: draw('<circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/>'),
+  smile: draw('<circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01"/>'),
+  star: draw('<path d="m12 2 3.1 6.3 6.9 1-5 4.9 1.2 6.8-6.2-3.2-6.2 3.2L7 14.2 2 9.3l6.9-1z"/>'),
+  target: draw('<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>'),
+  clock: icons.clock,
+  check: icons.check,
+};
+
+/**
+ * The rounded tile an icon sits on, or null for a name without a drawing.
+ *
+ * The colour comes from --habit-color on the tile itself, so it can be placed
+ * anywhere without depending on what its parent happens to set. Without a
+ * colour the tile is neutral: see .habit-icon.is-neutral.
+ */
+function iconBadge(name, color, className) {
+  const svg = habitIcons[name];
+  if (!svg) return null;
+  const el = document.createElement("span");
+  el.className = className;
+  if (color) el.style.setProperty("--habit-color", color);
+  else el.classList.add("is-neutral");
+  el.innerHTML = svg;
+  return el;
+}
+
+/** A habit's icon, in the habit's colour. */
+export function habitIconBadge(habit, className = "habit-icon") {
+  return iconBadge(habit.icon, habit.color, className);
+}
+
+/** A category's icon, in its colour, or in neutral ink when it has none. */
+export function categoryIconBadge(category, className = "habit-icon") {
+  return iconBadge(category.icon, category.color || null, className);
+}
+
+/**
+ * Fills host with one radio button per icon, after a first one for "no icon",
+ * and calls onPick with the chosen name ("" for none).
+ *
+ * The names are the server's (state.icons); one without a drawing here is
+ * skipped rather than offered as an empty tile.
+ */
+export function buildIconChoices(host, names, onPick) {
+  const offered = ["", ...(names ?? []).filter((name) => habitIcons[name])];
+  host.replaceChildren(
+    ...offered.map((name) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = name ? "icon-choice" : "icon-choice is-none";
+      b.dataset.icon = name;
+      b.setAttribute("role", "radio");
+      b.setAttribute("aria-label", name ? `Icon ${name}` : "No icon");
+      b.title = name || "No icon";
+      // "No icon" is an empty, dashed tile: the absence it stands for.
+      if (name) b.innerHTML = habitIcons[name];
+      b.addEventListener("click", () => onPick(name));
+      return b;
+    }),
+  );
+}
+
+/** Marks the choice for `name` as the selected one. */
+export function markIconChoice(host, name) {
+  for (const el of host.querySelectorAll(".icon-choice")) {
+    el.setAttribute("aria-checked", String(el.dataset.icon === name));
+  }
+}
 
 /**
  * Fills every element carrying data-icon="<name>" with that icon, once.

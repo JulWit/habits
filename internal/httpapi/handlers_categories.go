@@ -9,6 +9,27 @@ import (
 
 type categoryInput struct {
 	Name *string `json:"name"`
+	// Icon: absent leaves it alone, "" removes it.
+	Icon *string `json:"icon"`
+	// Color: absent leaves it alone, "" returns to neutral.
+	Color *string `json:"color"`
+	// ShowProgress: absent leaves it alone; a new category starts with it off.
+	ShowProgress *bool `json:"showProgress"`
+}
+
+func (in categoryInput) applyTo(c *domain.Category) {
+	if in.Name != nil {
+		c.Name = *in.Name
+	}
+	if in.Icon != nil {
+		c.Icon = *in.Icon
+	}
+	if in.Color != nil {
+		c.Color = *in.Color
+	}
+	if in.ShowProgress != nil {
+		c.ShowProgress = *in.ShowProgress
+	}
 }
 
 func (s *Server) handleCreateCategory(w http.ResponseWriter, r *http.Request) {
@@ -22,7 +43,8 @@ func (s *Server) handleCreateCategory(w http.ResponseWriter, r *http.Request) {
 	}
 	user := auth.MustUser(r.Context())
 
-	c := domain.Category{Name: *in.Name}
+	var c domain.Category
+	in.applyTo(&c)
 	if err := s.store.CreateCategory(r.Context(), user.ID, &c); err != nil {
 		s.writeStoreError(w, err, "creating category")
 		return
@@ -42,9 +64,7 @@ func (s *Server) handleUpdateCategory(w http.ResponseWriter, r *http.Request) {
 		s.writeStoreError(w, err, "loading category")
 		return
 	}
-	if in.Name != nil {
-		c.Name = *in.Name
-	}
+	in.applyTo(&c)
 	if err := s.store.UpdateCategory(r.Context(), user.ID, &c); err != nil {
 		s.writeStoreError(w, err, "updating category")
 		return

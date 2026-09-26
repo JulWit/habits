@@ -6,7 +6,7 @@ import { WEEKDAY_SHORT, WEEKDAY_LONG } from "./dates.js";
 import { state, categoryById } from "./state.js";
 import { errorText } from "./undo.js";
 import { openCategoryPicker } from "./categorypicker.js";
-import { icons } from "./icons.js";
+import { icons, buildIconChoices, markIconChoice, categoryIconBadge } from "./icons.js";
 import * as H from "./habit.js";
 
 let dialog;
@@ -16,6 +16,7 @@ let submitButton;
 let titleEl;
 let categoryButton;
 let selectedColor = null;
+let selectedIcon = "";
 let selectedCategory = "";
 let onSubmit = null;
 
@@ -58,7 +59,9 @@ function paintCategory() {
   caret.className = "picker-caret";
   caret.innerHTML = icons.chevron;
 
-  categoryButton.replaceChildren(label, caret);
+  const category = none ? null : categoryById(selectedCategory);
+  const badge = category && categoryIconBadge(category, "habit-icon is-small");
+  categoryButton.replaceChildren(...(badge ? [badge] : []), label, caret);
 }
 
 function buildWeekdayButtons() {
@@ -102,6 +105,14 @@ function selectColor(color) {
   for (const el of document.querySelectorAll("#color-choices .swatch")) {
     el.setAttribute("aria-checked", String(el.dataset.color === color));
   }
+  // The icons are drawn in the colour being picked, so the choice is seen the
+  // way the board will show it.
+  document.getElementById("icon-choices").style.setProperty("--habit-color", color);
+}
+
+function selectIcon(name) {
+  selectedIcon = name;
+  markIconChoice(document.getElementById("icon-choices"), name);
 }
 
 /**
@@ -150,6 +161,7 @@ export function openEditor(habit, handler) {
   onSubmit = handler;
   errorBox.hidden = true;
   buildSwatches();
+  buildIconChoices(document.getElementById("icon-choices"), state.icons, selectIcon);
   selectedCategory = habit?.categoryId ?? "";
   paintCategory();
 
@@ -193,6 +205,7 @@ export function openEditor(habit, handler) {
   }
 
   selectColor(habit?.color ?? state.colors[0]);
+  selectIcon(habit?.icon ?? "");
   syncVisibility();
   dialog.showModal();
   f.name.focus();
@@ -204,6 +217,7 @@ function collect() {
   const input = {
     name: f.name.value.trim(),
     color: selectedColor,
+    icon: selectedIcon,
     kind,
     categoryId: selectedCategory,
     unit: kind === "count" ? f.unit.value.trim() : "",

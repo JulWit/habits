@@ -170,7 +170,7 @@ without identity headers.
 | Settings | Cog in the header |
 | Theme, days in the overview, archive | all in the settings dialog |
 | Assign or create a category | The "Category" field in the habit editor |
-| Rename / delete a category | ✎ and ✕ in the block heading |
+| Rename a category, set its icon, delete it | "Edit" and "Delete" on the category screen (click the block heading) |
 | Close the detail view | `Esc` |
 | Read a day in the year view | Hover over the square |
 
@@ -232,7 +232,7 @@ All endpoints live under `/api` and answer with JSON.
 | `POST` | `/api/habits/reorder` | Set the order |
 | `PUT` | `/api/habits/{id}/entries/{date}` | Set a day's value |
 | `POST` | `/api/categories` | Create a category |
-| `PATCH` | `/api/categories/{id}` | Rename |
+| `PATCH` | `/api/categories/{id}` | Rename, set the icon |
 | `DELETE` | `/api/categories/{id}` | Soft delete |
 | `POST` | `/api/categories/{id}/restore` | Undo a soft delete |
 | `POST` | `/api/categories/reorder` | Set the order |
@@ -253,6 +253,12 @@ order to read a stored value: `colors` (the palette) and `kinds` (per kind
 time in JavaScript — these numbers decide whether 5000 means five kilometres or
 five hundred repetitions, and a second copy could drift apart without anything
 breaking.
+
+`icons` names the icons a habit or a category may wear (`domain.HabitIcons`); the server
+validates every `icon` against it, and `""` means none. A category's icon is drawn
+in neutral ink, since categories have no colour of their own. Only the names live
+on the server — the drawings are in `web/assets/js/icons.js` (`habitIcons`), and
+a name without a drawing there is simply not offered.
 
 `PUT …/entries/{date}` returns the value it overwrote in the `previous` field.
 That is exactly what the frontend builds its undo stack out of: undoing simply
@@ -277,6 +283,7 @@ web/                        Frontend (ES modules, no build step)
   assets/js/actions.js        All mutations, each with its undo step
   assets/js/icons.js          Inline SVG icons for buttons
   assets/js/categorypicker.js Nested dialog for choosing a category
+  assets/js/categoryeditor.js Edit dialog for a category: name and icon
   assets/js/settings.js       Settings dialog, writes every change immediately
 ```
 
@@ -341,13 +348,17 @@ values live server-side, per user.
 | `pattern` | `none`, `dots`, `grid`, `diagonal`, `cross`, `image` | Texture behind the page; `image` is the uploaded picture |
 | `bandColor` | `neutral` or a habit colour | Colouring of the today column |
 | `bandOpacity` | 0–100 | How strongly that marker is drawn |
+| `bandFillOpacity` | 0–100 | How strongly the band through the cards is drawn, independent of `bandOpacity` |
 | `backgroundDim` | 0–100 | Dimming of the uploaded image |
 | `backgroundBlur` | 0–100 | Blurring of the same |
 | `surfaceOpacity` | 20–100 | Opacity of the cards over an image |
 | `surfaceBlur` | 0–100 | How softly they let it show through |
 
 The number of days: **Automatic** fills the available width, otherwise you pick
-a fixed number. The chosen number is an upper bound, not a guarantee — 28
+a fixed number. A week is the least the board shows: where seven columns do
+not fit at the usual sizes, it narrows the day columns and the name column,
+hides the habit icons and steps the type down until they do (`data-tight`, set
+in `overview.js`). A fixed number below seven is kept as chosen. The chosen number is an upper bound, not a guarantee — 28
 columns do not fit on a phone. The dialog therefore always names the number
 actually being shown and explains the difference, rather than silently clipping
 the board.

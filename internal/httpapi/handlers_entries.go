@@ -110,6 +110,8 @@ func (s *Server) handleUpdateSettings(w http.ResponseWriter, r *http.Request) {
 		BandOpacity  *int    `json:"bandOpacity"`
 		ShowBand     *bool   `json:"showBand"`
 
+		BandFillOpacity *int `json:"bandFillOpacity"`
+
 		BackgroundDim  *int `json:"backgroundDim"`
 		BackgroundBlur *int `json:"backgroundBlur"`
 		SurfaceOpacity *int `json:"surfaceOpacity"`
@@ -159,6 +161,12 @@ func (s *Server) handleUpdateSettings(w http.ResponseWriter, r *http.Request) {
 				store.MaxBandOpacity))
 		return
 	}
+	if in.BandFillOpacity != nil && !store.ValidBandOpacity(*in.BandFillOpacity) {
+		writeError(w, http.StatusUnprocessableEntity,
+			fmt.Sprintf("band fill opacity must be between 0 and %d",
+				store.MaxBandOpacity))
+		return
+	}
 	if in.OverviewDays != nil && !store.ValidOverviewDays(*in.OverviewDays) {
 		writeError(w, http.StatusUnprocessableEntity,
 			fmt.Sprintf("overviewDays must be 0 (automatic) or between 3 and %d",
@@ -202,6 +210,7 @@ func (s *Server) handleUpdateSettings(w http.ResponseWriter, r *http.Request) {
 		setIf(&cur.BandColor, in.BandColor)
 		setIf(&cur.BandOpacity, in.BandOpacity)
 		setIf(&cur.ShowBand, in.ShowBand)
+		setIf(&cur.BandFillOpacity, in.BandFillOpacity)
 		setIf(&cur.OverviewDays, in.OverviewDays)
 		setIf(&cur.ShowArchived, in.ShowArchived)
 		setIf(&cur.BackgroundDim, in.BackgroundDim)

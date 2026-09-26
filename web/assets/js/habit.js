@@ -291,15 +291,12 @@ export function describeHabit(habit) {
   const parts = [];
   // Said first, because a dimmed row alone is easy to misread as merely faded.
   if (habit.archivedAt) parts.push("Archived");
-  // No streak here for now: with the target and the frequency it made the line
-  // longer than the name column, and it is still readable on the detail view
-  // under "Current streak". The stat itself is untouched and waiting for a
-  // better place on the board.
-  // Frequency first, target second: how often is the habit's shape, the target
-  // the detail of a single day — and the frequency is the shorter of the two,
-  // so the part that survives a narrow column is the one that says more.
+  // Only the daily target. The frequency was taken out: the board already shows
+  // it, in the days a habit is not due on, and the detail view still spells it
+  // out. A plain tick has no target, so its line is empty - see .habit-meta.
+  // No streak either: it is readable on the detail view under "Current streak".
   const t = describeTarget(habit);
-  parts.push(t ? `${describeFrequency(habit)} · ${t}` : describeFrequency(habit));
+  if (t) parts.push(t);
   return parts.join(" · ");
 }
 

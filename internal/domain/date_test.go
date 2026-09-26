@@ -133,12 +133,28 @@ func TestDateJSON(t *testing.T) {
 }
 
 func TestTodayUsesTheGivenLocation(t *testing.T) {
-	// A zone far enough east that its date differs from UTC's for part of the
-	// day; the point is only that the argument is honoured, not which day it is.
-	kiritimati := time.FixedZone("UTC+14", 14*60*60)
-	baker := time.FixedZone("UTC-12", -12*60*60)
-	if Today(kiritimati).DaysSince(Today(baker)) > 1 {
-		t.Error("two zones may differ by at most one day")
+	// Compared against the clock read on either side of the call, so a midnight
+	// passing in between cannot fail the test: the answer must be the date in
+	// the given zone at one of the two instants.
+	for _, loc := range []*time.Location{
+		time.FixedZone("UTC+14", 14*60*60),
+		time.FixedZone("UTC-12", -12*60*60),
+	} {
+		before := DateFromTime(time.Now().In(loc))
+		got := Today(loc)
+		after := DateFromTime(time.Now().In(loc))
+		if got != before && got != after {
+			t.Errorf("Today(%s) = %v, want %v or %v", loc, got, before, after)
+		}
+	}
+
+	// The two ends of the offset range lie 26 hours apart, so their dates are
+	// always one or two days apart - never the same, never more. Only the zone
+	// argument being honoured can produce that.
+	east := Today(time.FixedZone("UTC+14", 14*60*60))
+	west := Today(time.FixedZone("UTC-12", -12*60*60))
+	if d := east.DaysSince(west); d < 1 || d > 2 {
+		t.Errorf("UTC+14 is %d days ahead of UTC-12, want 1 or 2", d)
 	}
 	// A nil location must not panic.
 	_ = Today(nil)

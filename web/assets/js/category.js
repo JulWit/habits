@@ -9,8 +9,8 @@
 import { addDays, MONTH_SHORT, dayOfMonth } from "./dates.js";
 import { state } from "./state.js";
 import * as H from "./habit.js";
-import { icons } from "./icons.js";
-import { inlineInput } from "./inline.js";
+import { icons, habitIconBadge, categoryIconBadge } from "./icons.js";
+import { openCategoryEditor } from "./categoryeditor.js";
 
 let root;
 let actions;
@@ -24,7 +24,7 @@ export function initCategory(handlers) {
     const id = root.dataset.category;
     switch (el.dataset.action) {
       case "back": actions.closeCategory(); break;
-      case "rename": startRename(id); break;
+      case "edit": openCategoryEditor(id, (input) => actions.updateCategory(id, input)); break;
       case "delete": actions.deleteCategory(id); break;
       case "open-habit": actions.openHabit(el.dataset.habit); break;
     }
@@ -58,7 +58,7 @@ function header(category, habits) {
       <span class="sub"></span>
     </div>
     <div class="topbar-actions">
-      <button type="button" class="button" data-action="rename" aria-label="Rename">
+      <button type="button" class="button" data-action="edit" aria-label="Edit">
         ${icons.edit}<span class="label">Edit</span>
       </button>
       <button type="button" class="button danger" data-action="delete" aria-label="Delete">
@@ -66,20 +66,12 @@ function header(category, habits) {
       </button>
     </div>`;
   head.querySelector(".name").textContent = category.name;
+  const badge = categoryIconBadge(category, "habit-icon is-large");
+  if (badge) head.querySelector("h2").prepend(badge);
   head.querySelector(".sub").textContent = habits.length === 1
     ? "1 habit"
     : `${habits.length} habits`;
   return head;
-}
-
-function startRename(id) {
-  const category = state.categories.find((c) => c.id === id);
-  const title = root.querySelector(".detail-title .name");
-  if (!category || !title) return;
-  inlineInput(title, {
-    value: category.name,
-    onCommit: (name) => actions.renameCategory(category.id, name),
-  });
 }
 
 /**
@@ -190,6 +182,8 @@ function habitList(habits) {
         <span class="habit-meta"></span>
       </span>
       <span class="cat-habit-streak"></span>`;
+    const badge = habitIconBadge(habit);
+    if (badge) row.querySelector(".dot").replaceWith(badge);
     row.querySelector(".habit-name").textContent = habit.name;
     row.querySelector(".habit-meta").textContent = H.describeHabit(habit);
     const s = habit.stats;

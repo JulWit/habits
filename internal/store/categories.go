@@ -10,7 +10,7 @@ import (
 	"github.com/JulWit/habits/internal/domain"
 )
 
-const categoryColumns = `id, name, position, created_at, updated_at`
+const categoryColumns = `id, name, icon, color, show_progress, position, created_at, updated_at`
 
 func scanCategory(row interface{ Scan(...any) error }) (domain.Category, error) {
 	var (
@@ -18,7 +18,7 @@ func scanCategory(row interface{ Scan(...any) error }) (domain.Category, error) 
 		created string
 		updated string
 	)
-	if err := row.Scan(&c.ID, &c.Name, &c.Position, &created, &updated); err != nil {
+	if err := row.Scan(&c.ID, &c.Name, &c.Icon, &c.Color, &c.ShowProgress, &c.Position, &created, &updated); err != nil {
 		return domain.Category{}, err
 	}
 	var err error
@@ -92,9 +92,9 @@ func (s *Store) CreateCategory(ctx context.Context, userID string, c *domain.Cat
 	c.Position = int(next.Int64) + 1
 
 	if _, err := tx.ExecContext(ctx,
-		`INSERT INTO categories (id, user_id, name, position, created_at, updated_at)
-		 VALUES (?,?,?,?,?,?)`,
-		c.ID, userID, c.Name, c.Position, formatTime(c.CreatedAt), formatTime(c.UpdatedAt)); err != nil {
+		`INSERT INTO categories (id, user_id, name, icon, color, show_progress, position, created_at, updated_at)
+		 VALUES (?,?,?,?,?,?,?,?,?)`,
+		c.ID, userID, c.Name, c.Icon, c.Color, c.ShowProgress, c.Position, formatTime(c.CreatedAt), formatTime(c.UpdatedAt)); err != nil {
 		return fmt.Errorf("creating category: %w", err)
 	}
 	return tx.Commit()
@@ -106,9 +106,9 @@ func (s *Store) UpdateCategory(ctx context.Context, userID string, c *domain.Cat
 		return err
 	}
 	res, err := s.db.ExecContext(ctx,
-		`UPDATE categories SET name = ?, updated_at = ?
+		`UPDATE categories SET name = ?, icon = ?, color = ?, show_progress = ?, updated_at = ?
 		 WHERE id = ? AND user_id = ? AND deleted_at IS NULL`,
-		c.Name, formatTime(c.UpdatedAt), c.ID, userID)
+		c.Name, c.Icon, c.Color, c.ShowProgress, formatTime(c.UpdatedAt), c.ID, userID)
 	if err != nil {
 		return fmt.Errorf("updating category: %w", err)
 	}

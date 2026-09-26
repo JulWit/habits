@@ -288,6 +288,127 @@ var migrations = []string{
 	// Whether today runs as a band through the cards. On is what it has always
 	// done, so nothing changes for anyone until they switch it off.
 	`ALTER TABLE user_settings ADD COLUMN show_band INTEGER NOT NULL DEFAULT 1;`,
+
+	// For a while the palette was extended well past the original twelve; it
+	// went back to them. Anything already painted with one of the extra shades -
+	// a habit or the today band - moves to the original of the same hue, rather
+	// than keeping a colour the editor no longer offers or falling back to grey.
+	`UPDATE habits SET color = CASE color
+		WHEN '#ff3b30' THEN '#dc2626'
+		WHEN '#ff6b6b' THEN '#dc2626'
+		WHEN '#c0392b' THEN '#dc2626'
+		WHEN '#ff375f' THEN '#db2777'
+		WHEN '#ff2d92' THEN '#db2777'
+		WHEN '#e91e8c' THEN '#db2777'
+		WHEN '#ff6eb4' THEN '#db2777'
+		WHEN '#ff9500' THEN '#ea580c'
+		WHEN '#ff6d00' THEN '#ea580c'
+		WHEN '#ff8c42' THEN '#ea580c'
+		WHEN '#e67e22' THEN '#ea580c'
+		WHEN '#a0522d' THEN '#ea580c'
+		WHEN '#ffcc00' THEN '#eab308'
+		WHEN '#ffd60a' THEN '#eab308'
+		WHEN '#f4d03f' THEN '#eab308'
+		WHEN '#8b6914' THEN '#eab308'
+		WHEN '#a8e063' THEN '#65a30d'
+		WHEN '#7ed321' THEN '#65a30d'
+		WHEN '#30d158' THEN '#16a34a'
+		WHEN '#34c759' THEN '#16a34a'
+		WHEN '#00c853' THEN '#16a34a'
+		WHEN '#2ecc71' THEN '#16a34a'
+		WHEN '#1abc9c' THEN '#0d9488'
+		WHEN '#4ecdc4' THEN '#0d9488'
+		WHEN '#26c6da' THEN '#0d9488'
+		WHEN '#00bcd4' THEN '#0d9488'
+		WHEN '#006689' THEN '#0284c7'
+		WHEN '#5ac8fa' THEN '#0284c7'
+		WHEN '#2196f3' THEN '#0284c7'
+		WHEN '#3498db' THEN '#0284c7'
+		WHEN '#0a84ff' THEN '#2563eb'
+		WHEN '#007aff' THEN '#2563eb'
+		WHEN '#5856d6' THEN '#4f46e5'
+		WHEN '#9b59b6' THEN '#7c3aed'
+		WHEN '#6c3483' THEN '#7c3aed'
+		WHEN '#bf5af2' THEN '#7c3aed'
+		WHEN '#8e8e93' THEN '#64748b'
+		WHEN '#636366' THEN '#64748b'
+		WHEN '#48484a' THEN '#64748b'
+		WHEN '#ffffff' THEN '#64748b'
+		WHEN '#1c1c1e' THEN '#64748b'
+		ELSE color
+	END;
+	UPDATE user_settings SET band_color = CASE band_color
+		WHEN '#ff3b30' THEN '#dc2626'
+		WHEN '#ff6b6b' THEN '#dc2626'
+		WHEN '#c0392b' THEN '#dc2626'
+		WHEN '#ff375f' THEN '#db2777'
+		WHEN '#ff2d92' THEN '#db2777'
+		WHEN '#e91e8c' THEN '#db2777'
+		WHEN '#ff6eb4' THEN '#db2777'
+		WHEN '#ff9500' THEN '#ea580c'
+		WHEN '#ff6d00' THEN '#ea580c'
+		WHEN '#ff8c42' THEN '#ea580c'
+		WHEN '#e67e22' THEN '#ea580c'
+		WHEN '#a0522d' THEN '#ea580c'
+		WHEN '#ffcc00' THEN '#eab308'
+		WHEN '#ffd60a' THEN '#eab308'
+		WHEN '#f4d03f' THEN '#eab308'
+		WHEN '#8b6914' THEN '#eab308'
+		WHEN '#a8e063' THEN '#65a30d'
+		WHEN '#7ed321' THEN '#65a30d'
+		WHEN '#30d158' THEN '#16a34a'
+		WHEN '#34c759' THEN '#16a34a'
+		WHEN '#00c853' THEN '#16a34a'
+		WHEN '#2ecc71' THEN '#16a34a'
+		WHEN '#1abc9c' THEN '#0d9488'
+		WHEN '#4ecdc4' THEN '#0d9488'
+		WHEN '#26c6da' THEN '#0d9488'
+		WHEN '#00bcd4' THEN '#0d9488'
+		WHEN '#006689' THEN '#0284c7'
+		WHEN '#5ac8fa' THEN '#0284c7'
+		WHEN '#2196f3' THEN '#0284c7'
+		WHEN '#3498db' THEN '#0284c7'
+		WHEN '#0a84ff' THEN '#2563eb'
+		WHEN '#007aff' THEN '#2563eb'
+		WHEN '#5856d6' THEN '#4f46e5'
+		WHEN '#9b59b6' THEN '#7c3aed'
+		WHEN '#6c3483' THEN '#7c3aed'
+		WHEN '#bf5af2' THEN '#7c3aed'
+		WHEN '#8e8e93' THEN '#64748b'
+		WHEN '#636366' THEN '#64748b'
+		WHEN '#48484a' THEN '#64748b'
+		WHEN '#ffffff' THEN '#64748b'
+		WHEN '#1c1c1e' THEN '#64748b'
+		ELSE band_color
+	END;`,
+
+	// How strongly the band through the cards is drawn, apart from the accent's
+	// own opacity. Started at whatever that opacity was, so the band looks the
+	// same for everyone until they move the new slider.
+	`ALTER TABLE user_settings ADD COLUMN band_fill_opacity INTEGER NOT NULL DEFAULT 100;
+	 UPDATE user_settings SET band_fill_opacity = band_opacity;`,
+
+	// Habits can wear an icon beside their name. Empty is "none", which every
+	// existing habit keeps until someone picks one.
+	`ALTER TABLE habits ADD COLUMN icon TEXT NOT NULL DEFAULT '';`,
+
+	// Categories can wear an icon too, from the same set as habits.
+	`ALTER TABLE categories ADD COLUMN icon TEXT NOT NULL DEFAULT '';`,
+
+	// Whether a category's heading shows today's progress. On is what every
+	// block has done so far, so nothing changes until someone switches it off.
+	`ALTER TABLE categories ADD COLUMN show_progress INTEGER NOT NULL DEFAULT 1;`,
+
+	// The default turned out the other way round: a heading shows no progress
+	// until it is asked to. Every category is switched off, since none had been
+	// switched deliberately yet. The column keeps its DEFAULT 1 - SQLite cannot
+	// change a default without rebuilding the table, and every insert names the
+	// value anyway.
+	`UPDATE categories SET show_progress = 0;`,
+
+	// Categories can take a colour for their icon. Empty is neutral ink, which
+	// is how every existing category has been drawn so far.
+	`ALTER TABLE categories ADD COLUMN color TEXT NOT NULL DEFAULT '';`,
 }
 
 func (s *Store) migrate(ctx context.Context) error {

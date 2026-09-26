@@ -9,6 +9,7 @@ import { initDetail, renderDetail } from "./detail.js";
 import { initCategory, renderCategory } from "./category.js";
 import { initEditor } from "./editor.js";
 import { initCategoryPicker } from "./categorypicker.js";
+import { initCategoryEditor } from "./categoryeditor.js";
 import { initSettings, blurLength } from "./settings.js";
 import { initValueDialog } from "./value.js";
 import { initSearch, openSearch } from "./search.js";
@@ -87,7 +88,7 @@ const handlers = {
   tapEntry: actions.tapEntry,
   editEntry: actions.editEntry,
   extendHistory,
-  renameCategory: actions.renameCategory,
+  updateCategory: actions.updateCategory,
   moveCategory: actions.moveCategory,
   setCategoryOrder: actions.setCategoryOrder,
   moveHabit: actions.moveHabit,
@@ -155,6 +156,7 @@ async function main() {
   initAppearance();
   initCategoryPicker({ createCategory: actions.createCategory });
   initEditor();
+  initCategoryEditor();
   initValueDialog();
   initOverview(handlers);
   initSearch(handlers);
@@ -381,6 +383,8 @@ function initAppearance() {
     root.dataset.band = state.colors?.includes(band) ? band : "neutral";
     root.style.setProperty("--today-opacity",
       `${clampNumber(state.settings?.bandOpacity, 0, 100, 100)}%`);
+    root.style.setProperty("--band-opacity",
+      `${clampNumber(state.settings?.bandFillOpacity, 0, 100, 30)}%`);
     root.dataset.todayBand = state.settings?.showBand === false ? "off" : "on";
 
     // The two knobs of the uploaded background. Written as custom properties

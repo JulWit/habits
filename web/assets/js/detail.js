@@ -6,7 +6,7 @@ import {
 } from "./dates.js";
 import { state } from "./state.js";
 import * as H from "./habit.js";
-import { icons } from "./icons.js";
+import { icons, habitIconBadge } from "./icons.js";
 
 let root;
 let actions;
@@ -40,6 +40,22 @@ export function renderDetail(habit) {
   if (H.isCountable(habit)) panels.push(cumulative(habit));
   root.replaceChildren(...panels);
   showNewest(root);
+  showToday(root);
+}
+
+/**
+ * Scrolls the year grid so today's column sits in the middle, where the grid
+ * is wider than its panel - on a phone, and anywhere late in the year now that
+ * the grid runs to December. Where it fits there is nothing to scroll, and
+ * setting scrollLeft does nothing.
+ */
+function showToday(panel) {
+  const scroller = panel.querySelector(".heatmap-scroll");
+  const cell = scroller?.querySelector(".heat.is-today");
+  if (!cell) return;
+  const box = scroller.getBoundingClientRect();
+  const at = cell.getBoundingClientRect();
+  scroller.scrollLeft += at.left - box.left - (box.width - at.width) / 2;
 }
 
 function header(habit) {
@@ -54,6 +70,8 @@ function header(habit) {
       <span class="sub"></span>
     </div>`;
   head.querySelector(".name").textContent = habit.name;
+  const badge = habitIconBadge(habit, "habit-icon is-large");
+  if (badge) head.querySelector(".dot").replaceWith(badge);
   // Same order as the board's second line: frequency, then target.
   const target = H.describeTarget(habit);
   head.querySelector(".sub").textContent =
@@ -131,12 +149,14 @@ function heatmap(habit) {
   const title = document.createElement("h3");
   const year = state.today.slice(0, 4);
   const yearStart = `${year}-01-01`;
+  const yearEnd = `${year}-12-31`;
   // The grid is one column per calendar week, so it starts on the Monday of the
-  // week holding 1 January. The days of that week that still belong to the
-  // previous year are drawn as blanks rather than dropped, which is what keeps
-  // every row a fixed weekday.
+  // week holding 1 January and runs to the week holding 31 December - the days
+  // still ahead greyed out. The days of those weeks that belong to the
+  // neighbouring years are drawn as blanks rather than dropped, which is what
+  // keeps every row a fixed weekday.
   const firstWeek = startOfWeek(yearStart);
-  const weeks = Math.floor(daysBetween(firstWeek, state.today) / 7) + 1;
+  const weeks = Math.floor(daysBetween(firstWeek, yearEnd) / 7) + 1;
 
   title.textContent = `Year ${year}`;
   panel.append(title);
@@ -152,11 +172,11 @@ function heatmap(habit) {
   map.className = "heatmap";
   for (let w = 0; w < weeks; w++) {
     for (let d = 0; d < 7; d++) {
-      map.append(heatCell(habit, addDays(firstWeek, w * 7 + d), yearStart));
+      map.append(heatCell(habit, addDays(firstWeek, w * 7 + d), yearStart, yearEnd));
     }
   }
 
-  body.append(monthLabels(firstWeek, weeks, yearStart), map);
+  body.append(monthLabels(firstWeek, weeks, yearStart, yearEnd), map);
   scroll.append(body);
   panel.append(scroll, legend(yearStart, year));
   return panel;
@@ -169,14 +189,14 @@ function heatmap(habit) {
  * first day, so the caption sits over the week the month starts in rather than
  * being rounded to the nearest Monday.
  */
-function monthLabels(firstWeek, weeks, yearStart) {
+function monthLabels(firstWeek, weeks, yearStart, yearEnd) {
   const row = document.createElement("div");
   row.className = "heatmap-months";
 
   for (let w = 0; w < weeks; w++) {
     for (let d = 0; d < 7; d++) {
       const iso = addDays(firstWeek, w * 7 + d);
-      if (iso < yearStart || iso > state.today) continue;
+      if (iso < yearStart || iso > yearEnd) continue;
       if (dayOfMonth(iso) !== 1) continue;
       const label = document.createElement("span");
       label.textContent = MONTH_SHORT[monthIndex(iso)];
@@ -187,16 +207,19 @@ function monthLabels(firstWeek, weeks, yearStart) {
   return row;
 }
 
-function heatCell(habit, iso, yearStart) {
+function heatCell(habit, iso, yearStart, yearEnd) {
   const el = document.createElement("div");
   el.className = "heat";
   const value = habit.entries[iso] ?? 0;
 
-  if (iso < yearStart) {
-    // Tail of the previous year, present only to keep the first column square.
+  if (iso < yearStart || iso > yearEnd) {
+    // A day of the previous or next year, present only to keep the first and
+    // last columns square.
     el.classList.add("is-outside");
     return el;
   }
+  // Not drawn any differently; showToday() finds the column by it.
+  if (iso === state.today) el.classList.add("is-today");
   if (iso > state.today) {
     el.classList.add("is-future");
   } else if (!H.isScheduled(habit, iso) && value === 0) {
@@ -206,16 +229,22 @@ function heatCell(habit, iso, yearStart) {
   }
 
   el.dataset.date = iso;
-  el.dataset.status = value > 0
-    ? `${H.formatValue(habit, value)} of ${H.formatValue(habit, H.target(habit))}`
-    : H.isScheduled(habit, iso)
-      ? "nothing recorded"
-      : "not scheduled";
+  // A day still ahead has nothing to report yet - unless something was planned
+  // on it from the board.
+  const ahead = iso > state.today;
+  el.dataset.status = ahead
+    ? value > 0 ? `${H.formatValue(habit, value)} planned` : "still ahead"
+    : value > 0
+      ? `${H.formatValue(habit, value)} of ${H.formatValue(habit, H.target(habit))}`
+      : H.isScheduled(habit, iso)
+        ? "nothing recorded"
+        : "not scheduled";
   // No title attribute: the custom tooltip below replaces it, and keeping both
   // would stack the browser's own tooltip on top a second later. The accessible
   // name carries the same text for anyone not using a pointer.
   el.setAttribute("role", "img");
-  el.setAttribute("aria-label", `${formatFull(iso)} — ${el.dataset.status}`);
+  const when = iso === state.today ? `Today, ${formatFull(iso)}` : formatFull(iso);
+  el.setAttribute("aria-label", `${when} — ${el.dataset.status}`);
   return el;
 }
 
@@ -223,7 +252,9 @@ function legend(yearStart, year) {
   const el = document.createElement("div");
   el.className = "heatmap-legend";
   const from = `${dayOfMonth(yearStart)} ${MONTH_SHORT[monthIndex(yearStart)]}`;
-  const to = `${dayOfMonth(state.today)} ${MONTH_SHORT[monthIndex(state.today)]} ${year}`;
+  // The grid spans the whole year, the days still ahead greyed out, so the
+  // caption names the whole year too.
+  const to = `31 ${MONTH_SHORT[11]} ${year}`;
   el.innerHTML =
     `<span>${from} – ${to}</span><span style="flex:1"></span><span>less</span>` +
     [0, 1, 2, 3, 4].map((l) => `<span class="heat" data-level="${l}"></span>`).join("") +

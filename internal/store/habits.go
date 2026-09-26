@@ -10,7 +10,7 @@ import (
 	"github.com/JulWit/habits/internal/domain"
 )
 
-const habitColumns = `id, name, color, kind, target_value, step_value, unit,
+const habitColumns = `id, name, color, icon, kind, target_value, step_value, unit,
 	freq_kind, freq_times_per_week, freq_weekdays, freq_interval_days, freq_anchor_date,
 	position, archived_at, created_at, updated_at, category_id`
 
@@ -25,7 +25,7 @@ func scanHabit(rows interface{ Scan(...any) error }) (domain.Habit, error) {
 		weekdays   int64
 	)
 	err := rows.Scan(
-		&h.ID, &h.Name, &h.Color, &h.Kind, &h.TargetValue, &h.StepValue, &h.Unit,
+		&h.ID, &h.Name, &h.Color, &h.Icon, &h.Kind, &h.TargetValue, &h.StepValue, &h.Unit,
 		&h.Frequency.Kind, &h.Frequency.TimesPerWeek, &weekdays, &h.Frequency.IntervalDays, &anchor,
 		&h.Position, &archivedAt, &created, &updated, &categoryID,
 	)
@@ -122,11 +122,11 @@ func (s *Store) CreateHabit(ctx context.Context, userID string, h *domain.Habit)
 	}
 
 	_, err = tx.ExecContext(ctx, `
-		INSERT INTO habits (id, user_id, name, color, kind, target_value, step_value, unit,
+		INSERT INTO habits (id, user_id, name, color, icon, kind, target_value, step_value, unit,
 			freq_kind, freq_times_per_week, freq_weekdays, freq_interval_days, freq_anchor_date,
 			position, created_at, updated_at, category_id)
-		VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-		h.ID, userID, h.Name, h.Color, h.Kind, h.TargetValue, h.StepValue, h.Unit,
+		VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+		h.ID, userID, h.Name, h.Color, h.Icon, h.Kind, h.TargetValue, h.StepValue, h.Unit,
 		h.Frequency.Kind, h.Frequency.TimesPerWeek, int64(h.Frequency.Weekdays),
 		h.Frequency.IntervalDays, h.Frequency.AnchorDate.String(),
 		h.Position, formatTime(h.CreatedAt), formatTime(h.UpdatedAt), nullableID(h.CategoryID))
@@ -190,12 +190,12 @@ func (s *Store) UpdateHabit(ctx context.Context, userID string, h *domain.Habit)
 
 	res, err := tx.ExecContext(ctx, `
 		UPDATE habits SET
-			name = ?, color = ?, kind = ?, target_value = ?, step_value = ?, unit = ?,
+			name = ?, color = ?, icon = ?, kind = ?, target_value = ?, step_value = ?, unit = ?,
 			freq_kind = ?, freq_times_per_week = ?, freq_weekdays = ?,
 			freq_interval_days = ?, freq_anchor_date = ?,
 			archived_at = ?, updated_at = ?, category_id = ?
 		WHERE id = ? AND user_id = ? AND deleted_at IS NULL`,
-		h.Name, h.Color, h.Kind, h.TargetValue, h.StepValue, h.Unit,
+		h.Name, h.Color, h.Icon, h.Kind, h.TargetValue, h.StepValue, h.Unit,
 		h.Frequency.Kind, h.Frequency.TimesPerWeek, int64(h.Frequency.Weekdays),
 		h.Frequency.IntervalDays, h.Frequency.AnchorDate.String(),
 		archived, formatTime(h.UpdatedAt), nullableID(h.CategoryID),

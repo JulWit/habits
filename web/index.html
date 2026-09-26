@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-theme="{{.Theme}}" data-font="{{.Font}}" data-density="{{.Density}}" data-pattern="{{.Pattern}}" data-band="{{.BandColor}}" data-today-band="{{if .ShowBand}}on{{else}}off{{end}}" style="--today-opacity: {{.BandOp}}%; --bg-dim: {{.Dim}}%; --bg-blur: {{.Blur}}px; --surface-opacity: {{.SurfaceOp}}%; --surface-blur: {{.SurfaceBlr}}px">
+<html lang="en" data-theme="{{.Theme}}" data-font="{{.Font}}" data-density="{{.Density}}" data-pattern="{{.Pattern}}" data-band="{{.BandColor}}" data-today-band="{{if .ShowBand}}on{{else}}off{{end}}" style="--today-opacity: {{.BandOp}}%; --band-opacity: {{.BandFillOp}}%;--bg-dim: {{.Dim}}%; --bg-blur: {{.Blur}}px; --surface-opacity: {{.SurfaceOp}}%; --surface-blur: {{.SurfaceBlr}}px">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -92,6 +92,11 @@
       <fieldset class="field">
         <legend class="field-label">Colour</legend>
         <div id="color-choices" class="swatches" role="radiogroup" aria-label="Colour"></div>
+      </fieldset>
+
+      <fieldset class="field">
+        <legend class="field-label">Icon</legend>
+        <div id="icon-choices" class="icon-choices" role="radiogroup" aria-label="Icon"></div>
       </fieldset>
 
       <div class="field">
@@ -206,7 +211,7 @@
 
 <dialog id="settings-dialog" class="dialog settings-dialog">
   <header class="dialog-head">
-    <h2>Settings</h2>
+    <h2 data-icon="gear">Settings</h2>
   </header>
 
   <!-- Two panes: the sections on the left, the open one on the right. On a
@@ -214,11 +219,11 @@
   <div class="settings-layout">
   <div class="tabs" role="tablist" aria-label="Settings sections" aria-orientation="vertical">
     <button type="button" class="tab" role="tab" id="tab-look"
-            aria-controls="panel-look" aria-selected="true">Appearance</button>
+            aria-controls="panel-look" aria-selected="true"><span data-icon="palette">Appearance</span></button>
     <button type="button" class="tab" role="tab" id="tab-board"
-            aria-controls="panel-board" aria-selected="false" tabindex="-1">Overview</button>
+            aria-controls="panel-board" aria-selected="false" tabindex="-1"><span data-icon="board">Overview</span></button>
     <button type="button" class="tab" role="tab" id="tab-archive"
-            aria-controls="panel-archive" aria-selected="false" tabindex="-1">Archive</button>
+            aria-controls="panel-archive" aria-selected="false" tabindex="-1"><span data-icon="archive">Archive</span></button>
   </div>
 
   <div class="dialog-body">
@@ -267,11 +272,20 @@
         <input type="range" id="band-opacity" min="0" max="100" step="5" autocomplete="off">
         <output id="band-opacity-out"></output>
       </label>
+    </fieldset>
+
+    <fieldset class="field">
+      <legend class="field-label">Today band</legend>
       <label class="switch">
         <input type="checkbox" id="settings-show-band" autocomplete="off">
         <span>Band through today's column</span>
       </label>
       <p class="field-hint">Off, only today's date in the header is marked.</p>
+      <label class="slider" id="band-fill-knob">
+        <span class="field-label">Band opacity</span>
+        <input type="range" id="band-fill-opacity" min="0" max="100" step="5" autocomplete="off">
+        <output id="band-fill-opacity-out"></output>
+      </label>
     </fieldset>
 
     <label class="field">
@@ -317,7 +331,7 @@
           <output id="bg-blur-out"></output>
         </label>
 
-        <p class="knob-group">Surfaces — title bar, cards, panels</p>
+        <p class="knob-group">Surfaces</p>
         <label class="slider">
           <span class="field-label">Opacity</span>
           <input type="range" id="surface-opacity" min="20" max="100" step="5" autocomplete="off">
@@ -333,7 +347,7 @@
 
     </div>
 
-    <div id="panel-board" class="tab-panel" role="tabpanel" aria-labelledby="tab-board" hidden>
+    <div id="panel-board"class="tab-panel" role="tabpanel" aria-labelledby="tab-board" hidden>
     <fieldset class="field">
       <legend class="field-label">Reordering</legend>
       <label class="switch">
@@ -401,6 +415,49 @@
   <footer class="dialog-foot">
     <button type="button" class="button ghost" data-action="cancel">Cancel</button>
   </footer>
+</dialog>
+
+<!-- Editing a category, opened from the category screen. Name and icon are
+     saved together, as one step to undo; category.js fills and submits it. -->
+<dialog id="category-editor" class="dialog compact">
+  <form id="category-editor-form" method="dialog">
+    <header class="dialog-head">
+      <h2>Edit category</h2>
+    </header>
+
+    <div class="dialog-body">
+      <label class="field">
+        <span class="field-label">Name</span>
+        <input name="name" type="text" maxlength="60" required autocomplete="off">
+      </label>
+
+      <fieldset class="field">
+        <legend class="field-label">Colour</legend>
+        <div id="category-color-choices" class="swatches" role="radiogroup" aria-label="Colour"></div>
+      </fieldset>
+
+      <fieldset class="field">
+        <legend class="field-label">Icon</legend>
+        <div id="category-icon-choices" class="icon-choices is-neutral" role="radiogroup" aria-label="Icon"></div>
+      </fieldset>
+
+      <fieldset class="field">
+        <legend class="field-label">Progress</legend>
+        <label class="switch">
+          <input type="checkbox" name="showProgress" autocomplete="off">
+          <span>Show today's progress</span>
+        </label>
+        <p class="field-hint">The bar and the count beside the name on the board.</p>
+      </fieldset>
+
+      <p id="category-editor-error" class="error" hidden></p>
+    </div>
+
+    <footer class="dialog-foot">
+      <button type="button" class="button ghost" data-action="cancel">Cancel</button>
+      <button type="submit" class="button primary" id="category-editor-submit">Save</button>
+    </footer>
+  </form>
 </dialog>
 
 <!-- A quick jump rather than a filter: type, pick, and the habit or category

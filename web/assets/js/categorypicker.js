@@ -4,7 +4,7 @@
 // state while a category is picked or created.
 
 import { state } from "./state.js";
-import { icons } from "./icons.js";
+import { icons, categoryIconBadge } from "./icons.js";
 import { errorText } from "./undo.js";
 
 const NONE = "";
@@ -81,6 +81,8 @@ function paintList() {
     mark.className = "picker-option-mark";
     if (option.id === current) mark.innerHTML = icons.check;
 
+    const badge = categoryIconBadge(option, "habit-icon is-small");
+    if (badge) row.append(badge);
     row.append(label, mark);
     return row;
   }));

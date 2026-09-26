@@ -185,7 +185,9 @@ type Habit struct {
 	ID    string `json:"id"`
 	Name  string `json:"name"`
 	Color string `json:"color"`
-	Kind  Kind   `json:"kind"`
+	// Icon names one of HabitIcons, or is empty for a habit drawn without one.
+	Icon string `json:"icon"`
+	Kind Kind   `json:"kind"`
 	// CategoryID is empty when the habit belongs to no category. It may also
 	// point at a soft-deleted category, in which case the habit shows up as
 	// uncategorised until that category is restored.
@@ -274,6 +276,11 @@ func (h *Habit) Validate() error {
 		return invalid("colour must be a hex value like #4caf50")
 	}
 	h.Color = strings.ToLower(h.Color)
+
+	h.Icon = strings.TrimSpace(h.Icon)
+	if h.Icon != "" && !ValidIcon(h.Icon) {
+		return invalid("unknown icon %q", h.Icon)
+	}
 
 	if !h.Kind.Valid() {
 		return invalid("unknown habit kind %q", h.Kind)
@@ -421,4 +428,25 @@ var DefaultColors = []string{
 	"#dc2626", "#ea580c", "#eab308", "#65a30d",
 	"#16a34a", "#0d9488", "#0284c7", "#2563eb",
 	"#4f46e5", "#7c3aed", "#db2777", "#64748b",
+}
+
+// HabitIcons are the icons a habit may wear, in the order the editor offers
+// them. Only the names live here; the drawings are the client's. Kept on the
+// server for the same reason as the palette: a name outside this list would be
+// stored and then drawn as nothing at all.
+var HabitIcons = []string{
+	"droplet", "apple", "utensils", "coffee", "pill", "heart", "dumbbell", "bike",
+	"mountain", "flame", "bed", "moon", "sun", "book", "pencil", "lightbulb",
+	"code", "globe", "music", "palette", "camera", "leaf", "home", "wallet",
+	"users", "smartphone", "ban", "smile", "star", "target", "clock", "check",
+}
+
+// ValidIcon reports whether name is one of HabitIcons.
+func ValidIcon(name string) bool {
+	for _, known := range HabitIcons {
+		if name == known {
+			return true
+		}
+	}
+	return false
 }

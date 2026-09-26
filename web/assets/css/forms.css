@@ -72,6 +72,15 @@
 
 .settings-dialog .dialog-head { padding-bottom: calc(.75 * var(--space)); }
 
+/* The same gear as the button that opens the dialog, so the two read as one. */
+.settings-dialog .dialog-head h2 {
+  display: flex;
+  align-items: center;
+  gap: calc(.5 * var(--space));
+}
+
+.settings-dialog .dialog-head h2 svg { width: 1.15em; height: 1.15em; flex: none; }
+
 .settings-layout {
   display: grid;
   grid-template-columns: 11rem minmax(0, 1fr);
@@ -94,6 +103,16 @@
   padding: calc(.55 * var(--space)) calc(.75 * var(--space));
   transition: background .12s ease;
 }
+
+/* The icon in front of the name, in the text's colour so it dims and lights
+   with it. */
+.settings-layout .tab > span {
+  display: flex;
+  align-items: center;
+  gap: calc(.5 * var(--space));
+}
+
+.settings-layout .tab svg { width: 1rem; height: 1rem; flex: none; }
 
 .settings-layout .tab:hover { background: var(--surface-2); }
 
@@ -243,10 +262,53 @@
   background-clip: content-box;
 }
 
+/* "No colour": an empty ring struck through, the usual sign for none. */
+.swatch.is-none {
+  background:
+    linear-gradient(to top right, transparent 46%, var(--text-muted) 46% 54%, transparent 54%)
+    content-box;
+  box-shadow: inset 0 0 0 1.5px var(--text-muted);
+}
+
 .swatch[aria-checked="true"] {
   border-color: var(--text);
   transform: scale(1.06);
 }
+
+/* ---------- icon picker ---------- */
+
+/* Each icon on the same tile the board draws it on, in the colour picked
+   above; editor.js sets --habit-color on the group. */
+.icon-choices {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(2.25rem, 1fr));
+  gap: calc(.35 * var(--space));
+}
+
+.icon-choice {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--habit-color) 16%, transparent) padding-box;
+  color: var(--habit-color);
+  cursor: pointer;
+}
+
+.icon-choice svg { width: 1.15rem; height: 1.15rem; }
+
+.icon-choice:hover { background-color: color-mix(in srgb, var(--habit-color) 26%, transparent); }
+
+.icon-choice.is-none {
+  background: transparent;
+  border: 2px dashed var(--border-strong);
+}
+
+.icon-choice[aria-checked="true"] { border: 2px solid var(--text); }
+
+.icon-choice:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
 
 /* ---------- weekday picker ---------- */
 

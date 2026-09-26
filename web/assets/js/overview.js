@@ -6,13 +6,13 @@
 // the columns stay aligned across blocks without any measuring.
 
 import {
-  addDays, dayOfMonth, monthIndex, yearOf, weekdayIndex, MONTH_LONG, MONTH_SHORT,
+  addDays, daysBetween, dayOfMonth, monthIndex, yearOf, weekdayIndex, MONTH_LONG, MONTH_SHORT,
   WEEKDAY_LONG,
 } from "./dates.js";
 import { state, subscribe, groupedHabits } from "./state.js";
 import * as H from "./habit.js";
 import { dayCell, habitLabel, dayEntry } from "./cells.js";
-import { icons } from "./icons.js";
+import { icons, categoryIconBadge } from "./icons.js";
 import { enableDragReorder } from "./reorder.js";
 
 const LONG_PRESS_MS = 450;
@@ -193,11 +193,69 @@ function fittingDays(width) {
  * nobody asked for.
  */
 function visibleDays(width) {
+  // Measured at the board's own sizes, before any tightening from last time.
+  loosen();
   const fits = fittingDays(width);
   const wanted = state.settings?.overviewDays ?? 0;
   // Automatic means every day that fits — the shell width is the only cap, and
   // it already keeps the row from running the full width of a large monitor.
-  return wanted > 0 ? Math.min(wanted, fits) : fits;
+  const days = wanted > 0 ? Math.min(wanted, fits) : fits;
+  // A week is the least: a board that cannot show one at its usual sizes is
+  // drawn tighter instead. A fixed count below seven is a choice and stays.
+  const least = wanted > 0 ? Math.min(wanted, MIN_DAYS) : MIN_DAYS;
+  if (days >= least) return days;
+  tighten(width, least);
+  return least;
+}
+
+/** The fewest day columns the board shows, however narrow the window. */
+const MIN_DAYS = 7;
+
+/** Takes a tightened board back to its usual sizes. */
+function loosen() {
+  const root = document.documentElement;
+  if (!root.hasAttribute("data-tight")) return;
+  root.removeAttribute("data-tight");
+  root.style.removeProperty("--cell");
+  root.style.removeProperty("--label-min");
+}
+
+/**
+ * Narrows the board until `days` columns fit into `width`.
+ *
+ * The day columns give first, down to --cell-tight-min, so the names keep as
+ * much room as there is; the name column takes whatever is left, and never
+ * less than --label-tight-min. data-tight takes the icons out of the rows and
+ * steps the type down (components.css), which is what lets a name column that
+ * narrow still read.
+ *
+ * Written onto <html> as inline tokens rather than into the grid alone, so
+ * every rule that sizes itself from --cell and --label-min - the header, the
+ * today band, the board width - moves with it, and fittingDays() stays the one
+ * sum that decides.
+ */
+function tighten(width, days) {
+  const root = document.documentElement;
+  root.setAttribute("data-tight", "");
+  const styles = getComputedStyle(root);
+  const px = (name) => parseFloat(styles.getPropertyValue(name)) || 0;
+
+  const padX = px("--block-pad-x");
+  const tools = px("--tools-col");
+  const track = tools > 0 ? tools + padX + 2 : 0;
+  const card = 2 * padX + 2;
+  const room = width - track - card;
+
+  const labelFloor = px("--label-tight-min");
+  const cellFloor = px("--cell-tight-min");
+  const cellUsual = px("--cell");
+  // The widest cell that still leaves the name column its floor. Past the
+  // cell's own floor the name column gives way after all: a week is the point.
+  const cell = Math.max(cellFloor, Math.min(cellUsual, Math.floor((room - labelFloor) / days) - 2));
+  const label = Math.max(0, Math.floor(room - days * (cell + 2)));
+
+  root.style.setProperty("--cell", `${cell}px`);
+  root.style.setProperty("--label-min", `${label}px`);
 }
 
 /** What the board is currently drawing, for the settings dialog to report. */
@@ -619,7 +677,17 @@ function daySummary(habits) {
 
   const count = document.createElement("p");
   count.className = "day-summary-count";
-  count.textContent = due === 0 ? "Nothing due today" : `${done} of ${due} done`;
+  if (due > 0 && done === due) {
+    // Everything due today is done: said as an occasion rather than as a
+    // count, in the colour that means done.
+    el.classList.add("is-complete");
+    count.innerHTML = icons.check; // constant markup from icons.js
+    const words = document.createElement("span");
+    words.textContent = completeText(due);
+    count.append(words);
+  } else {
+    count.textContent = due === 0 ? "Nothing due today" : `${done} of ${due} done`;
+  }
   text.append(date, count);
   el.append(text);
 
@@ -627,6 +695,24 @@ function daySummary(habits) {
   // done", a full one as an achievement nobody made.
   if (due > 0) el.append(progressRing(percent));
   return el;
+}
+
+/**
+ * What the day card says once everything due is done. One line a day, picked
+ * by the date rather than at random, so a redraw after an unrelated change does
+ * not swap it for another.
+ */
+const COMPLETE_TEXTS = [
+  (n) => `All ${n} done – a perfect day!`,
+  () => "Everything ticked off. Well done!",
+  () => "Done for today – enjoy the rest of it.",
+  (n) => `${n} of ${n}. Nothing left to do today.`,
+  () => "A clean sweep today!",
+];
+
+function completeText(due) {
+  const pick = daysBetween("2000-01-01", state.today) % COMPLETE_TEXTS.length;
+  return COMPLETE_TEXTS[pick](due);
 }
 
 // The ring's geometry, in viewBox units (0 0 40 40). The wave swings this far
@@ -733,14 +819,22 @@ function blockHead(category, habits = []) {
     link.type = "button";
     link.className = "block-link";
     link.dataset.role = "open-category";
-    link.textContent = category.name;
+    const badge = categoryIconBadge(category);
+    if (badge) link.append(badge);
+    // In a span of its own, so a long name truncates without the icon.
+    const name = document.createElement("span");
+    name.className = "block-link-name";
+    name.textContent = category.name;
+    link.append(name);
     title.append(link);
   } else {
     title.textContent = "No category";
   }
   head.append(title);
 
-  const progress = blockProgress(habits);
+  // Bar and count only where a category has switched them on. The leftover
+  // block has no settings, so it keeps to the default and shows none.
+  const progress = category?.showProgress === true ? blockProgress(habits) : null;
   if (progress) head.append(progress);
 
   // The leftover block is not a real category, so it has nothing to rename,

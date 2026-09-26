@@ -33,6 +33,10 @@ type stateResponse struct {
 	ArchivedCount int         `json:"archivedCount"`
 	Habits        []habitView `json:"habits"`
 	Colors        []string    `json:"colors"`
+	// Icons names every icon a habit may wear, in the order the editor offers
+	// them. The drawings are the client's; the list is the server's, which
+	// validates against it.
+	Icons []string `json:"icons"`
 	// Kinds carries the scale, step and ceiling of every habit kind, the same
 	// way Colors carries the palette: the client needs these numbers to read a
 	// stored value, and a copy of them in JavaScript is one that can drift.
@@ -135,6 +139,7 @@ func (s *Server) handleState(w http.ResponseWriter, r *http.Request) {
 		ArchivedCount:     archivedCount,
 		Habits:            views,
 		Colors:            domain.DefaultColors,
+		Icons:             domain.HabitIcons,
 		Kinds:             domain.KindDescriptors(),
 		BlurAtFull:        store.BackgroundBlurAtFull,
 		EntriesFrom:       from,
@@ -199,9 +204,11 @@ func (s *Server) handleGetHabit(w http.ResponseWriter, r *http.Request) {
 // be set by a client. The pointer fields give PATCH its semantics: an absent
 // field means "unchanged", which differs from "set to empty".
 type habitInput struct {
-	Name  *string      `json:"name"`
-	Color *string      `json:"color"`
-	Kind  *domain.Kind `json:"kind"`
+	Name  *string `json:"name"`
+	Color *string `json:"color"`
+	// Icon: absent leaves it alone, "" removes it.
+	Icon *string      `json:"icon"`
+	Kind *domain.Kind `json:"kind"`
 	// CategoryID: absent leaves the assignment alone, "" removes it.
 	CategoryID  *string           `json:"categoryId"`
 	TargetValue *int              `json:"targetValue"`
@@ -217,6 +224,9 @@ func (in habitInput) applyTo(h *domain.Habit) {
 	}
 	if in.Color != nil {
 		h.Color = *in.Color
+	}
+	if in.Icon != nil {
+		h.Icon = *in.Icon
 	}
 	if in.Kind != nil {
 		h.Kind = *in.Kind

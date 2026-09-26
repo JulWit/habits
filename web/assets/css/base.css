@@ -67,6 +67,10 @@
      so the colour and its strength stay one decision. */
   --today-opacity: 100%;
   --today-shown: color-mix(in srgb, var(--today) var(--today-opacity), transparent);
+  /* The band through the cards has a strength of its own: a whole column of
+     colour can want a whisper where the date in the header wants the accent. */
+  --band-opacity: 30%;
+  --band-shown: color-mix(in srgb, var(--today) var(--band-opacity), transparent);
   --radius: 12px;
   --radius-sm: 8px;
   /* A category card's padding. Wider at the sides than at the ends on purpose:
@@ -123,8 +127,10 @@
      sets the same sentence about six percent wider. At the usual window that
      costs no day column: 29 either way.
 
-     costs no day column: 29 either way. */
-  --label-min: 212px;
+     Then brought back to 176px: at 212 short names left a wide empty stretch
+     before the first day circle. The long second line now ends in an ellipsis
+     a little sooner, which is the cheaper trade. */
+  --label-min: 176px;
   --label-col: minmax(var(--label-min), 1fr);
   /* The exact width a board with --days columns occupies: the name column, one
      cell plus its 2px gap per day, and the card's padding and border on both
@@ -214,15 +220,37 @@ html[data-density="comfortable"] {
   html[data-density="comfortable"] { --cell: 34px; }
 }
 
+/* ---------- a tight board ----------
+
+   A week is the least the board shows. Where the window is too narrow for
+   seven columns at the sizes above, overview.js sets data-tight on <html> and
+   writes a smaller --cell and --label-min inline, worked out so that exactly
+   the wanted days fit. These two are the floors it works down to - in px, like
+   the tokens they bound, because the script reads them as numbers.
+
+   The label floor is what the paging buttons in the header need side by side
+   at their tight size, and the day columns give way before it does; the cell
+   floor is where a day circle, which shrinks with its column, still holds a
+   two-digit number. */
+:root {
+  --label-tight-min: 76px;
+  --cell-tight-min: 22px;
+}
+
 /* Two arrows side by side instead of one handle. */
 html[data-reorder="buttons"] { --tools-col: 64px; }
 
+/* On a tight board the handles shrink with everything else (their buttons in
+   components.css). Only while arranging and not filtering - the rules there
+   that take the column away entirely must keep winning. */
+html[data-tight][data-edit="on"]:not([data-filtering="on"]) { --tools-col: 24px; }
+html[data-tight][data-edit="on"][data-reorder="buttons"]:not([data-filtering="on"]) { --tools-col: 48px; }
+
 /* ---------- the today band in a habit colour ----------
 
-   The same twelve shades the editor offers, muted: a sixth of the colour over
-   the page in the light theme, a quarter of it over the neutral band in the
-   dark one. Mixed in oklab rather than sRGB, so the twelve land at a similar weight
-   instead of yellow shouting while indigo sinks into the background.
+   The same twelve shades the editor offers, drawn as themselves: at full
+   opacity the band is exactly the chosen colour, and the opacity slider is the
+   only thing that softens it.
 
    The hexes mirror domain.DefaultColors; the server validates a choice against
    that same list. */
@@ -240,13 +268,7 @@ html[data-band="#db2777"] { --band-ink: #db2777; }
 html[data-band="#64748b"] { --band-ink: #64748b; }
 
 html[data-band]:not([data-band="neutral"]) {
-  /* The bases are written out rather than taken from --bg and --today-neutral:
-     those are light-dark() values themselves, and a light-dark() inside a
-     color-mix() inside another light-dark() does not resolve. */
-  --today: light-dark(
-    color-mix(in oklab, var(--band-ink) 34%, #f4f5f7),
-    color-mix(in oklab, var(--band-ink) 42%, #2a2a2a)
-  );
+  --today: var(--band-ink, var(--today-neutral));
 }
 
 /* ---------- background patterns ----------
@@ -428,16 +450,18 @@ html[data-pattern="image"] .day-header {
 
 html[data-pattern="image"]:not([data-scrolled="on"]) .day-header {
   --header-ink: color-mix(in srgb, #fff min(100%, calc(var(--bg-dim) * 1.6)), var(--text));
+  /* What the today disc sits on, for picking its text: the veiled picture,
+     guessed the same way as the ink above, only the other way round. */
+  --today-under: color-mix(in srgb, #000 min(100%, calc(var(--bg-dim) * 1.6)), var(--bg));
 }
 
-html[data-pattern="image"] .grid-head,
-html[data-pattern="image"] .grid-head.is-today,
+/* Today keeps the ink chosen for its disc. */
+html[data-pattern="image"] .grid-head:not(.is-today),
 html[data-pattern="image"] .month-label {
   color: var(--header-ink);
 }
 
-html[data-pattern="image"] .grid-head .dom,
-html[data-pattern="image"] .grid-head.is-today .dom {
+html[data-pattern="image"] .grid-head:not(.is-today) .dom {
   color: var(--header-ink);
 }
 

@@ -4,6 +4,7 @@
 // result opens it instead, which is what one searches a list of names for.
 
 import { subscribe, groupedHabits } from "./state.js";
+import { habitIconBadge, categoryIconBadge } from "./icons.js";
 import * as H from "./habit.js";
 
 let dialog;
@@ -110,9 +111,15 @@ function option(entry, index) {
   el.dataset.index = String(index);
   el.setAttribute("role", "option");
 
-  const dot = document.createElement("span");
-  dot.className = entry.kind === "habit" ? "dot" : "dot is-category";
-  if (entry.kind === "habit") dot.style.setProperty("--habit-color", entry.item.color);
+  // A habit or category with an icon shows it in place of its dot.
+  let dot = entry.kind === "habit"
+    ? habitIconBadge(entry.item, "habit-icon is-small")
+    : categoryIconBadge(entry.item, "habit-icon is-small");
+  if (!dot) {
+    dot = document.createElement("span");
+    dot.className = entry.kind === "habit" ? "dot" : "dot is-category";
+    if (entry.kind === "habit") dot.style.setProperty("--habit-color", entry.item.color);
+  }
 
   const name = document.createElement("span");
   name.className = "search-option-name";

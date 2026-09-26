@@ -193,6 +193,7 @@ function writableFields(habit) {
   return {
     name: habit.name,
     color: habit.color,
+    icon: habit.icon ?? "",
     kind: habit.kind,
     categoryId: habit.categoryId,
     targetValue: habit.targetValue,
@@ -390,23 +391,30 @@ export async function moveCategory(id, delta) {
   }
 }
 
-export async function renameCategory(id, name) {
+/**
+ * Writes what the category dialog edits, as one step to undo.
+ *
+ * Throws on a rejection rather than toasting it: the edit dialog is still open
+ * and shows the message in place, the way the habit editor does.
+ */
+export async function updateCategory(id, { name, color, icon, showProgress }) {
   const category = categoryById(id);
-  if (!category || name === category.name) return;
-  const before = category.name;
+  if (!category) return;
+  const before = {
+    name: category.name,
+    color: category.color ?? "",
+    icon: category.icon ?? "",
+    showProgress: category.showProgress === true,
+  };
+  const after = { name, color, icon, showProgress };
+  if (Object.keys(after).every((key) => after[key] === before[key])) return;
 
-  try {
-    upsertCategory(await api.updateCategory(id, { name }));
-  } catch (err) {
-    toast(errorText(err), { error: true });
-    await deps.refresh();
-    return;
-  }
+  upsertCategory(await api.updateCategory(id, after));
   record({
-    label: `Category "${before}" renamed`,
+    label: `Category "${before.name}" edited`,
     silent: true,
-    undo: async () => upsertCategory(await api.updateCategory(id, { name: before })),
-    redo: async () => upsertCategory(await api.updateCategory(id, { name })),
+    undo: async () => upsertCategory(await api.updateCategory(id, before)),
+    redo: async () => upsertCategory(await api.updateCategory(id, after)),
   });
 }
 

@@ -245,3 +245,24 @@ func TestAllKindsAreValidAndNothingElseIs(t *testing.T) {
 		t.Error("an unknown kind must not be Valid()")
 	}
 }
+
+func TestValidateIcon(t *testing.T) {
+	h := baseHabit()
+	h.Icon = " droplet "
+	if err := h.Validate(); err != nil {
+		t.Fatalf("Validate: %v", err)
+	}
+	if h.Icon != "droplet" {
+		t.Errorf("icon = %q, want trimmed", h.Icon)
+	}
+
+	h.Icon = ""
+	if err := h.Validate(); err != nil {
+		t.Errorf("no icon rejected: %v", err)
+	}
+
+	h.Icon = "<svg>"
+	if err := h.Validate(); !errors.Is(err, ErrValidation) {
+		t.Errorf("unknown icon: err = %v, want ErrValidation", err)
+	}
+}

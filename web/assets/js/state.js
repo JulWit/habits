@@ -9,6 +9,7 @@ export const state = {
   categories: [],
   habits: [],
   colors: [],
+  icons: [],
   archivedCount: 0,
 };
 

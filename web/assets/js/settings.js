@@ -18,6 +18,8 @@ let patternSelect;
 let bandChoices;
 let bandOpacity;
 let bandOpacityOut;
+let bandFillOpacity;
+let bandFillOpacityOut;
 let showBandInput;
 let reorderInputs;
 let reorderHint;
@@ -60,6 +62,8 @@ export function initSettings(handlers = {}) {
   bandChoices = document.getElementById("band-choices");
   bandOpacity = document.getElementById("band-opacity");
   bandOpacityOut = document.getElementById("band-opacity-out");
+  bandFillOpacity = document.getElementById("band-fill-opacity");
+  bandFillOpacityOut = document.getElementById("band-fill-opacity-out");
   showBandInput = document.getElementById("settings-show-band");
   reorderInputs = [...dialog.querySelectorAll('input[name="settings-reorder"]')];
   reorderHint = document.getElementById("settings-reorder-hint");
@@ -114,6 +118,12 @@ export function initSettings(handlers = {}) {
   });
   bandOpacity.addEventListener("change",
     () => saveSetting({ bandOpacity: Number(bandOpacity.value) }));
+  bandFillOpacity.addEventListener("input", () => {
+    showKnob(bandFillOpacityOut, bandFillOpacity.value, "%");
+    document.documentElement.style.setProperty("--band-opacity", `${bandFillOpacity.value}%`);
+  });
+  bandFillOpacity.addEventListener("change",
+    () => saveSetting({ bandFillOpacity: Number(bandFillOpacity.value) }));
   showBandInput.addEventListener("change", () => saveSetting({ showBand: showBandInput.checked }));
 
   alignInput.addEventListener("change", () => saveSetting({ alignWeeks: alignInput.checked }));
@@ -188,6 +198,11 @@ function paint() {
   bandOpacity.value = String(state.settings?.bandOpacity ?? 100);
   showKnob(bandOpacityOut, bandOpacity.value, "%");
   showBandInput.checked = state.settings?.showBand ?? true;
+  bandFillOpacity.value = String(state.settings?.bandFillOpacity ?? 30);
+  showKnob(bandFillOpacityOut, bandFillOpacity.value, "%");
+  // Without a band there is nothing for its slider to change, so it only shows
+  // once the band is switched on.
+  bandFillOpacity.closest(".slider").hidden = !showBandInput.checked;
   for (const input of reorderInputs) input.checked = input.value === reorder;
   reorderHint.textContent = reorder === "drag"
     ? "Categories and habits are moved by their handle."

@@ -193,7 +193,9 @@ html[data-today-band="off"] .cell.is-today .mark::after { background: var(--surf
      The vertical padding is always present, so the board does not move when
      scrolling starts. */
   --header-pad-y: calc(.7 * var(--space));
-  padding: var(--header-pad-y) var(--block-pad-x);
+  /* Less space above, towards the title bar. */
+  --header-pad-top: calc(.35 * var(--space));
+  padding: var(--header-pad-top) var(--block-pad-x) var(--header-pad-y);
   /* Sticky below the title bar, one board gap below it. */
   position: sticky;
   top: calc(var(--topbar-h) + var(--board-gap));

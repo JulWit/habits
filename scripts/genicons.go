@@ -1,7 +1,7 @@
 // Command genicons renders the PNG app icons for the web app manifest. Run it
 // after changing web/assets/images/icon.svg:
 //
-//	go run ./scripts/genicons
+//	go run ./scripts/genicons.go
 //
 // The icon geometry is defined in code, so no image toolchain is needed.
 package main
@@ -18,7 +18,7 @@ import (
 
 // Icon geometry in 24x24 coordinates, matching icon.svg.
 var (
-	background = color.NRGBA{R: 0x33, G: 0x36, B: 0x3d, A: 0xff}
+	background = color.NRGBA{R: 0x25, G: 0x63, B: 0xeb, A: 0xff}
 	ink        = color.NRGBA{R: 0xff, G: 0xff, B: 0xff, A: 0xff}
 	check      = [][2]float64{{8, 12.3}, {10.9, 15.2}, {16.1, 9.2}}
 	ringC      = [2]float64{12, 12}

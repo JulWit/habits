@@ -27,7 +27,8 @@
   --primary-text: light-dark(#ffffff, #121212);
   /* Darker on light, brighter on dark. */
   --primary-hover: light-dark(#15161a, #f4f4f4);
-  --danger: light-dark(#c0392b, #e5645a);
+  /* The red of the habit colours. */
+  --danger: #dc2626;
   /* Completed day or category. */
   --done: light-dark(#16a34a, #22c55e);
   /* Neutral colour of the today band. */
@@ -433,6 +434,8 @@ html.route-detail .view {
   align-items: center;
   gap: var(--space);
   min-height: var(--topbar-row);
+  /* Slightly more inset than the view below. */
+  padding-inline: calc(var(--gutter) + .5 * var(--space));
   position: relative;
   /* Container for queries on the bar's width, which follows the board rather
      than the window. */

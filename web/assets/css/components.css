@@ -128,10 +128,10 @@
   margin-inline: auto;
 }
 
-/* The title bar is as wide as the board (plus its 1rem padding on each side).
-   Not in the detail view. */
+/* The title bar is as wide as the board (plus its gutter on each side). Not in
+   the detail view. */
 html:not(.route-detail):not(.route-styleguide) .topbar-inner {
-  max-width: calc(var(--board-width) + 2rem);
+  max-width: calc(var(--board-width) + 2 * var(--gutter));
 }
 
 /* Header and every habit row are separate grids with the same fixed tracks,

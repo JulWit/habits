@@ -46,6 +46,9 @@
      clear of the rounded corners. In px, as overview.js reads it as a number. */
   --block-pad: calc(.35 * var(--space));
   --block-pad-x: 12px;
+  /* Page gutter left and right of title bar and view. Does not scale with
+     density. */
+  --gutter: 1rem;
   /* Width of the reorder column: one drag handle (two arrows in button mode,
      see below). In px, as overview.js reads it as a number. */
   --tools-col: 32px;
@@ -414,8 +417,7 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .view {
   max-width: 100rem;
   margin: 0 auto;
-  /* Does not scale with density. */
-  padding: 0 1rem;
+  padding: 0 var(--gutter);
 }
 
 /* The detail view is narrower. */

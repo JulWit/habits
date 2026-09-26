@@ -403,12 +403,20 @@
 }
 
 @media (max-width: 40rem) {
-  /* Narrower name column, so that seven day columns fit. */
-  :root { --cell: 34px; --label-min: 104px; --topbar-row: calc(2.25rem + .85 * var(--space)); }
+  /* Narrower columns. The name column keeps at least 120px even on a tight
+     board; the day columns shrink first (see overview.js). */
+  :root {
+    --cell: 34px;
+    --label-min: 120px;
+    --label-tight-min: 120px;
+    --topbar-row: calc(2.25rem + .85 * var(--space));
+  }
 
-  /* Less card padding, so that a 375px screen fits seven day columns. Must not
-     go below 10px, so that the today band clears the corner radius. */
-  :root { --block-pad-x: 10px; }
+  /* Narrow page gutter and card padding, so the room goes to the names. The
+     smaller corner radius on the board keeps the today band clear of the
+     rounded corners at 8px padding. */
+  :root { --gutter: 6px; --block-pad-x: 8px; }
+  .board { --radius: 10px; }
 
   /* Smaller paging buttons. */
   .day-nav .icon-button { width: 1.8rem; height: 1.8rem; }

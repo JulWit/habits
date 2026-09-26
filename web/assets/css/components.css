@@ -1037,14 +1037,13 @@ html[data-filtering="on"] {
    every row on the board stays as tall as the next. */
 .habit-meta:empty { display: none; }
 
-/* The current streak, leading the meta line: a flame in the line's own ink and
-   the count beside it. The count is a shade stronger than the rest of the line,
-   since it is the one part of it that changes from day to day. */
+/* The current streak, leading the meta line: a flame and the count beside it,
+   both in the line's own ink. The count is set a little heavier, since it is
+   the one part of the line that changes from day to day. */
 .habit-streak {
   display: inline-flex;
   align-items: center;
   gap: .15em;
-  color: var(--text-muted);
   font-weight: var(--weight-emphasis);
   font-variant-numeric: tabular-nums;
   vertical-align: bottom;
@@ -1054,8 +1053,6 @@ html[data-filtering="on"] {
   width: 1.05em;
   height: 1.05em;
   flex: none;
-  /* The same ink as the rest of .habit-meta, not the count's stronger one. */
-  color: var(--text-faint);
   /* Sits on the baseline with the digits rather than on the line box. */
   margin-top: -.1em;
 }

@@ -1,41 +1,37 @@
 # Habits
 
-A habit tracker as **a single file**: HTTP server, frontend and SQLite driver
-are all compiled into the binary. At runtime the only thing that appears is the
-database file.
+A self-hosted habit tracker in a single binary: HTTP server, frontend and SQLite
+driver are compiled in. At runtime it only creates its database file.
 
-The layout follows [Loop Habit Tracker](https://github.com/isoron/uhabits):
-one row per habit, one column per day, today on the far right.
+The layout follows [Loop Habit Tracker](https://github.com/isoron/uhabits): one
+row per habit, one column per day, today on the right.
 
 ## Building
+
+Requires Go 1.26 or newer (the minimum of `modernc.org/libc`).
 
 ```bash
 go mod tidy
 go build -o habits .
 ```
 
-Needs Go 1.26 or newer — that is the floor `modernc.org/libc` brings with it.
-Tests run without any preparation at all:
+Run the tests (they use a temporary SQLite file and need no setup):
 
 ```bash
 go test ./...
 ```
 
-For them `internal/store` creates a real SQLite file in the temp directory and
-plays in every migration; because the driver is pure Go, that needs no toolchain
-either.
-
-The result is statically linked — the SQLite driver is
-[`modernc.org/sqlite`](https://pkg.go.dev/modernc.org/sqlite), a pure Go port
-without cgo. That is why cross-compiling works without a C toolchain too:
+The SQLite driver [`modernc.org/sqlite`](https://pkg.go.dev/modernc.org/sqlite)
+is pure Go, so the binary is statically linked and cross-compiles without a C
+toolchain:
 
 ```bash
 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o dist/habits-linux-amd64 .
 GOOS=linux GOARCH=arm64 go build -trimpath -ldflags="-s -w" -o dist/habits-linux-arm64 .
 ```
 
-`-trimpath` strips local paths out of the binary, `-s -w` the debug symbols
-(saving about a third of its size).
+`-trimpath` removes local paths, `-s -w` removes debug symbols (about a third
+of the size).
 
 ## Running
 
@@ -43,54 +39,47 @@ GOOS=linux GOARCH=arm64 go build -trimpath -ldflags="-s -w" -o dist/habits-linux
 ./habits
 ```
 
-It then runs on <http://localhost:8080> in `single-user` mode — without
-authentication, all data belonging to the user `local`. That is the development
-mode.
+The app listens on <http://localhost:8080> in `single-user` mode: no
+authentication, all data belongs to the user `local`.
 
 ## Configuration
 
-Everything through environment variables, so no configuration file has to sit
-next to the binary.
+All configuration is done through environment variables.
 
 | Variable | Default | Meaning |
 |---|---|---|
 | `HABITS_ADDR` | `:8080` | Listen address |
 | `HABITS_DB` | `habits.db` | Path to the SQLite file |
-| `HABITS_TZ` | `Local` | Default time zone that decides what "today" is (e.g. `Europe/Berlin`); each user can choose their own in the settings |
+| `HABITS_TZ` | `Local` | Default time zone for "today" (e.g. `Europe/Berlin`); users can override it in the settings |
 | `HABITS_AUTH_MODE` | `single-user` | `single-user` or `authelia` |
 | `HABITS_DEFAULT_USER` | `local` | User in `single-user` mode |
-| `HABITS_TRUSTED_PROXIES` | — | **Required** in `authelia` mode: comma-separated list of IPs/CIDRs |
-| `HABITS_USER_HEADER` | `Remote-User` | Header carrying the user identifier |
+| `HABITS_TRUSTED_PROXIES` | — | **Required** in `authelia` mode: comma-separated IPs/CIDRs |
+| `HABITS_USER_HEADER` | `Remote-User` | Header with the user ID |
 | `HABITS_NAME_HEADER` | `Remote-Name` | Display name (optional) |
 | `HABITS_EMAIL_HEADER` | `Remote-Email` | Email (optional) |
 | `HABITS_GROUPS_HEADER` | `Remote-Groups` | Groups (optional) |
 
-`HABITS_TZ` is the server's default: whoever has not picked a time zone under
-"Language & time" in the settings has their days counted in it. A zone of
-one's own is still decided on the server, per user, so every device of that
-user agrees on which day is currently running.
+The time zone is resolved on the server, so all devices of a user agree on the
+current day.
 
 ## Container
 
 Every push to `main` builds an image for `linux/amd64` and `linux/arm64` and
-puts it in the GitHub Container Registry:
+publishes it to the GitHub Container Registry:
 
 ```bash
 docker pull ghcr.io/julwit/habits:latest
 ```
 
-The package inherits the repository's visibility. While that is private,
-pulling needs a login too; a token with `read:packages` is enough.
+The package has the repository's visibility; for a private repository, pulling
+requires a token with `read:packages`.
 
-The image is `FROM scratch`: the binary and an empty `/data`, nothing else. No
-shell, no package manager — `docker exec` has nothing to do in there, and a
-`HEALTHCHECK` in the Dockerfile would have no executable to run. `/healthz`
-still answers the question, just from the outside.
+The image is `FROM scratch` and contains only the binary and an empty `/data`
+directory. There is no shell, so there is no `HEALTHCHECK`; use `/healthz` from
+outside instead.
 
-The image sets no `USER`, so the process runs as root and writes to `/data`
-whatever that directory belongs to. To run it as somebody else, set `user:` in
-the compose file (or `--user`) — the directory has to be writable for that UID
-then, which with a bind mount to the host means a `chown` of your own.
+The image sets no `USER` and runs as root. To run as another user, set `user:`
+in the compose file (or `--user`) and make `/data` writable for that UID.
 
 ```yaml
 services:
@@ -108,25 +97,22 @@ volumes:
   habits-data:
 ```
 
-Deliberately without `ports:` — see the next section: header auth does not
-survive a directly reachable port.
+There is no `ports:` mapping on purpose, see the next section.
 
 ## Authelia
 
-The application has **no accounts of its own**. It reads the identity from the
-`Remote-User` header the reverse proxy sets after Authelia's `/api/verify` has
-confirmed the request. Every user sees only their own habits; the identifier is
-stored lower-cased so that `Alice` and `alice` do not end up as two separate
-sets of data.
+The app has no user accounts. In `authelia` mode it reads the user from the
+`Remote-User` header set by the reverse proxy after Authelia's `/api/verify`.
+Each user only sees their own data. User IDs are stored in lower case, so
+`Alice` and `alice` are the same user.
 
-> **Important:** header auth is only as secure as the network path. Anyone who
-> can reach the port directly could otherwise pass themselves off as any user
-> with `Remote-User: admin`. That is why `authelia` mode only starts with
-> `HABITS_TRUSTED_PROXIES` set, and requests from other peers are refused with
-> 403. On top of that the port should only be reachable on the internal network
-> (Docker: no `ports:` mapping, just a shared network).
+> **Important:** Anyone who can reach the port directly can send any
+> `Remote-User` header. Therefore `authelia` mode requires
+> `HABITS_TRUSTED_PROXIES` and answers requests from other peers with 403. Only
+> expose the port on the internal network (Docker: no `ports:` mapping, only a
+> shared network).
 
-Example for Traefik:
+Traefik:
 
 ```yaml
 labels:
@@ -135,7 +121,7 @@ labels:
   - "traefik.http.services.habits.loadbalancer.server.port=8080"
 ```
 
-Example for Caddy:
+Caddy:
 
 ```caddyfile
 habits.example.com {
@@ -147,7 +133,7 @@ habits.example.com {
 }
 ```
 
-And to go with it:
+Environment for either:
 
 ```bash
 HABITS_AUTH_MODE=authelia
@@ -156,273 +142,238 @@ HABITS_TZ=Europe/Berlin
 HABITS_DB=/data/habits.db
 ```
 
-`/healthz` sits outside the authentication, so a container health check manages
-without identity headers.
+`/healthz` requires no authentication.
 
-## Using it
+## Usage
 
 | Action | How |
 |---|---|
-| Tick off | Tap the day; tap again to take the tick back |
-| Increase count/time/distance | Tapping adds one step (count: 1, time: 5 min, distance: 500 m — each can be changed in the editor) and keeps going past the target, up to the kind's ceiling |
-| Clear a count/time/distance | Long press or right-click, then "Delete" or 0 |
+| Tick off | Tap the day; tap again to undo |
+| Increase count/time/distance | Tap: adds one step (default: count 1, time 5 min, distance 500 m; configurable per habit), also beyond the target |
 | Set an exact value | Long press or right-click |
-| Undo / redo | `Ctrl+Z` / `Ctrl+Shift+Z`, or the "Undo" button in the toast |
+| Clear a value | Long press or right-click, then "Delete" or 0 |
+| Undo / redo | `Ctrl+Z` / `Ctrl+Shift+Z` or `Ctrl+Y`, or "Undo" in the toast |
 | New habit | `N` |
-| Find a habit or category | Magnifier in the header, `/` or `Ctrl+K`; arrow keys and `Enter` open a result |
-| Settings | Cog in the header |
-| Theme, days in the overview, archive, language, time zone | all in the settings dialog |
-| Assign or create a category | The "Category" field in the habit editor |
-| Rename a category, set its icon, delete it | "Edit" and "Delete" on the category screen (click the block heading) |
+| Search habits and categories | Magnifier in the header, `/` or `Ctrl+K` |
+| Settings | Gear in the header |
+| Assign or create a category | "Category" field in the habit editor |
+| Edit or delete a category | Click the category heading, then "Edit" or "Delete" |
 | Close the detail view | `Esc` |
-| Read a day in the year view | Hover over the square |
 
-Deleted habits are only marked as deleted for 30 days. Only after that does
-starting the binary clear them away for good — until then "Undo" brings them
-back with their entire history.
+Deleted habits and categories can be restored for 30 days. After that, they are
+removed permanently on the next start.
 
 ## Data model
 
-**Categories** — habits can be grouped into categories; the overview draws its
-own block per category. A habit without a category lands in the "No category"
-block. If there is no category at all, the board is a single block without
-headings.
+**Categories** group habits into blocks on the overview. Habits without a
+category are shown in a "No category" block; without any categories, the board
+is a single block without headings. When a category is deleted, its habits keep
+their category ID and appear under "No category" until it is restored.
 
-Categories — like habits — are only marked as deleted. Their habits keep their
-assignment while that happens and merely slip into the "No category" block. An
-"Undo" therefore restores the block exactly as it was, without touching a single
-habit.
+**Frequencies**
 
-**Frequencies** — `daily`, `times_per_week` (x times per week, the week starting
-on Monday), `weekdays` (bitmask, bit 0 = Monday; optionally only every
-n-th week from an anchor date, or only the n-th or last occurrence in the
-month), `custom_interval` (interval plus anchor date, so that an edit does not
-shift the phase).
+- `daily`
+- `times_per_week`: x times per week (weeks start on Monday)
+- `weekdays`: selected weekdays (bitmask, bit 0 = Monday), optionally only every
+  n-th week from an anchor date, or only the n-th or last occurrence in the
+  month
+- `custom_interval`: every n days from an anchor date
 
-**Kinds** — `check` (a tick), `count` (a count, e.g. 8 glasses), `time` (time in
-minutes) and `distance` (distance in metres). Internally every entry is one
-integer per day; "done" means `value >= target`. A day without an entry has *no*
-row in `entries` at all, rather than a row holding the value 0 — so no analysis
-has to tell "not recorded" apart from "recorded as 0".
+**Kinds**
 
-**Streaks** — a today that is still open does not break a streak. With
-`times_per_week` the streak counts in weeks rather than days, because there it is
-the week and not the individual day that is the target.
+- `check`: done or not
+- `count`: a number, e.g. 8 glasses
+- `time`: minutes
+- `distance`: stored in metres, shown in kilometres
 
-**Streak colours** — the board paints a completed day by how long the run it
-belongs to had been going *by that day*, so a row shows a streak building up and
-starting over. Six levels, and each one leaves less of the habit's own colour
-over a gradient underneath (built around the habit's colour, lighter and
-shifted one way round the colour wheel at one end, deeper and shifted the other
-way at the other): one
-week, two weeks, a month, three months, six months, a year — at a year the
-circle is the full gradient.
+Each entry is one integer per day; counts and minutes are stored in tenths. A
+day is done when `value >= target`. Days without a value have no row in
+`entries`.
 
-The levels are measured in calendar days rather than in the days a habit is due
-on, so a Mon–Fri habit reaches "a week" after a week rather than after seven of
-its own days. The server sends the runs behind this as `streakRuns` per habit
-(`domain.StreakRuns`), each with its true first day even when that day is older
-than the shipped history; how a run is then coloured is the client's business
-and lives in `habit.js` next to `heatLevel`.
+**Streaks**: An open today does not break a streak. For `times_per_week`, the
+streak counts weeks.
+
+**Streak colours**: A completed day is coloured by how long its run had lasted
+on that day: one week, two weeks, a month, three months, six months, a year.
+The longer the run, the more of a gradient around the habit colour shows. Run
+lengths are in calendar days. The server sends the runs as `streakRuns`
+(`domain.StreakRuns`); the colouring is in `habit.js`.
 
 ## API
 
-All endpoints live under `/api` and answer with JSON.
+All endpoints are under `/api` and return JSON.
 
 | Method | Path | Purpose |
 |---|---|---|
-| `GET` | `/api/state` | Complete state for a cold start (one request); follows the `showArchived` setting, `?archived=0`/`1` overrides it |
-| `POST` | `/api/habits` | Create |
-| `GET` | `/api/habits/{id}` | A single habit with its **full** history |
-| `PATCH` | `/api/habits/{id}` | Change (only the fields sent) |
+| `GET` | `/api/state` | Complete state for the client; `?archived=0`/`1` overrides the `showArchived` setting, `?from=YYYY-MM-DD` loads entries further back |
+| `POST` | `/api/habits` | Create a habit |
+| `GET` | `/api/habits/{id}` | A habit with its full history |
+| `PATCH` | `/api/habits/{id}` | Update the given fields |
 | `DELETE` | `/api/habits/{id}` | Soft delete |
-| `POST` | `/api/habits/{id}/restore` | Undo a soft delete |
-| `POST` | `/api/habits/reorder` | Set the order; habits left out follow in the order they had, an id named twice is refused |
-| `PUT` | `/api/habits/{id}/entries/{date}` | Set a day's value, from 2000-01-01 up to a year ahead (clearing works on any day) |
+| `POST` | `/api/habits/{id}/restore` | Restore |
+| `POST` | `/api/habits/reorder` | Set the order; missing habits keep their relative order after the given ones, duplicate IDs are rejected |
+| `PUT` | `/api/habits/{id}/entries/{date}` | Set a day's value (from 2000-01-01 to one year ahead; 0 clears and works on any day) |
 | `POST` | `/api/categories` | Create a category |
-| `PATCH` | `/api/categories/{id}` | Rename, set the icon |
+| `PATCH` | `/api/categories/{id}` | Update name, icon, colour or progress display |
 | `DELETE` | `/api/categories/{id}` | Soft delete |
-| `POST` | `/api/categories/{id}/restore` | Undo a soft delete |
-| `POST` | `/api/categories/reorder` | Set the order, by the same rules as for habits |
+| `POST` | `/api/categories/{id}/restore` | Restore |
+| `POST` | `/api/categories/reorder` | Set the order (same rules as for habits) |
 | `GET`/`PATCH` | `/api/settings` | Settings, see below |
-| `GET` | `/api/background` | Serve the background image (404 if none is stored) |
-| `PUT` | `/api/background` | Upload an image (raw body, JPEG or PNG, at most 12 MB) |
+| `GET` | `/api/background` | Background image (404 if none) |
+| `PUT` | `/api/background` | Upload an image (raw body, JPEG or PNG, max. 12 MB) |
 | `DELETE` | `/api/background` | Remove the image |
 
-Every writing endpoint demands `Content-Type: application/json`. That is not
-mere formality: without this condition a `POST` would be reachable from a
-foreign page, because a form is allowed to send `text/plain` and such a body can
-be valid JSON. With the condition the browser has to send a preflight first,
-which the same-origin policy refuses.
+Writing endpoints require `Content-Type: application/json`. This forces a CORS
+preflight and protects against CSRF.
 
-An error answers with `{"error": "..."}`, the sentence in English. A
-validation failure also sends the template it was filled from and what filled
-it — `{"error": "name is longer than 80 characters", "message": "name is longer
-than {max} characters", "params": {"max": 80}}` — because the interface
-translates by the English text, and only the template is a key a dictionary can
-hold. A new message therefore goes through `domain.Invalid` with placeholders
-rather than `fmt.Sprintf`, and gets its entry in `i18n.js`.
+Errors are returned as `{"error": "..."}` in English. Validation errors also
+include the message template and its parameters, which the client uses for
+translation:
 
-Alongside the habits, `/api/state` also delivers the tables the client needs in
-order to read a stored value: `colors` (the palette) and `kinds` (per kind
-`scale`, `step`, `max`, `unit`). They are sent rather than written out a second
-time in JavaScript — these numbers decide whether 5000 means five kilometres or
-five hundred repetitions, and a second copy could drift apart without anything
-breaking.
+```json
+{"error": "name is longer than 80 characters",
+ "message": "name is longer than {max} characters",
+ "params": {"max": 80}}
+```
 
-`icons` names the icons a habit or a category may wear (`domain.HabitIcons`); the server
-validates every `icon` against it, and `""` means none. A category's icon is drawn
-in neutral ink, since categories have no colour of their own. Only the names live
-on the server — the drawings are in `web/assets/js/icons.js` (`habitIcons`), and
-a name without a drawing there is simply not offered.
+New validation messages therefore use `domain.Invalid` with placeholders and
+need an entry in `i18n.js`.
 
-`PUT …/entries/{date}` returns the value it overwrote in the `previous` field.
-That is exactly what the frontend builds its undo stack out of: undoing simply
-means writing `previous` back. Which is why undo works without any local
-persistence.
+`/api/state` also contains:
+
+- `colors`: the colour palette
+- `kinds`: `scale`, `step`, `max` and `unit` per kind
+- `icons`: valid icon names (`domain.HabitIcons`); `""` means no icon. The
+  drawings are in `web/assets/js/icons.js`.
+
+`PUT …/entries/{date}` returns the replaced value as `previous`. Undo writes it
+back.
 
 ## Structure
 
 ```
-main.go                     Startup, signal handling, //go:embed of the frontend
-internal/config             Configuration from the environment
-internal/auth               Authelia forward auth as middleware
-internal/domain             Habits, frequencies, streaks — without I/O
+main.go                     Startup, signal handling, embedded frontend
+internal/config             Configuration from environment variables
+internal/auth               User identification (single-user or Authelia)
+internal/domain             Habits, schedules, streaks, statistics (no I/O)
 internal/store              SQLite: schema, migrations, queries
-internal/httpapi            Routing, JSON, serving the frontend
+internal/httpapi            Routing, JSON API, frontend delivery
+scripts/genicons.go         Generates the PNG app icons
 web/                        Frontend (ES modules, no build step)
-  assets/css/                 Stylesheets: tokens, components, forms, @font-face
-  assets/fonts/               Self-hosted woff2 files and their licences
-  assets/images/              App icon as SVG and the manifest's PNG sizes
-  assets/js/overview.js       Board: blocks per category, shared day header
+  index.html                  App shell, rendered as a Go template
+  sw.js                       Service worker for offline start
+  assets/css/                 Design tokens, components, forms, fonts
+  assets/fonts/               Embedded woff2 fonts and their licences
+  assets/images/              App icon (SVG and PNG)
+  assets/js/app.js            Entry point, routing, appearance, shortcuts
+  assets/js/state.js          Client-side state
+  assets/js/api.js            API client
+  assets/js/actions.js        All data changes with their undo steps
+  assets/js/undo.js           Undo/redo and toasts
+  assets/js/overview.js       Board with category blocks and day header
   assets/js/cells.js          Habit row and day cell
-  assets/js/actions.js        All mutations, each with its undo step
-  assets/js/icons.js          Inline SVG icons for buttons
-  assets/js/categorypicker.js Nested dialog for choosing a category
-  assets/js/categoryeditor.js Edit dialog for a category: name and icon
-  assets/js/settings.js       Settings dialog, writes every change immediately
-  assets/js/i18n.js           Translations, t(), and the user's time zone
+  assets/js/habit.js          Schedule, value and streak helpers
+  assets/js/detail.js         Habit detail view
+  assets/js/category.js       Category detail view
+  assets/js/editor.js         Habit dialog
+  assets/js/categoryeditor.js Category dialog
+  assets/js/categorypicker.js Category picker
+  assets/js/value.js          Exact value dialog
+  assets/js/search.js         Search dialog
+  assets/js/settings.js       Settings dialog
+  assets/js/i18n.js           Translations and time zone
+  assets/js/dates.js          Date helpers
+  assets/js/icons.js          Inline SVG icons
+  assets/js/reorder.js        Drag and drop reordering
+  assets/js/styleguide.js     Style guide at #/styleguide
 ```
 
-`internal/domain` knows neither database nor HTTP. The rules — when a habit is
-due, when a day counts as done, how a streak counts — live there and are
-testable without a server. That is not a statement of intent: `stats_test.go`,
-`habit_test.go` and `date_test.go` test them exactly like that, without a
-database and without a network.
+`internal/domain` depends neither on the database nor on HTTP and is tested
+without either.
 
-The frontend is deliberately built without a build step: native ES modules, no
-npm, no bundler. `go build` thereby stays the only command needed for a release.
+The frontend has no build step (no npm, no bundler); `go build` is all that is
+needed for a release.
 
 ## Extending
 
-**A new migration** — append another string to `migrations` in
-`internal/store/store.go`. Never change entries that have already shipped;
-`PRAGMA user_version` tracks where things stand.
+**New migration**: Append a string to `migrations` in
+`internal/store/store.go`. Never change released migrations; `PRAGMA
+user_version` stores the schema version.
 
-**A new field on a habit** — the field in `domain.Habit` and its `Validate()`, a
-column by migration, reading/writing in `internal/store/habits.go`, an optional
-pointer in `habitInput` (`internal/httpapi/handlers_habits.go`), an input in
-`web/assets/js/editor.js`. And finally in `writableFields()` in
-`web/assets/js/actions.js`: PATCH reads a missing field as "unchanged", so a field
-forgotten there is not taken back by its own undo.
+**New habit field**:
 
-**A new habit kind** — add it to `AllKinds` in `internal/domain/habit.go` and
-serve the four methods `Scale`, `Step`, `MaxTarget`, `Unit`. The client gets
-that through `kinds` in `/api/state` and needs no table of its own; in the
-editor only the input fields are added.
+1. Field and validation in `domain.Habit`
+2. Column via migration
+3. Read and write in `internal/store/habits.go`
+4. Pointer field in `habitInput` (`internal/httpapi/handlers_habits.go`)
+5. Input in `web/assets/js/editor.js`
+6. Add it to `writableFields()` in `web/assets/js/actions.js`, otherwise undo
+   does not restore it
 
-**A new tool (kanban, pomodoro, to-do)** — as its own `internal/<tool>` with its
-own domain package and its own tables. What is shared is the infrastructure:
-`config`, `auth`, the store connection, the routing and the CSS tokens in
-`web/assets/css/base.css`.
+**New habit kind**: Add it to `AllKinds` in `internal/domain/habit.go` and
+handle it in `Scale`, `Step`, `MaxTarget` and `Unit`. The client receives these
+values via `kinds`; the editor needs its input fields.
 
-**Undo for a new action** — carry the action out in `web/assets/js/actions.js` and
-then call `record({label, undo, redo})`. `undo` and `redo` are server calls, not
-local state changes; that is why the history stays correct even when a second
-device is writing in parallel.
+**New language**: A dictionary in `i18n.js`, an entry in `store.Languages`, an
+`<option>` in `index.html` and the day and month names in `dates.js`.
 
+**Undo for a new action**: Perform the action in `web/assets/js/actions.js`,
+then call `record({label, undo, redo})`. `undo` and `redo` are server calls.
 
-**History and reloading** — `/api/state` delivers only the last 200 days of
-entries per habit; that is enough for the board and keeps the response small.
-The detail view draws a whole calendar year and therefore fetches the full
-history once through `/api/habits/{id}` when it opens. Streaks and the best
-streak are computed by the server over everything anyway.
+**New tool** (e.g. kanban, pomodoro): A separate `internal/<tool>` package
+with its own domain and tables, sharing `config`, `auth`, the store, the
+routing and the CSS tokens in `web/assets/css/base.css`.
+
+**Entry history**: `/api/state` contains the last 200 days of entries. The
+detail view loads the full history via `/api/habits/{id}`. Statistics are
+always computed by the server over the full history.
 
 ## Settings
 
-The cog in the header opens the settings dialog. It is split into tabs; all the
-values live server-side, per user.
+Settings are stored per user on the server and saved immediately.
 
 | Key | Values | Meaning |
 |---|---|---|
-| `theme` | `system`, `light`, `dark` | Appearance; `system` follows the device |
-| `font` | `system`, `inter`, `roboto`, `geist`, `opensans`, `montserrat`, `poppins`, `lato` | Typeface, all of them in the binary |
-| `density` | `compact`, `standard`, `comfortable` | Spacing inside and around every element, line height and weight of emphasis |
-| `overviewDays` | 0 = automatic, otherwise 3–90 | Day columns on the board |
-| `alignWeeks` | bool | Align the board to whole calendar weeks |
+| `theme` | `system`, `light`, `dark` | Colour scheme; `system` follows the device |
+| `font` | `system`, `inter`, `roboto`, `geist`, `opensans`, `montserrat`, `poppins`, `lato` | Font (all embedded) |
+| `density` | `compact`, `standard`, `comfortable` | Spacing and font weights |
+| `overviewDays` | 0 (automatic) or 3–90 | Day columns on the board |
+| `alignWeeks` | bool | Align the board to calendar weeks |
 | `showArchived` | bool | Show archived habits |
-| `reorderMode` | `drag`, `buttons` | Dragging by the handle, or arrows per entry |
-| `pattern` | `none`, `dots`, `grid`, `diagonal`, `cross`, `image` | Texture behind the page; `image` is the uploaded picture |
-| `bandColor` | `neutral` or a habit colour | Colouring of the today column |
-| `bandOpacity` | 0–100 | How strongly that marker is drawn |
-| `bandFillOpacity` | 0–100 | How strongly the band through the cards is drawn, independent of `bandOpacity` |
-| `backgroundDim` | 0–100 | Dimming of the uploaded image |
-| `backgroundBlur` | 0–100 | Blurring of the same |
-| `surfaceOpacity` | 20–100 | Opacity of the cards over an image |
-| `surfaceBlur` | 0–100 | How softly they let it show through |
-| `language` | `system`, `en`, `de` | Language of the interface; `system` takes the first of the two the browser's `Accept-Language` names, English otherwise |
-| `timeZone` | `""` or an IANA name | The zone "today" is counted in; `""` follows `HABITS_TZ` |
+| `reorderMode` | `drag`, `buttons` | Reorder by drag and drop or with arrow buttons |
+| `pattern` | `none`, `dots`, `grid`, `diagonal`, `cross`, `image` | Page background; `image` is the uploaded image |
+| `bandColor` | `neutral` or a palette colour | Colour of the today highlight |
+| `bandOpacity` | 0–100 | Opacity of the today highlight in the header |
+| `bandFillOpacity` | 0–100 | Opacity of the today band in the cards |
+| `showBand` | bool | Show the today band in the cards |
+| `backgroundDim` | 0–100 | Dimming of the background image |
+| `backgroundBlur` | 0–100 | Blur of the background image |
+| `surfaceOpacity` | 20–100 | Opacity of the cards over the image |
+| `surfaceBlur` | 0–100 | Blur behind the cards |
+| `language` | `system`, `en`, `de` | UI language; `system` uses the browser's `Accept-Language`, falling back to English |
+| `timeZone` | `""` or an IANA name | Time zone for "today"; `""` uses `HABITS_TZ` |
 
-The number of days: **Automatic** fills the available width, otherwise you pick
-a fixed number. A week is the least the board shows: where seven columns do
-not fit at the usual sizes, it narrows the day columns and the name column,
-hides the habit icons and steps the type down until they do (`data-tight`, set
-in `overview.js`). A fixed number below seven is kept as chosen. The chosen number is an upper bound, not a guarantee — 28
-columns do not fit on a phone. The dialog therefore always names the number
-actually being shown and explains the difference, rather than silently clipping
-the board.
+**Day columns**: "Automatic" shows as many days as fit. A fixed number is an
+upper limit; the dialog shows how many are actually displayed. At least seven
+days are shown: if they do not fit, the board is compacted (`data-tight`, set
+in `overview.js`). A fixed number below seven is respected.
 
-With a fixed number the board shrinks to exactly those columns and stays centred
-in the window while it does. In "Automatic" mode it fills the width and the name
-column takes up the rest — that is the difference between "as many as possible"
-and "exactly this many".
+**Language**: The server sets `<html lang>`; `web/assets/js/i18n.js`
+translates using the English text as key (`t("New habit")`). Untranslated
+texts are shown in English. Changing the language reloads the page.
 
-**Language** — the server renders the chosen language into `<html lang>`, and
-`web/assets/js/i18n.js` translates from there: the English text is its own key
-(`t("New habit")`), the static markup of `index.html` is translated in place on
-start-up, and a text without a translation simply stays English. Switching the
-language reloads the page, because much of the interface is only built once.
-A new language is a dictionary in `i18n.js`, its entry in `store.Languages`,
-an `<option>` in `index.html` and its day and month names in `dates.js`.
+**Time zone**: Determines the server's `today`, and thus the last day of the
+board, the day a tap writes to and the open day for streaks.
 
-**Time zone** — changes which date the server hands out as `today`, and with
-it where the board ends, which day a tap writes to and how streaks count the
-day that is still open. The list offers every zone the browser knows; the
-server checks each name against the zone database embedded in the binary.
+## Known limitations
 
-All settings live server-side per user and therefore apply on every device.
-Every change is written immediately; there is no save button, because the
-settings are independent of one another.
-
-## Known limits
-
-- The SQLite pool is limited to **one** connection. For a personal tracker that
-  is the simplest correct choice; should read throughput ever become an issue,
-  the answer would be a second, read-only pool — not a larger shared one.
-- The due-date logic exists twice, in `internal/domain/habit.go` and in
-  `web/assets/js/habit.js` — the server needs it for validation, the client in
-  order to draw a whole grid without a round trip. Changes to frequency rules
-  have to be made in both places. The *numbers* per kind (scale, step size,
-  ceiling), on the other hand, are no longer duplicated: they arrive as `kinds`
-  with `/api/state`.
-- The lists of fonts, densities and patterns appear in `internal/store/settings.go`, in
-  `web/assets/js/app.js` and in the `<option>` elements of `index.html`. A drift
-  here only falls back to the default rather than reading data incorrectly —
-  which is why it has been left as it is so far.
-- A habit's kind can no longer be changed once days have been recorded. Every
-  kind stores one integer per day, but not the same one: 5000 is either five
-  kilometres or five hundred repetitions. There is no honest conversion, so the
-  change is refused rather than silently reinterpreting the history. Without
-  entries it stays possible — and that is when it is actually needed.
-- The detail view always draws the *current* calendar year. Earlier years are
-  not reachable through the interface.
+- The SQLite pool uses a single connection. If read throughput becomes an
+  issue, add a separate read-only pool.
+- The scheduling logic exists in both `internal/domain/habit.go` and
+  `web/assets/js/habit.js`. Changes to frequency rules must be made in both.
+- The lists of fonts, densities and patterns exist in
+  `internal/store/settings.go`, `web/assets/js/app.js` and `index.html`.
+  Unknown values fall back to the default.
+- The kind of a habit cannot be changed once it has entries, since stored
+  values depend on the kind.
+- The detail view only shows the current calendar year.

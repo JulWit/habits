@@ -9,10 +9,23 @@ import { t } from "./i18n.js";
 const CHECK_SVG =
   '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5 10 17.5 19 7" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
-export function dayCell(iso) {
-  const el = document.createElement("div");
+/**
+ * Builds a day in the header. `active` is the highlighted day (is-today), by
+ * default today; the actual today keeps is-current. With `selectable`, the
+ * cell is a button that makes its day the active one.
+ */
+export function dayCell(iso, { active = state.today, selectable = false } = {}) {
+  const el = document.createElement(selectable ? "button" : "div");
   const classes = ["grid-head"];
-  if (iso === state.today) classes.push("is-today");
+  if (iso === active) classes.push("is-today");
+  if (iso === state.today) classes.push("is-current");
+  if (selectable) {
+    el.type = "button";
+    el.dataset.role = "select-day";
+    el.dataset.date = iso;
+    el.setAttribute("aria-pressed", String(iso === active));
+    classes.push("is-selectable");
+  }
   el.className = classes.join(" ");
   // The full date as tooltip, since the cell only shows the day of the month.
   el.title = formatLong(iso);
@@ -62,7 +75,8 @@ function streakBadge(count) {
   return el;
 }
 
-export function dayEntry(habit, iso) {
+/** Builds a day cell of a row; `active` is the day of the band. */
+export function dayEntry(habit, iso, active = state.today) {
   const value = habit.entries[iso] ?? 0;
   const future = iso > state.today;
   const scheduled = H.isScheduled(habit, iso);
@@ -71,7 +85,7 @@ export function dayEntry(habit, iso) {
 
   const btn = document.createElement("button");
   btn.type = "button";
-  btn.className = iso === state.today ? "cell is-today" : "cell";
+  btn.className = iso === active ? "cell is-today" : "cell";
   btn.dataset.habit = habit.id;
   btn.dataset.date = iso;
   btn.dataset.role = "cell";

@@ -228,6 +228,20 @@ html[data-scrolled="on"] .day-header::before {
   pointer-events: none;
 }
 
+/* Dotted separator in the gap below the scrolled header, like the one below a
+   category heading, across the same width. */
+html[data-scrolled="on"] .day-header::after {
+  content: "";
+  position: absolute;
+  left: var(--block-pad-x);
+  right: calc(var(--block-pad-x) + var(--tools-inset));
+  bottom: calc(.5 * var(--board-gap) - 1.5px);
+  height: 3px;
+  background: radial-gradient(circle, var(--border) 1px, transparent 1.3px)
+    left center / 10px 3px repeat-x;
+  pointer-events: none;
+}
+
 /* Backdrop behind the scrolled header. It extends one corner radius further
    down, where it only covers the two outer corners, so rows disappear behind a
    rounded edge. Hidden at rest. */
@@ -731,7 +745,10 @@ html[data-pattern="image"][data-scrolled="on"] .day-header-backdrop {
   color: oklch(from var(--today-disc) clamp(.2, calc((var(--ink-flip) - l) * 1000), 1) 0 0);
 }
 
-.grid-head.is-today::before {
+/* The disc, and the hover and focus shape of a selectable day (::after, as
+   ::before may hold the month divider), share one shape. */
+.grid-head.is-today::before,
+.grid-head.is-selectable::after {
   content: "";
   position: absolute;
   /* Slightly narrower than the column, centred on the text. */
@@ -741,20 +758,56 @@ html[data-pattern="image"][data-scrolled="on"] .day-header-backdrop {
   top: calc(50% - .075 * var(--space));
   translate: -50% -50%;
   border-radius: var(--radius-sm);
-  background: var(--today-shown);
   z-index: -1;
   pointer-events: none;
 }
+
+.grid-head.is-today::before { background: var(--today-shown); }
 
 /* In narrow columns a square is lower than the two lines of text. The disc
    then spans the column and the header's height, leaving room around the
    text. */
 @media (max-width: 40rem) {
-  .grid-head.is-today::before {
+  .grid-head.is-today::before,
+  .grid-head.is-selectable::after {
     width: var(--cell);
     height: calc(100% - .5 * var(--space));
     aspect-ratio: auto;
   }
+}
+
+/* In the overview, a day in the header is a button that makes it the active
+   day (marker, band and day summary). Hover and focus are drawn in the shape
+   of the disc, not on the whole button. */
+.grid-head.is-selectable {
+  position: relative;
+  isolation: isolate;
+  min-width: 0;
+  margin: 0;
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.grid-head.is-selectable:not(.is-today):hover::after {
+  background: color-mix(in srgb, var(--today-shown) 45%, transparent);
+}
+
+.grid-head.is-selectable:focus-visible { outline: none; }
+
+.grid-head.is-selectable:focus-visible::after {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+}
+
+/* The actual today, while another day is active: its date is underlined. */
+.grid-head.is-current:not(.is-today) .dom {
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 2px;
 }
 
 .grid-head .dow { text-transform: uppercase; letter-spacing: .04em; }
@@ -1332,6 +1385,27 @@ html[data-pattern="image"] .app-bar {
 /* Tooltip targets. */
 .heat[data-date],
 .cum-col[data-tip] { cursor: default; }
+
+/* ---------- back to today ----------
+
+   Floating button at the bottom of the screen, only on narrow screens (see
+   forms.css); wider screens use the button in the day header. */
+.today-pill {
+  display: none;
+  position: fixed;
+  left: 50%;
+  bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  z-index: 55;
+  border-radius: 999px;
+  padding-inline: calc(.9 * var(--space)) calc(1.1 * var(--space));
+  background: var(--surface-2);
+  border-color: var(--border);
+  box-shadow: 0 4px 16px rgb(0 0 0 / .25);
+}
+
+.today-pill svg { width: 1.15rem; height: 1.15rem; }
+.today-pill:active { transform: translateX(-50%) translateY(1px); }
 
 /* ---------- toasts ---------- */
 

@@ -618,12 +618,26 @@ html[data-pattern="image"] .account {
   /* Narrow page gutter and card padding, so the room goes to the names. The
      smaller corner radius on the board keeps the today band clear of the
      rounded corners at 8px padding. */
-  :root { --gutter: 6px; --block-pad-x: 8px; }
+  :root { --gutter: 8px; --block-pad-x: 8px; }
   .board { --radius: 10px; }
 
   /* Smaller paging buttons. */
   .day-nav .icon-button { width: 1.8rem; height: 1.8rem; }
   .day-nav .icon-button svg { width: 1.05rem; height: 1.05rem; }
+  /* The left button starts just inside the left edge of the cards, past the
+     header's padding and border. */
+  .day-nav { padding-left: 0; margin-left: calc(2px - var(--block-pad-x) - 1px); }
+
+  /* No room for a third paging button above the names; the floating button
+     at the bottom of the screen returns to today instead. */
+  .day-nav [data-role="page-today"] { display: none; }
+  .today-pill:not([hidden]) { display: inline-flex; }
+  /* Room below the last row, so it can be scrolled clear of the button. */
+  #view-overview:has(.today-pill:not([hidden])) { padding-bottom: 5rem; }
+  /* Toasts appear above the floating button. */
+  #view-overview:not([hidden]):has(.today-pill:not([hidden])) ~ .toasts {
+    bottom: calc(4.75rem + env(safe-area-inset-bottom, 0px));
+  }
 
   .brand { font-size: 1.05rem; }
   .field.row,
@@ -831,8 +845,7 @@ html[data-today-band="off"] .cell.is-today:active:not(:disabled) { background: v
   /* The buttons bring their own room. */
   .topbar-actions { gap: calc(.15 * var(--space)); }
   html[data-tight] .day-nav,
-  .day-nav { gap: 0; }
-  html[data-tight] .day-nav .icon-button svg,
+  .day-nav { gap: 0; }  html[data-tight] .day-nav .icon-button svg,
   .day-nav .icon-button svg { width: 1.2rem; height: 1.2rem; }
 
   .menu-item,

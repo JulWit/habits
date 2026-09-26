@@ -4,7 +4,7 @@
 
 import {
   addDays, daysBetween, dayOfMonth, monthIndex, yearOf, weekdayIndex, MONTH_LONG, MONTH_SHORT,
-  WEEKDAY_LONG,
+  WEEKDAY_LONG, formatLong,
 } from "./dates.js";
 import { state, subscribe, groupedHabits } from "./state.js";
 import * as H from "./habit.js";
@@ -22,6 +22,9 @@ let board;
 let emptyState;
 let noMatch;
 let actions;
+/** Floating "back to today" button, shown on narrow screens instead of the
+ *  one in the day header (see forms.css). */
+let todayPill;
 
 /** Reports whether reordering uses drag and drop (otherwise arrow buttons). */
 const byDragging = () => (state.settings?.reorderMode ?? "drag") === "drag";
@@ -37,6 +40,33 @@ const MAX_AHEAD_DAYS = 365;
  * future. The window is anchored at its right edge.
  */
 let offset = 0;
+
+/**
+ * The day chosen in the day header, or null for today. Marker, band and day
+ * summary refer to it. Not persisted; null follows a change of date.
+ */
+let selectedDay = null;
+
+/** Returns the active day: the selected one, or today. */
+function activeDay() {
+  return selectedDay ?? state.today;
+}
+
+/** Makes `iso` the active day; today resets the selection. */
+function selectDay(iso) {
+  const next = iso === state.today ? null : iso;
+  if (next === selectedDay) return;
+  selectedDay = next;
+  render();
+}
+
+/** Returns to today: the window and the active day. */
+function backToToday() {
+  selectedDay = null;
+  // showWindow() does not render without a change of the window.
+  if (offset === 0) render();
+  else showWindow(0);
+}
 
 /** Returns the last day of the window, before week alignment. */
 function windowEnd() {
@@ -71,6 +101,7 @@ export function initOverview(handlers) {
   emptyState = document.getElementById("empty-state");
   noMatch = document.getElementById("no-match");
   initFilter();
+  initTodayPill();
 
   board.addEventListener("click", onBoardClick);
   board.addEventListener("contextmenu", onBoardContextMenu);
@@ -247,14 +278,21 @@ async function showWindow(next) {
   render();
 }
 
-/** Whether only habits still open today are shown. Not persisted. */
+/** Whether only habits due and still open on the active day are shown. Not
+ *  persisted. */
 let onlyOpen = false;
 
 const filtering = () => onlyOpen;
 
-/** Reports whether a habit passes the filter. */
+/**
+ * Reports whether a habit passes the filter: with it, only habits due on the
+ * active day (as counted by the day summary) and not yet complete.
+ */
 function matches(habit) {
-  return !(onlyOpen && H.isComplete(habit, habit.entries[state.today] ?? 0));
+  if (!onlyOpen) return true;
+  const day = activeDay();
+  return !habit.archivedAt && H.isScheduled(habit, day) &&
+    !H.isComplete(habit, habit.entries[day] ?? 0);
 }
 
 /**
@@ -275,8 +313,23 @@ function initFilter() {
   });
 }
 
+/** Creates the floating button that returns to today. */
+function initTodayPill() {
+  todayPill = document.createElement("button");
+  todayPill.type = "button";
+  todayPill.className = "button today-pill";
+  todayPill.hidden = true;
+  todayPill.innerHTML = icons.toToday;
+  // The label is set in render(), after a change of language.
+  todayPill.append(document.createElement("span"));
+  todayPill.addEventListener("click", backToToday);
+  board.parentElement.append(todayPill);
+}
+
 export function render() {
   if (!board || dragging) return;
+  todayPill.hidden = offset === 0 && selectedDay === null;
+  todayPill.lastChild.textContent = t("Back to today");
   const all = groupedHabits();
   // Blocks keep all habits for the progress bar, plus the filtered habits for
   // the rows.
@@ -288,8 +341,10 @@ export function render() {
   document.documentElement.dataset.filtering = filtering() ? "on" : "off";
   emptyState.hidden = all.length > 0;
   noMatch.hidden = !(filtering() && blocks.length === 0);
-  board.hidden = blocks.length === 0;
-  if (blocks.length === 0) {
+  // With habits, the board is shown even when the filter leaves no block, so
+  // the day header stays available for choosing another day.
+  board.hidden = all.length === 0;
+  if (all.length === 0) {
     board.replaceChildren();
     renderedDays = 0;
     return;
@@ -308,8 +363,9 @@ export function render() {
   const start = windowStart(days);
   const dates = Array.from({ length: days }, (_, i) => addDays(start, i));
 
-  // Column of today for the today band; -1 if not visible.
-  const todayColumn = dates.indexOf(state.today);
+  // Column of the active day for the band; -1 if not visible.
+  const active = activeDay();
+  const todayColumn = dates.indexOf(active);
   board.classList.toggle("has-today", todayColumn >= 0);
   if (todayColumn >= 0) board.style.setProperty("--today-col", String(todayColumn));
 
@@ -321,8 +377,8 @@ export function render() {
   const flights = newlyDone(everyHabit);
 
   const frag = document.createDocumentFragment();
-  frag.append(dayHeader(dates), daySummary(everyHabit));
-  for (const block of blocks) frag.append(renderBlock(block, dates, labelled));
+  frag.append(dayHeader(dates, active), daySummary(everyHabit, active));
+  for (const block of blocks) frag.append(renderBlock(block, dates, labelled, active));
 
   const focused = focusedControl();
   board.replaceChildren(frag);
@@ -363,7 +419,7 @@ function restoreFocus(target) {
  * Builds the day header: month names in the first row, weekday and day in the
  * second, on a shared grid with explicit placement.
  */
-function dayHeader(dates) {
+function dayHeader(dates, active) {
   const el = document.createElement("div");
   el.className = "day-header";
 
@@ -383,7 +439,7 @@ function dayHeader(dates) {
   for (const label of monthLabels(dates)) el.append(label);
 
   dates.forEach((iso, i) => {
-    const cell = dayCell(iso);
+    const cell = dayCell(iso, { active, selectable: true });
     // Month divider; not on the first column.
     if (i > 0 && dayOfMonth(iso) === 1) cell.classList.add("is-month-start");
     // Column 1 holds the habit names.
@@ -437,19 +493,19 @@ function dayNav() {
   older.disabled = offset >= maxBackDays();
   nav.append(older, newer);
 
-  if (offset !== 0) {
+  if (offset !== 0 || selectedDay !== null) {
     nav.append(toolButton("page-today", icons.toToday, t("Back to today")));
   }
   return nav;
 }
 
-function renderBlock({ category, habits, visible }, dates, labelled) {
+function renderBlock({ category, habits, visible }, dates, labelled, active) {
   const rows = visible ?? habits;
   const section = document.createElement("section");
   section.className = "block";
   if (category) section.dataset.category = category.id;
   // The heading counts all habits of the category, the rows show the filtered.
-  if (labelled) section.append(blockHead(category, habits));
+  if (labelled) section.append(blockHead(category, habits, active));
 
   if (rows.length === 0) {
     const empty = document.createElement("p");
@@ -467,7 +523,7 @@ function renderBlock({ category, habits, visible }, dates, labelled) {
     row.dataset.habit = habit.id;
     row.append(
       habitCell(habit),
-      ...dates.map((iso) => dayEntry(habit, iso)),
+      ...dates.map((iso) => dayEntry(habit, iso, active)),
       habitTools(habit, habits),
     );
     list.append(row);
@@ -515,27 +571,28 @@ function habitTools(habit, siblings) {
   return tools;
 }
 
-/** Counts the habits due today and how many of them are complete. */
-function todayProgress(habits) {
-  const due = habits.filter((h) => !h.archivedAt && H.isScheduled(h, state.today));
-  const done = due.filter((h) => H.isComplete(h, h.entries[state.today] ?? 0));
+/** Counts the habits due on `day` and how many of them are complete. */
+function dayProgress(habits, day) {
+  const due = habits.filter((h) => !h.archivedAt && H.isScheduled(h, day));
+  const done = due.filter((h) => H.isComplete(h, h.entries[day] ?? 0));
   return { due: due.length, done: done.length };
 }
 
-function blockProgress(habits) {
-  const { due, done } = todayProgress(habits);
-  // No bar if nothing is due today.
+/** Builds a category's progress bar for `day`. */
+function blockProgress(habits, day) {
+  const { due, done } = dayProgress(habits, day);
+  // No bar if nothing is due on the day.
   if (due === 0) return null;
 
   const wrap = document.createElement("div");
   wrap.className = "block-progress";
-  wrap.title = t("{done} of {due} done today", { done, due });
+  wrap.title = `${formatLong(day)}: ${t("{done} of {due} done", { done, due })}`;
 
   const count = document.createElement("span");
   count.className = "block-progress-count";
   count.textContent = `${done}/${due}`;
 
-  // One segment per habit due today, followed by the count.
+  // One segment per habit due on the day, followed by the count.
   const track = document.createElement("span");
   track.className = "block-progress-track";
   track.style.setProperty("--segments", String(due));
@@ -543,7 +600,7 @@ function blockProgress(habits) {
   track.setAttribute("aria-valuemin", "0");
   track.setAttribute("aria-valuemax", String(due));
   track.setAttribute("aria-valuenow", String(done));
-  track.setAttribute("aria-label", t("Done today"));
+  track.setAttribute("aria-label", t("Done on this day"));
   for (let i = 0; i < due; i++) {
     const seg = document.createElement("span");
     seg.className = "block-progress-seg";
@@ -557,42 +614,48 @@ function blockProgress(habits) {
 }
 
 /**
- * Builds the day summary below the header: today's date, progress and ring.
- * Always refers to today and to all habits, regardless of paging and filter.
+ * Builds the day summary below the header: the active day's date, progress
+ * and ring. Refers to all habits, regardless of paging and filter.
  */
-function daySummary(habits) {
-  const { due, done } = todayProgress(habits);
+function daySummary(habits, day) {
+  const { due, done } = dayProgress(habits, day);
   const percent = due === 0 ? 0 : Math.round((done / due) * 100);
+  const isToday = day === state.today;
 
   const el = document.createElement("section");
   el.className = "day-summary";
-  el.setAttribute("aria-label", t("Today"));
 
   const text = document.createElement("div");
   text.className = "day-summary-text";
 
   const date = document.createElement("h2");
   date.className = "day-summary-date";
-  date.textContent = `${WEEKDAY_LONG[weekdayIndex(state.today)]}, ` +
-    `${dayOfMonth(state.today)}${lang === "de" ? "." : ""} ${MONTH_LONG[monthIndex(state.today)]}`;
+  // The year only if it is not the current one.
+  const year = yearOf(day) === yearOf(state.today) ? "" : ` ${yearOf(day)}`;
+  date.textContent = `${WEEKDAY_LONG[weekdayIndex(day)]}, ` +
+    `${dayOfMonth(day)}${lang === "de" ? "." : ""} ${MONTH_LONG[monthIndex(day)]}${year}`;
+  el.setAttribute("aria-label", date.textContent);
 
   const count = document.createElement("p");
   count.className = "day-summary-count";
   if (due > 0 && done === due) {
-    // Everything due today is done.
+    // Everything due on the day is done.
     el.classList.add("is-complete");
     count.innerHTML = icons.check; // constant markup from icons.js
     const words = document.createElement("span");
-    words.textContent = completeText(due);
+    // The varying messages speak of today.
+    words.textContent = isToday ? completeText(due) : t("All habits done!");
     count.append(words);
+  } else if (due === 0) {
+    count.textContent = t("Nothing due on this day");
   } else {
-    count.textContent = due === 0 ? t("Nothing due today") : t("{done} of {due} done", { done, due });
+    count.textContent = t("{done} of {due} done", { done, due });
   }
   text.append(date, count);
   el.append(text);
 
-  // No ring if nothing is due today.
-  if (due > 0) el.append(progressRing(percent));
+  // No ring if nothing is due on the day.
+  if (due > 0) el.append(progressRing(percent, t("Done on this day")));
   return el;
 }
 
@@ -641,17 +704,18 @@ const WAVY_RING_PATH = (() => {
 let lastRingPercent = null;
 
 /**
- * Builds the progress ring filled to `percent`, with the number in its centre.
+ * Builds the progress ring filled to `percent`, with the number in its centre
+ * and `name` as its accessible label.
  * pathLength="100" allows dash lengths in percent.
  */
-function progressRing(percent) {
+function progressRing(percent, name) {
   const ring = document.createElement("div");
   ring.className = "day-summary-ring";
   ring.setAttribute("role", "progressbar");
   ring.setAttribute("aria-valuemin", "0");
   ring.setAttribute("aria-valuemax", "100");
   ring.setAttribute("aria-valuenow", String(percent));
-  ring.setAttribute("aria-label", t("Done today"));
+  ring.setAttribute("aria-label", name);
 
   const ns = "http://www.w3.org/2000/svg";
   const svg = document.createElementNS(ns, "svg");
@@ -711,23 +775,24 @@ function showRing(ring, percent) {
  */
 let ringHold = null;
 
-/** The habits complete today at the last render, and the date. */
+/** The habits complete on the active day at the last render, and the day. */
 let lastDone = null;
 let lastDoneDay = null;
 
 const ORBS_PER_HABIT = 6;
 
 /**
- * Returns the habits completed since the last render, each with the position
- * of its cell on the old board. Returns nothing on the first render and after
- * a date change.
+ * Returns the habits completed on the active day since the last render, each
+ * with the position of its cell on the old board. Returns nothing on the first
+ * render and after a change of the active day.
  */
 function newlyDone(habits) {
-  const due = habits.filter((h) => !h.archivedAt && H.isScheduled(h, state.today));
-  const done = new Set(due.filter((h) => H.isComplete(h, h.entries[state.today] ?? 0)).map((h) => h.id));
-  const before = lastDoneDay === state.today ? lastDone : null;
+  const day = activeDay();
+  const due = habits.filter((h) => !h.archivedAt && H.isScheduled(h, day));
+  const done = new Set(due.filter((h) => H.isComplete(h, h.entries[day] ?? 0)).map((h) => h.id));
+  const before = lastDoneDay === day ? lastDone : null;
   lastDone = done;
-  lastDoneDay = state.today;
+  lastDoneDay = day;
   // No animation in a hidden page.
   if (!before || prefersReducedMotion() || document.hidden) return [];
 
@@ -738,7 +803,7 @@ function newlyDone(habits) {
   const flights = [];
   for (const habit of fresh) {
     const cell = board.querySelector(
-      `.cell[data-habit="${habit.id}"][data-date="${state.today}"] .mark`);
+      `.cell[data-habit="${habit.id}"][data-date="${day}"] .mark`);
     const rect = cell?.getBoundingClientRect();
     // Cell not visible.
     if (!rect || rect.width === 0) continue;
@@ -911,7 +976,7 @@ function landOrb(landing, visible) {
   }
 }
 
-function blockHead(category, habits = []) {
+function blockHead(category, habits = [], day = state.today) {
   const head = document.createElement("header");
   head.className = "block-head";
 
@@ -937,7 +1002,7 @@ function blockHead(category, habits = []) {
   head.append(title);
 
   // Progress only if enabled for the category; never for uncategorised habits.
-  const progress = category?.showProgress === true ? blockProgress(habits) : null;
+  const progress = category?.showProgress === true ? blockProgress(habits, day) : null;
   if (progress) head.append(progress);
 
   // Uncategorised habits have no category controls.
@@ -1019,7 +1084,10 @@ function onBoardClick(event) {
       showWindow(offset - pageStep(renderedDays));
       break;
     case "page-today":
-      showWindow(0);
+      backToToday();
+      break;
+    case "select-day":
+      selectDay(el.dataset.date);
       break;
   }
 }

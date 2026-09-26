@@ -607,6 +607,10 @@ html.route-detail .view {
 
 .view { padding-top: calc(1.25 * var(--space)); }
 
+/* The board's day header carries padding of its own above the dates, so the
+   overview starts closer under the title bar than the other views do. */
+#view-overview { padding-top: calc(.8 * var(--space)); }
+
 .brand {
   display: flex;
   align-items: center;

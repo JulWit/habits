@@ -12,9 +12,11 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Habits">
-<!-- Theme colour per colour scheme, for the browser's system bars. -->
-<meta name="theme-color" content="#e6e8ec" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#0f0f0f" media="(prefers-color-scheme: dark)">
+<!-- Colour of the system bars (status and navigation bar), matching --bg. A
+     chosen theme overrides the colour scheme, so both entries then carry its
+     colour; app.js updates them when the theme changes. -->
+<meta name="theme-color" content="{{if eq .Theme "dark"}}#0f0f0f{{else}}#e6e8ec{{end}}" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="{{if eq .Theme "light"}}#e6e8ec{{else}}#0f0f0f{{end}}" media="(prefers-color-scheme: dark)">
 <link rel="stylesheet" href="/assets/css/fonts.css">
 <link rel="stylesheet" href="/assets/css/base.css">
 <link rel="stylesheet" href="/assets/css/components.css">

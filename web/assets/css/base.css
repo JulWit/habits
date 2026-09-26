@@ -366,7 +366,9 @@ html { background-color: var(--bg); }
 
 body {
   min-height: 100dvh;
-  padding-bottom: calc(5 * var(--space));
+  /* The safe area keeps the end of the page clear of a translucent navigation
+     bar (edge-to-edge display, viewport-fit=cover). */
+  padding-bottom: calc(5 * var(--space) + env(safe-area-inset-bottom, 0px));
   background: transparent;
 }
 

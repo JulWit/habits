@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"context"
+	"encoding/json"
 	"io"
 	"log/slog"
 	"net/http"
@@ -21,6 +22,8 @@ var testWeb = fstest.MapFS{
 	"index.html": &fstest.MapFile{Data: []byte(
 		`<!doctype html><html lang="{{.Lang}}" data-theme="{{.Theme}}" data-font="{{.Font}}"></html>`)},
 	"assets/js/app.js": &fstest.MapFile{Data: []byte("export const x = 1;\n")},
+	"manifest.webmanifest": &fstest.MapFile{Data: []byte(
+		`{"name":"Habits","theme_color":"#e6e8ec","background_color":"#e6e8ec"}`)},
 }
 
 func newTestServer(t *testing.T) http.Handler {
@@ -174,5 +177,26 @@ func TestAssetDirectoriesAreNotListed(t *testing.T) {
 	}
 	if w := do(t, h, "GET", "/assets/js/app.js", "", ""); w.Code != http.StatusOK {
 		t.Errorf("GET /assets/js/app.js: status %d, want 200", w.Code)
+	}
+}
+
+// The manifest carries the colours of the stored theme.
+func TestManifestFollowsTheStoredTheme(t *testing.T) {
+	h := newTestServer(t)
+	for theme, want := range map[string]string{"dark": "#0f0f0f", "light": "#e6e8ec", "system": "#e6e8ec"} {
+		if w := do(t, h, "PATCH", "/api/settings", `{"theme":"`+theme+`"}`, "application/json"); w.Code != http.StatusOK {
+			t.Fatalf("writing settings: %d (%s)", w.Code, w.Body)
+		}
+		w := do(t, h, "GET", "/manifest.webmanifest", "", "")
+		if ct := w.Header().Get("Content-Type"); ct != "application/manifest+json" {
+			t.Errorf("%s: Content-Type = %q", theme, ct)
+		}
+		var m map[string]any
+		if err := json.Unmarshal(w.Body.Bytes(), &m); err != nil {
+			t.Fatalf("%s: parsing manifest: %v (%s)", theme, err, w.Body)
+		}
+		if m["theme_color"] != want || m["background_color"] != want || m["name"] != "Habits" {
+			t.Errorf("%s: manifest = %v, want colours %s", theme, m, want)
+		}
 	}
 }

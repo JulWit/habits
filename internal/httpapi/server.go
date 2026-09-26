@@ -31,6 +31,8 @@ type Server struct {
 	log    *slog.Logger
 	shell  *template.Template
 	assets http.Handler
+	// manifest is the parsed web app manifest, see handleManifest.
+	manifest map[string]any
 }
 
 // New returns the HTTP handler of the application. webFS contains the frontend
@@ -40,16 +42,21 @@ func New(cfg config.Config, st *store.Store, log *slog.Logger, webFS fs.FS) (htt
 	if err != nil {
 		return nil, fmt.Errorf("loading index.html: %w", err)
 	}
+	manifest, err := loadManifest(webFS)
+	if err != nil {
+		return nil, err
+	}
 	assets, err := newAssetHandler(webFS)
 	if err != nil {
 		return nil, err
 	}
 	s := &Server{
-		cfg:    cfg,
-		store:  st,
-		log:    log,
-		shell:  shell,
-		assets: assets,
+		cfg:      cfg,
+		store:    st,
+		log:      log,
+		shell:    shell,
+		assets:   assets,
+		manifest: manifest,
 	}
 
 	mux := http.NewServeMux()
@@ -76,7 +83,7 @@ func New(cfg config.Config, st *store.Store, log *slog.Logger, webFS fs.FS) (htt
 	mux.HandleFunc("GET /{$}", s.handleIndex)
 	mux.Handle("GET /assets/", s.assets)
 	// Served from the root so that the service worker's scope covers "/".
-	mux.Handle("GET /manifest.webmanifest", s.assets)
+	mux.HandleFunc("GET /manifest.webmanifest", s.handleManifest)
 	mux.Handle("GET /sw.js", s.assets)
 
 	// The health check requires no authentication.

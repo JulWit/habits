@@ -303,7 +303,9 @@ function syncRoute() {
 function initAppearance() {
   const apply = () => {
     const root = document.documentElement;
-    root.dataset.theme = knownTheme(state.settings?.theme);
+    const theme = knownTheme(state.settings?.theme);
+    root.dataset.theme = theme;
+    applyThemeColor(theme);
     root.dataset.font = knownFont(state.settings?.font);
     // Affects the column width, so this runs before the board is rendered.
     root.dataset.density = knownDensity(state.settings?.density);
@@ -329,6 +331,20 @@ function initAppearance() {
   };
   subscribe(apply);
   apply();
+}
+
+// Colours of the system bars, matching --bg in base.css and index.html.
+const THEME_COLORS = { light: "#e6e8ec", dark: "#0f0f0f" };
+
+/**
+ * Sets the theme-color entries in <head>. A chosen theme gives both entries
+ * its colour; "system" gives each entry the colour of its colour scheme.
+ */
+function applyThemeColor(theme) {
+  for (const meta of document.querySelectorAll('meta[name="theme-color"]')) {
+    const scheme = meta.media.includes("dark") ? "dark" : "light";
+    meta.content = THEME_COLORS[theme === "system" ? scheme : theme];
+  }
 }
 
 // ---------- keyboard ----------

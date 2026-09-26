@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 )
 
 // An out-of-range value is the client's mistake, not the server's: 422, and a
@@ -96,11 +97,11 @@ func TestEntryOnUnscheduledWeekdayIsRefused(t *testing.T) {
 	}
 }
 
-// An every-n-days habit takes no entry on the days in between either.
-func TestEntryBetweenEveryNDaysIsRefused(t *testing.T) {
+// A custom-interval habit takes no entry on the days in between either.
+func TestEntryBetweenCustomIntervalIsRefused(t *testing.T) {
 	h := newTestServer(t)
 	w := do(t, h, "POST", "/api/habits",
-		`{"name":"Run","kind":"check","frequency":{"kind":"every_n_days","intervalDays":3,"anchorDate":"2026-09-14"}}`,
+		`{"name":"Run","kind":"check","frequency":{"kind":"custom_interval","intervalDays":3,"anchorDate":"2026-09-14"}}`,
 		"application/json")
 	if w.Code != http.StatusCreated {
 		t.Fatalf("creating habit: %d (%s)", w.Code, w.Body)
@@ -128,5 +129,43 @@ func TestEntryBetweenEveryNDaysIsRefused(t *testing.T) {
 	}
 	if w := do(t, h, "PUT", base+"2026-09-15", `{"value":0}`, "application/json"); w.Code != http.StatusOK {
 		t.Errorf("clearing a day in between: status %d, want 200 (%s)", w.Code, w.Body)
+	}
+}
+
+// A write answers with the habit's new timestamp, so the detail view can show
+// the last change without reloading the habit.
+func TestEntryAnswersWithUpdatedAt(t *testing.T) {
+	h := newTestServer(t)
+	w := do(t, h, "POST", "/api/habits",
+		`{"name":"Read","kind":"check","frequency":{"kind":"daily"}}`, "application/json")
+	if w.Code != http.StatusCreated {
+		t.Fatalf("creating habit: %d (%s)", w.Code, w.Body)
+	}
+	var created struct {
+		ID string `json:"id"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &created); err != nil {
+		t.Fatalf("reading response: %v", err)
+	}
+
+	w = do(t, h, "PUT", "/api/habits/"+created.ID+"/entries/2026-09-18", `{"value":1}`, "application/json")
+	if w.Code != http.StatusOK {
+		t.Fatalf("setting entry: %d (%s)", w.Code, w.Body)
+	}
+	var answer struct {
+		UpdatedAt time.Time `json:"updatedAt"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &answer); err != nil {
+		t.Fatalf("reading response: %v", err)
+	}
+	w = do(t, h, "GET", "/api/habits/"+created.ID, "", "")
+	var stored struct {
+		UpdatedAt time.Time `json:"updatedAt"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &stored); err != nil {
+		t.Fatalf("reading habit: %v", err)
+	}
+	if answer.UpdatedAt.IsZero() || !answer.UpdatedAt.Equal(stored.UpdatedAt) {
+		t.Errorf("updatedAt = %v, want the stored %v", answer.UpdatedAt, stored.UpdatedAt)
 	}
 }

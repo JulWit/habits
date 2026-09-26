@@ -2,6 +2,8 @@
 // no local cache and no offline queue, so every call here is the single source
 // of truth and failures are surfaced rather than swallowed.
 
+import { t } from "./i18n.js";
+
 export class ApiError extends Error {
   constructor(message, status, options) {
     super(message, options);
@@ -28,13 +30,13 @@ async function request(method, path, body, type) {
       body: body === undefined ? undefined : (type ? body : JSON.stringify(body)),
     });
   } catch (cause) {
-    throw new ApiError("No connection to the server", 0, { cause });
+    throw new ApiError(t("No connection to the server"), 0, { cause });
   }
 
   if (res.status === 401 || res.status === 403) {
     // Authelia's session expired behind our back. Reloading sends the user
     // through the proxy's login flow instead of leaving a dead page behind.
-    throw new ApiError("Session expired — please reload the page", res.status);
+    throw new ApiError(t("Session expired — please reload the page"), res.status);
   }
   if (res.status === 204) return null;
 

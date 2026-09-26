@@ -142,15 +142,15 @@ func (k Kind) Unit() string {
 type FrequencyKind string
 
 const (
-	FreqDaily        FrequencyKind = "daily"
-	FreqTimesPerWeek FrequencyKind = "times_per_week"
-	FreqWeekdays     FrequencyKind = "weekdays"
-	FreqEveryNDays   FrequencyKind = "every_n_days"
+	FreqDaily          FrequencyKind = "daily"
+	FreqTimesPerWeek   FrequencyKind = "times_per_week"
+	FreqWeekdays       FrequencyKind = "weekdays"
+	FreqCustomInterval FrequencyKind = "custom_interval"
 )
 
 func (f FrequencyKind) Valid() bool {
 	switch f {
-	case FreqDaily, FreqTimesPerWeek, FreqWeekdays, FreqEveryNDays:
+	case FreqDaily, FreqTimesPerWeek, FreqWeekdays, FreqCustomInterval:
 		return true
 	}
 	return false
@@ -174,11 +174,22 @@ type Frequency struct {
 	TimesPerWeek int           `json:"timesPerWeek"`
 	Weekdays     Weekdays      `json:"weekdays"`
 	IntervalDays int           `json:"intervalDays"`
-	// AnchorDate is the first due day of an every-n-days schedule. Without it
-	// the phase of the interval would silently shift whenever the habit is
-	// edited.
+	// WeekInterval narrows chosen weekdays to every n-th week, counted in whole
+	// Monday-to-Sunday weeks from the week of AnchorDate. One is every week.
+	WeekInterval int `json:"weekInterval"`
+	// WeekOfMonth narrows chosen weekdays to their n-th occurrence in the month:
+	// 1 to 4, or LastWeekOfMonth for the last one. Zero is every occurrence. It
+	// cannot be combined with a WeekInterval above one.
+	WeekOfMonth int `json:"weekOfMonth"`
+	// AnchorDate is the first due day of a custom-interval schedule, or the
+	// start of an every-n-weeks one. Without it the phase would silently shift
+	// whenever the habit is edited.
 	AnchorDate Date `json:"anchorDate"`
 }
+
+// LastWeekOfMonth is the WeekOfMonth for the last occurrence of a weekday in
+// its month, whether that is the fourth or the fifth.
+const LastWeekOfMonth = -1
 
 // Habit is a tracked habit belonging to exactly one user.
 type Habit struct {
@@ -320,11 +331,13 @@ func (h *Habit) normaliseFrequency() error {
 	switch f.Kind {
 	case FreqDaily:
 		f.TimesPerWeek, f.Weekdays, f.IntervalDays, f.AnchorDate = 0, 0, 0, Date{}
+		f.WeekInterval, f.WeekOfMonth = 0, 0
 	case FreqTimesPerWeek:
 		if f.TimesPerWeek < 1 || f.TimesPerWeek > 7 {
 			return invalid("times per week must be between 1 and 7")
 		}
 		f.Weekdays, f.IntervalDays, f.AnchorDate = 0, 0, Date{}
+		f.WeekInterval, f.WeekOfMonth = 0, 0
 	case FreqWeekdays:
 		if f.Weekdays == 0 {
 			return invalid("at least one weekday must be selected")
@@ -332,8 +345,30 @@ func (h *Habit) normaliseFrequency() error {
 		if f.Weekdays > 0b1111111 {
 			return invalid("invalid weekday selection")
 		}
-		f.TimesPerWeek, f.IntervalDays, f.AnchorDate = 0, 0, Date{}
-	case FreqEveryNDays:
+		// Zero is what a client that knows nothing of the week interval sends,
+		// and it means what it always has: every week.
+		if f.WeekInterval == 0 {
+			f.WeekInterval = 1
+		}
+		if f.WeekInterval < 1 || f.WeekInterval > 52 {
+			return invalid("week interval must be between 1 and 52 weeks")
+		}
+		if f.WeekOfMonth != LastWeekOfMonth && (f.WeekOfMonth < 0 || f.WeekOfMonth > 4) {
+			return invalid("week of the month must be 1 to 4 or the last")
+		}
+		if f.WeekInterval > 1 && f.WeekOfMonth != 0 {
+			return invalid("a week interval and a week of the month cannot be combined")
+		}
+		// Only an every-n-weeks schedule has a phase to keep.
+		if f.WeekInterval > 1 {
+			if f.AnchorDate.IsZero() {
+				f.AnchorDate = DateFromTime(h.CreatedAt)
+			}
+		} else {
+			f.AnchorDate = Date{}
+		}
+		f.TimesPerWeek, f.IntervalDays = 0, 0
+	case FreqCustomInterval:
 		if f.IntervalDays < 1 || f.IntervalDays > 365 {
 			return invalid("interval must be between 1 and 365 days")
 		}
@@ -341,6 +376,7 @@ func (h *Habit) normaliseFrequency() error {
 			f.AnchorDate = DateFromTime(h.CreatedAt)
 		}
 		f.TimesPerWeek, f.Weekdays = 0, 0
+		f.WeekInterval, f.WeekOfMonth = 0, 0
 	}
 	return nil
 }
@@ -387,8 +423,8 @@ func (h Habit) IsScheduled(d Date) bool {
 	case FreqDaily, FreqTimesPerWeek:
 		return true
 	case FreqWeekdays:
-		return h.Frequency.Weekdays.Has(d.Weekday())
-	case FreqEveryNDays:
+		return h.Frequency.Weekdays.Has(d.Weekday()) && h.inScheduledWeek(d)
+	case FreqCustomInterval:
 		n := h.Frequency.IntervalDays
 		if n < 1 {
 			return false
@@ -406,15 +442,40 @@ func (h Habit) IsScheduled(d Date) bool {
 	return false
 }
 
+// inScheduledWeek reports whether d, already on one of the chosen weekdays,
+// also falls in a week the schedule asks for: every n-th week from the anchor,
+// or the n-th occurrence of that weekday in its month.
+func (h Habit) inScheduledWeek(d Date) bool {
+	f := h.Frequency
+	if f.WeekOfMonth == LastWeekOfMonth {
+		return d.AddDays(7).Month != d.Month
+	}
+	if f.WeekOfMonth > 0 {
+		return (d.Day-1)/7+1 == f.WeekOfMonth
+	}
+	if f.WeekInterval > 1 {
+		anchor := f.AnchorDate
+		if anchor.IsZero() {
+			anchor = DateFromTime(h.CreatedAt)
+		}
+		if d.Before(anchor) {
+			return false
+		}
+		weeks := d.StartOfWeek().DaysSince(anchor.StartOfWeek()) / 7
+		return weeks%f.WeekInterval == 0
+	}
+	return true
+}
+
 // AcceptsEntry reports whether a value may be recorded on d.
 //
-// Frequencies with fixed days — chosen weekdays and every n days — close all
+// Frequencies with fixed days — chosen weekdays and a custom interval — close all
 // other days: the days are the whole point of those frequencies, so a tick in
 // between is a mistake. Daily and times-per-week stay open on every day, since
 // any day counts for them anyway.
 func (h Habit) AcceptsEntry(d Date) bool {
 	switch h.Frequency.Kind {
-	case FreqWeekdays, FreqEveryNDays:
+	case FreqWeekdays, FreqCustomInterval:
 		return h.IsScheduled(d)
 	}
 	return true

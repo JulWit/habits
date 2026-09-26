@@ -12,6 +12,7 @@ import (
 
 const habitColumns = `id, name, color, icon, kind, target_value, step_value, unit,
 	freq_kind, freq_times_per_week, freq_weekdays, freq_interval_days, freq_anchor_date,
+	freq_week_interval, freq_week_of_month,
 	position, archived_at, created_at, updated_at, category_id`
 
 func scanHabit(rows interface{ Scan(...any) error }) (domain.Habit, error) {
@@ -27,6 +28,7 @@ func scanHabit(rows interface{ Scan(...any) error }) (domain.Habit, error) {
 	err := rows.Scan(
 		&h.ID, &h.Name, &h.Color, &h.Icon, &h.Kind, &h.TargetValue, &h.StepValue, &h.Unit,
 		&h.Frequency.Kind, &h.Frequency.TimesPerWeek, &weekdays, &h.Frequency.IntervalDays, &anchor,
+		&h.Frequency.WeekInterval, &h.Frequency.WeekOfMonth,
 		&h.Position, &archivedAt, &created, &updated, &categoryID,
 	)
 	if err != nil {
@@ -124,11 +126,13 @@ func (s *Store) CreateHabit(ctx context.Context, userID string, h *domain.Habit)
 	_, err = tx.ExecContext(ctx, `
 		INSERT INTO habits (id, user_id, name, color, icon, kind, target_value, step_value, unit,
 			freq_kind, freq_times_per_week, freq_weekdays, freq_interval_days, freq_anchor_date,
+			freq_week_interval, freq_week_of_month,
 			position, created_at, updated_at, category_id)
-		VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+		VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
 		h.ID, userID, h.Name, h.Color, h.Icon, h.Kind, h.TargetValue, h.StepValue, h.Unit,
 		h.Frequency.Kind, h.Frequency.TimesPerWeek, int64(h.Frequency.Weekdays),
 		h.Frequency.IntervalDays, h.Frequency.AnchorDate.String(),
+		h.Frequency.WeekInterval, h.Frequency.WeekOfMonth,
 		h.Position, formatTime(h.CreatedAt), formatTime(h.UpdatedAt), nullableID(h.CategoryID))
 	if err != nil {
 		return fmt.Errorf("creating habit: %w", err)
@@ -193,11 +197,13 @@ func (s *Store) UpdateHabit(ctx context.Context, userID string, h *domain.Habit)
 			name = ?, color = ?, icon = ?, kind = ?, target_value = ?, step_value = ?, unit = ?,
 			freq_kind = ?, freq_times_per_week = ?, freq_weekdays = ?,
 			freq_interval_days = ?, freq_anchor_date = ?,
+			freq_week_interval = ?, freq_week_of_month = ?,
 			archived_at = ?, updated_at = ?, category_id = ?
 		WHERE id = ? AND user_id = ? AND deleted_at IS NULL`,
 		h.Name, h.Color, h.Icon, h.Kind, h.TargetValue, h.StepValue, h.Unit,
 		h.Frequency.Kind, h.Frequency.TimesPerWeek, int64(h.Frequency.Weekdays),
 		h.Frequency.IntervalDays, h.Frequency.AnchorDate.String(),
+		h.Frequency.WeekInterval, h.Frequency.WeekOfMonth,
 		archived, formatTime(h.UpdatedAt), nullableID(h.CategoryID),
 		h.ID, userID)
 	if err != nil {
@@ -285,16 +291,17 @@ func (s *Store) ReorderHabits(ctx context.Context, userID string, ids []string) 
 	}
 	defer tx.Rollback()
 
+	// updated_at stays as it is: the detail view shows it as the habit's last
+	// change, and moving a habit on the board does not change the habit.
 	stmt, err := tx.PrepareContext(ctx,
-		`UPDATE habits SET position = ?, updated_at = ? WHERE id = ? AND user_id = ? AND deleted_at IS NULL`)
+		`UPDATE habits SET position = ? WHERE id = ? AND user_id = ? AND deleted_at IS NULL`)
 	if err != nil {
 		return fmt.Errorf("preparing reorder: %w", err)
 	}
 	defer stmt.Close()
 
-	now := formatTime(time.Now())
 	for i, id := range ids {
-		if _, err := stmt.ExecContext(ctx, i, now, id, userID); err != nil {
+		if _, err := stmt.ExecContext(ctx, i, id, userID); err != nil {
 			return fmt.Errorf("saving order: %w", err)
 		}
 	}

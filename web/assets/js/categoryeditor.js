@@ -4,6 +4,7 @@
 
 import { state, categoryById } from "./state.js";
 import { errorText } from "./undo.js";
+import { t } from "./i18n.js";
 import { buildIconChoices, markIconChoice } from "./icons.js";
 
 let dialog;
@@ -64,8 +65,8 @@ function buildSwatches() {
       if (color) b.style.background = color;
       b.dataset.color = color;
       b.setAttribute("role", "radio");
-      b.setAttribute("aria-label", color ? `Colour ${color}` : "No colour");
-      b.title = color || "No colour";
+      b.setAttribute("aria-label", color ? t("Colour {color}", { color }) : t("No colour"));
+      b.title = color || t("No colour");
       b.addEventListener("click", () => selectColor(color));
       return b;
     }),

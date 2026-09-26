@@ -17,7 +17,8 @@ const day = (back) => addDays(state.today, -back);
 /** Habits that exist only here, one per kind and per interesting state. */
 function samples() {
   const freq = (over) => ({
-    kind: "daily", timesPerWeek: 0, weekdays: 0, intervalDays: 0, anchorDate: "", ...over,
+    kind: "daily", timesPerWeek: 0, weekdays: 0, intervalDays: 0,
+    weekInterval: 0, weekOfMonth: 0, anchorDate: "", ...over,
   });
   const base = {
     unit: "", archivedAt: null, categoryId: "",
@@ -43,7 +44,7 @@ function samples() {
     },
     distance: {
       ...base, id: "sg-distance", name: "Running", color: "#ea580c", kind: "distance",
-      targetValue: 5000, frequency: freq({ kind: "every_n_days", intervalDays: 3, anchorDate: day(0) }),
+      targetValue: 5000, frequency: freq({ kind: "custom_interval", intervalDays: 3, anchorDate: day(0) }),
       entries: { [day(0)]: 5200, [day(1)]: 2400, [day(2)]: 5000 },
     },
     // Only Mondays are scheduled, so most sample days draw the "not planned" ring.

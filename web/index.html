@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-theme="{{.Theme}}" data-font="{{.Font}}" data-density="{{.Density}}" data-pattern="{{.Pattern}}" data-band="{{.BandColor}}" data-today-band="{{if .ShowBand}}on{{else}}off{{end}}" style="--today-opacity: {{.BandOp}}%; --band-opacity: {{.BandFillOp}}%;--bg-dim: {{.Dim}}%; --bg-blur: {{.Blur}}px; --surface-opacity: {{.SurfaceOp}}%; --surface-blur: {{.SurfaceBlr}}px">
+<html lang="{{.Lang}}" data-theme="{{.Theme}}" data-font="{{.Font}}" data-density="{{.Density}}" data-pattern="{{.Pattern}}" data-band="{{.BandColor}}" data-today-band="{{if .ShowBand}}on{{else}}off{{end}}" style="--today-opacity: {{.BandOp}}%; --band-opacity: {{.BandFillOp}}%;--bg-dim: {{.Dim}}%; --bg-blur: {{.Blur}}px; --surface-opacity: {{.SurfaceOp}}%; --surface-blur: {{.SurfaceBlr}}px">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -51,7 +51,8 @@
         <path d="M7.59 20.53A9.6 9.6 0 0 1 3.86 17.09"/>
         <path d="M8 12.3 10.9 15.2 16.1 9.2" stroke-linecap="round" stroke-linejoin="round"/>
       </svg>
-      <span class="brand-text">Habits</span>
+      <!-- translate="no": the name of the app, not a word to translate. -->
+      <span class="brand-text" translate="no">Habits</span>
     </h1>
     <div class="topbar-actions">
       <button id="add-habit" class="icon-button" type="button" data-icon="plus" title="New habit" aria-label="New habit"></button>
@@ -174,9 +175,9 @@
         <legend class="field-label">Frequency</legend>
         <div class="segmented wrap" role="radiogroup" aria-label="Frequency">
           <label><input type="radio" name="freq" value="daily" checked><span>Daily</span></label>
-          <label><input type="radio" name="freq" value="times_per_week"><span>x per week</span></label>
+          <label><input type="radio" name="freq" value="times_per_week"><span>Times per week</span></label>
           <label><input type="radio" name="freq" value="weekdays"><span>Weekdays</span></label>
-          <label><input type="radio" name="freq" value="every_n_days"><span>Every n days</span></label>
+          <label><input type="radio" name="freq" value="custom_interval"><span>Custom interval</span></label>
         </div>
       </fieldset>
 
@@ -193,7 +194,43 @@
         <div id="weekday-choices" class="weekdays"></div>
       </div>
 
-      <div class="field row" data-when-freq="every_n_days" hidden>
+      <div class="field" data-when-freq="weekdays" hidden>
+        <label>
+          <span class="field-label">Repeat</span>
+          <select name="weekRepeat" class="select" autocomplete="off">
+            <option value="weekly">Every week</option>
+            <option value="interval">Every few weeks</option>
+            <option value="monthly">Once a month</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="field row" data-when-freq="weekdays" data-when-repeat="interval" hidden>
+        <label class="grow">
+          <span class="field-label">Every … weeks</span>
+          <input name="weekInterval" type="number" min="2" max="52" step="1" value="4" inputmode="numeric">
+        </label>
+        <label class="grow">
+          <span class="field-label">Starting on</span>
+          <input name="weekAnchorDate" type="date">
+        </label>
+      </div>
+
+      <div class="field" data-when-freq="weekdays" data-when-repeat="monthly" hidden>
+        <label>
+          <span class="field-label">Which one in the month</span>
+          <select name="weekOfMonth" class="select" autocomplete="off">
+            <option value="1">First</option>
+            <option value="2">Second</option>
+            <option value="3">Third</option>
+            <option value="4">Fourth</option>
+            <option value="-1">Last</option>
+          </select>
+        </label>
+        <p class="field-hint">First and Monday means the first Monday of every month.</p>
+      </div>
+
+      <div class="field row" data-when-freq="custom_interval" hidden>
         <label class="grow">
           <span class="field-label">Every … days</span>
           <input name="intervalDays" type="number" min="1" max="365" step="1" value="3" inputmode="numeric">
@@ -227,6 +264,8 @@
             aria-controls="panel-look" aria-selected="true"><span data-icon="palette">Appearance</span></button>
     <button type="button" class="tab" role="tab" id="tab-board"
             aria-controls="panel-board" aria-selected="false" tabindex="-1"><span data-icon="board">Overview</span></button>
+    <button type="button" class="tab" role="tab" id="tab-region"
+            aria-controls="panel-region" aria-selected="false" tabindex="-1"><span data-icon="globe">Language &amp; time</span></button>
     <button type="button" class="tab" role="tab" id="tab-archive"
             aria-controls="panel-archive" aria-selected="false" tabindex="-1"><span data-icon="archive">Archive</span></button>
   </div>
@@ -384,6 +423,32 @@
       <p class="field-hint" id="settings-align-hint"></p>
     </fieldset>
 
+    </div>
+
+    <div id="panel-region" class="tab-panel" role="tabpanel" aria-labelledby="tab-region" hidden>
+    <div class="field">
+      <label>
+        <span class="field-label">Language</span>
+        <!-- Each language is named in itself, so whoever cannot read the
+             current one still finds their own. -->
+        <select id="settings-language" class="select" autocomplete="off">
+          <option value="system">Browser language</option>
+          <option value="en" lang="en">English</option>
+          <option value="de" lang="de">Deutsch</option>
+        </select>
+      </label>
+      <p class="field-hint">The page reloads to switch the language.</p>
+    </div>
+
+    <div class="field">
+      <label>
+        <span class="field-label">Time zone</span>
+        <!-- Filled by settings.js from the zones the browser knows. -->
+        <select id="settings-timezone" class="select" autocomplete="off"></select>
+      </label>
+      <p class="field-hint" id="settings-timezone-hint"></p>
+      <button type="button" class="button" id="settings-timezone-device" hidden></button>
+    </div>
     </div>
 
     <div id="panel-archive" class="tab-panel" role="tabpanel" aria-labelledby="tab-archive" hidden>

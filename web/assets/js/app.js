@@ -15,6 +15,7 @@ import { initValueDialog } from "./value.js";
 import { initSearch, openSearch } from "./search.js";
 import * as actions from "./actions.js";
 import { paintIcons } from "./icons.js";
+import { translateDocument } from "./i18n.js";
 
 // Three choices: the two explicit ones and "system", which hands the decision
 // to the device. The stylesheet turns each into a color-scheme.
@@ -149,6 +150,9 @@ function initServiceWorker() {
 }
 
 async function main() {
+  // First of all, so every view that reads a caption out of the markup reads
+  // it in the page's language.
+  translateDocument();
   // Before the views wire themselves up, so every declared icon is in place.
   paintIcons();
   // Before the board, so a change that alters the column width - the density,

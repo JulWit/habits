@@ -12,6 +12,7 @@ import { openEditor } from "./editor.js";
 import { openValueDialog } from "./value.js";
 import { formatRelative } from "./dates.js";
 import * as H from "./habit.js";
+import { t } from "./i18n.js";
 
 /** Set by app.js: reloads the whole state and reports the active route. */
 let deps = { refresh: async () => {}, currentHabitId: () => null, goHome: () => {} };
@@ -128,12 +129,12 @@ async function writeEntry(habit, iso, value) {
   // Ticking a habit raises no toast on purpose, so this is the only thing a
   // screen reader gets told about a tap.
   announce(value === 0
-    ? `${habit.name}, ${when}: cleared`
+    ? t("{name}, {when}: cleared", { name: habit.name, when })
     : `${habit.name}, ${when}: ${H.formatValue(habit, value)}`);
   // Undo would write the old value back onto a day that no longer takes one,
   // and the server would refuse it — so clearing such a day is final.
   if (!H.acceptsEntry(habit, iso)) {
-    toast(`Entry cleared: ${habit.name}, ${when}`);
+    toast(t("Entry cleared: {name}, {when}", { name: habit.name, when }));
     return;
   }
   record({
@@ -141,7 +142,7 @@ async function writeEntry(habit, iso, value) {
     // Only clearing a day interrupts with a toast; ticking something off is
     // not destructive and should stay quiet.
     silent: !cleared,
-    toastLabel: `Entry cleared: ${habit.name}, ${when}`,
+    toastLabel: t("Entry cleared: {name}, {when}", { name: habit.name, when }),
     undo: () => api.setEntry(habit.id, iso, result.previous),
     redo: () => api.setEntry(habit.id, iso, value),
   });
@@ -154,7 +155,7 @@ export function createHabit() {
     const created = await api.createHabit(input);
     upsertHabit(created);
     record({
-      label: `"${created.name}" created`,
+      label: t("\"{name}\" created", { name: created.name }),
       silent: true,
       undo: async () => {
         await api.deleteHabit(created.id);
@@ -162,7 +163,7 @@ export function createHabit() {
       },
       redo: async () => upsertHabit(await api.restoreHabit(created.id)),
     });
-    toast(`"${created.name}" created`);
+    toast(t("\"{name}\" created", { name: created.name }));
   });
 }
 
@@ -174,7 +175,7 @@ export function editHabit(id) {
   openEditor(habit, async (input) => {
     upsertHabit(await api.updateHabit(id, input));
     record({
-      label: `"${habit.name}" edited`,
+      label: t("\"{name}\" edited", { name: habit.name }),
       silent: true,
       undo: async () => upsertHabit(await api.updateHabit(id, before)),
       redo: async () => upsertHabit(await api.updateHabit(id, input)),
@@ -218,7 +219,7 @@ export async function deleteHabit(id) {
   // Deletion is soft on the server, so undo brings the habit back with its
   // whole history instead of recreating an empty one.
   record({
-    label: `"${habit.name}" deleted`,
+    label: t("\"{name}\" deleted", { name: habit.name }),
     undo: async () => upsertHabit(await api.restoreHabit(id)),
     redo: async () => {
       await api.deleteHabit(id);
@@ -243,7 +244,9 @@ export async function toggleArchive(id) {
   await deps.refresh();
 
   record({
-    label: archived ? `"${name}" archived` : `"${name}" reactivated`,
+    label: archived
+      ? t("\"{name}\" archived", { name })
+      : t("\"{name}\" reactivated", { name }),
     undo: async () => {
       await api.updateHabit(id, { archived: !archived });
       await deps.refresh();
@@ -277,7 +280,7 @@ export async function createCategory(name) {
   }
   upsertCategory(created);
   record({
-    label: `Category "${created.name}" created`,
+    label: t("Category \"{name}\" created", { name: created.name }),
     silent: true,
     undo: async () => {
       await api.deleteCategory(created.id);
@@ -285,7 +288,7 @@ export async function createCategory(name) {
     },
     redo: async () => upsertCategory(await api.restoreCategory(created.id)),
   });
-  toast(`Category "${created.name}" created`);
+  toast(t("Category \"{name}\" created", { name: created.name }));
   // Returned so the picker can select the category it just created.
   return created;
 }
@@ -411,7 +414,7 @@ export async function updateCategory(id, { name, color, icon, showProgress }) {
 
   upsertCategory(await api.updateCategory(id, after));
   record({
-    label: `Category "${before.name}" edited`,
+    label: t("Category \"{name}\" edited", { name: before.name }),
     silent: true,
     undo: async () => upsertCategory(await api.updateCategory(id, before)),
     redo: async () => upsertCategory(await api.updateCategory(id, after)),
@@ -438,8 +441,10 @@ export async function deleteCategory(id) {
 
   record({
     label: affected === 0
-      ? `Category "${category.name}" deleted`
-      : `Category "${category.name}" deleted — ${affected} habit${affected === 1 ? "" : "s"} kept`,
+      ? t("Category \"{name}\" deleted", { name: category.name })
+      : affected === 1
+        ? t("Category \"{name}\" deleted — 1 habit kept", { name: category.name })
+        : t("Category \"{name}\" deleted — {n} habits kept", { name: category.name, n: affected }),
     undo: async () => {
       upsertCategory(await api.restoreCategory(id));
       await deps.refresh();

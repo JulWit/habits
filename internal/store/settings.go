@@ -64,6 +64,13 @@ type Settings struct {
 	// flat page there is nothing to show through.
 	SurfaceOpacity int `json:"surfaceOpacity"`
 	SurfaceBlur    int `json:"surfaceBlur"`
+	// Language is the language of the interface: "en", "de", or "system" for
+	// whichever of the two the browser asks for first.
+	Language string `json:"language"`
+	// TimeZone decides what "today" is for this user, as an IANA name such as
+	// "Europe/Berlin". Empty follows the server's HABITS_TZ, which is what
+	// every user did before the setting existed.
+	TimeZone string `json:"timeZone"`
 }
 
 // The bounds for the two background knobs. Both go the whole way: off, for a
@@ -174,6 +181,35 @@ func ValidDensity(d string) bool {
 	return false
 }
 
+// Languages are the languages the interface is translated into. "system"
+// is not one of them but a choice between them: the shell picks whichever the
+// browser's Accept-Language names first.
+var Languages = []string{"system", "en", "de"}
+
+func ValidLanguage(l string) bool {
+	for _, known := range Languages {
+		if known == l {
+			return true
+		}
+	}
+	return false
+}
+
+// ValidTimeZone accepts "" for the server's own zone, or any IANA name the
+// embedded zone database knows. "Local" is refused: it names whatever the host
+// happens to be set to, which is exactly the ambiguity a per-user zone is meant
+// to remove.
+func ValidTimeZone(tz string) bool {
+	if tz == "" {
+		return true
+	}
+	if tz == "Local" {
+		return false
+	}
+	_, err := time.LoadLocation(tz)
+	return err == nil
+}
+
 // MaxOverviewDays bounds the stored wish. Beyond a quarter of a year the row of
 // squares stops being readable at any window size.
 const MaxOverviewDays = 90
@@ -218,6 +254,8 @@ func DefaultSettings() Settings {
 		// What the title bar has always done by itself, now said out loud.
 		SurfaceOpacity: 88,
 		SurfaceBlur:    30,
+		Language:       "system",
+		TimeZone:       "",
 	}
 }
 
@@ -262,12 +300,12 @@ func (s *Store) getSettings(ctx context.Context, q queryer, userID string) (Sett
 	err := q.QueryRowContext(ctx,
 		`SELECT theme, overview_days, show_archived, font, reorder_mode, pattern, align_weeks,
 		        band_color, band_opacity, bg_dim, bg_blur, surface_opacity, surface_blur, density,
-		        show_band, band_fill_opacity
+		        show_band, band_fill_opacity, language, time_zone
 		 FROM user_settings WHERE user_id = ?`,
 		userID).Scan(&out.Theme, &out.OverviewDays, &out.ShowArchived, &out.Font, &out.ReorderMode,
 		&out.Pattern, &out.AlignWeeks, &out.BandColor, &out.BandOpacity,
 		&out.BackgroundDim, &out.BackgroundBlur, &out.SurfaceOpacity, &out.SurfaceBlur, &out.Density,
-		&out.ShowBand, &out.BandFillOpacity)
+		&out.ShowBand, &out.BandFillOpacity, &out.Language, &out.TimeZone)
 	if errors.Is(err, sql.ErrNoRows) {
 		return DefaultSettings(), nil
 	}
@@ -314,6 +352,14 @@ func (s *Store) getSettings(ctx context.Context, q queryer, userID string) (Sett
 	}
 	if !ValidSurfaceBlur(out.SurfaceBlur) {
 		out.SurfaceBlur = DefaultSettings().SurfaceBlur
+	}
+	if !ValidLanguage(out.Language) {
+		out.Language = DefaultSettings().Language
+	}
+	// A zone the embedded database no longer knows falls back to the server's
+	// rather than leaving the user without a "today".
+	if !ValidTimeZone(out.TimeZone) {
+		out.TimeZone = DefaultSettings().TimeZone
 	}
 	return out, nil
 }
@@ -365,12 +411,18 @@ func (s *Store) saveSettings(ctx context.Context, q execer, userID string, in Se
 	if !ValidSurfaceBlur(in.SurfaceBlur) {
 		return invalidf("invalid surface blur %d", in.SurfaceBlur)
 	}
+	if !ValidLanguage(in.Language) {
+		return invalidf("unknown language %q", in.Language)
+	}
+	if !ValidTimeZone(in.TimeZone) {
+		return invalidf("unknown time zone %q", in.TimeZone)
+	}
 	_, err := q.ExecContext(ctx, `
 		INSERT INTO user_settings
 			(user_id, theme, overview_days, show_archived, font, reorder_mode, pattern,
 			 align_weeks, band_color, band_opacity, bg_dim, bg_blur, surface_opacity,
-			 surface_blur, density, show_band, band_fill_opacity, updated_at)
-			VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+			 surface_blur, density, show_band, band_fill_opacity, language, time_zone, updated_at)
+			VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
 		ON CONFLICT(user_id) DO UPDATE SET
 			theme = excluded.theme,
 			overview_days = excluded.overview_days,
@@ -388,10 +440,13 @@ func (s *Store) saveSettings(ctx context.Context, q execer, userID string, in Se
 			density = excluded.density,
 			show_band = excluded.show_band,
 			band_fill_opacity = excluded.band_fill_opacity,
+			language = excluded.language,
+			time_zone = excluded.time_zone,
 			updated_at = excluded.updated_at`,
 		userID, in.Theme, in.OverviewDays, in.ShowArchived, in.Font, in.ReorderMode, in.Pattern,
 		in.AlignWeeks, in.BandColor, in.BandOpacity, in.BackgroundDim, in.BackgroundBlur,
-		in.SurfaceOpacity, in.SurfaceBlur, in.Density, in.ShowBand, in.BandFillOpacity, formatTime(time.Now()))
+		in.SurfaceOpacity, in.SurfaceBlur, in.Density, in.ShowBand, in.BandFillOpacity,
+		in.Language, in.TimeZone, formatTime(time.Now()))
 	if err != nil {
 		return fmt.Errorf("saving settings: %w", err)
 	}

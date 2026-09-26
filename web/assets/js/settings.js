@@ -9,6 +9,7 @@ import { api } from "./api.js";
 import { state, replaceState, subscribe } from "./state.js";
 import { icons } from "./icons.js";
 import { errorText, toast } from "./undo.js";
+import { t, locale, userTimeZone } from "./i18n.js";
 
 let dialog;
 let themeInputs;
@@ -44,6 +45,10 @@ let surfaceBlur;
 let surfaceOpacityOut;
 let surfaceBlurOut;
 let patternImageOption;
+let languageSelect;
+let timeZoneSelect;
+let timeZoneHint;
+let timeZoneDevice;
 
 /** Set by app.js: reports how many day columns the board is really drawing. */
 let effectiveDays = () => 0;
@@ -88,6 +93,10 @@ export function initSettings(handlers = {}) {
   surfaceOpacityOut = document.getElementById("surface-opacity-out");
   surfaceBlurOut = document.getElementById("surface-blur-out");
   patternImageOption = document.getElementById("pattern-image-option");
+  languageSelect = document.getElementById("settings-language");
+  timeZoneSelect = document.getElementById("settings-timezone");
+  timeZoneHint = document.getElementById("settings-timezone-hint");
+  timeZoneDevice = document.getElementById("settings-timezone-device");
 
   const openButton = document.getElementById("open-settings");
   openButton.innerHTML = icons.gear;
@@ -169,6 +178,16 @@ export function initSettings(handlers = {}) {
   surfaceBlur.addEventListener("change",
     () => saveSetting({ surfaceBlur: Number(surfaceBlur.value) }));
 
+  languageSelect.addEventListener("change", async () => {
+    // Every text on the page was written in the old language, much of it into
+    // markup that is only built once - a reload is the one way to be sure none
+    // of it is left behind. Only after the server has the new choice, or the
+    // reload would render the old one again.
+    if (await saveSetting({ language: languageSelect.value })) location.reload();
+  });
+  timeZoneSelect.addEventListener("change", () => saveTimeZone(timeZoneSelect.value));
+  timeZoneDevice.addEventListener("click", () => saveTimeZone(deviceTimeZone()));
+
   archivedInput.addEventListener("change", async () => {
     await saveSetting({ showArchived: archivedInput.checked });
     // Unlike the theme and the day count, this one changes *which* habits the
@@ -205,16 +224,17 @@ function paint() {
   bandFillOpacity.closest(".slider").hidden = !showBandInput.checked;
   for (const input of reorderInputs) input.checked = input.value === reorder;
   reorderHint.textContent = reorder === "drag"
-    ? "Categories and habits are moved by their handle."
-    : "Categories and habits are moved with arrows — by keyboard too.";
+    ? t("Categories and habits are moved by their handle.")
+    : t("Categories and habits are moved with arrows — by keyboard too.");
   for (const input of dayInputs) input.checked = Number(input.value) === days;
 
   const shown = effectiveDays();
   daysHint.textContent = days === 0
-    ? `As many days are shown as fit in the window — currently ${shown}.`
+    ? t("As many days are shown as fit in the window — currently {n}.", { n: shown })
     : shown < days
-      ? `Only ${shown} days fit in the window right now. In a wider window it will be ${days}.`
-      : `${shown} days are shown right now.`;
+      ? t("Only {n} days fit in the window right now. In a wider window it will be {days}.",
+        { n: shown, days })
+      : t("{n} days are shown right now.", { n: shown });
 
   const aligned = state.settings?.alignWeeks ?? false;
   alignInput.checked = aligned;
@@ -222,12 +242,13 @@ function paint() {
   // contain today, so the board ignores the switch rather than paging away from
   // the current day. Said plainly instead of letting it look broken.
   alignHint.textContent = !aligned
-    ? "The overview ends on today."
+    ? t("The overview ends on today.")
     : shown < 7
-      ? `Possible from 7 columns on — ${shown} fit right now.`
-      : "The overview shows whole calendar weeks, including the remaining days of this week.";
+      ? t("Possible from 7 columns on — {n} fit right now.", { n: shown })
+      : t("The overview shows whole calendar weeks, including the remaining days of this week.");
 
   paintBackground();
+  paintRegion();
 
   const archived = state.archivedCount ?? 0;
   const on = state.settings?.showArchived ?? false;
@@ -241,8 +262,122 @@ function paint() {
   archiveTab.hidden = archiveField.hidden;
   if (archiveField.hidden && openTab === "tab-archive") showTab("tab-look");
   archiveHint.textContent = archived === 1
-    ? "1 habit is archived."
-    : `${archived} habits are archived.`;
+    ? t("1 habit is archived.")
+    : t("{n} habits are archived.", { n: archived });
+}
+
+// ---------- region & language ----------
+
+/** The zone the browser runs in, or "" if it will not say. */
+function deviceTimeZone() {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone ?? "";
+  } catch {
+    return "";
+  }
+}
+
+/**
+ * Every zone the browser can name, for the list.
+ *
+ * Taken from the browser rather than shipped: it is the same IANA database the
+ * server embeds, and the server still has the last word on every name. Older
+ * browsers without supportedValuesOf get a short list around the zones that
+ * matter here, which is better than no choice at all.
+ */
+function knownTimeZones() {
+  try {
+    return Intl.supportedValuesOf("timeZone");
+  } catch {
+    return ["UTC", "Europe/Berlin", "Europe/London", "America/New_York"];
+  }
+}
+
+/**
+ * The time-zone list: the server's zone first, then every zone grouped by the
+ * part of the world before its slash - four hundred entries in one flat list
+ * would be a scroll through the alphabet.
+ *
+ * Built once; after that only the selection changes.
+ */
+function buildTimeZoneOptions() {
+  if (timeZoneSelect.options.length > 0) return;
+  const server = document.createElement("option");
+  server.value = "";
+  timeZoneSelect.append(server);
+
+  const groups = new Map();
+  for (const zone of knownTimeZones()) {
+    const region = zone.includes("/") ? zone.slice(0, zone.indexOf("/")) : t("Other");
+    if (!groups.has(region)) groups.set(region, []);
+    groups.get(region).push(zone);
+  }
+  for (const [region, zones] of groups) {
+    const group = document.createElement("optgroup");
+    group.label = region;
+    for (const zone of zones) {
+      const option = document.createElement("option");
+      option.value = zone;
+      // "America/Argentina/Buenos_Aires" reads better without the underscores
+      // and with the region it is already filed under left off.
+      option.textContent = zone.slice(zone.indexOf("/") + 1).replaceAll("_", " ").replaceAll("/", " / ");
+      group.append(option);
+    }
+    timeZoneSelect.append(group);
+  }
+}
+
+function paintRegion() {
+  languageSelect.value = state.settings?.language ?? "system";
+
+  buildTimeZoneOptions();
+  const server = state.serverTimeZone ?? "";
+  // "Local" is what the server calls a zone it took from the host without a
+  // name; saying so is more honest than inventing one.
+  timeZoneSelect.options[0].textContent = server && server !== "Local"
+    ? t("Server default ({zone})", { zone: server })
+    : t("Server default");
+
+  const chosen = state.settings?.timeZone ?? "";
+  // A zone the browser does not list (an older alias, say) is still the one in
+  // force, so it gets an entry of its own rather than the select showing a lie.
+  if (chosen && ![...timeZoneSelect.options].some((o) => o.value === chosen)) {
+    const option = document.createElement("option");
+    option.value = chosen;
+    option.textContent = chosen;
+    timeZoneSelect.append(option);
+  }
+  timeZoneSelect.value = chosen;
+
+  timeZoneHint.textContent = timeZoneText();
+
+  // Offered only when it would change something: the device sits in another
+  // zone than the one in force.
+  const device = deviceTimeZone();
+  const inForce = chosen || server;
+  timeZoneDevice.hidden = !device || device === inForce;
+  timeZoneDevice.textContent = t("Use this device's time zone ({zone})", { zone: device });
+}
+
+/** "Decides when a new day begins. It is 15:42 there now." */
+function timeZoneText() {
+  let now = "";
+  try {
+    now = new Date().toLocaleTimeString(locale,
+      { hour: "2-digit", minute: "2-digit", timeZone: userTimeZone() });
+  } catch {
+    // A zone the browser cannot format simply goes without the clock.
+  }
+  const lead = t("Decides when a new day begins on the board.");
+  return now ? `${lead} ${t("It is {time} there now.", { time: now })}` : lead;
+}
+
+/**
+ * Writes the zone and fetches the state again: the server counts "today" in
+ * it, so the board may now be a day further on or back.
+ */
+async function saveTimeZone(zone) {
+  if (await saveSetting({ timeZone: zone })) await reload();
 }
 
 /**
@@ -313,11 +448,11 @@ function paintBandChoices(chosen) {
       b.setAttribute("role", "radio");
       if (color === NEUTRAL_BAND) {
         b.style.background = "var(--today-neutral)";
-        b.setAttribute("aria-label", "Neutral");
-        b.title = "Neutral";
+        b.setAttribute("aria-label", t("Neutral"));
+        b.title = t("Neutral");
       } else {
         b.style.background = color;
-        b.setAttribute("aria-label", `Colour ${color}`);
+        b.setAttribute("aria-label", t("Colour {color}", { color }));
       }
       return b;
     }));
@@ -333,6 +468,9 @@ function paintBandChoices(chosen) {
  * Goes through replaceState rather than touching state.settings directly:
  * a direct write would change the value without notifying subscribers, and the
  * board would keep drawing the old one.
+ *
+ * Resolves to whether the server took the change, for the settings that have
+ * more to do once it has.
  */
 async function saveSetting(patch) {
   const before = { ...state.settings };
@@ -342,9 +480,11 @@ async function saveSetting(patch) {
   try {
     replaceState({ settings: await api.saveSettings(patch) });
     if (errorBox) errorBox.hidden = true;
+    return true;
   } catch (err) {
     replaceState({ settings: before });
     report(errorText(err));
+    return false;
   }
 }
 
@@ -400,7 +540,7 @@ async function uploadBackground(file) {
   // after it has been carried across the network; everything else - the format,
   // the dimensions - the server decides, because only it sees the bytes.
   if (file.size > 12 * 1024 * 1024) {
-    report("The image may be at most 12 MB.");
+    report(t("The image may be at most 12 MB."));
     return;
   }
   bgFile.disabled = true;

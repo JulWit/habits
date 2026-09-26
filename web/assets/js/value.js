@@ -5,6 +5,7 @@ import { formatRelative } from "./dates.js";
 import { state } from "./state.js";
 import * as H from "./habit.js";
 import { errorText, toast } from "./undo.js";
+import { t, locale } from "./i18n.js";
 
 let dialog;
 let form;
@@ -89,7 +90,7 @@ function paintQuick(habit) {
     const b = document.createElement("button");
     b.type = "button";
     b.className = "button";
-    b.textContent = (offset < 0 ? "−" : "+") + Math.abs(offset).toLocaleString("en-GB");
+    b.textContent = (offset < 0 ? "−" : "+") + Math.abs(offset).toLocaleString(locale);
     b.addEventListener("click", () => setValue((Number(input.value) || 0) + offset));
     return b;
   }));
@@ -110,7 +111,9 @@ export function openValueDialog(habit, iso, handler) {
   // make the browser reject a 7 that was typed into a habit counted in fives.
   input.step = scale === 1 ? "1" : "any";
   input.inputMode = scale === 1 ? "numeric" : "decimal";
-  input.setAttribute("aria-label", `Value${H.unitLabel(habit) ? ` in ${unitName(habit)}` : ""}`);
+  input.setAttribute("aria-label", H.unitLabel(habit)
+    ? t("Value in {unit}", { unit: unitName(habit) })
+    : t("Value"));
 
   paintQuick(habit);
 
@@ -123,7 +126,7 @@ export function openValueDialog(habit, iso, handler) {
 
 /** The line under the stepper: the target, plus the step when it says anything. */
 function hintFor(habit) {
-  const goal = `Daily target: ${H.formatValue(habit, H.target(habit))}`;
+  const goal = t("Daily target: {target}", { target: H.formatValue(habit, H.target(habit)) });
   // A count of one is what everyone assumes anyway; every other step is worth
   // spelling out.
   if (habit.kind === "count" && currentStep === 1) return goal;
@@ -132,7 +135,7 @@ function hintFor(habit) {
   // a kilometre reads as 0.5 km here, so the hint matches what the buttons do
   // to the number above it.
   const unit = { distance: " km", time: " min" }[habit.kind] ?? "";
-  return `${goal} · step: ${currentStep.toLocaleString("en-GB")}${unit}`;
+  return t("{goal} · step: {step}", { goal, step: `${currentStep.toLocaleString(locale)}${unit}` });
 }
 
 /** What the number in the box is measured in, for the field's accessible name. */

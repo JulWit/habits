@@ -6,6 +6,7 @@
 import { subscribe, groupedHabits } from "./state.js";
 import { habitIconBadge, categoryIconBadge } from "./icons.js";
 import * as H from "./habit.js";
+import { t } from "./i18n.js";
 
 let dialog;
 let input;
@@ -129,7 +130,9 @@ function option(entry, index) {
   meta.className = "search-option-meta";
   meta.textContent = entry.kind === "habit"
     ? entry.category?.name ?? H.describeHabit(entry.item)
-    : entry.habits.length === 1 ? "Category · 1 habit" : `Category · ${entry.habits.length} habits`;
+    : entry.habits.length === 1
+      ? t("Category · 1 habit")
+      : t("Category · {n} habits", { n: entry.habits.length });
 
   el.append(dot, name, meta);
   if (entry.kind === "habit" && entry.item.archivedAt) el.classList.add("is-archived");

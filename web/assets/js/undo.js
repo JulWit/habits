@@ -5,6 +5,8 @@
 // change. That keeps undo correct across reloads of *other* clients and means
 // the history never disagrees with the database.
 
+import { t } from "./i18n.js";
+
 const MAX_HISTORY = 50;
 
 const undoStack = [];
@@ -30,7 +32,7 @@ export function record(action) {
 
   if (!action.silent) {
     toast(action.toastLabel ?? action.label, {
-      actionLabel: "Undo",
+      actionLabel: t("Undo"),
       onAction: undoLast,
     });
   }
@@ -51,7 +53,7 @@ export async function undoLast() {
     await action.undo();
     redoStack.push(action);
     await onChange();
-    toast(`Undone: ${action.label}`, { actionLabel: "Redo", onAction: redoLast });
+    toast(t("Undone: {label}", { label: action.label }), { actionLabel: t("Redo"), onAction: redoLast });
   } catch (err) {
     // The action is put back so the user can try again rather than silently
     // losing a step of history.
@@ -67,7 +69,7 @@ export async function redoLast() {
     await action.redo();
     undoStack.push(action);
     await onChange();
-    toast(`Redone: ${action.label}`, { actionLabel: "Undo", onAction: undoLast });
+    toast(t("Redone: {label}", { label: action.label }), { actionLabel: t("Undo"), onAction: undoLast });
   } catch (err) {
     redoStack.push(action);
     toast(errorText(err), { error: true });
@@ -75,7 +77,9 @@ export async function redoLast() {
 }
 
 export function errorText(err) {
-  return err?.message ? String(err.message) : "Unknown error";
+  // Through the dictionary as well: the server's messages are fixed English
+  // sentences, and the common ones have a translation there.
+  return err?.message ? t(String(err.message)) : t("Unknown error");
 }
 
 const DEFAULT_TIMEOUT = 7000;
@@ -121,7 +125,7 @@ export function toast(text, opts = {}) {
   const close = document.createElement("button");
   close.type = "button";
   close.className = "icon-button";
-  close.setAttribute("aria-label", "Close");
+  close.setAttribute("aria-label", t("Close"));
   close.textContent = "×";
   close.addEventListener("click", dismiss);
   el.append(close);

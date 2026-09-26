@@ -409,6 +409,23 @@ var migrations = []string{
 	// Categories can take a colour for their icon. Empty is neutral ink, which
 	// is how every existing category has been drawn so far.
 	`ALTER TABLE categories ADD COLUMN color TEXT NOT NULL DEFAULT '';`,
+
+	// The "every n days" frequency is now called "custom interval". Only the
+	// stored string changes; interval and anchor date stay as they were.
+	`UPDATE habits SET freq_kind = 'custom_interval' WHERE freq_kind = 'every_n_days';`,
+
+	// Chosen weekdays can be narrowed to every n-th week or to the n-th
+	// occurrence in the month. Every weekday habit so far was weekly, which is
+	// an interval of one; the other frequencies leave both at zero.
+	`ALTER TABLE habits ADD COLUMN freq_week_interval INTEGER NOT NULL DEFAULT 0;
+	 ALTER TABLE habits ADD COLUMN freq_week_of_month INTEGER NOT NULL DEFAULT 0;
+	 UPDATE habits SET freq_week_interval = 1 WHERE freq_kind = 'weekdays';`,
+
+	// The interface language and the user's own time zone. "system" follows
+	// the browser and "" the server's HABITS_TZ, so nothing changes for anyone
+	// until they choose.
+	`ALTER TABLE user_settings ADD COLUMN language TEXT NOT NULL DEFAULT 'system';
+	 ALTER TABLE user_settings ADD COLUMN time_zone TEXT NOT NULL DEFAULT '';`,
 }
 
 func (s *Store) migrate(ctx context.Context) error {

@@ -69,10 +69,10 @@ func TestValidateRejects(t *testing.T) {
 			h.Frequency = Frequency{Kind: FreqWeekdays, Weekdays: 0b10000000}
 		}},
 		{"interval 0", func(h *Habit) {
-			h.Frequency = Frequency{Kind: FreqEveryNDays, IntervalDays: 0}
+			h.Frequency = Frequency{Kind: FreqCustomInterval, IntervalDays: 0}
 		}},
 		{"interval over a year", func(h *Habit) {
-			h.Frequency = Frequency{Kind: FreqEveryNDays, IntervalDays: 366}
+			h.Frequency = Frequency{Kind: FreqCustomInterval, IntervalDays: 366}
 		}},
 		{"times per week 0", func(h *Habit) {
 			h.Frequency = Frequency{Kind: FreqTimesPerWeek, TimesPerWeek: 0}
@@ -111,11 +111,11 @@ func TestValidateClearsForeignFrequencyFields(t *testing.T) {
 	}
 }
 
-// An every-n-days habit without an anchor gets its creation day, so editing it
+// A custom-interval habit without an anchor gets its creation day, so editing it
 // later cannot shift the phase of the interval.
-func TestValidateAnchorsEveryNDays(t *testing.T) {
+func TestValidateAnchorsCustomInterval(t *testing.T) {
 	h := baseHabit()
-	h.Frequency = Frequency{Kind: FreqEveryNDays, IntervalDays: 3}
+	h.Frequency = Frequency{Kind: FreqCustomInterval, IntervalDays: 3}
 	if err := h.Validate(); err != nil {
 		t.Fatalf("Validate: %v", err)
 	}
@@ -159,7 +159,7 @@ func TestIsScheduled(t *testing.T) {
 			map[int]bool{0: true, 1: false, 4: true, 6: false}},
 		{"Sunday only", Frequency{Kind: FreqWeekdays, Weekdays: 1 << 6},
 			map[int]bool{0: false, 6: true}},
-		{"every 3 days from Monday", Frequency{Kind: FreqEveryNDays, IntervalDays: 3, AnchorDate: mon},
+		{"every 3 days from Monday", Frequency{Kind: FreqCustomInterval, IntervalDays: 3, AnchorDate: mon},
 			map[int]bool{0: true, 1: false, 2: false, 3: true, 6: true}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -175,12 +175,88 @@ func TestIsScheduled(t *testing.T) {
 	}
 }
 
+func TestIsScheduledNarrowedWeekdays(t *testing.T) {
+	d := func(month time.Month, day int) Date { return Date{2026, month, day} }
+	for _, tc := range []struct {
+		name string
+		freq Frequency
+		want map[Date]bool
+	}{
+		// Mondays in September 2026: 7, 14, 21, 28. The anchor is a Wednesday,
+		// so the Monday of its own week lies before it and is not due.
+		{"Mondays every 4 weeks from Wed 9 Sep",
+			Frequency{Kind: FreqWeekdays, Weekdays: 1 << 0, WeekInterval: 4, AnchorDate: d(9, 9)},
+			map[Date]bool{d(9, 7): false, d(9, 14): false, d(10, 5): true, d(11, 2): true, d(10, 12): false}},
+		{"first Monday of the month",
+			Frequency{Kind: FreqWeekdays, Weekdays: 1 << 0, WeekOfMonth: 1},
+			map[Date]bool{d(9, 7): true, d(9, 14): false, d(10, 5): true, d(10, 12): false, d(9, 8): false}},
+		{"second Tuesday of the month",
+			Frequency{Kind: FreqWeekdays, Weekdays: 1 << 1, WeekOfMonth: 2},
+			map[Date]bool{d(9, 1): false, d(9, 8): true, d(9, 15): false}},
+		// Mondays in August 2026: 3, 10, 17, 24, 31 - the last is the fifth.
+		{"last Monday of the month",
+			Frequency{Kind: FreqWeekdays, Weekdays: 1 << 0, WeekOfMonth: LastWeekOfMonth},
+			map[Date]bool{d(8, 24): false, d(8, 31): true, d(9, 21): false, d(9, 28): true}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			h := baseHabit()
+			h.Frequency = tc.freq
+			for day, want := range tc.want {
+				if got := h.IsScheduled(day); got != want {
+					t.Errorf("%v (%v): scheduled = %v, want %v", day, day.Weekday(), got, want)
+				}
+			}
+		})
+	}
+}
+
+func TestValidateNarrowedWeekdays(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		freq    Frequency
+		wantErr bool
+	}{
+		{"interval 53", Frequency{Kind: FreqWeekdays, Weekdays: 1, WeekInterval: 53}, true},
+		{"week of month 5", Frequency{Kind: FreqWeekdays, Weekdays: 1, WeekOfMonth: 5}, true},
+		{"both at once", Frequency{Kind: FreqWeekdays, Weekdays: 1, WeekInterval: 2, WeekOfMonth: 1}, true},
+		{"last", Frequency{Kind: FreqWeekdays, Weekdays: 1, WeekOfMonth: LastWeekOfMonth}, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			h := baseHabit()
+			h.Frequency = tc.freq
+			if err := h.Validate(); (err != nil) != tc.wantErr {
+				t.Errorf("Validate = %v, want error %v", err, tc.wantErr)
+			}
+		})
+	}
+
+	// An old client sends no interval: that is weekly, and weekly keeps no anchor.
+	h := baseHabit()
+	h.Frequency = Frequency{Kind: FreqWeekdays, Weekdays: 1, AnchorDate: Date{2026, time.January, 1}}
+	if err := h.Validate(); err != nil {
+		t.Fatalf("Validate: %v", err)
+	}
+	if h.Frequency.WeekInterval != 1 || !h.Frequency.AnchorDate.IsZero() {
+		t.Errorf("frequency = %+v, want interval 1 and no anchor", h.Frequency)
+	}
+
+	// Every n weeks without an anchor starts in the week the habit was created.
+	h = baseHabit()
+	h.Frequency = Frequency{Kind: FreqWeekdays, Weekdays: 1, WeekInterval: 4}
+	if err := h.Validate(); err != nil {
+		t.Fatalf("Validate: %v", err)
+	}
+	if want := DateFromTime(h.CreatedAt); h.Frequency.AnchorDate != want {
+		t.Errorf("anchor = %v, want %v", h.Frequency.AnchorDate, want)
+	}
+}
+
 // Days before the anchor are not due: the schedule starts, it does not extend
 // backwards.
-func TestEveryNDaysIsNotDueBeforeItsAnchor(t *testing.T) {
+func TestCustomIntervalIsNotDueBeforeItsAnchor(t *testing.T) {
 	anchor := Date{2026, time.September, 14}
 	h := baseHabit()
-	h.Frequency = Frequency{Kind: FreqEveryNDays, IntervalDays: 3, AnchorDate: anchor}
+	h.Frequency = Frequency{Kind: FreqCustomInterval, IntervalDays: 3, AnchorDate: anchor}
 	if h.IsScheduled(anchor.AddDays(-3)) {
 		t.Error("a day before the anchor must not be due")
 	}

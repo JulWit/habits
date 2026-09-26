@@ -53,6 +53,10 @@ type stateResponse struct {
 	// and the page appends it to the URL so a new upload is never served from
 	// the entry the old one left in the cache.
 	BackgroundVersion string `json:"backgroundVersion"`
+	// ServerTimeZone is the zone "today" follows for a user who has not chosen
+	// one of their own (HABITS_TZ). The settings dialog names it, so "server
+	// default" means something.
+	ServerTimeZone string `json:"serverTimeZone"`
 }
 
 // entryWindowDays is how much history the overview ships. It covers the heatmap
@@ -101,7 +105,7 @@ func (s *Server) handleState(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	today := s.today()
+	today := domain.Today(s.location(settings))
 	from := today.AddDays(-(entryWindowDays - 1))
 	// Paging back through the board eventually leaves the default window. The
 	// client then repeats the request with the day it wants to reach, and gets
@@ -144,6 +148,7 @@ func (s *Server) handleState(w http.ResponseWriter, r *http.Request) {
 		BlurAtFull:        store.BackgroundBlurAtFull,
 		EntriesFrom:       from,
 		BackgroundVersion: bgVersion,
+		ServerTimeZone:    s.cfg.Location.String(),
 	})
 }
 
@@ -186,7 +191,7 @@ func (s *Server) loadView(r *http.Request, userID, habitID string) (habitView, e
 	if err != nil {
 		return habitView{}, err
 	}
-	return s.viewFor(h, entries, s.today(), domain.Date{}), nil
+	return s.viewFor(h, entries, s.todayFor(r.Context(), userID), domain.Date{}), nil
 }
 
 func (s *Server) handleGetHabit(w http.ResponseWriter, r *http.Request) {
@@ -275,7 +280,7 @@ func (s *Server) handleCreateHabit(w http.ResponseWriter, r *http.Request) {
 		s.writeStoreError(w, err, "creating habit")
 		return
 	}
-	writeJSON(w, http.StatusCreated, s.viewFor(h, nil, s.today(), domain.Date{}))
+	writeJSON(w, http.StatusCreated, s.viewFor(h, nil, s.todayFor(r.Context(), user.ID), domain.Date{}))
 }
 
 func (s *Server) handleUpdateHabit(w http.ResponseWriter, r *http.Request) {

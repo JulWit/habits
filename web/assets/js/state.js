@@ -79,6 +79,8 @@ export function setEntryLocal(habitId, date, value, answer) {
   if (answer) {
     habit.stats = answer.stats;
     habit.streakRuns = answer.streakRuns ?? [];
+    // The server moves the habit's timestamp on with every write.
+    if (answer.updatedAt) habit.updatedAt = answer.updatedAt;
   }
   notify();
 }

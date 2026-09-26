@@ -3,6 +3,7 @@ package httpapi
 import (
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/JulWit/habits/internal/auth"
 	"github.com/JulWit/habits/internal/domain"
@@ -24,6 +25,9 @@ type setEntryResponse struct {
 	// StreakRuns travel with every write: one tick can start, extend, join or
 	// end a run, and the board has to recolour without a full reload.
 	StreakRuns []domain.StreakRun `json:"streakRuns"`
+	// UpdatedAt is the habit's own timestamp, which every write moves on. The
+	// detail view shows it as the last change.
+	UpdatedAt time.Time `json:"updatedAt"`
 }
 
 func (s *Server) handleSetEntry(w http.ResponseWriter, r *http.Request) {
@@ -41,7 +45,7 @@ func (s *Server) handleSetEntry(w http.ResponseWriter, r *http.Request) {
 	user := auth.MustUser(r.Context())
 	habitID := r.PathValue("id")
 
-	today := s.today()
+	today := s.todayFor(r.Context(), user.ID)
 	// Days ahead are allowed: a run that is already planned, a week filled in
 	// before a holiday. Only the horizon is capped, so a stray date cannot
 	// scatter entries into the next decade.
@@ -82,6 +86,7 @@ func (s *Server) handleSetEntry(w http.ResponseWriter, r *http.Request) {
 		Previous:   previous,
 		Stats:      view.Stats,
 		StreakRuns: view.StreakRuns,
+		UpdatedAt:  view.UpdatedAt,
 	})
 }
 
@@ -116,6 +121,9 @@ func (s *Server) handleUpdateSettings(w http.ResponseWriter, r *http.Request) {
 		BackgroundBlur *int `json:"backgroundBlur"`
 		SurfaceOpacity *int `json:"surfaceOpacity"`
 		SurfaceBlur    *int `json:"surfaceBlur"`
+
+		Language *string `json:"language"`
+		TimeZone *string `json:"timeZone"`
 	}
 	if !decodeJSON(w, r, &in) {
 		return
@@ -196,6 +204,16 @@ func (s *Server) handleUpdateSettings(w http.ResponseWriter, r *http.Request) {
 				store.MaxSurfaceBlur))
 		return
 	}
+	if in.Language != nil && !store.ValidLanguage(*in.Language) {
+		writeError(w, http.StatusUnprocessableEntity,
+			fmt.Sprintf("language must be one of %v", store.Languages))
+		return
+	}
+	if in.TimeZone != nil && !store.ValidTimeZone(*in.TimeZone) {
+		writeError(w, http.StatusUnprocessableEntity,
+			fmt.Sprintf("unknown time zone %q", *in.TimeZone))
+		return
+	}
 
 	// Read and write in one transaction: the dialog writes every control the
 	// moment it moves, so two settings can be in flight at once and a
@@ -217,6 +235,8 @@ func (s *Server) handleUpdateSettings(w http.ResponseWriter, r *http.Request) {
 		setIf(&cur.BackgroundBlur, in.BackgroundBlur)
 		setIf(&cur.SurfaceOpacity, in.SurfaceOpacity)
 		setIf(&cur.SurfaceBlur, in.SurfaceBlur)
+		setIf(&cur.Language, in.Language)
+		setIf(&cur.TimeZone, in.TimeZone)
 		return nil
 	})
 	if err != nil {

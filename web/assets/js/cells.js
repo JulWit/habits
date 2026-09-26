@@ -5,6 +5,7 @@ import { dayOfMonth, WEEKDAY_SHORT, weekdayIndex, formatRelative, formatLong } f
 import { state } from "./state.js";
 import { habitIconBadge, icons } from "./icons.js";
 import * as H from "./habit.js";
+import { t } from "./i18n.js";
 
 const CHECK_SVG =
   '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5 10 17.5 19 7" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>';
@@ -139,22 +140,23 @@ function cellLabel(habit, iso, value, scheduled, streakDays = 0) {
   // ahead reports what is planned instead.
   const ahead = iso > state.today;
   const reached = H.isComplete(habit, value);
+  const vars = { value: H.formatValue(habit, value), target: H.formatValue(habit, H.target(habit)) };
   const status = reached && !ahead
-    ? "done"
+    ? t("done")
     : reached && habit.kind === "check"
-      ? "planned"
+      ? t("planned")
       : reached
-        ? `${H.formatValue(habit, value)} planned`
+        ? t("{value} planned", vars)
         : value > 0
-          ? `${H.formatValue(habit, value)} of ${H.formatValue(habit, H.target(habit))}${ahead ? " planned" : ""}`
+          ? ahead ? t("{value} of {target} planned", vars) : t("{value} of {target}", vars)
           : scheduled
-            ? "open"
-            : "not scheduled";
+            ? t("open")
+            : t("not scheduled");
   // The colours of a streak are colour alone; a screen reader gets the same
   // information as a number. Only on days that actually carry one, so an
   // ordinary row does not gain a suffix on every cell.
   const run = reached && !ahead && streakDays > 0
-    ? `, day ${streakDays} of a streak`
+    ? t(", day {n} of a streak", { n: streakDays })
     : "";
   return `${habit.name}, ${when}: ${status}${run}`;
 }

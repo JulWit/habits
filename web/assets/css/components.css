@@ -380,15 +380,17 @@ html[data-scrolled="on"] .day-header-backdrop {
   display: flex;
   align-items: center;
   gap: calc(.6 * var(--space));
-  /* A margin, not padding: the heading carries the line that separates it from
-     the rows, and a border is drawn across the whole box. With padding the line
-     would run out past the card and across the handles; with a margin the box
-     itself ends where the card's surface does. The handles get that space back
+  /* A margin, not padding: the box ends where the card's surface does rather
+     than running out across the handles. The handles get that space back
      below. */
   padding: calc(.4 * var(--space)) 0 calc(.5 * var(--space)) calc(.55 * var(--space));
   margin-right: var(--tools-inset);
   margin-bottom: var(--head-gap);
-  border-bottom: 1px solid var(--border);
+  /* A row of dots under it rather than a line: it parts the heading from the
+     rows without drawing a rule across the card. Drawn rather than a dotted
+     border, which each browser renders its own way. */
+  background: radial-gradient(circle, var(--border) 1px, transparent 1.3px)
+    left bottom / 10px 3px repeat-x;
 }
 
 .block-title {
@@ -458,7 +460,7 @@ html[data-scrolled="on"] .day-header-backdrop {
   /* Flex only to line an icon up with the name; the name alone truncates. */
   display: inline-flex;
   align-items: center;
-  gap: calc(.45 * var(--space));
+  gap: calc(.5 * var(--space) + 2px);
   vertical-align: middle;
 }
 
@@ -472,7 +474,7 @@ html[data-scrolled="on"] .day-header-backdrop {
    column. In rem, not em: the heading's own type is smaller than a habit
    name, and the size has to come out the same. */
 .block-link .habit-icon {
-  --tile: calc(var(--leading) * (1rem + .74rem) + .1 * var(--space));
+  --tile: calc(.82 * (var(--leading) * (1rem + .74rem) + .1 * var(--space)));
   width: var(--tile);
   height: var(--tile);
   /* The heading is inset .15 space further than a row's label; pulled back by
@@ -629,8 +631,8 @@ html[data-scrolled="on"] .day-header-backdrop {
 .day-summary-ring {
   position: relative;
   flex: none;
-  width: 3.5rem;
-  height: 3.5rem;
+  width: 3rem;
+  height: 3rem;
 }
 
 .day-summary-ring svg {
@@ -675,8 +677,40 @@ html[data-scrolled="on"] .day-header-backdrop {
   }
 }
 
+/* Orbs are flying in: the fill is moved on by each one that lands (overview.js),
+   so it follows its value with a short transition instead of the wind-up. */
+.day-summary-ring-fill.is-filling {
+  animation: none;
+  transition: stroke-dasharray .28s cubic-bezier(.3, .7, .2, 1), opacity .2s;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .day-summary-ring-fill { animation: none; }
+}
+
+/* The orbs a habit sends to the ring when it is ticked off. A fixed layer over
+   the page, never in the way of the pointer; the script moves each orb. */
+.orb-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.orb {
+  position: absolute;
+  top: 0;
+  left: 0;
+  border-radius: 50%;
+  background: var(--habit-color);
+  box-shadow: 0 0 6px 1px color-mix(in srgb, var(--habit-color) 60%, transparent);
+  will-change: transform;
+}
+
+/* Where an orb leaves the screen for a ring scrolled out of sight. */
+.orb-flash {
+  box-shadow: 0 0 10px 3px color-mix(in srgb, var(--habit-color) 70%, transparent);
 }
 
 .day-summary-percent {
@@ -684,7 +718,7 @@ html[data-scrolled="on"] .day-header-backdrop {
   inset: 0;
   display: grid;
   place-items: center;
-  font-size: .72rem;
+  font-size: .64rem;
   font-weight: var(--weight-semibold);
   font-variant-numeric: tabular-nums;
 }
@@ -859,13 +893,13 @@ html[data-pattern="image"][data-scrolled="on"] .day-header-backdrop {
 .grid-head.is-today::before {
   content: "";
   position: absolute;
-  /* A little wider than the column, and as tall - a rounded box, with the same
-     corners as the buttons and fields. The extra covers the two-pixel gaps
-     beside the column, which is as far as it can grow without reaching under
-     the neighbouring dates. Centred on the text rather than on the cell: the
+  /* A little narrower than the column, square - a rounded box, with the same
+     corners as the buttons and fields. Kept inside the column so it does not
+     crowd the neighbouring dates.
+     Centred on the text rather than on the cell: the
      cell carries more padding below its lines than above, and the box has to
      follow the lines. */
-  width: calc(var(--cell) + 4px);
+  width: calc(.9 * var(--cell));
   aspect-ratio: 1;
   left: 50%;
   top: calc(50% - .075 * var(--space));
@@ -950,7 +984,7 @@ html[data-filtering="on"] {
 .habit-main {
   display: flex;
   align-items: center;
-  gap: calc(.5 * var(--space));
+  gap: calc(.5 * var(--space) + 2px);
   min-width: 0;
   text-align: left;
   /* Tighter at the sides than a button would normally be: every pixel here is
@@ -981,14 +1015,14 @@ html[data-filtering="on"] {
   display: grid;
   place-items: center;
   flex: none;
-  width: 2rem;
-  height: 2rem;
+  width: 1.75rem;
+  height: 1.75rem;
   border-radius: var(--radius-sm);
   background: color-mix(in srgb, var(--habit-color) 16%, transparent);
   color: var(--habit-color);
 }
 
-.habit-icon svg { width: 1.15rem; height: 1.15rem; }
+.habit-icon svg { width: 1rem; height: 1rem; }
 
 .habit-icon.is-small { width: 1.5rem; height: 1.5rem; border-radius: calc(.75 * var(--radius-sm)); }
 .habit-icon.is-small svg { width: .9rem; height: .9rem; }
@@ -996,14 +1030,14 @@ html[data-filtering="on"] {
 .habit-icon.is-large { width: 2.4rem; height: 2.4rem; }
 .habit-icon.is-large svg { width: 1.4rem; height: 1.4rem; }
 
-/* On the board the tile is exactly as tall as the name and the line under it.
+/* On the board the tile is a little shorter than the name and the line under it.
    Worked out from the same tokens that make up that height - one line of the
    name, one of .habit-meta at .74rem, the gap of .habit-text between them - so
    it follows the density setting without a number of its own. Stretching it to
    the row instead does not work: a flex item settles its width before its
    height, and an aspect-ratio then has nothing to take the size from. */
 .habit-main .habit-icon {
-  --tile: calc(var(--leading) * (1em + .74rem) + .1 * var(--space));
+  --tile: calc(.82 * (var(--leading) * (1em + .74rem) + .1 * var(--space)));
   width: var(--tile);
   height: var(--tile);
 }
@@ -1273,6 +1307,19 @@ html[data-filtering="on"] {
 }
 
 .panel h3 { font-size: .9rem; color: var(--text-muted); margin-bottom: calc(.85 * var(--space)); }
+
+/* ---------- activity ---------- */
+
+.activity-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: calc(.75 * var(--space));
+  margin: 0;
+}
+
+.activity-list dt { color: var(--text-faint); font-size: .74rem; text-transform: uppercase; letter-spacing: .05em; }
+.activity-list dd { margin: 0; font-weight: var(--weight-medium); }
+.activity-list .note { display: block; color: var(--text-muted); font-size: .85rem; font-weight: normal; }
 
 /* ---------- heatmap ---------- */
 

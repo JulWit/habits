@@ -2,8 +2,9 @@
 
 import {
   addDays, startOfWeek, daysBetween, MONTH_SHORT, MONTH_LONG, monthIndex, dayOfMonth,
-  formatFull,
+  formatFull, formatLong, formatDayMonth,
 } from "./dates.js";
+import { t, locale, userTimeZone } from "./i18n.js";
 import { state } from "./state.js";
 import * as H from "./habit.js";
 import { icons, habitIconBadge } from "./icons.js";
@@ -36,7 +37,7 @@ export function renderDetail(habit) {
   root.style.setProperty("--habit-color", habit.color);
   // The cumulative chart only makes sense where the values are a quantity: a
   // yes/no habit adds up to a count of days, which the heatmap already shows.
-  const panels = [header(habit), stats(habit), heatmap(habit)];
+  const panels = [header(habit), stats(habit), activity(habit), heatmap(habit)];
   if (H.isCountable(habit)) panels.push(cumulative(habit));
   root.replaceChildren(...panels);
   showNewest(root);
@@ -64,7 +65,7 @@ function header(habit) {
   const head = document.createElement("div");
   head.className = "detail-head";
   head.innerHTML = `
-    <button class="icon-button is-back" type="button" data-action="back" aria-label="Back">${icons.arrowLeft}</button>
+    <button class="icon-button is-back" type="button" data-action="back" aria-label="${t("Back")}">${icons.arrowLeft}</button>
     <div class="detail-title">
       <h2><span class="dot"></span><span class="name"></span></h2>
       <span class="sub"></span>
@@ -76,17 +77,17 @@ function header(habit) {
   const target = H.describeTarget(habit);
   head.querySelector(".sub").textContent =
     H.describeFrequency(habit) + (target ? ` · ${target}` : "") +
-    (habit.archivedAt ? " · archived" : "");
+    (habit.archivedAt ? ` · ${t("archived")}` : "");
 
   const archived = habit.archivedAt != null;
   const buttons = document.createElement("div");
   buttons.className = "topbar-actions";
   buttons.append(
-    actionButton("edit", "Edit", icons.edit),
+    actionButton("edit", t("Edit"), icons.edit),
     archived
-      ? actionButton("archive", "Reactivate", icons.unarchive)
-      : actionButton("archive", "Archive", icons.archive),
-    actionButton("delete", "Delete", icons.trash, "danger"),
+      ? actionButton("archive", t("Reactivate"), icons.unarchive)
+      : actionButton("archive", t("Archive", { context: "verb" }), icons.archive),
+    actionButton("delete", t("Delete"), icons.trash, "danger"),
   );
   head.append(buttons);
   wrap.append(head);
@@ -117,8 +118,8 @@ function actionButton(action, label, icon, variant = "") {
 
 /** A streak with its unit agreeing: "1 day", "6 days", "1 week". */
 function streakText(count, unit) {
-  const word = unit === "weeks" ? "week" : "day";
-  return `${count} ${word}${count === 1 ? "" : "s"}`;
+  if (unit === "weeks") return count === 1 ? t("1 week") : t("{n} weeks", { n: count });
+  return count === 1 ? t("1 day") : t("{n} days", { n: count });
 }
 
 function stats(habit) {
@@ -126,10 +127,10 @@ function stats(habit) {
   const row = document.createElement("div");
   row.className = "stat-row";
   for (const [label, value] of [
-    [`Current streak`, streakText(s.currentStreak, s.streakUnit)],
-    [`Best streak`, streakText(s.bestStreak, s.streakUnit)],
-    ["Rate (30 days)", `${Math.round(s.completionRate * 100)} %`],
-    ["Total", H.formatTotal(habit, s.total)],
+    [t("Current streak"), streakText(s.currentStreak, s.streakUnit)],
+    [t("Best streak"), streakText(s.bestStreak, s.streakUnit)],
+    [t("Rate (30 days)"), `${Math.round(s.completionRate * 100)} %`],
+    [t("Total"), H.formatTotal(habit, s.total)],
   ]) {
     const tile = document.createElement("div");
     tile.className = "stat";
@@ -141,6 +142,103 @@ function stats(habit) {
   return row;
 }
 
+/**
+ * When the habit was last done and when it was last touched at all.
+ *
+ * The two differ on purpose: "done" is the newest day that met the target -
+ * a half-finished day does not count - while "changed" is the server's own
+ * timestamp, which every tick, clear and edit moves on, including a tick on a
+ * day long past.
+ */
+function activity(habit) {
+  const panel = document.createElement("section");
+  panel.className = "panel activity";
+
+  const title = document.createElement("h3");
+  title.textContent = t("Activity");
+
+  const list = document.createElement("dl");
+  list.className = "activity-list";
+
+  const done = lastDone(habit);
+  list.append(
+    activityItem(
+      t("Last done"),
+      done ? formatLong(done) : t("Not yet"),
+      done ? daysAgo(done) : "",
+    ),
+    activityItem(
+      t("Last changed"),
+      formatStamp(habit.updatedAt),
+      timeAgo(habit.updatedAt),
+    ),
+  );
+
+  panel.append(title, list);
+  return panel;
+}
+
+function activityItem(label, value, note) {
+  const item = document.createElement("div");
+  const dt = document.createElement("dt");
+  dt.textContent = label;
+  const dd = document.createElement("dd");
+  dd.textContent = value;
+  if (note) {
+    const small = document.createElement("span");
+    small.className = "note";
+    small.textContent = note;
+    dd.append(small);
+  }
+  item.append(dt, dd);
+  return item;
+}
+
+/** The newest day up to today whose value met the target, or null. */
+function lastDone(habit) {
+  let newest = null;
+  for (const [iso, value] of Object.entries(habit.entries)) {
+    // A day ahead can carry a plan, but it has not been done yet.
+    if (iso > state.today || !H.isComplete(habit, value)) continue;
+    if (newest === null || iso > newest) newest = iso;
+  }
+  return newest;
+}
+
+/** "today", "yesterday", "5 days ago" - counted in calendar days. */
+function daysAgo(iso) {
+  const n = daysBetween(iso, state.today);
+  if (n === 0) return t("today");
+  if (n === 1) return t("yesterday");
+  return t("{n} days ago", { n });
+}
+
+/** "Sat, 26 Sep 2026, 15:42" in the user's time zone. */
+function formatStamp(stamp) {
+  const at = new Date(stamp);
+  const time = at.toLocaleTimeString(locale,
+    { hour: "2-digit", minute: "2-digit", timeZone: userTimeZone() });
+  return `${formatLong(localISO(at))}, ${time}`;
+}
+
+/** "just now", "12 min ago", "3 h ago", then whole days. */
+function timeAgo(stamp) {
+  const minutes = Math.floor((Date.now() - new Date(stamp).getTime()) / 60000);
+  if (minutes < 1) return t("just now");
+  if (minutes < 60) return t("{n} min ago", { n: minutes });
+  if (minutes < 24 * 60) return t("{n} h ago", { n: Math.floor(minutes / 60) });
+  return daysAgo(localISO(new Date(stamp)));
+}
+
+/**
+ * The calendar day a moment falls on in the user's time zone - the zone the
+ * server counts "today" in, so "yesterday" here and on the board agree. en-CA
+ * because it is the locale that writes a date the ISO way round.
+ */
+function localISO(at) {
+  return at.toLocaleDateString("en-CA",
+    { year: "numeric", month: "2-digit", day: "2-digit", timeZone: userTimeZone() });
+}
 
 function heatmap(habit) {
   const panel = document.createElement("section");
@@ -158,7 +256,7 @@ function heatmap(habit) {
   const firstWeek = startOfWeek(yearStart);
   const weeks = Math.floor(daysBetween(firstWeek, yearEnd) / 7) + 1;
 
-  title.textContent = `Year ${year}`;
+  title.textContent = t("Year {year}", { year });
   panel.append(title);
 
   const scroll = document.createElement("div");
@@ -233,17 +331,18 @@ function heatCell(habit, iso, yearStart, yearEnd) {
   // on it from the board.
   const ahead = iso > state.today;
   el.dataset.status = ahead
-    ? value > 0 ? `${H.formatValue(habit, value)} planned` : "still ahead"
+    ? value > 0 ? t("{value} planned", { value: H.formatValue(habit, value) }) : t("still ahead")
     : value > 0
-      ? `${H.formatValue(habit, value)} of ${H.formatValue(habit, H.target(habit))}`
+      ? t("{value} of {target}",
+        { value: H.formatValue(habit, value), target: H.formatValue(habit, H.target(habit)) })
       : H.isScheduled(habit, iso)
-        ? "nothing recorded"
-        : "not scheduled";
+        ? t("nothing recorded")
+        : t("not scheduled");
   // No title attribute: the custom tooltip below replaces it, and keeping both
   // would stack the browser's own tooltip on top a second later. The accessible
   // name carries the same text for anyone not using a pointer.
   el.setAttribute("role", "img");
-  const when = iso === state.today ? `Today, ${formatFull(iso)}` : formatFull(iso);
+  const when = iso === state.today ? t("Today, {date}", { date: formatFull(iso) }) : formatFull(iso);
   el.setAttribute("aria-label", `${when} — ${el.dataset.status}`);
   return el;
 }
@@ -251,14 +350,14 @@ function heatCell(habit, iso, yearStart, yearEnd) {
 function legend(yearStart, year) {
   const el = document.createElement("div");
   el.className = "heatmap-legend";
-  const from = `${dayOfMonth(yearStart)} ${MONTH_SHORT[monthIndex(yearStart)]}`;
+  const from = formatDayMonth(yearStart);
   // The grid spans the whole year, the days still ahead greyed out, so the
   // caption names the whole year too.
-  const to = `31 ${MONTH_SHORT[11]} ${year}`;
+  const to = `${formatDayMonth(`${year}-12-31`)} ${year}`;
   el.innerHTML =
-    `<span>${from} – ${to}</span><span style="flex:1"></span><span>less</span>` +
+    `<span>${from} – ${to}</span><span style="flex:1"></span><span>${t("less")}</span>` +
     [0, 1, 2, 3, 4].map((l) => `<span class="heat" data-level="${l}"></span>`).join("") +
-    `<span>more</span>`;
+    `<span>${t("more")}</span>`;
   return el;
 }
 
@@ -343,9 +442,9 @@ function initTooltip(container) {
  * before that starts, and `every` how many buckets share one label.
  */
 const GRAINS = {
-  day: { label: "Day", barMin: "9px", every: 7 },
-  week: { label: "Week", barMin: "14px", every: 4 },
-  month: { label: "Month", barMin: "24px", every: 1 },
+  day: { label: t("Day"), barMin: "9px", every: 7 },
+  week: { label: t("Week"), barMin: "14px", every: 4 },
+  month: { label: t("Month"), barMin: "24px", every: 1 },
 };
 
 /**
@@ -389,13 +488,13 @@ function grainHead(habit) {
   head.className = "cum-head";
 
   const title = document.createElement("h3");
-  title.textContent = "Cumulative";
+  title.textContent = t("Cumulative");
   head.append(title);
 
   const choices = document.createElement("div");
   choices.className = "segmented cum-grain";
   choices.setAttribute("role", "radiogroup");
-  choices.setAttribute("aria-label", "Period");
+  choices.setAttribute("aria-label", t("Period"));
   for (const [key, { label }] of Object.entries(GRAINS)) {
     const wrap = document.createElement("label");
     const input = document.createElement("input");
@@ -428,13 +527,13 @@ function cumulativeBody(habit) {
   if (summary.total === 0) {
     const empty = document.createElement("p");
     empty.className = "cum-empty";
-    empty.textContent = `No entries in ${year} yet.`;
+    empty.textContent = t("No entries in {year} yet.", { year });
     body.append(empty);
     return body;
   }
 
   body.append(
-    cumulativeSummary(habit, summary, `in ${year}`),
+    cumulativeSummary(habit, summary, t("in {year}", { year })),
     cumulativeChart(habit, summary),
   );
   return body;
@@ -448,9 +547,11 @@ function cumulativeSummary(habit, { total, best, activeDays }, scopeIn) {
   const average = Math.round(total / activeDays);
   line.append(
     strong(H.formatTotal(habit, total)),
-    text(` ${scopeIn} · avg `),
+    text(t(" {scope} · avg ", { scope: scopeIn })),
     strong(H.formatTotal(habit, average)),
-    text(` on ${activeDays} active ${activeDays === 1 ? "day" : "days"} · best day `),
+    text(activeDays === 1
+      ? t(" on 1 active day · best day ")
+      : t(" on {n} active days · best day ", { n: activeDays })),
     strong(H.formatTotal(habit, best)),
   );
   return line;
@@ -486,8 +587,9 @@ function cumulativeChart(habit, { buckets, total }) {
     // the two would end up stacked.
     col.dataset.tip = bucketName(start);
     col.dataset.status = sum > 0
-      ? `${H.formatTotal(habit, running)} · of that +${H.formatTotal(habit, sum)}`
-      : `${H.formatTotal(habit, running)} · nothing added`;
+      ? t("{total} · of that +{sum}",
+        { total: H.formatTotal(habit, running), sum: H.formatTotal(habit, sum) })
+      : t("{total} · nothing added", { total: H.formatTotal(habit, running) });
     // The bar is a picture of a number, and the tooltip is not reachable
     // without a pointer, so the same sentence is the accessible name.
     col.setAttribute("role", "img");
@@ -527,8 +629,8 @@ function cumulativeChart(habit, { buckets, total }) {
 
 /** What a bucket is called in its tooltip. */
 function bucketName(start) {
-  if (grain === "month") return `End of ${MONTH_LONG[monthIndex(start)]}`;
-  if (grain === "week") return `Week from ${dayOfMonth(start)} ${MONTH_SHORT[monthIndex(start)]}`;
+  if (grain === "month") return t("End of {month}", { month: MONTH_LONG[monthIndex(start)] });
+  if (grain === "week") return t("Week from {date}", { date: formatDayMonth(start) });
   return formatFull(start);
 }
 

@@ -1,7 +1,10 @@
 // Presentation helpers shared by the overview and the detail view.
 
-import { weekdayIndex, daysBetween, addDays, startOfWeek, WEEKDAY_SHORT } from "./dates.js";
+import {
+  weekdayIndex, daysBetween, addDays, startOfWeek, dayOfMonth, monthIndex, WEEKDAY_SHORT,
+} from "./dates.js";
 import { state } from "./state.js";
+import { t, locale } from "./i18n.js";
 
 /**
  * Whether the habit is due on a given day.
@@ -18,8 +21,8 @@ export function isScheduled(habit, iso) {
     case "times_per_week":
       return true;
     case "weekdays":
-      return (f.weekdays & (1 << weekdayIndex(iso))) !== 0;
-    case "every_n_days": {
+      return (f.weekdays & (1 << weekdayIndex(iso))) !== 0 && inScheduledWeek(f, iso);
+    case "custom_interval": {
       if (!f.intervalDays || !f.anchorDate) return false;
       const diff = daysBetween(f.anchorDate, iso);
       return diff >= 0 && diff % f.intervalDays === 0;
@@ -30,12 +33,27 @@ export function isScheduled(habit, iso) {
 }
 
 /**
+ * Whether a day on one of the chosen weekdays also falls in a week the schedule
+ * asks for. Mirrors domain.Habit.inScheduledWeek.
+ */
+function inScheduledWeek(f, iso) {
+  if (f.weekOfMonth === -1) return monthIndex(addDays(iso, 7)) !== monthIndex(iso);
+  if (f.weekOfMonth > 0) return Math.floor((dayOfMonth(iso) - 1) / 7) + 1 === f.weekOfMonth;
+  if (f.weekInterval > 1) {
+    if (!f.anchorDate || iso < f.anchorDate) return false;
+    const weeks = daysBetween(startOfWeek(f.anchorDate), startOfWeek(iso)) / 7;
+    return weeks % f.weekInterval === 0;
+  }
+  return true;
+}
+
+/**
  * Whether a value may be recorded on a day. Mirrors domain.Habit.AcceptsEntry:
- * a habit with fixed days (chosen weekdays, every n days) closes the others.
+ * a habit with fixed days (chosen weekdays, custom interval) closes the others.
  */
 export function acceptsEntry(habit, iso) {
   const kind = habit.frequency.kind;
-  if (kind === "weekdays" || kind === "every_n_days") return isScheduled(habit, iso);
+  if (kind === "weekdays" || kind === "custom_interval") return isScheduled(habit, iso);
   return true;
 }
 
@@ -77,7 +95,7 @@ export function scaleOf(kind) {
 
 /** A stored number written out, with at most one decimal place. */
 function written(habit, value) {
-  return (value / scale(habit)).toLocaleString("en-GB", { maximumFractionDigits: 1 });
+  return (value / scale(habit)).toLocaleString(locale, { maximumFractionDigits: 1 });
 }
 
 export function target(habit) {
@@ -131,7 +149,7 @@ export function unitLabel(habit) {
 /** Metres as the reader would say them: 800 m, 5 km, 12.5 km. */
 export function formatDistance(metres) {
   if (metres < 1000) return `${metres} m`;
-  return `${(Math.round(metres / 100) / 10).toLocaleString("en-GB")} km`;
+  return `${(Math.round(metres / 100) / 10).toLocaleString(locale)} km`;
 }
 
 /**
@@ -142,7 +160,7 @@ export function formatDistance(metres) {
 export function cellValue(habit, value) {
   // A kilometre with one decimal, whatever the metres say: 5.2 fits, 5200 and
   // 5.24 do not.
-  if (habit.kind === "distance") return (Math.round(value / 100) / 10).toLocaleString("en-GB");
+  if (habit.kind === "distance") return (Math.round(value / 100) / 10).toLocaleString(locale);
   return written(habit, value);
 }
 
@@ -183,7 +201,7 @@ export function formatTotal(habit, total) {
 }
 
 const formatMinutes = (minutes) =>
-  minutes.toLocaleString("en-GB", { maximumFractionDigits: 1 });
+  minutes.toLocaleString(locale, { maximumFractionDigits: 1 });
 
 /** Habits whose values are a quantity worth adding up. */
 export function isCountable(habit) {
@@ -266,21 +284,30 @@ export function describeFrequency(habit) {
   const f = habit.frequency;
   switch (f.kind) {
     case "daily":
-      return "daily";
+      return t("daily");
     case "times_per_week":
-      return `${f.timesPerWeek}× per week`;
+      return t("{n}× per week", { n: f.timesPerWeek });
     case "weekdays": {
       // Abbreviated: five spelled-out names run past the name column, and the
       // short forms are unambiguous in a line that is about a weekly rhythm.
       const days = WEEKDAY_SHORT.filter((_, i) => f.weekdays & (1 << i));
-      if (days.length === 7) return "daily";
+      if (f.weekOfMonth) {
+        const which = f.weekOfMonth === -1
+          ? t("last")
+          : [t("1st"), t("2nd"), t("3rd"), t("4th")][f.weekOfMonth - 1];
+        return t("{which} {days} of the month", { which, days: days.join(", ") });
+      }
+      if (f.weekInterval > 1) {
+        return t("{days} every {n} weeks", { days: days.join(", "), n: f.weekInterval });
+      }
+      if (days.length === 7) return t("daily");
       if (days.length === 5 && !(f.weekdays & (1 << 5)) && !(f.weekdays & (1 << 6))) {
-        return "Mon–Fri";
+        return t("Mon–Fri");
       }
       return days.join(", ");
     }
-    case "every_n_days":
-      return f.intervalDays === 1 ? "daily" : `every ${f.intervalDays} days`;
+    case "custom_interval":
+      return f.intervalDays === 1 ? t("daily") : t("every {n} days", { n: f.intervalDays });
     default:
       return "";
   }
@@ -290,22 +317,24 @@ export function describeFrequency(habit) {
 export function describeHabit(habit) {
   const parts = [];
   // Said first, because a dimmed row alone is easy to misread as merely faded.
-  if (habit.archivedAt) parts.push("Archived");
+  if (habit.archivedAt) parts.push(t("Archived"));
   // Only the daily target. The frequency was taken out: the board already shows
   // it, in the days a habit is not due on, and the detail view still spells it
   // out. A plain tick has no target, so its line is empty - see .habit-meta.
   // The streak is not part of this text: the board draws it in front as a
   // flame (see habitLabel in cells.js), and describeStreak spells it out.
-  const t = describeTarget(habit);
-  if (t) parts.push(t);
+  const goal = describeTarget(habit);
+  if (goal) parts.push(goal);
   return parts.join(" · ");
 }
 
 /** The current streak in words, e.g. "12-day streak" or "3-week streak". */
 export function describeStreak(habit) {
   const s = habit.stats;
-  const unit = s?.streakUnit === "weeks" ? "week" : "day";
-  return `${s?.currentStreak ?? 0}-${unit} streak`;
+  const n = s?.currentStreak ?? 0;
+  return s?.streakUnit === "weeks"
+    ? t("{n}-week streak", { n })
+    : t("{n}-day streak", { n });
 }
 
 /**

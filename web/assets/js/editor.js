@@ -8,6 +8,7 @@ import { errorText } from "./undo.js";
 import { openCategoryPicker } from "./categorypicker.js";
 import { icons, buildIconChoices, markIconChoice, categoryIconBadge } from "./icons.js";
 import * as H from "./habit.js";
+import { t } from "./i18n.js";
 
 let dialog;
 let form;
@@ -52,8 +53,8 @@ function paintCategory() {
   // A soft-deleted category is still a real assignment, so it is named rather
   // than shown as "none".
   label.textContent = none
-    ? "No category"
-    : categoryById(selectedCategory)?.name ?? "Deleted category";
+    ? t("No category")
+    : categoryById(selectedCategory)?.name ?? t("Deleted category");
 
   const caret = document.createElement("span");
   caret.className = "picker-caret";
@@ -93,7 +94,7 @@ function buildSwatches() {
       b.style.background = color;
       b.dataset.color = color;
       b.setAttribute("role", "radio");
-      b.setAttribute("aria-label", `Colour ${color}`);
+      b.setAttribute("aria-label", t("Colour {color}", { color }));
       b.addEventListener("click", () => selectColor(color));
       return b;
     }),
@@ -138,11 +139,15 @@ const unitsPerTyped = (kind) => H.scaleOf(kind);
 function syncVisibility() {
   const kind = form.elements.kind.value;
   const freq = form.elements.freq.value;
+  const repeat = form.elements.weekRepeat.value;
   for (const el of form.querySelectorAll("[data-when-kind]")) {
     setSectionActive(el, el.dataset.whenKind === kind);
   }
+  // A section may also wait for a repeat mode - the weeks between Mondays only
+  // matter once "every few weeks" is picked.
   for (const el of form.querySelectorAll("[data-when-freq]")) {
-    setSectionActive(el, el.dataset.whenFreq === freq);
+    const repeatMatches = !el.dataset.whenRepeat || el.dataset.whenRepeat === repeat;
+    setSectionActive(el, el.dataset.whenFreq === freq && repeatMatches);
   }
 }
 
@@ -166,8 +171,8 @@ export function openEditor(habit, handler) {
   paintCategory();
 
   const f = form.elements;
-  titleEl.textContent = habit ? "Edit habit" : "New habit";
-  submitButton.textContent = habit ? "Save" : "Create";
+  titleEl.textContent = habit ? t("Edit habit") : t("New habit");
+  submitButton.textContent = habit ? t("Save") : t("Create");
 
   f.name.value = habit?.name ?? "";
   f.kind.value = habit?.kind ?? "check";
@@ -199,6 +204,14 @@ export function openEditor(habit, handler) {
   f.intervalDays.value = freq.intervalDays || 3;
   f.anchorDate.value = freq.anchorDate || state.today;
 
+  const narrowed = freq.kind === "weekdays";
+  f.weekRepeat.value = narrowed && freq.weekOfMonth
+    ? "monthly"
+    : narrowed && freq.weekInterval > 1 ? "interval" : "weekly";
+  f.weekInterval.value = narrowed && freq.weekInterval > 1 ? freq.weekInterval : 4;
+  f.weekOfMonth.value = String(narrowed && freq.weekOfMonth ? freq.weekOfMonth : 1);
+  f.weekAnchorDate.value = (narrowed && freq.anchorDate) || state.today;
+
   const mask = freq.weekdays || 0;
   for (const b of document.querySelectorAll("#weekday-choices .weekday")) {
     b.setAttribute("aria-pressed", String((mask & (1 << Number(b.dataset.day))) !== 0));
@@ -222,7 +235,10 @@ function collect() {
     categoryId: selectedCategory,
     unit: kind === "count" ? f.unit.value.trim() : "",
     targetValue: 1,
-    frequency: { kind: f.freq.value, timesPerWeek: 0, weekdays: 0, intervalDays: 0, anchorDate: "" },
+    frequency: {
+      kind: f.freq.value, timesPerWeek: 0, weekdays: 0, intervalDays: 0,
+      weekInterval: 0, weekOfMonth: 0, anchorDate: "",
+    },
   };
 
   // An empty step field sends 0, which the server reads as "whatever this type
@@ -252,9 +268,13 @@ function collect() {
         if (b.getAttribute("aria-pressed") === "true") mask |= 1 << Number(b.dataset.day);
       }
       input.frequency.weekdays = mask;
+      const repeat = f.weekRepeat.value;
+      input.frequency.weekInterval = repeat === "interval" ? Number(f.weekInterval.value) : 1;
+      input.frequency.weekOfMonth = repeat === "monthly" ? Number(f.weekOfMonth.value) : 0;
+      if (repeat === "interval") input.frequency.anchorDate = f.weekAnchorDate.value || state.today;
       break;
     }
-    case "every_n_days":
+    case "custom_interval":
       input.frequency.intervalDays = Number(f.intervalDays.value);
       input.frequency.anchorDate = f.anchorDate.value || state.today;
       break;
@@ -270,7 +290,7 @@ async function handleSubmit(event) {
 
   const input = collect();
   if (input.frequency.kind === "weekdays" && input.frequency.weekdays === 0) {
-    return showError("Please select at least one weekday.");
+    return showError(t("Please select at least one weekday."));
   }
 
   submitButton.disabled = true;

@@ -56,7 +56,7 @@ next to the binary.
 |---|---|---|
 | `HABITS_ADDR` | `:8080` | Listen address |
 | `HABITS_DB` | `habits.db` | Path to the SQLite file |
-| `HABITS_TZ` | `Local` | Time zone that decides what "today" is (e.g. `Europe/Berlin`) |
+| `HABITS_TZ` | `Local` | Default time zone that decides what "today" is (e.g. `Europe/Berlin`); each user can choose their own in the settings |
 | `HABITS_AUTH_MODE` | `single-user` | `single-user` or `authelia` |
 | `HABITS_DEFAULT_USER` | `local` | User in `single-user` mode |
 | `HABITS_TRUSTED_PROXIES` | — | **Required** in `authelia` mode: comma-separated list of IPs/CIDRs |
@@ -65,8 +65,10 @@ next to the binary.
 | `HABITS_EMAIL_HEADER` | `Remote-Email` | Email (optional) |
 | `HABITS_GROUPS_HEADER` | `Remote-Groups` | Groups (optional) |
 
-`HABITS_TZ` is deliberately server-side: a self-hosted instance should have
-exactly one idea of which day is currently running.
+`HABITS_TZ` is the server's default: whoever has not picked a time zone under
+"Language & time" in the settings has their days counted in it. A zone of
+one's own is still decided on the server, per user, so every device of that
+user agrees on which day is currently running.
 
 ## Container
 
@@ -168,7 +170,7 @@ without identity headers.
 | New habit | `N` |
 | Find a habit or category | Magnifier in the header, `/` or `Ctrl+K`; arrow keys and `Enter` open a result |
 | Settings | Cog in the header |
-| Theme, days in the overview, archive | all in the settings dialog |
+| Theme, days in the overview, archive, language, time zone | all in the settings dialog |
 | Assign or create a category | The "Category" field in the habit editor |
 | Rename a category, set its icon, delete it | "Edit" and "Delete" on the category screen (click the block heading) |
 | Close the detail view | `Esc` |
@@ -191,8 +193,10 @@ assignment while that happens and merely slip into the "No category" block. An
 habit.
 
 **Frequencies** — `daily`, `times_per_week` (x times per week, the week starting
-on Monday), `weekdays` (bitmask, bit 0 = Monday), `every_n_days` (interval plus
-anchor date, so that an edit does not shift the phase).
+on Monday), `weekdays` (bitmask, bit 0 = Monday; optionally only every
+n-th week from an anchor date, or only the n-th or last occurrence in the
+month), `custom_interval` (interval plus anchor date, so that an edit does not
+shift the phase).
 
 **Kinds** — `check` (a tick), `count` (a count, e.g. 8 glasses), `time` (time in
 minutes) and `distance` (distance in metres). Internally every entry is one
@@ -288,6 +292,7 @@ web/                        Frontend (ES modules, no build step)
   assets/js/categorypicker.js Nested dialog for choosing a category
   assets/js/categoryeditor.js Edit dialog for a category: name and icon
   assets/js/settings.js       Settings dialog, writes every change immediately
+  assets/js/i18n.js           Translations, t(), and the user's time zone
 ```
 
 `internal/domain` knows neither database nor HTTP. The rules — when a habit is
@@ -356,6 +361,8 @@ values live server-side, per user.
 | `backgroundBlur` | 0–100 | Blurring of the same |
 | `surfaceOpacity` | 20–100 | Opacity of the cards over an image |
 | `surfaceBlur` | 0–100 | How softly they let it show through |
+| `language` | `system`, `en`, `de` | Language of the interface; `system` takes the first of the two the browser's `Accept-Language` names, English otherwise |
+| `timeZone` | `""` or an IANA name | The zone "today" is counted in; `""` follows `HABITS_TZ` |
 
 The number of days: **Automatic** fills the available width, otherwise you pick
 a fixed number. A week is the least the board shows: where seven columns do
@@ -370,6 +377,19 @@ With a fixed number the board shrinks to exactly those columns and stays centred
 in the window while it does. In "Automatic" mode it fills the width and the name
 column takes up the rest — that is the difference between "as many as possible"
 and "exactly this many".
+
+**Language** — the server renders the chosen language into `<html lang>`, and
+`web/assets/js/i18n.js` translates from there: the English text is its own key
+(`t("New habit")`), the static markup of `index.html` is translated in place on
+start-up, and a text without a translation simply stays English. Switching the
+language reloads the page, because much of the interface is only built once.
+A new language is a dictionary in `i18n.js`, its entry in `store.Languages`,
+an `<option>` in `index.html` and its day and month names in `dates.js`.
+
+**Time zone** — changes which date the server hands out as `today`, and with
+it where the board ends, which day a tap writes to and how streaks count the
+day that is still open. The list offers every zone the browser knows; the
+server checks each name against the zone database embedded in the binary.
 
 All settings live server-side per user and therefore apply on every device.
 Every change is written immediately; there is no save button, because the

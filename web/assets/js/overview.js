@@ -14,6 +14,7 @@ import * as H from "./habit.js";
 import { dayCell, habitLabel, dayEntry } from "./cells.js";
 import { icons, categoryIconBadge } from "./icons.js";
 import { enableDragReorder } from "./reorder.js";
+import { t, lang } from "./i18n.js";
 
 const LONG_PRESS_MS = 450;
 
@@ -378,13 +379,19 @@ export function render() {
   // same look the app had before categories existed.
   const labelled = all.length > 1 || all[0].category !== null;
 
+  // Read off the board that is about to be thrown away: where the habits that
+  // were just ticked off sit, and whether the ring is there to fly to.
+  const everyHabit = all.flatMap((b) => b.habits);
+  const flights = newlyDone(everyHabit);
+
   const frag = document.createDocumentFragment();
-  frag.append(dayHeader(dates), daySummary(all.flatMap((b) => b.habits)));
+  frag.append(dayHeader(dates), daySummary(everyHabit));
   for (const block of blocks) frag.append(renderBlock(block, dates, labelled));
 
   const focused = focusedControl();
   board.replaceChildren(frag);
   restoreFocus(focused);
+  for (const flight of flights) launchOrbs(flight);
 }
 
 /**
@@ -508,15 +515,15 @@ function dayNav() {
   const nav = document.createElement("div");
   nav.className = "day-nav";
 
-  const older = toolButton("page-older", icons.chevronLeft, "Earlier days");
-  const newer = toolButton("page-newer", icons.chevronRight, "Later days");
+  const older = toolButton("page-older", icons.chevronLeft, t("Earlier days"));
+  const newer = toolButton("page-newer", icons.chevronRight, t("Later days"));
   // The forward arrow stops at the horizon rather than disappearing, so the row
   // does not jump about.
   newer.disabled = offset <= -MAX_AHEAD_DAYS;
   nav.append(older, newer);
 
   if (offset !== 0) {
-    nav.append(toolButton("page-today", icons.toToday, "Back to today"));
+    nav.append(toolButton("page-today", icons.toToday, t("Back to today")));
   }
   return nav;
 }
@@ -532,7 +539,7 @@ function renderBlock({ category, habits, visible }, dates, labelled) {
   if (rows.length === 0) {
     const empty = document.createElement("p");
     empty.className = "block-empty";
-    empty.textContent = "No habit in this category yet.";
+    empty.textContent = t("No habit in this category yet.");
     section.append(empty);
     return section;
   }
@@ -584,14 +591,14 @@ function habitTools(habit, siblings) {
   if (siblings.length < 2) return tools;
 
   if (byDragging()) {
-    const grip = toolButton("drag-habit", icons.grip, "Move habit");
+    const grip = toolButton("drag-habit", icons.grip, t("Move habit"));
     grip.classList.add("drag-handle");
     grip.dataset.habit = habit.id;
     tools.append(grip);
   } else {
     const at = siblings.indexOf(habit);
-    const up = toolButton("move-habit-up", icons.chevronUp, "Move habit up");
-    const down = toolButton("move-habit-down", icons.chevronDown, "Move habit down");
+    const up = toolButton("move-habit-up", icons.chevronUp, t("Move habit up"));
+    const down = toolButton("move-habit-down", icons.chevronDown, t("Move habit down"));
     up.disabled = at === 0;
     down.disabled = at === siblings.length - 1;
     up.dataset.habit = habit.id;
@@ -622,7 +629,7 @@ function blockProgress(habits) {
 
   const wrap = document.createElement("div");
   wrap.className = "block-progress";
-  wrap.title = `${done} of ${due} done today`;
+  wrap.title = t("{done} of {due} done today", { done, due });
 
   const count = document.createElement("span");
   count.className = "block-progress-count";
@@ -638,7 +645,7 @@ function blockProgress(habits) {
   track.setAttribute("aria-valuemin", "0");
   track.setAttribute("aria-valuemax", String(due));
   track.setAttribute("aria-valuenow", String(done));
-  track.setAttribute("aria-label", "Done today");
+  track.setAttribute("aria-label", t("Done today"));
   for (let i = 0; i < due; i++) {
     const seg = document.createElement("span");
     seg.className = "block-progress-seg";
@@ -665,7 +672,7 @@ function daySummary(habits) {
 
   const el = document.createElement("section");
   el.className = "day-summary";
-  el.setAttribute("aria-label", "Today");
+  el.setAttribute("aria-label", t("Today"));
 
   const text = document.createElement("div");
   text.className = "day-summary-text";
@@ -673,7 +680,7 @@ function daySummary(habits) {
   const date = document.createElement("h2");
   date.className = "day-summary-date";
   date.textContent = `${WEEKDAY_LONG[weekdayIndex(state.today)]}, ` +
-    `${dayOfMonth(state.today)} ${MONTH_LONG[monthIndex(state.today)]}`;
+    `${dayOfMonth(state.today)}${lang === "de" ? "." : ""} ${MONTH_LONG[monthIndex(state.today)]}`;
 
   const count = document.createElement("p");
   count.className = "day-summary-count";
@@ -686,7 +693,7 @@ function daySummary(habits) {
     words.textContent = completeText(due);
     count.append(words);
   } else {
-    count.textContent = due === 0 ? "Nothing due today" : `${done} of ${due} done`;
+    count.textContent = due === 0 ? t("Nothing due today") : t("{done} of {due} done", { done, due });
   }
   text.append(date, count);
   el.append(text);
@@ -703,11 +710,11 @@ function daySummary(habits) {
  * not swap it for another.
  */
 const COMPLETE_TEXTS = [
-  (n) => `All ${n} done – a perfect day!`,
-  () => "Everything ticked off. Well done!",
-  () => "Done for today – enjoy the rest of it.",
-  (n) => `${n} of ${n}. Nothing left to do today.`,
-  () => "A clean sweep today!",
+  () => t("All habits done!"),
+  () => t("Everything ticked off. Well done!"),
+  () => t("Done for today – enjoy the rest of it."),
+  (n) => t("{n} of {n}. Nothing left to do today.", { n }),
+  () => t("A clean sweep today!"),
 ];
 
 function completeText(due) {
@@ -768,7 +775,7 @@ function progressRing(percent) {
   ring.setAttribute("aria-valuemin", "0");
   ring.setAttribute("aria-valuemax", "100");
   ring.setAttribute("aria-valuenow", String(percent));
-  ring.setAttribute("aria-label", "Done today");
+  ring.setAttribute("aria-label", t("Done today"));
 
   const ns = "http://www.w3.org/2000/svg";
   const svg = document.createElementNS(ns, "svg");
@@ -787,6 +794,19 @@ function progressRing(percent) {
   fill.setAttribute("pathLength", "100");
   svg.append(track, fill);
 
+  const label = document.createElement("span");
+  label.className = "day-summary-percent";
+  ring.append(svg, label);
+
+  // Orbs on their way: the ring holds at what it showed and is moved on by
+  // each one as it lands, instead of winding to the new value on its own.
+  if (ringHold) {
+    ringHold.target = percent;
+    fill.classList.add("is-filling");
+    showRing(ring, ringHold.shown);
+    return ring;
+  }
+
   // A keyframe animation rather than a transition: it runs from the moment the
   // new element reaches the page, with no frame to wait for in between.
   const from = lastRingPercent ?? 0;
@@ -797,13 +817,244 @@ function progressRing(percent) {
   // an empty ring fades the line out rather than leaving that dot behind.
   fill.style.setProperty("--from-opacity", from === 0 ? "0" : "1");
   fill.classList.toggle("is-empty", percent === 0);
-
-  const label = document.createElement("span");
-  label.className = "day-summary-percent";
   label.textContent = `${percent}%`;
-
-  ring.append(svg, label);
   return ring;
+}
+
+/** Sets a ring to `percent` in place, without building it anew. */
+function showRing(ring, percent) {
+  const fill = ring.querySelector(".day-summary-ring-fill");
+  fill.style.setProperty("--to", String(percent));
+  fill.classList.toggle("is-empty", percent === 0);
+  ring.querySelector(".day-summary-percent").textContent = `${Math.round(percent)}%`;
+}
+
+// ---------- ticking off: orbs into the ring ----------
+
+/**
+ * The ring while orbs are flying into it, or null.
+ *
+ * `shown` is what the ring displays, `planned` where the last orb launched will
+ * leave it, `target` the real value of the day, and `pending` the orbs still in
+ * the air. Kept outside the ring, because the ring is rebuilt on every render
+ * and the second render of a tap - the server's answer - lands mid-flight.
+ */
+let ringHold = null;
+
+/** Which habits were complete for today at the last render, and on which day. */
+let lastDone = null;
+let lastDoneDay = null;
+
+const ORBS_PER_HABIT = 6;
+
+/**
+ * The habits that became complete for today since the last render, each with
+ * the spot on the old board it was ticked at.
+ *
+ * Found by comparing rather than told by the tap, so a value typed into the
+ * dialog or a count that reaches its target fly just the same. The first
+ * render and a new day compare against nothing, and send nothing flying.
+ */
+function newlyDone(habits) {
+  const due = habits.filter((h) => !h.archivedAt && H.isScheduled(h, state.today));
+  const done = new Set(due.filter((h) => H.isComplete(h, h.entries[state.today] ?? 0)).map((h) => h.id));
+  const before = lastDoneDay === state.today ? lastDone : null;
+  lastDone = done;
+  lastDoneDay = state.today;
+  // A hidden page draws no frames, and orbs launched there would hold the ring
+  // back until it is shown again.
+  if (!before || prefersReducedMotion() || document.hidden) return [];
+
+  const fresh = due.filter((h) => done.has(h.id) && !before.has(h.id));
+  // Scrolled away the ring still fills up; the orbs then go out at the top of
+  // the visible board (flyOrb).
+  if (fresh.length === 0 || !board.querySelector(".day-summary-ring")) return [];
+
+  const flights = [];
+  for (const habit of fresh) {
+    const cell = board.querySelector(
+      `.cell[data-habit="${habit.id}"][data-date="${state.today}"] .mark`);
+    const rect = cell?.getBoundingClientRect();
+    // Not on the board (paged away, hidden view): nothing to fly from.
+    if (!rect || rect.width === 0) continue;
+    flights.push({ color: habit.color, x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
+  }
+  if (flights.length === 0) return [];
+
+  // Hold the ring where it stands; the render about to happen draws it there.
+  const shown = ringHold?.shown ?? lastRingPercent ?? 0;
+  ringHold ??= { shown, planned: shown, target: shown, pending: 0 };
+  return flights;
+}
+
+function prefersReducedMotion() {
+  return window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+}
+
+/** Where on the screen the ring's wave stands at `percent`, or null. */
+function ringPoint(percent) {
+  const ring = board.querySelector(".day-summary-ring");
+  const r = ring?.getBoundingClientRect();
+  if (!r || r.width === 0) return null;
+  // The same radius the wave winds around, scaled from the 40-unit viewBox.
+  const radius = (r.width / 40) * RING_R;
+  const angle = (percent / 100) * 2 * Math.PI - Math.PI / 2;
+  return {
+    x: r.left + r.width / 2 + radius * Math.cos(angle),
+    y: r.top + r.height / 2 + radius * Math.sin(angle),
+  };
+}
+
+/**
+ * Where the visible part of the board begins: below the title bar and the day
+ * header, which stay parked at the top while the page scrolls underneath.
+ */
+function visibleTop() {
+  let top = 0;
+  for (const el of [document.querySelector(".topbar"), board.querySelector(".day-header")]) {
+    if (el) top = Math.max(top, el.getBoundingClientRect().bottom);
+  }
+  return top;
+}
+
+/** A short glow where an orb leaves the screen on its way to a hidden ring. */
+function flash(x, y, size, color) {
+  const el = document.createElement("span");
+  el.className = "orb orb-flash";
+  el.style.setProperty("--habit-color", color);
+  el.style.width = el.style.height = `${size}px`;
+  el.style.left = `${x - size / 2}px`;
+  el.style.top = `${y - size / 2}px`;
+  orbLayer().append(el);
+  el.animate(
+    [{ transform: "scale(.6)", opacity: 1 }, { transform: "scale(2.6)", opacity: 0 }],
+    { duration: 380, easing: "ease-out" },
+  ).onfinish = () => el.remove();
+}
+
+/** The layer the orbs fly in, above the board and below any dialog. */
+function orbLayer() {
+  let layer = document.getElementById("orb-layer");
+  if (!layer) {
+    layer = document.createElement("div");
+    layer.id = "orb-layer";
+    layer.className = "orb-layer";
+    layer.setAttribute("aria-hidden", "true");
+    document.body.append(layer);
+  }
+  return layer;
+}
+
+/**
+ * Sends a handful of orbs in the habit's colour from its cell to the ring.
+ *
+ * Each orb is aimed at the tip of the wave as it will stand when that orb
+ * arrives, and moves it there on landing - so the ring fills up orb by orb,
+ * the last one bringing it to the day's real value.
+ */
+function launchOrbs({ color, x, y }) {
+  const hold = ringHold;
+  if (!hold) return;
+  const from = hold.planned;
+  const to = hold.target;
+  hold.planned = to;
+  hold.pending += ORBS_PER_HABIT;
+
+  const layer = orbLayer();
+  for (let i = 0; i < ORBS_PER_HABIT; i++) {
+    const orb = document.createElement("span");
+    orb.className = "orb";
+    orb.style.setProperty("--habit-color", color);
+    const size = 7 + Math.random() * 5;
+    orb.style.width = orb.style.height = `${size}px`;
+    orb.style.transform = `translate(${x - size / 2}px, ${y - size / 2}px) scale(0)`;
+    layer.append(orb);
+
+    flyOrb(orb, {
+      x, y, size,
+      landing: from + ((to - from) * (i + 1)) / ORBS_PER_HABIT,
+      delay: i * 70,
+      duration: 650 + Math.random() * 250,
+      // Which way the path bows, and how far: every orb takes its own curve.
+      bend: (Math.random() < 0.5 ? -1 : 1) * (0.25 + Math.random() * 0.3),
+    });
+  }
+}
+
+function flyOrb(orb, { x, y, size, landing, delay, duration, bend }) {
+  let start = null;
+
+  const frame = (now) => {
+    start ??= now + delay;
+    const t = Math.min(1, Math.max(0, (now - start) / duration));
+    // The ring is looked up every frame: a render mid-flight replaces it, and
+    // the page may have scrolled since the orb set off.
+    const end = ringPoint(landing);
+    if (!end) {
+      orb.remove();
+      landOrb(landing, false);
+      return;
+    }
+    // Scrolled away, the ring sits behind the parked day header or above the
+    // screen. The orbs then head for the top of what can be seen, straight
+    // below the ring, and go out there with a flash instead.
+    const edge = visibleTop();
+    const hidden = end.y < edge;
+    if (hidden) end.y = edge;
+
+    // A quadratic curve bowed sideways from the straight line, and a little
+    // upwards, so the orbs fan out rather than queueing on one track.
+    const dx = end.x - x;
+    const dy = end.y - y;
+    const cx = x + dx / 2 - dy * bend;
+    const cy = y + dy / 2 + dx * bend - Math.hypot(dx, dy) * 0.15;
+    // Slow off the mark, then drawn in faster and faster.
+    const e = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+    const u = 1 - e;
+    const px = u * u * x + 2 * u * e * cx + e * e * end.x;
+    let py = u * u * y + 2 * u * e * cy + e * e * end.y;
+    // The upward bow would otherwise carry an orb across the header on its way.
+    if (hidden) py = Math.max(py, edge);
+    // Pops up at the cell, shrinks into the line it joins.
+    const scale = t < 0.15 ? t / 0.15 : 1 - 0.45 * ((t - 0.15) / 0.85);
+    orb.style.transform = `translate(${px - size / 2}px, ${py - size / 2}px) scale(${scale})`;
+
+    if (t < 1) {
+      requestAnimationFrame(frame);
+    } else {
+      orb.remove();
+      if (hidden) flash(end.x, end.y, size, orb.style.getPropertyValue("--habit-color"));
+      landOrb(landing, !hidden);
+    }
+  };
+  requestAnimationFrame(frame);
+}
+
+/** One orb has arrived: the ring moves on to where it was aimed. */
+function landOrb(landing, visible) {
+  const hold = ringHold;
+  if (!hold) return;
+  hold.pending--;
+  hold.shown = hold.pending === 0 ? hold.target : landing;
+
+  const ring = board.querySelector(".day-summary-ring");
+  if (ring) {
+    showRing(ring, hold.shown);
+    if (visible) {
+      ring.animate(
+        [{ transform: "scale(1)" }, { transform: "scale(1.07)" }, { transform: "scale(1)" }],
+        { duration: 220, easing: "ease-out" },
+      );
+    }
+  }
+
+  // The ring keeps its is-filling class: taking it off would hand the fill back
+  // to the keyframe animation, which would play once more from a stale start.
+  // The next render builds a plain ring at this value anyway.
+  if (hold.pending === 0) {
+    ringHold = null;
+    lastRingPercent = hold.target;
+  }
 }
 
 function blockHead(category, habits = []) {
@@ -828,7 +1079,7 @@ function blockHead(category, habits = []) {
     link.append(name);
     title.append(link);
   } else {
-    title.textContent = "No category";
+    title.textContent = t("No category");
   }
   head.append(title);
 
@@ -848,13 +1099,13 @@ function blockHead(category, habits = []) {
     // arrows that step one place at a time.
     if (state.categories.length > 1) {
       if (byDragging()) {
-        const grip = toolButton("drag-category", icons.grip, "Move category");
+        const grip = toolButton("drag-category", icons.grip, t("Move category"));
         grip.classList.add("drag-handle");
         tools.append(grip);
       } else {
         const at = state.categories.findIndex((c) => c.id === category.id);
-        const up = toolButton("move-category-up", icons.chevronUp, "Move category up");
-        const down = toolButton("move-category-down", icons.chevronDown, "Move category down");
+        const up = toolButton("move-category-up", icons.chevronUp, t("Move category up"));
+        const down = toolButton("move-category-down", icons.chevronDown, t("Move category down"));
         up.disabled = at <= 0;
         down.disabled = at === state.categories.length - 1;
         tools.append(up, down);

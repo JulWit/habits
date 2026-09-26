@@ -20,7 +20,7 @@ import (
 // the fields handleIndex actually writes are referenced.
 var testWeb = fstest.MapFS{
 	"index.html": &fstest.MapFile{Data: []byte(
-		`<!doctype html><html data-theme="{{.Theme}}" data-font="{{.Font}}"></html>`)},
+		`<!doctype html><html lang="{{.Lang}}" data-theme="{{.Theme}}" data-font="{{.Font}}"></html>`)},
 	"assets/js/app.js": &fstest.MapFile{Data: []byte("export const x = 1;\n")},
 }
 
@@ -113,5 +113,57 @@ func TestHealthzNeedsNoIdentity(t *testing.T) {
 	w := do(t, h, "GET", "/healthz", "", "")
 	if w.Code != http.StatusOK || !strings.Contains(w.Body.String(), "ok") {
 		t.Errorf("healthz: %d %q", w.Code, w.Body)
+	}
+}
+
+// "system" takes the first translated language the browser names; anything
+// else is taken as chosen.
+func TestResolveLanguage(t *testing.T) {
+	cases := []struct{ chosen, accept, want string }{
+		{"system", "de-DE,de;q=0.9,en;q=0.8", "de"},
+		{"system", "fr-FR,fr;q=0.9,en-GB;q=0.8,de;q=0.7", "en"},
+		{"system", "fr", "en"},
+		{"system", "", "en"},
+		{"de", "en-US", "de"},
+		{"en", "de-DE", "en"},
+	}
+	for _, c := range cases {
+		if got := resolveLanguage(c.chosen, c.accept); got != c.want {
+			t.Errorf("resolveLanguage(%q, %q) = %q, want %q", c.chosen, c.accept, got, c.want)
+		}
+	}
+}
+
+// The shell carries the language, and a time zone of one's own moves "today".
+func TestLanguageAndTimeZoneSettings(t *testing.T) {
+	h := newTestServer(t)
+
+	r := httptest.NewRequest("GET", "/", nil)
+	r.Header.Set("Accept-Language", "de-DE,de;q=0.9")
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, r)
+	if !strings.Contains(w.Body.String(), `lang="de"`) {
+		t.Errorf("shell without lang=\"de\": %s", w.Body.String())
+	}
+
+	if w := do(t, h, "PATCH", "/api/settings", `{"timeZone":"Mars/Olympus"}`, "application/json"); w.Code != http.StatusUnprocessableEntity {
+		t.Errorf("unknown zone: status %d, want 422", w.Code)
+	}
+	if w := do(t, h, "PATCH", "/api/settings", `{"language":"fr"}`, "application/json"); w.Code != http.StatusUnprocessableEntity {
+		t.Errorf("unknown language: status %d, want 422", w.Code)
+	}
+
+	// Kiritimati is UTC+14: for most of the day it is already tomorrow there.
+	if w := do(t, h, "PATCH", "/api/settings", `{"timeZone":"Pacific/Kiritimati","language":"en"}`, "application/json"); w.Code != http.StatusOK {
+		t.Fatalf("setting zone: status %d: %s", w.Code, w.Body.String())
+	}
+	w = do(t, h, "GET", "/api/state", "", "")
+	kiritimati, _ := time.LoadLocation("Pacific/Kiritimati")
+	want := time.Now().In(kiritimati).Format("2006-01-02")
+	if !strings.Contains(w.Body.String(), `"today":"`+want+`"`) {
+		t.Errorf("today is not the zone's %s: %s", want, w.Body.String())
+	}
+	if !strings.Contains(w.Body.String(), `"serverTimeZone":"UTC"`) {
+		t.Errorf("state without the server zone")
 	}
 }

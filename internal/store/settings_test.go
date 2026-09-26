@@ -86,3 +86,33 @@ func TestUpdateSettingsIsAtomic(t *testing.T) {
 		t.Errorf("font = %q — an aborted update must write nothing", after.Font)
 	}
 }
+
+// Language and time zone round-trip, and only names the zone database knows
+// are taken.
+func TestLanguageAndTimeZone(t *testing.T) {
+	ctx := context.Background()
+	st := openTestStore(t)
+
+	want := DefaultSettings()
+	want.Language = "de"
+	want.TimeZone = "Europe/Berlin"
+	if err := st.SaveSettings(ctx, "alice", want); err != nil {
+		t.Fatalf("SaveSettings: %v", err)
+	}
+	if got, _ := st.GetSettings(ctx, "alice"); got != want {
+		t.Errorf("round trip: %+v != %+v", got, want)
+	}
+
+	for _, tz := range []string{"Local", "Europe/Nowhere", "../../etc/passwd"} {
+		bad := DefaultSettings()
+		bad.TimeZone = tz
+		if err := st.SaveSettings(ctx, "alice", bad); !errors.Is(err, domain.ErrValidation) {
+			t.Errorf("zone %q: %v, want ErrValidation", tz, err)
+		}
+	}
+	bad := DefaultSettings()
+	bad.Language = "fr"
+	if err := st.SaveSettings(ctx, "alice", bad); !errors.Is(err, domain.ErrValidation) {
+		t.Errorf("language fr: %v, want ErrValidation", err)
+	}
+}

@@ -100,6 +100,27 @@ func TestEverythingButTheKindStaysEditable(t *testing.T) {
 	}
 }
 
+// Both ways of narrowing chosen weekdays survive a write and a read.
+func TestNarrowedWeekdaysRoundTrip(t *testing.T) {
+	ctx := context.Background()
+	st := openTestStore(t)
+	for _, freq := range []domain.Frequency{
+		{Kind: domain.FreqWeekdays, Weekdays: 1, WeekInterval: 4, AnchorDate: day(2026, time.September, 14)},
+		{Kind: domain.FreqWeekdays, Weekdays: 1, WeekInterval: 1, WeekOfMonth: domain.LastWeekOfMonth},
+	} {
+		h := countHabit(domain.KindCheck, 1)
+		h.Frequency = freq
+		h = mustCreateHabit(t, st, "alice", h)
+		after, err := st.GetHabit(ctx, "alice", h.ID)
+		if err != nil {
+			t.Fatalf("GetHabit: %v", err)
+		}
+		if after.Frequency != freq {
+			t.Errorf("frequency = %+v, want %+v", after.Frequency, freq)
+		}
+	}
+}
+
 // A habit may not be filed under someone else's category, and not under one
 // that does not exist.
 func TestHabitCannotJoinAForeignCategory(t *testing.T) {
@@ -201,5 +222,31 @@ func TestReorderIgnoresForeignIDs(t *testing.T) {
 	// The other user's habit kept its own position.
 	if other, _ := st.ListHabits(ctx, "someone-else", true); len(other) != 1 {
 		t.Error("the foreign list was touched")
+	}
+}
+
+// Moving a habit is not a change to it, so its timestamp stays put.
+func TestReorderKeepsUpdatedAt(t *testing.T) {
+	ctx := context.Background()
+	st := openTestStore(t)
+	a := mustCreateHabit(t, st, "alice", countHabit(domain.KindCheck, 1))
+	b := mustCreateHabit(t, st, "alice", countHabit(domain.KindCheck, 1))
+	before, err := st.GetHabit(ctx, "alice", a.ID)
+	if err != nil {
+		t.Fatalf("GetHabit: %v", err)
+	}
+
+	if err := st.ReorderHabits(ctx, "alice", []string{b.ID, a.ID}); err != nil {
+		t.Fatalf("ReorderHabits: %v", err)
+	}
+	after, err := st.GetHabit(ctx, "alice", a.ID)
+	if err != nil {
+		t.Fatalf("GetHabit: %v", err)
+	}
+	if after.Position != 1 {
+		t.Errorf("position = %d, want 1", after.Position)
+	}
+	if !after.UpdatedAt.Equal(before.UpdatedAt) {
+		t.Errorf("updatedAt = %v, want the untouched %v", after.UpdatedAt, before.UpdatedAt)
 	}
 }

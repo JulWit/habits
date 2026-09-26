@@ -6,6 +6,8 @@
 // everywhere. All markup here is constant — it never contains user input, so
 // assigning it with innerHTML carries nothing to escape.
 
+import { t } from "./i18n.js";
+
 const draw = (body) =>
   '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor"' +
   ' stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">' + body + "</svg>";
@@ -34,6 +36,12 @@ export const icons = {
   board: draw(
     '<rect x="3.2" y="4.2" width="17.6" height="15.6" rx="2.2"/>' +
     '<path d="M3.2 9.4h17.6M3.2 14.6h17.6M9.4 9.4v10.4"/>',
+  ),
+  // A globe for region and language: where "today" is, and in which words.
+  globe: draw(
+    '<circle cx="12" cy="12" r="8.8"/>' +
+    '<path d="M3.2 12h17.6M12 3.2c2.4 2.4 3.6 5.3 3.6 8.8s-1.2 6.4-3.6 8.8' +
+    'M12 3.2C9.6 5.6 8.4 8.5 8.4 12s1.2 6.4 3.6 8.8"/>',
   ),
 
   // Habit kinds. Each has to read at 15px, which rules out anything with fine
@@ -255,8 +263,8 @@ export function buildIconChoices(host, names, onPick) {
       b.className = name ? "icon-choice" : "icon-choice is-none";
       b.dataset.icon = name;
       b.setAttribute("role", "radio");
-      b.setAttribute("aria-label", name ? `Icon ${name}` : "No icon");
-      b.title = name || "No icon";
+      b.setAttribute("aria-label", name ? t("Icon {name}", { name }) : t("No icon"));
+      b.title = name || t("No icon");
       // "No icon" is an empty, dashed tile: the absence it stands for.
       if (name) b.innerHTML = habitIcons[name];
       b.addEventListener("click", () => onPick(name));

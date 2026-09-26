@@ -6,7 +6,8 @@
 // central number is the perfect day: a day on which every habit of the category
 // that was due got done.
 
-import { addDays, MONTH_SHORT, dayOfMonth } from "./dates.js";
+import { addDays, formatDayMonth } from "./dates.js";
+import { t } from "./i18n.js";
 import { state } from "./state.js";
 import * as H from "./habit.js";
 import { icons, habitIconBadge, categoryIconBadge } from "./icons.js";
@@ -52,25 +53,25 @@ function header(category, habits) {
   const head = document.createElement("div");
   head.className = "detail-head";
   head.innerHTML = `
-    <button class="icon-button is-back" type="button" data-action="back" aria-label="Back">${icons.arrowLeft}</button>
+    <button class="icon-button is-back" type="button" data-action="back" aria-label="${t("Back")}">${icons.arrowLeft}</button>
     <div class="detail-title">
       <h2><span class="name"></span></h2>
       <span class="sub"></span>
     </div>
     <div class="topbar-actions">
-      <button type="button" class="button" data-action="edit" aria-label="Edit">
-        ${icons.edit}<span class="label">Edit</span>
+      <button type="button" class="button" data-action="edit" aria-label="${t("Edit")}">
+        ${icons.edit}<span class="label">${t("Edit")}</span>
       </button>
-      <button type="button" class="button danger" data-action="delete" aria-label="Delete">
-        ${icons.trash}<span class="label">Delete</span>
+      <button type="button" class="button danger" data-action="delete" aria-label="${t("Delete")}">
+        ${icons.trash}<span class="label">${t("Delete")}</span>
       </button>
     </div>`;
   head.querySelector(".name").textContent = category.name;
   const badge = categoryIconBadge(category, "habit-icon is-large");
   if (badge) head.querySelector("h2").prepend(badge);
   head.querySelector(".sub").textContent = habits.length === 1
-    ? "1 habit"
-    : `${habits.length} habits`;
+    ? t("1 habit")
+    : t("{n} habits", { n: habits.length });
   return head;
 }
 
@@ -129,10 +130,10 @@ function stats(habits) {
   const row = document.createElement("div");
   row.className = "stat-row";
   for (const [label, value] of [
-    ["Current streak", `${streak} ${streak === 1 ? "day" : "days"}`],
-    [`Perfect days ${sinceLabel(from)}`, `${perfect} of ${due}`],
-    ["Rate (30 days)", `${rate} %`],
-    ["Habits", String(habits.length)],
+    [t("Current streak"), streak === 1 ? t("1 day") : t("{n} days", { n: streak })],
+    [t("Perfect days {since}", { since: sinceLabel(from) }), t("{n} of {total}", { n: perfect, total: due })],
+    [t("Rate (30 days)"), `${rate} %`],
+    [t("Habits"), String(habits.length)],
   ]) {
     const tile = document.createElement("div");
     tile.className = "stat";
@@ -148,20 +149,20 @@ function stats(habits) {
 function sinceLabel(from) {
   const year = state.today.slice(0, 4);
   if (from === `${year}-01-01`) return `(${year})`;
-  return `(since ${dayOfMonth(from)} ${MONTH_SHORT[Number(from.slice(5, 7)) - 1]})`;
+  return t("(since {date})", { date: formatDayMonth(from) });
 }
 
 function habitList(habits) {
   const panel = document.createElement("section");
   panel.className = "panel";
   const title = document.createElement("h3");
-  title.textContent = "Habits";
+  title.textContent = t("Habits");
   panel.append(title);
 
   if (habits.length === 0) {
     const empty = document.createElement("p");
     empty.className = "block-empty";
-    empty.textContent = "No habit in this category yet.";
+    empty.textContent = t("No habit in this category yet.");
     panel.append(empty);
     return panel;
   }
@@ -190,8 +191,8 @@ function habitList(habits) {
     // "wk" is already short enough to carry both numbers; only the spelled-out
     // day needs to agree, so a one-day streak does not read "1 days".
     const unit = s.streakUnit === "weeks"
-      ? "wk"
-      : s.currentStreak === 1 ? "day" : "days";
+      ? t("wk")
+      : s.currentStreak === 1 ? t("day") : t("days");
     row.querySelector(".cat-habit-streak").textContent = `${s.currentStreak} ${unit}`;
     list.append(row);
   }

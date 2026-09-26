@@ -3,6 +3,7 @@
 package httpapi
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
@@ -139,6 +140,7 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 		settings = store.DefaultSettings()
 	}
 	data := struct {
+		Lang       string
 		Theme      string
 		Font       string
 		Density    string
@@ -153,6 +155,7 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 		SurfaceBlr string
 		User       string
 	}{
+		Lang:       resolveLanguage(settings.Language, r.Header.Get("Accept-Language")),
 		Theme:      settings.Theme,
 		Font:       settings.Font,
 		Density:    settings.Density,
@@ -180,7 +183,48 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s *Server) today() domain.Date { return domain.Today(s.cfg.Location) }
+// location is the zone that decides what "today" is for a user: their own if
+// they chose one, the server's otherwise. The store has already validated the
+// name, so a failure here only means the zone database lost it since.
+func (s *Server) location(settings store.Settings) *time.Location {
+	if settings.TimeZone != "" {
+		if loc, err := time.LoadLocation(settings.TimeZone); err == nil {
+			return loc
+		}
+	}
+	return s.cfg.Location
+}
+
+// todayFor is the current date in the user's zone. A failure to read the
+// settings is logged and answered with the server's zone: an entry landing on
+// the server's day is better than refusing to record it.
+func (s *Server) todayFor(ctx context.Context, userID string) domain.Date {
+	settings, err := s.store.GetSettings(ctx, userID)
+	if err != nil {
+		s.log.Error("loading settings failed", "error", err, "user", userID)
+		return domain.Today(s.cfg.Location)
+	}
+	return domain.Today(s.location(settings))
+}
+
+// resolveLanguage turns the stored choice into the language the shell is
+// rendered in. "system" takes the first language in Accept-Language that the
+// interface is translated into; browsers list them in order of preference, so
+// the q-values need not be read. English is the fallback, as the language the
+// interface was written in.
+func resolveLanguage(chosen, acceptLanguage string) string {
+	if chosen != "system" && store.ValidLanguage(chosen) {
+		return chosen
+	}
+	for _, part := range strings.Split(acceptLanguage, ",") {
+		tag, _, _ := strings.Cut(strings.TrimSpace(part), ";")
+		primary, _, _ := strings.Cut(strings.ToLower(tag), "-")
+		if primary != "system" && store.ValidLanguage(primary) {
+			return primary
+		}
+	}
+	return "en"
+}
 
 func (s *Server) logRequests(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

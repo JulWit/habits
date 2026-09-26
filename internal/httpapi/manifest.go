@@ -11,7 +11,9 @@ import (
 
 // Colours of the system bars and the splash screen per theme, matching --bg in
 // base.css. The manifest cannot follow the colour scheme, so "system" uses the
-// light colour; the theme-color entries in index.html then take over.
+// scheme app.js stores in the color_scheme cookie, or the light colour without
+// one. Chrome then follows the theme-color entries in index.html; Firefox on
+// Android uses the manifest only.
 var manifestColors = map[string]string{
 	"light":  "#e6e8ec",
 	"dark":   "#0f0f0f",
@@ -38,6 +40,11 @@ func (s *Server) handleManifest(w http.ResponseWriter, r *http.Request) {
 	theme := "system"
 	if settings, err := s.store.GetSettings(r.Context(), user.ID); err == nil {
 		theme = settings.Theme
+	}
+	if theme == "system" {
+		if c, err := r.Cookie("color_scheme"); err == nil && (c.Value == "light" || c.Value == "dark") {
+			theme = c.Value
+		}
 	}
 	color, ok := manifestColors[theme]
 	if !ok {

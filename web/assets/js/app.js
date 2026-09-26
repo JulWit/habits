@@ -350,6 +350,24 @@ function initAppearance() {
   };
   subscribe(apply);
   apply();
+  rememberColorScheme();
+}
+
+/**
+ * Stores the device's colour scheme in a cookie, so the manifest can carry the
+ * matching bar colour for the "system" theme. Firefox on Android colours the
+ * system bars of an installed app from the manifest only and ignores the
+ * theme-color entries.
+ */
+function rememberColorScheme() {
+  const query = window.matchMedia?.("(prefers-color-scheme: dark)");
+  if (!query) return;
+  const store = () => {
+    const secure = location.protocol === "https:" ? "; Secure" : "";
+    document.cookie = `color_scheme=${query.matches ? "dark" : "light"}; Path=/; Max-Age=31536000; SameSite=Lax${secure}`;
+  };
+  query.addEventListener("change", store);
+  store();
 }
 
 // Colours of the system bars, matching --bg in base.css and index.html.

@@ -200,3 +200,24 @@ func TestManifestFollowsTheStoredTheme(t *testing.T) {
 		}
 	}
 }
+
+// For the "system" theme, the manifest follows the color_scheme cookie.
+func TestManifestFollowsTheColorSchemeCookie(t *testing.T) {
+	h := newTestServer(t)
+	if w := do(t, h, "PATCH", "/api/settings", `{"theme":"system"}`, "application/json"); w.Code != http.StatusOK {
+		t.Fatalf("writing settings: %d (%s)", w.Code, w.Body)
+	}
+	for cookie, want := range map[string]string{"dark": "#0f0f0f", "light": "#e6e8ec", "bogus": "#e6e8ec"} {
+		r := httptest.NewRequest("GET", "/manifest.webmanifest", nil)
+		r.AddCookie(&http.Cookie{Name: "color_scheme", Value: cookie})
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, r)
+		var m map[string]any
+		if err := json.Unmarshal(w.Body.Bytes(), &m); err != nil {
+			t.Fatalf("%s: parsing manifest: %v (%s)", cookie, err, w.Body)
+		}
+		if m["theme_color"] != want {
+			t.Errorf("cookie %s: theme_color = %v, want %s", cookie, m["theme_color"], want)
+		}
+	}
+}

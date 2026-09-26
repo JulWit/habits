@@ -4,7 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Habits</title>
-<link rel="icon" href="/assets/images/icon.svg" type="image/svg+xml">
+<!-- Firefox on Android cannot render SVG favicons, so a PNG comes first;
+     browsers that support SVG prefer the last entry. -->
+<link rel="icon" href="/assets/images/icon-192.png" type="image/png" sizes="192x192">
+<link rel="icon" href="/assets/images/icon.svg" type="image/svg+xml" sizes="any">
 <!-- use-credentials sends cookies with the manifest request; without them,
      Authelia answers with its login page. -->
 <link rel="manifest" href="/manifest.webmanifest" crossorigin="use-credentials">

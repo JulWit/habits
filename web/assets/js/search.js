@@ -5,11 +5,13 @@ import { subscribe, groupedHabits } from "./state.js";
 import { habitIconBadge, categoryIconBadge, colorValue } from "./icons.js";
 import * as H from "./habit.js";
 import { t } from "./i18n.js";
+import { openPage, closePage } from "./pages.js";
 
 let dialog;
 let input;
 let list;
 let empty;
+let clear;
 
 /** The displayed results and the index of the selected one. */
 let results = [];
@@ -35,6 +37,14 @@ export function initSearch(handlers) {
   });
   input.addEventListener("keydown", onKey);
 
+  clear = document.getElementById("search-clear");
+  clear.addEventListener("click", () => {
+    input.value = "";
+    active = 0;
+    draw();
+    input.focus();
+  });
+
   list.addEventListener("click", (event) => {
     const option = event.target.closest("[data-index]");
     if (option) choose(results[Number(option.dataset.index)]);
@@ -50,7 +60,7 @@ export function initSearch(handlers) {
 
   // Close on a click on the backdrop.
   dialog.addEventListener("click", (event) => {
-    if (event.target === dialog) dialog.close();
+    if (event.target === dialog) closePage(dialog);
   });
 
   // Update the results when the state changes.
@@ -64,7 +74,7 @@ export function openSearch() {
   input.value = "";
   active = 0;
   // Open first, so that draw() can measure the list.
-  dialog.showModal();
+  openPage(dialog);
   draw();
   input.focus();
 }
@@ -90,6 +100,7 @@ function matches(entry, query) {
 
 function draw() {
   const query = input.value.trim().toLowerCase();
+  clear.hidden = input.value === "";
   results = candidates().filter((entry) => matches(entry, query));
   active = Math.min(active, Math.max(0, results.length - 1));
 
@@ -163,9 +174,10 @@ function onKey(event) {
   }
 }
 
-function choose(entry) {
+async function choose(entry) {
   if (!entry) return;
-  dialog.close();
+  // The view takes the search's place in the history once its entry is gone.
+  await closePage(dialog);
   if (entry.kind === "habit") deps.openHabit(entry.item.id);
   else deps.openCategory(entry.item.id);
 }

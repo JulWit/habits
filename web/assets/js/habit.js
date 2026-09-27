@@ -112,12 +112,21 @@ export function formatDistance(metres) {
 
 /**
  * Returns the short value shown inside a day cell, without unit. Distances are
- * shown in kilometres.
+ * shown in kilometres. At most three digits, so the value fits the mark at the
+ * minimum text size: longer values lose their decimal ("123,4" → "123"), and
+ * from 1000 on minutes are shown in hours ("24h") and other values in
+ * thousands ("1,5k"). The cell's label keeps the exact value.
  */
 export function cellValue(habit, value) {
-  // Kilometres with one decimal.
-  if (habit.kind === "distance") return (Math.round(value / 100) / 10).toLocaleString(locale);
-  return written(habit, value);
+  const n = habit.kind === "distance" ? value / 1000 : value / scale(habit);
+  // Without grouping, so "1.000" is not counted as a short value.
+  const short = (x) => x.toLocaleString(locale, { maximumFractionDigits: 1, useGrouping: false });
+  const text = short(Math.round(n * 10) / 10);
+  if (text.replace(/\D/g, "").length <= 3) return text;
+  if (Math.round(n) < 1000) return String(Math.round(n));
+  if (habit.kind === "time") return `${Math.round(n / 60)}h`;
+  const thousands = n / 1000;
+  return `${thousands < 10 ? short(Math.round(thousands * 10) / 10) : Math.round(thousands)}k`;
 }
 
 /** Formats a day's value with its unit. */

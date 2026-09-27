@@ -77,8 +77,9 @@
 
 <!-- Pages: full-screen dialogs with a back button, stacked (see pages.js). -->
 <!-- The two editors are full-screen dialogs: they slide up, close with ✕ and
-     ask before discarding changes (see pages.js). -->
-<dialog id="editor" class="dialog page is-sheet" aria-labelledby="editor-title">
+     ask before discarding changes (see pages.js). On wide screens they, and
+     the category picker opened from them, float as dialogs (is-floating). -->
+<dialog id="editor" class="dialog page is-sheet is-floating" aria-labelledby="editor-title">
   <form id="editor-form" method="dialog">
     <header class="page-head">
       <button type="button" class="icon-button" data-page-back data-icon="close" title="Close" aria-label="Close"></button>
@@ -470,7 +471,7 @@
 <!-- Settings errors; settings.js moves it into the open settings page. -->
 <p id="settings-error" class="error" hidden></p>
 
-<dialog id="category-dialog" class="dialog page" aria-labelledby="category-dialog-title">
+<dialog id="category-dialog" class="dialog page is-floating" aria-labelledby="category-dialog-title">
   <header class="page-head">
     <button type="button" class="icon-button" data-page-back data-icon="arrowLeft" title="Back" aria-label="Back"></button>
     <h2 id="category-dialog-title">Category</h2>
@@ -487,7 +488,7 @@
 </dialog>
 
 <!-- Category dialog, opened from the category view (see categoryeditor.js). -->
-<dialog id="category-editor" class="dialog page is-sheet" aria-labelledby="category-editor-title">
+<dialog id="category-editor" class="dialog page is-sheet is-floating" aria-labelledby="category-editor-title">
   <form id="category-editor-form" method="dialog">
     <header class="page-head">
       <button type="button" class="icon-button" data-page-back data-icon="close" title="Close" aria-label="Close"></button>
@@ -533,6 +534,9 @@
     <input id="search-input" type="search" placeholder="Search habits and categories…"
            autocomplete="off" spellcheck="false" aria-label="Search habits and categories"
            role="combobox" aria-expanded="true" aria-autocomplete="list" aria-controls="search-results">
+    <!-- Our own clear button: Firefox has none, Chrome's is hidden. -->
+    <button id="search-clear" class="icon-button search-clear" type="button" data-icon="close"
+            title="Clear search" aria-label="Clear search" hidden></button>
   </div>
   <div id="search-results" class="search-results" role="listbox" aria-label="Results"></div>
   <p id="search-empty" class="search-empty" hidden>No habit or category matches.</p>

@@ -128,9 +128,9 @@ export function dayEntry(habit, iso, active = state.today) {
 function numberLabel(text) {
   const el = document.createElement("span");
   el.className = "mark-value";
-  // Smaller font sizes for values with three or four characters.
-  if (text.length === 3) el.classList.add("is-small");
-  if (text.length >= 4) el.classList.add("is-tiny");
+  // Tighter spacing for four characters ("12,5", "1,5k"); cellValue keeps
+  // them short enough for the mark.
+  if (text.length >= 4) el.classList.add("is-long");
   el.textContent = text;
   return el;
 }

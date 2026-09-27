@@ -103,7 +103,9 @@ html:has(.dialog.page[open]) { overflow: hidden; }
 }
 
 .page-head .icon-button svg { width: var(--icon); height: var(--icon); }
-.page-head .icon-button:hover { background: var(--surface-2); }
+@media (hover: hover) {
+  .page-head .icon-button:hover { background: var(--surface-2); }
+}
 
 /* The content: one flat card on the page background, like the overview's. */
 .page-body {
@@ -112,6 +114,35 @@ html:has(.dialog.page[open]) { overflow: hidden; }
   padding: calc(1.25 * var(--space)) calc(1.15 * var(--space)) calc(.25 * var(--space));
   border-radius: var(--radius);
   background: var(--surface);
+}
+
+/* On wide screens, the editors float as dialogs over the dimmed view instead
+   of covering it, as Material Design has full-screen dialogs only on compact
+   windows (below 840dp) and Apple uses sheets on the Mac. Their card is the
+   dialog itself, with the title bar on it. */
+@media (min-width: 840px) and (min-height: 560px) {
+  .dialog.page.is-floating {
+    --page-inset: calc(1.15 * var(--space));
+    width: min(38rem, calc(100vw - 4rem));
+    /* Not auto, which stretches a modal dialog between its insets. */
+    height: fit-content;
+    max-height: calc(100dvh - 4rem);
+    margin: auto;
+    border-radius: var(--radius);
+    background: var(--surface);
+    box-shadow: var(--shadow-float);
+  }
+
+  /* :root outranks the grain pattern's rules for backdrop and title bar. */
+  :root .dialog.page.is-floating::backdrop { background: rgba(0, 0, 0, .55); }
+  :root .dialog.page.is-floating .page-head { background: var(--surface); }
+
+  .dialog.page.is-floating .page-body {
+    margin: 0;
+    padding-top: calc(.5 * var(--space));
+    padding-bottom: calc(.5 * var(--space));
+    border-radius: 0;
+  }
 }
 
 /* ---------- settings menu ---------- */
@@ -187,7 +218,9 @@ html:has(.dialog.page[open]) { overflow: hidden; }
   transition: var(--fill-fade);
 }
 
-.menu-item:hover { background: var(--surface-2); }
+@media (hover: hover) {
+  .menu-item:hover { background: var(--surface-2); }
+}
 
 .menu-icon,
 .menu-caret { display: flex; flex: none; }
@@ -378,7 +411,9 @@ html:has(.dialog.page[open]) { overflow: hidden; }
 
 .icon-choice svg { width: 1.15rem; height: 1.15rem; }
 
-.icon-choice:hover { background-color: color-mix(in srgb, var(--habit-color) 26%, transparent); }
+@media (hover: hover) {
+  .icon-choice:hover { background-color: color-mix(in srgb, var(--habit-color) 26%, transparent); }
+}
 
 .icon-choice.is-none {
   background: transparent;
@@ -428,7 +463,9 @@ html:has(.dialog.page[open]) { overflow: hidden; }
   transition: var(--fill-fade);
 }
 
-.select:hover { background-color: var(--field-hover); }
+@media (hover: hover) {
+  .select:hover { background-color: var(--field-hover); }
+}
 
 /* The ring only for the keyboard (see the text fields); a click opens the list
    instead. */
@@ -602,7 +639,9 @@ html:has(.dialog.page[open]) { overflow: hidden; }
   transition: var(--fill-fade);
 }
 
-.picker:hover { background: var(--field-hover); }
+@media (hover: hover) {
+  .picker:hover { background: var(--field-hover); }
+}
 
 .picker-value { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .picker-value.is-empty { color: var(--text-faint); }
@@ -630,7 +669,9 @@ html:has(.dialog.page[open]) { overflow: hidden; }
   transition: var(--fill-fade);
 }
 
-.picker-option:hover { background: var(--surface-2); }
+@media (hover: hover) {
+  .picker-option:hover { background: var(--surface-2); }
+}
 .picker-option.is-stale { color: var(--text-faint); font-style: italic; }
 
 /* The chosen category in the accent colour, as the chosen option of a
@@ -736,8 +777,11 @@ html:has(.dialog.page[open]) { overflow: hidden; }
 html[data-today-band="off"] .cell.is-today:active:not(:disabled) { background: var(--border); }
 
 /* The chosen category keeps its accent fill, like a primary button. */
-.picker-option[aria-selected="true"]:hover,
 .picker-option[aria-selected="true"]:active { background: var(--primary-hover); }
+
+@media (hover: hover) {
+  .picker-option[aria-selected="true"]:hover { background: var(--primary-hover); }
+}
 
 /* ---------- touch screens ----------
 

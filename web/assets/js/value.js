@@ -6,6 +6,7 @@ import { state } from "./state.js";
 import * as H from "./habit.js";
 import { errorText, toast } from "./undo.js";
 import { t, locale } from "./i18n.js";
+import { openPage, closePage } from "./pages.js";
 
 let dialog;
 let form;
@@ -46,6 +47,11 @@ export function initValueDialog() {
     });
   }
   form.querySelector('[data-action="clear"]').addEventListener("click", () => submit(0));
+  // A tap on the backdrop cancels, as in the search: without a keyboard there
+  // is no Escape.
+  dialog.addEventListener("click", (event) => {
+    if (event.target === dialog) closePage(dialog);
+  });
   form.addEventListener("submit", (event) => {
     event.preventDefault();
     submit(Math.max(0, Math.round((Number(input.value) || 0) * scale)));
@@ -99,7 +105,7 @@ export function openValueDialog(habit, iso, handler) {
   titleEl.textContent = `${habit.name} — ${formatRelative(iso, state.today)}`;
   hintEl.textContent = hintFor(habit, iso);
 
-  dialog.showModal();
+  openPage(dialog);
   input.select();
 }
 
@@ -121,7 +127,7 @@ function unitName(habit) {
 
 async function submit(value) {
   const handler = onSave;
-  dialog.close();
+  closePage(dialog, { force: true });
   try {
     await handler(value);
   } catch (err) {

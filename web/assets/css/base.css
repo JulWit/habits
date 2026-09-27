@@ -489,7 +489,12 @@ html[data-scrolled="on"] .day-header-backdrop {
   transition: background .12s ease, border-color .12s ease, transform .06s ease;
 }
 
-.button:hover { background: var(--border); }
+/* Hover only where a pointer can rest: touch browsers (Firefox on Android
+   among them) keep :hover on the last tapped element, so a tapped button or
+   day would stay tinted. Taps show the :active fill instead. */
+@media (hover: hover) {
+  .button:hover { background: var(--border); }
+}
 .button:active { transform: translateY(1px); }
 
 .button.primary {
@@ -500,9 +505,11 @@ html[data-scrolled="on"] .day-header-backdrop {
 
 /* Explicit hover colour, as a brightness filter has no effect on black and
    white. */
-.button.primary:hover {
-  background: var(--primary-hover);
-  border-color: var(--primary-hover);
+@media (hover: hover) {
+  .button.primary:hover {
+    background: var(--primary-hover);
+    border-color: var(--primary-hover);
+  }
 }
 
 .button.ghost {
@@ -510,14 +517,18 @@ html[data-scrolled="on"] .day-header-backdrop {
   color: var(--text-muted);
 }
 
-.button.ghost:hover { background: var(--surface-2); color: var(--text); }
+@media (hover: hover) {
+  .button.ghost:hover { background: var(--surface-2); color: var(--text); }
+}
 
 /* Pressed, one step beyond hover. */
 .button:active:not(.primary, .ghost) { background: var(--border-strong); }
 .button.ghost:active { background: var(--border); }
 
 .button.danger { color: var(--danger-text); }
-.button.danger:hover { background: color-mix(in srgb, var(--danger) 12%, var(--surface)); }
+@media (hover: hover) {
+  .button.danger:hover { background: color-mix(in srgb, var(--danger) 12%, var(--surface)); }
+}
 
 .button.round {
   width: 2.6rem;
@@ -550,7 +561,9 @@ html[data-scrolled="on"] .day-header-backdrop {
   line-height: 1;
 }
 
-.icon-button:hover { background: var(--surface-2); }
+@media (hover: hover) {
+  .icon-button:hover { background: var(--surface-2); }
+}
 
 /* Pressed state of toggle buttons, e.g. the reorder mode. */
 .icon-button[aria-pressed="true"] {
@@ -558,7 +571,9 @@ html[data-scrolled="on"] .day-header-backdrop {
   color: var(--primary-text);
 }
 
-.icon-button[aria-pressed="true"]:hover { background: var(--primary-hover); }
+@media (hover: hover) {
+  .icon-button[aria-pressed="true"]:hover { background: var(--primary-hover); }
+}
 
 /* Pressed, one step beyond hover, so a tap shows (touch has no hover). Not on
    pressed toggles, and not on the reorder handles, which have their own. */

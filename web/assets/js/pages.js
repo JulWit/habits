@@ -1,6 +1,9 @@
 // Full-screen pages, stacked like the screens of an Android app. Each page is
 // a modal <dialog class="page">. Opening one adds a history entry, so the
 // system back button or gesture closes the top page, as does its back button.
+// Smaller modal dialogs (search, exact value) are opened the same way: Firefox
+// on Android has no close watcher, so without the entry the system back would
+// leave the view behind the dialog instead of closing it.
 //
 // A page with a guard (guardPage) asks before it closes with unsaved changes,
 // however it is closed: its close button, Escape, the system back gesture or
@@ -11,8 +14,11 @@ import { t } from "./i18n.js";
 /** Open pages, bottom first. */
 const stack = [];
 
-/** History steps taken by closePage, which popstate must not handle again. */
-let ownPops = 0;
+/**
+ * History steps taken by closePage, which popstate must not handle again: the
+ * function that resolves each one's promise.
+ */
+const ownPops = [];
 
 /** Pages whose close event is watched. */
 const watched = new WeakSet();
@@ -53,23 +59,26 @@ export function guardPage(dialog, dirty) {
 
 /**
  * Closes `dialog` and every page above it. Asks first if one of them has
- * unsaved changes, unless `force` is set (e.g. after saving).
+ * unsaved changes, unless `force` is set (e.g. after saving). Resolves once
+ * the history has gone back, so a view opened then is not removed by the step
+ * back.
  */
 export function closePage(dialog, { force = false } = {}) {
   const index = stack.indexOf(dialog);
   if (index < 0) {
     if (dialog.open) dialog.close();
-    return;
+    return Promise.resolve();
   }
   const dirty = force ? null : stack.slice(index).find(isDirty);
   if (dirty) {
     askToDiscard(dialog);
-    return;
+    return Promise.resolve();
   }
   const count = stack.length - index;
   drop(index);
-  ownPops++;
+  const done = new Promise((resolve) => ownPops.push(resolve));
   history.go(-count);
+  return done;
 }
 
 /** The topmost open page, or null. */
@@ -109,8 +118,8 @@ function drop(index) {
 // Registered before app.js's listener, so the route is left alone when only a
 // page closes: the hash does not change.
 window.addEventListener("popstate", (event) => {
-  if (ownPops > 0) {
-    ownPops--;
+  if (ownPops.length > 0) {
+    ownPops.shift()();
     event.stopImmediatePropagation();
     return;
   }

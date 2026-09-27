@@ -164,6 +164,7 @@ HABITS_DB=/data/habits.db
 | Set an exact value | Long press or right-click |
 | Clear a value | Long press or right-click, then "Delete" or 0 |
 | Undo / redo | `Ctrl+Z` / `Ctrl+Shift+Z` or `Ctrl+Y`, or "Undo" in the toast |
+| Move between days and habits | Arrow keys; `Home`/`End` for the first and last day, with `Ctrl` for the first and last habit. The days are a single tab stop, and the arrows page to earlier or later days at the end of a row |
 | Select a day | Click the day in the day header; click today to go back |
 | Back to today | Floating button at the bottom of the screen |
 | Show only open habits | Filter in the header |

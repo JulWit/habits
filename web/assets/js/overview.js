@@ -106,6 +106,8 @@ export function initOverview(handlers) {
 
   board.addEventListener("click", onBoardClick);
   board.addEventListener("contextmenu", onBoardContextMenu);
+  board.addEventListener("keydown", onBoardKeydown);
+  board.addEventListener("focusin", onBoardFocus);
   attachLongPress(board);
 
   emptyState.querySelector('[data-action="add-first"]')
@@ -377,6 +379,7 @@ export function render() {
 
   const focused = focusedControl();
   board.replaceChildren(frag);
+  setTabStops();
   restoreFocus(focused);
   for (const flight of flights) launchOrbs(flight);
 }
@@ -407,7 +410,148 @@ function restoreFocus(target) {
   if (target.date) selector += `[data-date="${target.date}"]`;
   const next = scope.querySelector(selector);
   // Do not focus a disabled button.
-  if (next && !next.disabled) next.focus();
+  if (next && !next.disabled) rove(next);
+}
+
+// ---------- keyboard navigation ----------
+//
+// The day cells of all blocks are one tab stop, as are the days in the header
+// (a roving tabindex, as in a grid): Tab enters at the cell focused last, at
+// first the active day of the first habit, and the arrow keys move from there.
+// Otherwise every day of every habit would be a tab stop of its own. Disabled
+// cells cannot take focus and are skipped.
+
+/** The day cell focused last, as {habit, date}; kept across renders. */
+let lastCell = null;
+
+/** Gives the cells and the header days their single tab stop. */
+function setTabStops() {
+  const cells = [...board.querySelectorAll('[data-role="cell"]')];
+  for (const cell of cells) cell.tabIndex = -1;
+  const enabled = cells.filter((cell) => !cell.disabled);
+  const entry =
+    enabled.find((cell) => cell.dataset.habit === lastCell?.habit && cell.dataset.date === lastCell?.date) ??
+    enabled.find((cell) => cell.dataset.date === activeDay()) ??
+    enabled[0];
+  if (entry) entry.tabIndex = 0;
+
+  const days = [...board.querySelectorAll('[data-role="select-day"]')];
+  for (const day of days) day.tabIndex = -1;
+  const current = days.find((day) => day.getAttribute("aria-pressed") === "true") ?? days.at(-1);
+  if (current) current.tabIndex = 0;
+}
+
+/** Makes a cell or header day the tab stop of its group; other controls keep theirs. */
+function makeTabStop(el) {
+  const role = el.dataset?.role;
+  if (role !== "cell" && role !== "select-day") return;
+  for (const other of board.querySelectorAll(`[data-role="${role}"][tabindex="0"]`)) {
+    if (other !== el) other.tabIndex = -1;
+  }
+  el.tabIndex = 0;
+  if (role === "cell") lastCell = { habit: el.dataset.habit, date: el.dataset.date };
+}
+
+/** Focuses `el`, if any, and makes it the tab stop of its group. */
+function rove(el) {
+  if (!el) return;
+  makeTabStop(el);
+  el.focus();
+}
+
+/** A cell or day focused by a click or Tab becomes the tab stop too. */
+function onBoardFocus(event) {
+  makeTabStop(event.target);
+}
+
+function onBoardKeydown(event) {
+  if (event.altKey || event.metaKey || event.shiftKey) return;
+  const el = event.target;
+  const role = el.dataset?.role;
+  if (role !== "cell" && role !== "select-day") return;
+  const move = MOVES[event.key];
+  // The header is a single row: up and down scroll the page as usual.
+  if (!move || (role === "select-day" && move.dy)) return;
+  event.preventDefault();
+  if (role === "select-day") {
+    const days = [...board.querySelectorAll('[data-role="select-day"]')];
+    rove(days[clampedStep(days, days.indexOf(el), move)]);
+    return;
+  }
+  moveFromCell(el, move, event.ctrlKey);
+}
+
+/**
+ * Arrow keys and what they do: dx moves along the row, dy between rows,
+ * edge jumps to the first (-1) or last (1) day.
+ */
+const MOVES = {
+  ArrowLeft: { dx: -1 },
+  ArrowRight: { dx: 1 },
+  ArrowUp: { dy: -1 },
+  ArrowDown: { dy: 1 },
+  Home: { edge: -1 },
+  End: { edge: 1 },
+};
+
+/** Returns the index `move` leads to from `at` in `list`, within its bounds. */
+function clampedStep(list, at, { dx = 0, edge = 0 }) {
+  if (edge) return edge < 0 ? 0 : list.length - 1;
+  return Math.min(list.length - 1, Math.max(0, at + dx));
+}
+
+/** The enabled day cells of a row, oldest first. */
+function rowCells(row) {
+  return [...row.querySelectorAll('[data-role="cell"]:not(:disabled)')];
+}
+
+/**
+ * Moves the focus from `cell`. Left and right go along the row and page to
+ * earlier or later days at its end; up and down keep the day and skip habits
+ * with that day disabled; Home and End go to the row's first and last day,
+ * with Ctrl to the first and last habit.
+ */
+async function moveFromCell(cell, { dx = 0, dy = 0, edge = 0 }, ctrl) {
+  const row = cell.closest(".habit-row");
+  const rows = [...board.querySelectorAll(".habit-row")];
+
+  if (dy) {
+    const date = cell.dataset.date;
+    for (let i = rows.indexOf(row) + dy; i >= 0 && i < rows.length; i += dy) {
+      const next = rows[i].querySelector(`[data-role="cell"][data-date="${date}"]:not(:disabled)`);
+      if (next) {
+        rove(next);
+        return;
+      }
+    }
+    return;
+  }
+
+  if (edge) {
+    // With Ctrl, the first or last habit with an enabled day.
+    const candidates = ctrl ? (edge < 0 ? rows : rows.toReversed()) : [row];
+    const cells = candidates.map(rowCells).find((c) => c.length > 0) ?? [];
+    rove(edge < 0 ? cells[0] : cells.at(-1));
+    return;
+  }
+
+  const cells = rowCells(row);
+  const next = cells[cells.indexOf(cell) + dx];
+  if (next) {
+    rove(next);
+    return;
+  }
+  // At the end of the row: page the window and continue there.
+  const pager = board.querySelector(`[data-role="${dx < 0 ? "page-older" : "page-newer"}"]`);
+  if (!pager || pager.disabled) return;
+  const habit = cell.dataset.habit;
+  await showWindow(offset + (dx < 0 ? 1 : -1) * pageStep(renderedDays));
+  const paged = board.querySelector(`.habit-row[data-habit="${habit}"]`);
+  if (!paged) return;
+  // The nearest enabled day beyond the one left.
+  const beyond = rowCells(paged).filter((c) =>
+    dx < 0 ? c.dataset.date < cell.dataset.date : c.dataset.date > cell.dataset.date);
+  rove(dx < 0 ? beyond.at(-1) : beyond[0]);
 }
 
 /**
@@ -716,6 +860,10 @@ function onBoardContextMenu(event) {
   const el = event.target.closest('[data-role="cell"]');
   if (!el || el.disabled) return;
   event.preventDefault();
+  // On touch, a long press also fires contextmenu (Firefox on Android after
+  // 500 ms). Only the first of the two counts, or a check would toggle twice.
+  if (suppressClick) return;
+  cancelLongPress();
   actions.editEntry(el.dataset.habit, el.dataset.date);
 }
 
@@ -731,6 +879,9 @@ function suppressNextClick() {
   suppressTimer = setTimeout(() => { suppressClick = false; }, 700);
 }
 
+/** Cancels a pending long press; set by attachLongPress. */
+let cancelLongPress = () => {};
+
 function attachLongPress(root) {
   let timer = null;
   let origin = null;
@@ -740,6 +891,7 @@ function attachLongPress(root) {
     timer = null;
     origin = null;
   };
+  cancelLongPress = cancel;
 
   root.addEventListener("pointerdown", (event) => {
     const el = event.target.closest('[data-role="cell"]');

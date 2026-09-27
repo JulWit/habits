@@ -33,23 +33,20 @@
 #search-input::placeholder { color: var(--text-faint); }
 #search-input:focus { outline: none; }
 
-/* The clear button in the token colour, instead of the browser's own (blue
-   in Chrome on light). */
-/* display: block, as Chrome does not draw the button otherwise once its
-   appearance is reset; it still hides it while the field is empty. */
-#search-input::-webkit-search-cancel-button {
-  -webkit-appearance: none;
-  appearance: none;
-  display: block;
-  width: 1rem;
-  height: 1rem;
-  background: var(--text-faint);
-  -webkit-mask: no-repeat center / contain
-    url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="%23000" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>');
-  cursor: pointer;
+/* The browser's clear button is replaced by .search-clear, as Firefox has
+   none. Room on the right for it. */
+#search-input::-webkit-search-cancel-button { -webkit-appearance: none; appearance: none; }
+#search-input { padding-right: 2.6rem; }
+
+.search-clear {
+  position: absolute;
+  right: .2rem;
+  top: 50%;
+  translate: 0 -50%;
+  color: var(--text-faint);
 }
 
-#search-input::-webkit-search-cancel-button:hover { background: var(--text); }
+.search-clear svg { width: 1rem; height: 1rem; }
 
 .search-results {
   display: flex;
@@ -195,7 +192,9 @@ html:not(.route-detail):not(.route-styleguide) .topbar-inner {
 
 /* Today band switched off. */
 html[data-today-band="off"] .board.has-today .block-rows::before { display: none; }
-html[data-today-band="off"] .cell.is-today:hover:not(:disabled) { background: var(--surface-2); }
+@media (hover: hover) {
+  html[data-today-band="off"] .cell.is-today:hover:not(:disabled) { background: var(--surface-2); }
+}
 html[data-today-band="off"] .cell.is-today .mark::after { background: var(--surface); }
 
 .day-header {
@@ -394,7 +393,9 @@ html[data-scrolled="on"] .day-header-backdrop {
 
 .block-link .habit-icon svg { width: 56%; height: 56%; }
 
-.block-link:hover { background: var(--surface-2); }
+@media (hover: hover) {
+  .block-link:hover { background: var(--surface-2); }
+}
 
 /* ---------- category screen ---------- */
 
@@ -415,7 +416,9 @@ html[data-scrolled="on"] .day-header-backdrop {
   cursor: pointer;
 }
 
-.cat-habit:hover { background: var(--surface-2); }
+@media (hover: hover) {
+  .cat-habit:hover { background: var(--surface-2); }
+}
 
 .cat-habit-text {
   display: flex;
@@ -700,10 +703,6 @@ html[data-tight] .grid-head .dom { font-size: var(--text-sm); }
 html[data-tight] .day-nav { gap: 0; padding-left: 0; }
 html[data-tight] .day-nav .icon-button { width: 1.5rem; height: 1.5rem; }
 html[data-tight] .day-nav .icon-button svg { width: .95rem; height: .95rem; }
-/* Smaller numbers in the smaller day cells. */
-html[data-tight] .mark { font-size: .62rem; }
-html[data-tight] .mark-value.is-small { font-size: .55rem; }
-html[data-tight] .mark-value.is-tiny { font-size: .48rem; }
 html[data-tight] .habit-tools .icon-button { width: 1.5rem; height: 1.5rem; }
 html[data-tight] .habit-tools .icon-button svg { width: .95rem; height: .95rem; }
 
@@ -789,8 +788,10 @@ html[data-tight] .habit-tools .icon-button svg { width: .95rem; height: .95rem; 
   touch-action: manipulation;
 }
 
-.grid-head.is-selectable:not(.is-today):hover::after {
-  background: color-mix(in srgb, var(--today-shown) 45%, transparent);
+@media (hover: hover) {
+  .grid-head.is-selectable:not(.is-today):hover::after {
+    background: color-mix(in srgb, var(--today-shown) 45%, transparent);
+  }
 }
 
 .grid-head.is-selectable:focus-visible { outline: none; }
@@ -851,9 +852,11 @@ html[data-filtering="on"] {
 :is(.habit-tools, .block-tools) .icon-button svg { width: var(--icon); height: var(--icon); }
 
 /* Hover one step darker (light) or lighter (dark) than the hovered row. */
-.habit-tools .icon-button:hover:not(:disabled) {
-  background: var(--border);
-  color: var(--text);
+@media (hover: hover) {
+  .habit-tools .icon-button:hover:not(:disabled) {
+    background: var(--border);
+    color: var(--text);
+  }
 }
 
 /* Pressed: another step further. */
@@ -884,7 +887,9 @@ html[data-filtering="on"] {
   transition: var(--fill-fade);
 }
 
-.habit-cell:hover .habit-main { background: var(--surface-2); }
+@media (hover: hover) {
+  .habit-cell:hover .habit-main { background: var(--surface-2); }
+}
 
 .habit-text {
   display: flex;
@@ -985,11 +990,13 @@ html[data-filtering="on"] {
   touch-action: manipulation;
 }
 
-.cell:hover:not(:disabled) { background: var(--surface-2); }
+@media (hover: hover) {
+  .cell:hover:not(:disabled) { background: var(--surface-2); }
 
-/* Day cells in the today column stay transparent; only hover is shown. */
-.cell.is-today:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--band-shown) 88%, var(--text));
+  /* Day cells in the today column stay transparent; only hover is shown. */
+  .cell.is-today:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--band-shown) 88%, var(--text));
+  }
 }
 .cell:disabled { cursor: default; }
 
@@ -1011,7 +1018,9 @@ html[data-filtering="on"] {
   border-radius: 50%;
   display: grid;
   place-items: center;
-  font-size: .7rem;
+  /* The smallest size of both guidelines (11pt, 11sp), also on a tight board;
+     cellValue shortens long values instead. */
+  font-size: max(11px, .75rem);
   font-weight: var(--weight-bold);
   color: var(--text-muted);
   background:
@@ -1027,9 +1036,12 @@ html[data-filtering="on"] {
   .mark {
     --mark-ink: oklch(from var(--habit-color) clamp(.2, calc((var(--ink-flip) - l) * 1000), 1) 0 0);
     --mark-halo: oklch(from var(--habit-color) clamp(0, calc((l - var(--ink-flip)) * 1000), 1) 0 0 / .45);
+    /* The ring of an open day at one lightness for every colour, which gives
+       each at least 3.4:1 against the card (WCAG 1.4.11 asks 3:1 for
+       graphics). Muted, so the progress arc in full colour stands out. */
     --ring-ink: light-dark(
-      oklch(from var(--habit-color) min(l, .6) c h / .5),
-      color-mix(in srgb, var(--habit-color) 45%, transparent));
+      oklch(from var(--habit-color) .62 calc(c * .4) h),
+      oklch(from var(--habit-color) .55 calc(c * .4) h));
     --value-ink: light-dark(oklch(from var(--habit-color) min(l, .55) c h), var(--habit-color));
   }
 }
@@ -1053,14 +1065,16 @@ html[data-filtering="on"] {
 .mark > * { position: relative; z-index: 1; }
 
 /* text-box trims the line box to cap height and baseline, so the digits are
-   centred exactly, independent of the font. */
+   centred exactly, independent of the font. Firefox lacks it; there a line
+   height of 1 splits the font's ascent and descent evenly, which centres the
+   digits within about half a pixel for the embedded fonts. */
 .mark-value {
   color: var(--value-ink);
   font-variant-numeric: tabular-nums;
+  line-height: 1;
   text-box: trim-both cap alphabetic;
 }
-.mark-value.is-small { font-size: .62rem; }
-.mark-value.is-tiny { font-size: .54rem; letter-spacing: -.02em; }
+.mark-value.is-long { letter-spacing: -.03em; }
 .mark.is-complete .mark-value { color: var(--mark-ink); }
 
 .mark.is-complete {
@@ -1244,8 +1258,11 @@ html.route-detail .view { padding-top: 0; }
 
 .overflow-item svg { width: var(--icon); height: var(--icon); flex: none; color: var(--text-muted); }
 
-.overflow-item:hover,
 .overflow-item:focus-visible { background: var(--border); outline: none; }
+
+@media (hover: hover) {
+  .overflow-item:hover { background: var(--border); }
+}
 
 .overflow-item:active { background: var(--border-strong); }
 

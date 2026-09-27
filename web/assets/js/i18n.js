@@ -235,6 +235,7 @@ const de = {
   // ---------- search ----------
   "Search habits and categories": "Gewohnheiten und Kategorien suchen",
   "Search habits and categories…": "Gewohnheiten und Kategorien suchen …",
+  "Clear search": "Suche leeren",
   "Results": "Ergebnisse",
   "No habit or category matches.": "Keine Gewohnheit oder Kategorie passt.",
   "Category · 1 habit": "Kategorie · 1 Gewohnheit",

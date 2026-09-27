@@ -1,7 +1,7 @@
 // Category picker, a page opened on top of the habit editor.
 
 import { state } from "./state.js";
-import { icons, categoryIconBadge } from "./icons.js";
+import { categoryIconBadge } from "./icons.js";
 import { errorText } from "./undo.js";
 import { t } from "./i18n.js";
 import { openPage, closePage } from "./pages.js";
@@ -75,13 +75,10 @@ function paintList() {
     label.className = "picker-option-name";
     label.textContent = option.name;
 
-    const mark = document.createElement("span");
-    mark.className = "picker-option-mark";
-    if (option.id === current) mark.innerHTML = icons.check;
-
+    // The selection is shown by the accent fill, as in the dropdowns.
     const badge = categoryIconBadge(option, "habit-icon is-small");
     if (badge) row.append(badge);
-    row.append(label, mark);
+    row.append(label);
     return row;
   }));
 }

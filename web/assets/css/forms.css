@@ -15,7 +15,7 @@
 
 .dialog-head {
   padding: var(--space) calc(1.15 * var(--space)) calc(.25 * var(--space));
-  font-size: 1.05rem;
+  font-size: var(--text-lg);
   font-weight: var(--weight-bold);
 }
 
@@ -55,16 +55,7 @@
   background-size: var(--pattern-size);
 }
 
-/* Background image with veil and blur. The layer extends beyond the viewport
-   by twice the blur radius, so the edges do not fade. */
-html[data-pattern="image"] .dialog.page::backdrop {
-  inset: calc(-2 * var(--bg-blur));
-  background-image: linear-gradient(var(--bg-veil), var(--bg-veil)), var(--pattern-image);
-  background-size: auto, cover;
-  background-position: center, center;
-  background-repeat: no-repeat, no-repeat;
-  filter: blur(var(--bg-blur));
-}
+/* Over a background image, veil and blur as on body::before (see base.css). */
 
 /* Slides in from the right, as a new screen does. */
 .dialog.page[open] { animation: page-in .22s cubic-bezier(.2, .8, .2, 1); }
@@ -89,7 +80,8 @@ html[data-pattern="image"] .dialog.page::backdrop {
 html:has(.dialog.page[open]) { overflow: hidden; }
 
 /* Title bar: back button, title and an optional action. Like the app's title
-   bar, it uses the page background, so cards scrolling underneath are hidden. */
+   bar, it uses the page background, so cards scrolling underneath are hidden
+   (see base.css). */
 .page-head {
   position: sticky;
   top: 0;
@@ -101,28 +93,18 @@ html:has(.dialog.page[open]) { overflow: hidden; }
   padding: env(safe-area-inset-top, 0px) var(--page-inset) 0;
   /* The back button's icon lines up with the card's edge. */
   padding-left: calc(var(--page-inset) - .5rem);
-  background-color: var(--bg);
-  background-image: var(--pattern-image);
-  background-size: var(--pattern-size);
-  background-attachment: fixed;
-}
-
-/* A pane over a background image, as the app's title bar has. */
-html[data-pattern="image"] .page-head {
-  background: var(--topbar-bg);
-  backdrop-filter: blur(var(--surface-blur));
 }
 
 .page-head h2 {
   flex: 1;
   min-width: 0;
-  font-size: 1.1rem;
+  font-size: var(--text-lg);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.page-head .icon-button svg { width: 1.25rem; height: 1.25rem; }
+.page-head .icon-button svg { width: var(--icon); height: var(--icon); }
 .page-head .icon-button:hover { background: var(--surface-2); }
 
 /* The content: one flat card on the page background, like the overview's. */
@@ -134,12 +116,6 @@ html[data-pattern="image"] .page-head {
   background: var(--surface);
 }
 
-html[data-pattern="image"] .page-body {
-  background: var(--surface-veil);
-  backdrop-filter: blur(var(--surface-blur));
-}
-
-/* The settings menu's rows reach to the card's edge. */
 /* ---------- settings menu ---------- */
 
 /* The settings menu has a card per section instead of one for the page. */
@@ -147,7 +123,7 @@ html[data-pattern="image"] .page-body {
 html[data-pattern="image"] .page-body:has(> .menu) {
   display: flex;
   flex-direction: column;
-  gap: calc(.85 * var(--space));
+  gap: var(--card-gap);
   padding: 0;
   background: none;
   backdrop-filter: none;
@@ -161,12 +137,6 @@ html[data-pattern="image"] .page-body:has(> .menu) {
   padding: calc(.35 * var(--space));
   border-radius: var(--radius);
   background: var(--surface);
-}
-
-html[data-pattern="image"] .menu,
-html[data-pattern="image"] .account {
-  background: var(--surface-veil);
-  backdrop-filter: blur(var(--surface-blur));
 }
 
 /* The signed-in user, a card above the sections. */
@@ -189,7 +159,7 @@ html[data-pattern="image"] .account {
   border-radius: 50%;
   background: var(--primary);
   color: var(--primary-text);
-  font-size: 1.05rem;
+  font-size: var(--text-lg);
   font-weight: var(--weight-bold);
   letter-spacing: .02em;
 }
@@ -203,9 +173,9 @@ html[data-pattern="image"] .account {
   white-space: nowrap;
 }
 
-.account-name { font-size: 1.1rem; font-weight: var(--weight-bold); }
-.account-detail { color: var(--text-muted); font-size: .88rem; }
-.account-text .account-groups { color: var(--text-faint); font-size: .8rem; margin-top: 2px; }
+.account-name { font-size: var(--text-lg); font-weight: var(--weight-bold); }
+.account-detail { color: var(--text-muted); font-size: var(--text-md); }
+.account-text .account-groups { color: var(--text-faint); font-size: var(--text-sm); margin-top: 2px; }
 
 .menu-item {
   display: flex;
@@ -218,7 +188,7 @@ html[data-pattern="image"] .account {
   border-radius: var(--radius-sm);
   padding: calc(.8 * var(--space)) calc(.75 * var(--space));
   cursor: pointer;
-  transition: background .12s ease;
+  transition: var(--fill-fade);
 }
 
 .menu-item:hover { background: var(--surface-2); }
@@ -228,11 +198,11 @@ html[data-pattern="image"] .account {
 .menu-icon { color: var(--text-muted); }
 .menu-icon svg { width: 1.3rem; height: 1.3rem; }
 .menu-caret { color: var(--text-faint); }
-.menu-caret svg { width: 1.1rem; height: 1.1rem; }
+.menu-caret svg { width: 1rem; height: 1rem; }
 
 .menu-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .menu-title { font-weight: var(--weight-emphasis); }
-.menu-hint { font-size: .82rem; color: var(--text-muted); }
+.menu-hint { font-size: var(--text-sm); color: var(--text-muted); }
 
 /* ---------- facts ---------- */
 
@@ -280,14 +250,12 @@ html[data-pattern="image"] .account {
 
 .field-label {
   display: block;
-  font-size: .78rem;
+  font-size: var(--text-xs);
   font-weight: var(--weight-semibold);
   color: var(--text-muted);
   margin-bottom: calc(.3 * var(--space));
   padding: 0;
 }
-
-.field-optional { font-weight: 400; color: var(--text-faint); }
 
 .field input[type="text"],
 .field input[type="number"],
@@ -302,7 +270,9 @@ html[data-pattern="image"] .account {
 }
 
 .field input:focus,
-.field textarea:focus {
+.field textarea:focus,
+.picker-create input:focus,
+.select:focus-visible {
   border-color: var(--primary);
   outline: none;
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 22%, transparent);
@@ -340,8 +310,8 @@ html[data-pattern="image"] .account {
   gap: calc(.35 * var(--space));
   padding: calc(.6 * var(--space)) calc(.5 * var(--space));
   /* Rounded a little less than the container. */
-  border-radius: calc(var(--radius-sm) - var(--segment-inset) / 2);
-  font-size: .85rem;
+  border-radius: var(--radius-xs);
+  font-size: var(--text-md);
   color: var(--text-muted);
   cursor: pointer;
   white-space: nowrap;
@@ -435,7 +405,7 @@ html[data-pattern="image"] .account {
   border: var(--ring) solid transparent;
   background: var(--surface-2);
   cursor: pointer;
-  font-size: .8rem;
+  font-size: var(--text-sm);
   font-weight: var(--weight-semibold);
   color: var(--text-muted);
 }
@@ -446,7 +416,6 @@ html[data-pattern="image"] .account {
   color: var(--primary-text);
 }
 
-/* Dropdown styled like the text fields. The native arrow follows color-scheme. */
 /* Dropdown styled like the category picker: flat, with its own chevron. */
 .select {
   appearance: none;
@@ -460,18 +429,14 @@ html[data-pattern="image"] .account {
   padding: calc(.5 * var(--space)) calc(1.2 * var(--space) + 1rem) calc(.5 * var(--space))
     calc(.6 * var(--space));
   cursor: pointer;
-  transition: background-color .12s ease;
+  transition: var(--fill-fade);
 }
 
 .select:hover { background-color: var(--surface-2); }
 
-/* The ring only for the keyboard; a click opens the list instead. */
+/* The ring only for the keyboard (see the text fields); a click opens the list
+   instead. */
 .select:focus { outline: none; }
-
-.select:focus-visible {
-  border-color: var(--primary);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 22%, transparent);
-}
 
 /* Where the list can be styled too: a flat pane, the chosen option in the
    accent colour. */
@@ -509,7 +474,8 @@ html[data-pattern="image"] .account {
     color: var(--text);
     padding: 4px;
     margin-block: 4px;
-    box-shadow: none;
+    /* Floats over the page, as the overflow menu does. */
+    box-shadow: var(--shadow-float);
     /* Below the field; above only if it does not fit there. The default
        picks the side with more room, often above. */
     position-try-order: normal;
@@ -517,7 +483,7 @@ html[data-pattern="image"] .account {
 
   .select option {
     padding: calc(.45 * var(--space)) calc(.6 * var(--space));
-    border-radius: calc(var(--radius-sm) - 2px);
+    border-radius: var(--radius-xs);
     cursor: pointer;
   }
 
@@ -567,7 +533,7 @@ html[data-pattern="image"] .account {
   flex: 1;
   min-width: 0;
   text-align: center;
-  font-size: 1.4rem;
+  font-size: var(--text-xl);
   font-weight: var(--weight-bold);
   background: var(--bg);
   border: 1px solid transparent;
@@ -640,6 +606,7 @@ html[data-pattern="image"] .account {
   border-radius: var(--radius-sm);
   padding: calc(.5 * var(--space)) calc(.6 * var(--space));
   cursor: pointer;
+  transition: var(--fill-fade);
 }
 
 .picker:hover { background: var(--surface-2); }
@@ -660,22 +627,36 @@ html[data-pattern="image"] .account {
 .picker-option {
   display: flex;
   align-items: center;
-  gap: calc(.5 * var(--space));
+  gap: var(--row-gap);
   text-align: left;
   border: none;
   background: transparent;
   border-radius: var(--radius-sm);
-  padding: calc(.5 * var(--space)) calc(.6 * var(--space));
+  padding: var(--row-pad);
   cursor: pointer;
+  transition: var(--fill-fade);
 }
 
 .picker-option:hover { background: var(--surface-2); }
-.picker-option[aria-selected="true"] { color: var(--text); font-weight: var(--weight-semibold); }
 .picker-option.is-stale { color: var(--text-faint); font-style: italic; }
 
+/* The chosen category in the accent colour, as the chosen option of a
+   dropdown. Hover and pressed states follow the primary button (see the
+   pressed state below). */
+.picker-option[aria-selected="true"] {
+  background: var(--primary);
+  color: var(--primary-text);
+  font-weight: var(--weight-semibold);
+}
+
+/* The icon tile takes the text colour, as a habit colour may clash with the
+   accent. Not via --habit-color, which is set inline. */
+.picker-option[aria-selected="true"] .habit-icon {
+  color: inherit;
+  background: color-mix(in srgb, currentColor 16%, transparent);
+}
+
 .picker-option-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.picker-option-mark { display: flex; color: var(--primary); }
-.picker-option-mark svg { width: 1rem; height: 1rem; }
 
 /* Creating a category in the picker. */
 .picker-create {
@@ -694,13 +675,7 @@ html[data-pattern="image"] .account {
   background: var(--bg);
   border: 1px solid transparent;
   border-radius: var(--radius-sm);
-  padding: calc(.45 * var(--space)) calc(.6 * var(--space));
-}
-
-.picker-create input:focus {
-  border-color: var(--primary);
-  outline: none;
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 22%, transparent);
+  padding: calc(.5 * var(--space)) calc(.6 * var(--space));
 }
 
 /* Checkbox with label, for on/off settings. */
@@ -768,7 +743,7 @@ html[data-pattern="image"] .account {
   min-width: 3.2rem;
   text-align: right;
   color: var(--text-muted);
-  font-size: .82rem;
+  font-size: var(--text-sm);
   font-variant-numeric: tabular-nums;
 }
 
@@ -783,7 +758,7 @@ html[data-pattern="image"] .account {
 .knob-group {
   margin: calc(1.1 * var(--space)) 0 0;
   color: var(--text-muted);
-  font-size: .78rem;
+  font-size: var(--text-xs);
   font-weight: var(--weight-semibold);
 }
 
@@ -809,6 +784,10 @@ html[data-pattern="image"] .account {
 
 html[data-today-band="off"] .cell.is-today:active:not(:disabled) { background: var(--border); }
 
+/* The chosen category keeps its accent fill, like a primary button. */
+.picker-option[aria-selected="true"]:hover,
+.picker-option[aria-selected="true"]:active { background: var(--primary-hover); }
+
 /* ---------- touch screens ----------
 
    Every control is at least 48px in both directions, the larger of Apple's
@@ -833,7 +812,7 @@ html[data-today-band="off"] .cell.is-today:active:not(:disabled) { background: v
   html[data-tight] .day-nav,
   .day-nav { gap: 0; }
   /* The usual arrow size, also on a tight board. */
-  html[data-tight] .day-nav .icon-button svg { width: 1.2rem; height: 1.2rem; }
+  html[data-tight] .day-nav .icon-button svg { width: var(--icon); height: var(--icon); }
 
   .menu-item,
   .picker,

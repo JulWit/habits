@@ -27,8 +27,7 @@
   border-radius: var(--radius-sm);
   /* Left padding leaves room for the magnifier. */
   padding: calc(.6 * var(--space)) calc(.7 * var(--space)) calc(.6 * var(--space)) calc(.7 * var(--space) + 1.6rem);
-  font-size: 1rem;
-  color: inherit;
+  font-size: var(--text-base);
 }
 
 #search-input::placeholder { color: var(--text-faint); }
@@ -43,16 +42,14 @@
   margin-top: calc(.5 * var(--space));
 }
 
-
-.search-results[hidden] { display: none; }
-
 .search-option {
   display: flex;
   align-items: center;
-  gap: calc(.6 * var(--space));
-  padding: calc(.5 * var(--space)) calc(.7 * var(--space));
+  gap: var(--row-gap);
+  padding: var(--row-pad);
   border-radius: var(--radius-sm);
   cursor: pointer;
+  transition: var(--fill-fade);
 }
 
 /* Room for the scrollbar; set by search.js when the list overflows. */
@@ -60,7 +57,9 @@
 
 .search-option[aria-selected="true"] { background: var(--surface-2); }
 
-.search-option .dot {
+/* A dot in the habit's colour, where a habit has no icon (search, category
+   view, app bar). */
+.dot {
   width: .7rem;
   height: .7rem;
   flex: none;
@@ -89,7 +88,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: .8rem;
+  font-size: var(--text-sm);
   color: var(--text-faint);
 }
 
@@ -98,7 +97,7 @@
 .search-empty {
   padding: calc(.8 * var(--space)) calc(.7 * var(--space)) calc(.4 * var(--space));
   color: var(--text-faint);
-  font-size: .9rem;
+  font-size: var(--text-md);
 }
 
 /* ---------- overview board ----------
@@ -113,7 +112,7 @@
   flex-direction: column;
   gap: var(--board-gap);
   /* Gap between the cards; also kept below the sticky day header. */
-  --board-gap: calc(.85 * var(--space));
+  --board-gap: var(--card-gap);
   /* Stacking context for the cards' layers. */
   position: relative;
   isolation: isolate;
@@ -181,10 +180,9 @@ html[data-today-band="off"] .board.has-today .block-rows::before { display: none
 html[data-today-band="off"] .cell.is-today:hover:not(:disabled) { background: var(--surface-2); }
 html[data-today-band="off"] .cell.is-today .mark::after { background: var(--surface); }
 
-/* No row gap, so the month divider is continuous. */
-.day-header { row-gap: 0; }
-
 .day-header {
+  /* No row gap, so the month divider is continuous. */
+  row-gap: 0;
   border: 1px solid transparent;
   /* Only the bottom corners are rounded, as the top touches the title bar when
      scrolled. */
@@ -200,12 +198,7 @@ html[data-today-band="off"] .cell.is-today .mark::after { background: var(--surf
   position: sticky;
   top: calc(var(--topbar-h) + var(--board-gap));
   z-index: 5;
-  /* Opaque with the page pattern, anchored to the viewport like the pattern
-     layer. */
-  background-color: var(--bg);
-  background-image: var(--pattern-image);
-  background-size: var(--pattern-size);
-  background-attachment: fixed;
+  /* Opaque with the page pattern (see base.css). */
 }
 
 /* When scrolled, the header is drawn as a card with rounded corners. It extends
@@ -256,10 +249,6 @@ html[data-scrolled="on"] .day-header-backdrop {
     calc(-1px - var(--board-gap))
     -1px
     calc(-1px - var(--corner));
-  background-color: var(--bg);
-  background-image: var(--pattern-image);
-  background-size: var(--pattern-size);
-  background-attachment: fixed;
   /* Everything above the corner band, the two corners and the side strips. */
   mask-image:
     linear-gradient(#000, #000),
@@ -322,7 +311,7 @@ html[data-scrolled="on"] .day-header-backdrop {
 }
 
 .block-title {
-  font-size: .92rem;
+  font-size: var(--text-section);
   font-weight: var(--weight-bold);
   letter-spacing: .01em;
   /* Fills the free space, pushing the tools to the right. */
@@ -344,13 +333,6 @@ html[data-scrolled="on"] .day-header-backdrop {
 .block:hover .block-tools,
 .block:focus-within .block-tools { opacity: 1; }
 
-/* Same size and colour as the handles in the rows. */
-.block-tools .icon-button {
-  width: 2rem;
-  height: 2rem;
-  color: var(--text-muted);
-}
-.block-tools .icon-button svg { width: 1.2rem; height: 1.2rem; }
 
 /* Category name as a link to the category view, with the same hover fill as a
    habit name. Negative margins compensate the padding. */
@@ -364,7 +346,7 @@ html[data-scrolled="on"] .day-header-backdrop {
   margin-inline: calc(-.4 * var(--space));
   margin-block: calc(-.25 * var(--space));
   border-radius: var(--radius-sm);
-  transition: background .12s ease;
+  transition: var(--fill-fade);
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -397,14 +379,15 @@ html[data-scrolled="on"] .day-header-backdrop {
 
 /* ---------- category screen ---------- */
 
-.cat-habits { display: flex; flex-direction: column; }
+.cat-habits { display: flex; flex-direction: column; gap: 2px; }
 
 .cat-habit {
   display: flex;
   align-items: center;
-  gap: calc(.7 * var(--space));
+  gap: var(--row-gap);
   width: 100%;
-  padding: calc(.6 * var(--space)) calc(.5 * var(--space));
+  padding: var(--row-pad);
+  transition: var(--fill-fade);
   border: none;
   border-radius: var(--radius-sm);
   background: none;
@@ -414,14 +397,6 @@ html[data-scrolled="on"] .day-header-backdrop {
 }
 
 .cat-habit:hover { background: var(--surface-2); }
-
-.cat-habit .dot {
-  width: .7rem;
-  height: .7rem;
-  border-radius: 50%;
-  background: var(--habit-color);
-  flex: none;
-}
 
 .cat-habit-text {
   display: flex;
@@ -433,7 +408,7 @@ html[data-scrolled="on"] .day-header-backdrop {
 
 .cat-habit-streak {
   color: var(--text-muted);
-  font-size: .82rem;
+  font-size: var(--text-sm);
   font-variant-numeric: tabular-nums;
   flex: none;
 }
@@ -447,7 +422,7 @@ html[data-scrolled="on"] .day-header-backdrop {
   /* Inset like the title on the left. */
   margin-right: calc(.55 * var(--space));
   color: var(--text-muted);
-  font-size: .78rem;
+  font-size: var(--text-xs);
   font-variant-numeric: tabular-nums;
 }
 
@@ -497,7 +472,7 @@ html[data-scrolled="on"] .day-header-backdrop {
 }
 
 .day-summary-date {
-  font-size: 1.05rem;
+  font-size: var(--text-lg);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -506,7 +481,7 @@ html[data-scrolled="on"] .day-header-backdrop {
 .day-summary-count {
   margin: 0;
   color: var(--text-muted);
-  font-size: .85rem;
+  font-size: var(--text-md);
   font-variant-numeric: tabular-nums;
 }
 
@@ -611,7 +586,7 @@ html[data-scrolled="on"] .day-header-backdrop {
   inset: 0;
   display: grid;
   place-items: center;
-  font-size: .75rem;
+  font-size: var(--text-xs);
   font-weight: var(--weight-semibold);
   font-variant-numeric: tabular-nums;
 }
@@ -620,14 +595,14 @@ html[data-scrolled="on"] .day-header-backdrop {
   margin: 0;
   padding: calc(.35 * var(--space)) calc(.55 * var(--space)) calc(.8 * var(--space));
   color: var(--text-faint);
-  font-size: .82rem;
+  font-size: var(--text-sm);
 }
 
 /* Month label above the dates, spanning the month's columns. */
 .month-label {
   align-self: end;
   padding: 0 calc(.3 * var(--space)) calc(.15 * var(--space));
-  font-size: .75rem;
+  font-size: var(--text-xs);
   font-weight: var(--weight-semibold);
   letter-spacing: .04em;
   color: var(--text-muted);
@@ -680,18 +655,18 @@ html[data-scrolled="on"] .day-header-backdrop {
 }
 
 /* The same arrow size as on touch screens, in a compact button. */
-.day-nav .icon-button svg { width: 1.2rem; height: 1.2rem; }
+.day-nav .icon-button svg { width: var(--icon); height: var(--icon); }
 
 /* ---------- a tight board ----------
 
    Set by overview.js (see base.css). Hides the habit icons, reduces the font
    sizes and shrinks the paging buttons. */
 html[data-tight] .habit-main .habit-icon { display: none; }
-html[data-tight] .habit-name { font-size: .85rem; }
-html[data-tight] .habit-meta { font-size: .75rem; }
+html[data-tight] .habit-name { font-size: var(--text-md); }
+html[data-tight] .habit-meta { font-size: var(--text-xs); }
 html[data-tight] .habit-main { padding-inline: calc(.25 * var(--space)); }
-html[data-tight] .grid-head { font-size: .75rem; }
-html[data-tight] .grid-head .dom { font-size: .78rem; }
+html[data-tight] .grid-head { font-size: var(--text-xs); }
+html[data-tight] .grid-head .dom { font-size: var(--text-sm); }
 html[data-tight] .day-nav { gap: 0; padding-left: 0; }
 html[data-tight] .day-nav .icon-button { width: 1.5rem; height: 1.5rem; }
 html[data-tight] .day-nav .icon-button svg { width: .95rem; height: .95rem; }
@@ -704,7 +679,7 @@ html[data-tight] .habit-tools .icon-button svg { width: .95rem; height: .95rem; 
 
 /* Disabled buttons are dimmed. */
 .day-nav .icon-button:disabled {
-  opacity: .45;
+  opacity: var(--disabled-opacity);
   cursor: default;
   background: transparent;
 }
@@ -718,7 +693,7 @@ html[data-tight] .habit-tools .icon-button svg { width: .95rem; height: .95rem; 
   border-radius: var(--radius-sm);
   /* Same text colour as the habit names. */
   color: var(--text);
-  font-size: .75rem;
+  font-size: var(--text-xs);
   /* Medium weight for legibility at this small size. */
   font-weight: var(--weight-medium);
   line-height: 1.25;
@@ -815,8 +790,8 @@ html[data-pattern="image"][data-scrolled="on"] .day-header-backdrop {
   text-underline-offset: 2px;
 }
 
-.grid-head .dow { text-transform: uppercase; letter-spacing: .04em; }
-.grid-head .dom { font-size: .85rem; }
+.grid-head .dow { text-transform: uppercase; letter-spacing: var(--caps-spacing); }
+.grid-head .dom { font-size: var(--text-md); }
 
 /* Name cell of a row; the move arrows are positioned absolutely over the right
    end of the label, so they do not affect the layout. */
@@ -849,14 +824,14 @@ html[data-filtering="on"] {
   --tools-outset: 0px;
 }
 
-/* Same background as the hovered row. */
-.habit-tools .icon-button {
+/* The handles of rows and categories. */
+:is(.habit-tools, .block-tools) .icon-button {
   width: 2rem;
   height: 2rem;
   color: var(--text-muted);
 }
 
-.habit-tools .icon-button svg { width: 1.2rem; height: 1.2rem; }
+:is(.habit-tools, .block-tools) .icon-button svg { width: var(--icon); height: var(--icon); }
 
 /* Hover one step darker (light) or lighter (dark) than the hovered row. */
 .habit-tools .icon-button:hover:not(:disabled) {
@@ -871,7 +846,7 @@ html[data-filtering="on"] {
 
 .habit-tools .icon-button:disabled {
   color: var(--text-faint);
-  opacity: .4;
+  opacity: var(--disabled-opacity);
   cursor: default;
   background: transparent;
 }
@@ -889,6 +864,7 @@ html[data-filtering="on"] {
   border-radius: var(--radius-sm);
   background: transparent;
   cursor: pointer;
+  transition: var(--fill-fade);
 }
 
 .habit-cell:hover .habit-main { background: var(--surface-2); }
@@ -916,11 +892,8 @@ html[data-filtering="on"] {
 
 .habit-icon svg { width: 1rem; height: 1rem; }
 
-.habit-icon.is-small { width: 1.5rem; height: 1.5rem; border-radius: calc(.75 * var(--radius-sm)); }
+.habit-icon.is-small { width: 1.5rem; height: 1.5rem; border-radius: var(--radius-xs); }
 .habit-icon.is-small svg { width: .9rem; height: .9rem; }
-
-.habit-icon.is-large { width: 2.4rem; height: 2.4rem; }
-.habit-icon.is-large svg { width: 1.4rem; height: 1.4rem; }
 
 /* Icon tile on the board, sized from the height of the two text lines, so it
    follows the density. */
@@ -946,7 +919,7 @@ html[data-filtering="on"] {
 
 .habit-meta {
   color: var(--text-faint);
-  font-size: .75rem;
+  font-size: var(--text-xs);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -990,6 +963,7 @@ html[data-filtering="on"] {
   background: transparent;
   cursor: pointer;
   padding: 0;
+  transition: var(--fill-fade);
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
 }
@@ -1096,11 +1070,10 @@ html[data-filtering="on"] {
 
 /* Unscheduled days are dimmed. */
 .mark.is-off {
-  background: none;
+  background: var(--border-strong);
   box-shadow: none;
   width: .35rem;
   height: .35rem;
-  background-color: var(--border-strong);
 }
 
 /* Future days are dimmed. */
@@ -1139,19 +1112,9 @@ html.route-detail .view { padding-top: 0; }
   min-height: var(--topbar-row);
   margin: 0 calc(-1 * var(--gutter)) var(--space);
   padding: env(safe-area-inset-top, 0px) var(--bar-inset) 0;
-  background-color: var(--bg);
-  background-image: var(--pattern-image);
-  background-size: var(--pattern-size);
-  background-attachment: fixed;
 }
 
-/* A pane over a background image, as the app's title bar has. */
-html[data-pattern="image"] .app-bar {
-  background: var(--topbar-bg);
-  backdrop-filter: blur(var(--surface-blur));
-}
-
-.app-bar .icon-button svg { width: 1.25rem; height: 1.25rem; }
+.app-bar .icon-button svg { width: var(--icon); height: var(--icon); }
 
 /* Icon, name and details in one row. The name keeps its width; the details
    get what is left and are cut off first. */
@@ -1170,7 +1133,7 @@ html[data-pattern="image"] .app-bar {
   gap: calc(.5 * var(--space));
   flex: 0 1 auto;
   min-width: 0;
-  font-size: 1.1rem;
+  font-size: var(--text-lg);
 }
 
 .app-bar-title .sub { flex: 1 1 0; min-width: 0; }
@@ -1191,8 +1154,7 @@ html[data-pattern="image"] .app-bar {
   white-space: nowrap;
 }
 
-.app-bar-title .sub { color: var(--text-muted); font-size: .8rem; }
-.app-bar-title .dot { width: .7rem; height: .7rem; border-radius: 50%; background: var(--habit-color); flex: none; }
+.app-bar-title .sub { color: var(--text-muted); font-size: var(--text-sm); }
 
 .app-bar-actions { display: flex; align-items: center; flex: none; }
 
@@ -1208,7 +1170,7 @@ html[data-pattern="image"] .app-bar {
   border-radius: var(--radius-sm);
   background: var(--surface-2);
   color: var(--text);
-  box-shadow: 0 8px 24px rgb(0 0 0 / .22);
+  box-shadow: var(--shadow-float);
 }
 
 /* Only while open, as the closed popover is hidden by display. */
@@ -1230,17 +1192,18 @@ html[data-pattern="image"] .app-bar {
 .overflow-item {
   display: flex;
   align-items: center;
-  gap: calc(.7 * var(--space));
+  gap: var(--row-gap);
   width: 100%;
-  padding: calc(.6 * var(--space)) calc(.8 * var(--space));
+  padding: var(--row-pad);
   border: none;
-  border-radius: calc(var(--radius-sm) - 2px);
+  border-radius: var(--radius-xs);
   background: transparent;
   text-align: left;
   cursor: pointer;
+  transition: var(--fill-fade);
 }
 
-.overflow-item svg { width: 1.15rem; height: 1.15rem; flex: none; color: var(--text-muted); }
+.overflow-item svg { width: var(--icon); height: var(--icon); flex: none; color: var(--text-muted); }
 
 .overflow-item:hover,
 .overflow-item:focus-visible { background: var(--border); outline: none; }
@@ -1253,8 +1216,8 @@ html[data-pattern="image"] .app-bar {
 .stat-row {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
-  gap: calc(.75 * var(--space));
-  margin-bottom: calc(1.5 * var(--space));
+  gap: var(--card-gap);
+  margin-bottom: var(--card-gap);
 }
 
 .stat {
@@ -1263,17 +1226,19 @@ html[data-pattern="image"] .app-bar {
   padding: calc(.8 * var(--space)) calc(.9 * var(--space));
 }
 
-.stat .value { font-size: 1.5rem; font-weight: var(--weight-bold); letter-spacing: -.02em; }
-.stat .label { color: var(--text-faint); font-size: .75rem; text-transform: uppercase; letter-spacing: .05em; }
+.stat .value { font-size: var(--text-xl); font-weight: var(--weight-bold); letter-spacing: -.02em; }
+
+.stat .label,
+.activity-list dt { color: var(--text-faint); font-size: var(--text-xs); text-transform: uppercase; letter-spacing: var(--caps-spacing); }
 
 .panel {
   background: var(--surface);
   border-radius: var(--radius);
   padding: var(--space);
-  margin-bottom: calc(1.25 * var(--space));
+  margin-bottom: var(--card-gap);
 }
 
-.panel h3 { font-size: .9rem; color: var(--text-muted); margin-bottom: calc(.85 * var(--space)); }
+.panel h3 { font-size: var(--text-section); color: var(--text-muted); margin-bottom: calc(.85 * var(--space)); }
 
 /* ---------- activity ---------- */
 
@@ -1284,9 +1249,8 @@ html[data-pattern="image"] .app-bar {
   margin: 0;
 }
 
-.activity-list dt { color: var(--text-faint); font-size: .75rem; text-transform: uppercase; letter-spacing: .05em; }
 .activity-list dd { margin: 0; font-weight: var(--weight-medium); }
-.activity-list .note { display: block; color: var(--text-muted); font-size: .85rem; font-weight: normal; }
+.activity-list .note { display: block; color: var(--text-muted); font-size: var(--text-md); font-weight: normal; }
 
 /* ---------- heatmap ---------- */
 
@@ -1302,7 +1266,7 @@ html[data-pattern="image"] .app-bar {
   margin-bottom: calc(.25 * var(--space));
   height: .9rem;
   color: var(--text-faint);
-  font-size: .75rem;
+  font-size: var(--text-xs);
   line-height: 1;
 }
 
@@ -1320,11 +1284,10 @@ html[data-pattern="image"] .app-bar {
 .heat {
   width: var(--heat-cell);
   height: var(--heat-cell);
-  border-radius: 4px;
+  border-radius: var(--radius-2xs);
   background: var(--surface-2);
 }
 
-.heat[data-level="0"] { background: var(--surface-2); }
 .heat[data-level="1"] { background: color-mix(in srgb, var(--habit-color) 28%, var(--surface-2)); }
 .heat[data-level="2"] { background: color-mix(in srgb, var(--habit-color) 55%, var(--surface-2)); }
 .heat[data-level="3"] { background: color-mix(in srgb, var(--habit-color) 78%, var(--surface-2)); }
@@ -1344,7 +1307,7 @@ html[data-pattern="image"] .app-bar {
   gap: calc(.35 * var(--space));
   margin-top: calc(.6 * var(--space));
   color: var(--text-faint);
-  font-size: .75rem;
+  font-size: var(--text-xs);
 }
 
 
@@ -1360,11 +1323,11 @@ html[data-pattern="image"] .app-bar {
   border: none;
   max-width: min(20rem, calc(100vw - 16px));
   padding: calc(.35 * var(--space)) calc(.6 * var(--space));
-  border-radius: calc(var(--radius-sm) - 2px);
+  border-radius: var(--radius-sm);
   background: var(--tooltip-bg);
   color: var(--tooltip-text);
-  box-shadow: 0 4px 14px rgb(0 0 0 / .2);
-  font-size: .8rem;
+  box-shadow: var(--shadow-float);
+  font-size: var(--text-sm);
   line-height: 1.35;
   /* Line breaks in a title (name and details of a habit) are kept. */
   white-space: pre-line;
@@ -1396,7 +1359,6 @@ html[data-pattern="image"] .app-bar {
    Floating button at the bottom centre of the screen, shown while the board
    is paged away from today or another day is active. */
 .today-pill {
-  display: none;
   position: fixed;
   left: 50%;
   bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px));
@@ -1406,11 +1368,10 @@ html[data-pattern="image"] .app-bar {
   padding-inline: calc(.9 * var(--space)) calc(1.1 * var(--space));
   background: var(--surface-2);
   border-color: var(--border);
-  box-shadow: 0 4px 16px rgb(0 0 0 / .25);
+  box-shadow: var(--shadow-float);
 }
 
-.today-pill:not([hidden]) { display: inline-flex; }
-.today-pill svg { width: 1.15rem; height: 1.15rem; }
+.today-pill svg { width: var(--icon); height: var(--icon); }
 .today-pill:active { transform: translateX(-50%) translateY(1px); }
 
 /* Room below the last row, so it can be scrolled clear of the button. */
@@ -1444,7 +1405,7 @@ html[data-pattern="image"] .app-bar {
   animation: toast-in .16s ease-out;
 }
 
-.toast .text { flex: 1; min-width: 0; font-size: .88rem; }
+.toast .text { flex: 1; min-width: 0; font-size: var(--text-md); }
 .toast.is-error { background: color-mix(in srgb, var(--danger) 16%, var(--surface-2)); }
 
 @keyframes toast-in {
@@ -1461,12 +1422,12 @@ html[data-pattern="image"] .app-bar {
    Only used on #/styleguide. */
 
 .sg-head { padding: calc(.5 * var(--space)) 0 calc(1.5 * var(--space)); }
-.sg-head h1 { font-size: 1.5rem; }
+.sg-head h1 { font-size: var(--text-xl); }
 
 .sg-note {
   margin: calc(.35 * var(--space)) 0 0;
   color: var(--text-muted);
-  font-size: .85rem;
+  font-size: var(--text-md);
   max-width: 46rem;
 }
 
@@ -1487,7 +1448,7 @@ html[data-pattern="image"] .app-bar {
 }
 
 .sg-theme-title {
-  font-size: .8rem;
+  font-size: var(--text-sm);
   text-transform: uppercase;
   letter-spacing: .08em;
   color: var(--text-muted);
@@ -1495,7 +1456,7 @@ html[data-pattern="image"] .app-bar {
 }
 
 .sg-section { padding-top: calc(1.5 * var(--space)); }
-.sg-title { font-size: 1rem; }
+.sg-title { font-size: var(--text-base); }
 
 /* Row of specimens, aligned on the baseline. */
 .sg-row {
@@ -1544,7 +1505,7 @@ html[data-pattern="image"] .app-bar {
 .sg-chip {
   width: 1.4rem;
   height: 1.4rem;
-  border-radius: 5px;
+  border-radius: var(--radius-2xs);
   border: 1px solid var(--border-strong);
 }
 
@@ -1560,27 +1521,28 @@ html[data-pattern="image"] .app-bar {
 .cum-summary {
   margin: calc(-.35 * var(--space)) 0 var(--space);
   color: var(--text-muted);
-  font-size: .85rem;
+  font-size: var(--text-md);
 }
 
 .cum-summary strong { color: var(--text); font-weight: var(--weight-bold); }
 
-.cum-empty { margin: 0; color: var(--text-faint); font-size: .85rem; }
+.cum-empty { margin: 0; color: var(--text-faint); font-size: var(--text-md); }
 
 .cum-chart { --cols: 12; }
 
 /* Scale line at the year's total (the tallest bar). */
 .cum-scale {
   text-align: right;
-  font-size: .75rem;
+  font-size: var(--text-xs);
   color: var(--text-faint);
   padding-bottom: calc(.2 * var(--space));
   border-bottom: 1px dashed var(--border);
 }
 
+/* The bars determine the track width. */
 .cum-bars {
   display: grid;
-  grid-template-columns: repeat(var(--cols), 1fr);
+  grid-template-columns: repeat(var(--cols), minmax(var(--bar-min, 24px), 1fr));
   gap: calc(.3 * var(--space));
   align-items: end;
   height: 9rem;
@@ -1592,7 +1554,7 @@ html[data-pattern="image"] .app-bar {
   width: 100%;
   /* The total of previous periods, faded. */
   background: color-mix(in srgb, var(--habit-color) 28%, transparent);
-  border-radius: 4px 4px 0 0;
+  border-radius: var(--radius-2xs) var(--radius-2xs) 0 0;
   display: flex;
   flex-direction: column;
   /* The period's own sum is the first child, at the top. */
@@ -1605,16 +1567,18 @@ html[data-pattern="image"] .app-bar {
 
 .cum-gain {
   background: var(--habit-color);
-  border-radius: 4px 4px 0 0;
+  border-radius: var(--radius-2xs) var(--radius-2xs) 0 0;
   min-height: 2px;
 }
 
+/* Labels use the same columns. They are positioned absolutely, so they do not
+   widen the columns. */
 .cum-months {
   display: grid;
-  grid-template-columns: repeat(var(--cols), 1fr);
+  grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
   gap: calc(.3 * var(--space));
   margin-top: calc(.4 * var(--space));
-  font-size: .75rem;
+  font-size: var(--text-xs);
   color: var(--text-faint);
   text-align: center;
 }
@@ -1632,28 +1596,16 @@ html[data-pattern="image"] .app-bar {
 .cum-head h3 { margin-bottom: 0; }
 
 .segmented.cum-grain { width: auto; flex: none; }
-.segmented.cum-grain span { padding: calc(.25 * var(--space)) calc(.7 * var(--space)); font-size: .78rem; }
+.segmented.cum-grain span { padding: calc(.25 * var(--space)) calc(.7 * var(--space)); font-size: var(--text-xs); }
 
 /* Smaller gaps for many bars. */
-.cum-chart.is-fine .cum-bars { column-gap: 2px; }
-.cum-chart.is-fine .cum-months { column-gap: 2px; }
+.cum-chart.is-fine :is(.cum-bars, .cum-months) { column-gap: 2px; }
 
 /* Bars and labels scroll horizontally together; with few bars they fill the
    width. */
 .cum-scroll { overflow-x: auto; padding-bottom: calc(.35 * var(--space)); }
 
 .cum-track { min-width: 100%; width: max-content; }
-
-/* The bars determine the track width. */
-.cum-bars {
-  grid-template-columns: repeat(var(--cols), minmax(var(--bar-min, 24px), 1fr));
-}
-
-/* Labels use the same columns. They are positioned absolutely, so they do not
-   widen the columns. */
-.cum-months {
-  grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
-}
 
 .cum-months span { position: relative; height: 1em; }
 
@@ -1682,7 +1634,7 @@ html[data-pattern="image"] .app-bar {
   cursor: grabbing;
 }
 
-.block.is-dragging::after { box-shadow: 0 12px 30px rgba(0, 0, 0, .35); }
+.block.is-dragging::after { box-shadow: var(--shadow-drag); }
 
 /* .is-reordering is set on the list being reordered (board or card rows). */
 .is-reordering > :not(.is-dragging) {
@@ -1714,5 +1666,5 @@ html[data-pattern="image"] .app-bar {
   z-index: 5;
   background: var(--surface);
   border-radius: var(--radius-sm);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, .28);
+  box-shadow: var(--shadow-drag);
 }

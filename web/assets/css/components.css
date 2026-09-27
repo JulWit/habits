@@ -666,9 +666,8 @@ html[data-scrolled="on"] .day-header-backdrop {
   gap: calc(.15 * var(--space));
   /* Align the arrows with the text of the dates. */
   padding-bottom: calc(.15 * var(--space));
-  /* The left button starts just inside the left edge of the cards, past the
-     header's padding and border. */
-  margin-left: calc(2px - var(--block-pad-x) - 1px);
+  /* Without horizontal padding or margin, the left button starts at the
+     cards' inner edge, where the habit names begin. */
 }
 
 .day-nav .icon-button {

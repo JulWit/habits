@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/JulWit/habits/internal/domain"
@@ -12,7 +13,8 @@ import (
 
 // Settings are the preferences of a user.
 type Settings struct {
-	Theme string `json:"theme"` // "system" | "light" | "dark"
+	// Theme is one of Themes.
+	Theme string `json:"theme"`
 	// OverviewDays is the number of day columns on the overview; 0 shows as
 	// many as fit.
 	OverviewDays int `json:"overviewDays"`
@@ -53,129 +55,45 @@ type Settings struct {
 	TimeZone string `json:"timeZone"`
 }
 
-// Bounds of the background and surface settings, in percent.
-const (
-	MinBackgroundDim  = 0
-	MaxBackgroundDim  = 100
-	MaxBackgroundBlur = 100
-	MinSurfaceOpacity = 20
-	MaxSurfaceOpacity = 100
-	MaxSurfaceBlur    = 100
+// Allowed values of the enumerated settings. Theme "system" follows the
+// device, Language "system" the browser's Accept-Language header. Font
+// "system" is the system font; all others are embedded. Pattern "image" is the
+// uploaded background image.
+var (
+	Themes       = []string{"system", "light", "dark"}
+	Fonts        = []string{"system", "inter", "roboto", "geist", "opensans", "montserrat", "poppins", "lato"}
+	Densities    = []string{"compact", "standard", "comfortable"}
+	ReorderModes = []string{"drag", "buttons"}
+	Patterns     = []string{"none", "dots", "grid", "diagonal", "cross", "lines", "checks", "gradient", "glow", "image"}
+	Languages    = []string{"system", "en", "de"}
 )
 
-// MaxBandOpacity is the upper bound of BandOpacity and BandFillOpacity.
-const MaxBandOpacity = 100
+// NeutralBand is the BandColor for a grey today highlight.
+const NeutralBand = "neutral"
 
-// ValidBandOpacity reports whether n is a valid band opacity.
-func ValidBandOpacity(n int) bool { return n >= 0 && n <= MaxBandOpacity }
+// MaxOverviewDays is the upper bound of OverviewDays.
+const MaxOverviewDays = 90
 
-// ValidSurfaceOpacity reports whether n is a valid surface opacity.
-func ValidSurfaceOpacity(n int) bool { return n >= MinSurfaceOpacity && n <= MaxSurfaceOpacity }
-
-// ValidSurfaceBlur reports whether n is a valid surface blur.
-func ValidSurfaceBlur(n int) bool { return n >= 0 && n <= MaxSurfaceBlur }
+// MinSurfaceOpacity is the lower bound of SurfaceOpacity, in percent.
+const MinSurfaceOpacity = 20
 
 // BackgroundBlurAtFull is the blur radius in pixels at 100 percent. The client
 // uses the same value.
 const BackgroundBlurAtFull = 40
 
-// ValidBackgroundDim reports whether n is a valid background dim.
-func ValidBackgroundDim(n int) bool { return n >= MinBackgroundDim && n <= MaxBackgroundDim }
+func validOverviewDays(n int) bool { return n == 0 || (n >= 3 && n <= MaxOverviewDays) }
 
-// ValidBackgroundBlur reports whether n is a valid background blur.
-func ValidBackgroundBlur(n int) bool { return n >= 0 && n <= MaxBackgroundBlur }
+func validPercent(n int) bool { return n >= 0 && n <= 100 }
 
-// NeutralBand is the BandColor for a grey today highlight.
-const NeutralBand = "neutral"
+func validSurfaceOpacity(n int) bool { return n >= MinSurfaceOpacity && n <= 100 }
 
-// ValidBandColor reports whether c is NeutralBand or one of
-// domain.DefaultColors.
-func ValidBandColor(c string) bool {
-	if c == NeutralBand {
-		return true
-	}
-	for _, known := range domain.DefaultColors {
-		if known == c {
-			return true
-		}
-	}
-	return false
+func validBandColor(c string) bool {
+	return c == NeutralBand || slices.Contains(domain.DefaultColors, c)
 }
 
-// Patterns are the valid page backgrounds. "image" is the uploaded background
-// image.
-var Patterns = []string{"none", "dots", "grid", "diagonal", "cross", "lines", "checks", "gradient", "glow", "image"}
-
-// ValidPattern reports whether p is one of Patterns.
-func ValidPattern(p string) bool {
-	for _, known := range Patterns {
-		if known == p {
-			return true
-		}
-	}
-	return false
-}
-
-// ReorderModes are the valid ways to reorder habits and categories: by drag
-// and drop or with arrow buttons.
-var ReorderModes = []string{"drag", "buttons"}
-
-// ValidReorderMode reports whether m is one of ReorderModes.
-func ValidReorderMode(m string) bool {
-	for _, known := range ReorderModes {
-		if known == m {
-			return true
-		}
-	}
-	return false
-}
-
-// Fonts are the valid fonts. "system" uses the system font; all others are
-// embedded.
-var Fonts = []string{
-	"system", "inter", "roboto", "geist", "opensans", "montserrat", "poppins", "lato",
-}
-
-// ValidFont reports whether f is one of Fonts.
-func ValidFont(f string) bool {
-	for _, known := range Fonts {
-		if known == f {
-			return true
-		}
-	}
-	return false
-}
-
-// Densities are the valid UI densities.
-var Densities = []string{"compact", "standard", "comfortable"}
-
-// ValidDensity reports whether d is one of Densities.
-func ValidDensity(d string) bool {
-	for _, known := range Densities {
-		if known == d {
-			return true
-		}
-	}
-	return false
-}
-
-// Languages are the valid UI languages. "system" uses the browser's
-// Accept-Language header.
-var Languages = []string{"system", "en", "de"}
-
-// ValidLanguage reports whether l is one of Languages.
-func ValidLanguage(l string) bool {
-	for _, known := range Languages {
-		if known == l {
-			return true
-		}
-	}
-	return false
-}
-
-// ValidTimeZone reports whether tz is "" or a known IANA time zone name.
+// validTimeZone reports whether tz is "" or a known IANA time zone name.
 // "Local" is not accepted.
-func ValidTimeZone(tz string) bool {
+func validTimeZone(tz string) bool {
 	if tz == "" {
 		return true
 	}
@@ -186,44 +104,110 @@ func ValidTimeZone(tz string) bool {
 	return err == nil
 }
 
-// MaxOverviewDays is the upper bound of OverviewDays.
-const MaxOverviewDays = 90
-
-// ValidTheme reports whether t is "system", "light" or "dark".
-func ValidTheme(t string) bool {
-	switch t {
-	case "system", "light", "dark":
-		return true
+// Validate returns a validation error for the first invalid setting.
+func (s Settings) Validate() error {
+	switch {
+	case !slices.Contains(Themes, s.Theme):
+		return invalidf("theme must be one of %v", Themes)
+	case !validOverviewDays(s.OverviewDays):
+		return invalidf("overviewDays must be 0 (automatic) or between 3 and %d", MaxOverviewDays)
+	case !slices.Contains(Fonts, s.Font):
+		return invalidf("font must be one of %v", Fonts)
+	case !slices.Contains(Densities, s.Density):
+		return invalidf("density must be one of %v", Densities)
+	case !slices.Contains(ReorderModes, s.ReorderMode):
+		return invalidf("reorder mode must be one of %v", ReorderModes)
+	case !slices.Contains(Patterns, s.Pattern):
+		return invalidf("background pattern must be one of %v", Patterns)
+	case !validBandColor(s.BandColor):
+		return invalidf("band colour must be neutral or one of the habit colours")
+	case !validPercent(s.BandOpacity):
+		return invalidf("band opacity must be between 0 and 100")
+	case !validPercent(s.BandFillOpacity):
+		return invalidf("band fill opacity must be between 0 and 100")
+	case !validPercent(s.BackgroundDim):
+		return invalidf("background dim must be between 0 and 100")
+	case !validPercent(s.BackgroundBlur):
+		return invalidf("background blur must be between 0 and 100")
+	case !validSurfaceOpacity(s.SurfaceOpacity):
+		return invalidf("surface opacity must be between %d and 100", MinSurfaceOpacity)
+	case !validPercent(s.SurfaceBlur):
+		return invalidf("surface blur must be between 0 and 100")
+	case !slices.Contains(Languages, s.Language):
+		return invalidf("language must be one of %v", Languages)
+	case !validTimeZone(s.TimeZone):
+		return domain.Invalid(`unknown time zone "{zone}"`, "zone", s.TimeZone)
 	}
-	return false
+	return nil
 }
 
-// ValidOverviewDays reports whether n is 0 or between 3 and MaxOverviewDays.
-func ValidOverviewDays(n int) bool {
-	return n == 0 || (n >= 3 && n <= MaxOverviewDays)
+// resetInvalid replaces invalid values, e.g. of options removed since they
+// were saved, by their defaults.
+func (s *Settings) resetInvalid() {
+	d := DefaultSettings()
+	if !slices.Contains(Themes, s.Theme) {
+		s.Theme = d.Theme
+	}
+	if !validOverviewDays(s.OverviewDays) {
+		s.OverviewDays = d.OverviewDays
+	}
+	if !slices.Contains(Fonts, s.Font) {
+		s.Font = d.Font
+	}
+	if !slices.Contains(Densities, s.Density) {
+		s.Density = d.Density
+	}
+	if !slices.Contains(ReorderModes, s.ReorderMode) {
+		s.ReorderMode = d.ReorderMode
+	}
+	if !slices.Contains(Patterns, s.Pattern) {
+		s.Pattern = d.Pattern
+	}
+	if !validBandColor(s.BandColor) {
+		s.BandColor = d.BandColor
+	}
+	if !validPercent(s.BandOpacity) {
+		s.BandOpacity = d.BandOpacity
+	}
+	if !validPercent(s.BandFillOpacity) {
+		s.BandFillOpacity = d.BandFillOpacity
+	}
+	if !validPercent(s.BackgroundDim) {
+		s.BackgroundDim = d.BackgroundDim
+	}
+	if !validPercent(s.BackgroundBlur) {
+		s.BackgroundBlur = d.BackgroundBlur
+	}
+	if !validSurfaceOpacity(s.SurfaceOpacity) {
+		s.SurfaceOpacity = d.SurfaceOpacity
+	}
+	if !validPercent(s.SurfaceBlur) {
+		s.SurfaceBlur = d.SurfaceBlur
+	}
+	if !slices.Contains(Languages, s.Language) {
+		s.Language = d.Language
+	}
+	if !validTimeZone(s.TimeZone) {
+		s.TimeZone = d.TimeZone
+	}
 }
 
 // DefaultSettings returns the settings of a user who has not saved any.
 func DefaultSettings() Settings {
 	return Settings{
 		Theme:           "system",
-		OverviewDays:    0,
-		ShowArchived:    false,
 		Font:            "inter",
 		Density:         "standard",
 		ReorderMode:     "drag",
 		Pattern:         "none",
-		AlignWeeks:      false,
 		BandColor:       NeutralBand,
 		BandOpacity:     100,
 		BandFillOpacity: 30,
 		ShowBand:        true,
 		BackgroundDim:   55,
-		BackgroundBlur:  0,
 		SurfaceOpacity:  88,
 		SurfaceBlur:     30,
 		Language:        "system",
-		TimeZone:        "",
 	}
 }
 
@@ -277,51 +261,7 @@ func (s *Store) getSettings(ctx context.Context, q queryer, userID string) (Sett
 	if err != nil {
 		return DefaultSettings(), fmt.Errorf("loading settings: %w", err)
 	}
-	if !ValidTheme(out.Theme) {
-		out.Theme = DefaultSettings().Theme
-	}
-	if !ValidOverviewDays(out.OverviewDays) {
-		out.OverviewDays = DefaultSettings().OverviewDays
-	}
-	if !ValidFont(out.Font) {
-		out.Font = DefaultSettings().Font
-	}
-	if !ValidDensity(out.Density) {
-		out.Density = DefaultSettings().Density
-	}
-	if !ValidReorderMode(out.ReorderMode) {
-		out.ReorderMode = DefaultSettings().ReorderMode
-	}
-	if !ValidPattern(out.Pattern) {
-		out.Pattern = DefaultSettings().Pattern
-	}
-	if !ValidBandColor(out.BandColor) {
-		out.BandColor = DefaultSettings().BandColor
-	}
-	if !ValidBandOpacity(out.BandOpacity) {
-		out.BandOpacity = DefaultSettings().BandOpacity
-	}
-	if !ValidBandOpacity(out.BandFillOpacity) {
-		out.BandFillOpacity = DefaultSettings().BandFillOpacity
-	}
-	if !ValidBackgroundDim(out.BackgroundDim) {
-		out.BackgroundDim = DefaultSettings().BackgroundDim
-	}
-	if !ValidBackgroundBlur(out.BackgroundBlur) {
-		out.BackgroundBlur = DefaultSettings().BackgroundBlur
-	}
-	if !ValidSurfaceOpacity(out.SurfaceOpacity) {
-		out.SurfaceOpacity = DefaultSettings().SurfaceOpacity
-	}
-	if !ValidSurfaceBlur(out.SurfaceBlur) {
-		out.SurfaceBlur = DefaultSettings().SurfaceBlur
-	}
-	if !ValidLanguage(out.Language) {
-		out.Language = DefaultSettings().Language
-	}
-	if !ValidTimeZone(out.TimeZone) {
-		out.TimeZone = DefaultSettings().TimeZone
-	}
+	out.resetInvalid()
 	return out, nil
 }
 
@@ -332,50 +272,8 @@ func (s *Store) SaveSettings(ctx context.Context, userID string, in Settings) er
 
 // saveSettings validates and stores the settings of the user.
 func (s *Store) saveSettings(ctx context.Context, q execer, userID string, in Settings) error {
-	if !ValidTheme(in.Theme) {
-		return invalidf("unknown theme %q", in.Theme)
-	}
-	if !ValidOverviewDays(in.OverviewDays) {
-		return invalidf("invalid overview day count %d", in.OverviewDays)
-	}
-	if !ValidFont(in.Font) {
-		return invalidf("unknown font %q", in.Font)
-	}
-	if !ValidDensity(in.Density) {
-		return invalidf("unknown density %q", in.Density)
-	}
-	if !ValidReorderMode(in.ReorderMode) {
-		return invalidf("unknown reorder mode %q", in.ReorderMode)
-	}
-	if !ValidPattern(in.Pattern) {
-		return invalidf("unknown background pattern %q", in.Pattern)
-	}
-	if !ValidBandColor(in.BandColor) {
-		return invalidf("unknown band colour %q", in.BandColor)
-	}
-	if !ValidBandOpacity(in.BandOpacity) {
-		return invalidf("invalid band opacity %d", in.BandOpacity)
-	}
-	if !ValidBandOpacity(in.BandFillOpacity) {
-		return invalidf("invalid band fill opacity %d", in.BandFillOpacity)
-	}
-	if !ValidBackgroundDim(in.BackgroundDim) {
-		return invalidf("invalid background dim %d", in.BackgroundDim)
-	}
-	if !ValidBackgroundBlur(in.BackgroundBlur) {
-		return invalidf("invalid background blur %d", in.BackgroundBlur)
-	}
-	if !ValidSurfaceOpacity(in.SurfaceOpacity) {
-		return invalidf("invalid surface opacity %d", in.SurfaceOpacity)
-	}
-	if !ValidSurfaceBlur(in.SurfaceBlur) {
-		return invalidf("invalid surface blur %d", in.SurfaceBlur)
-	}
-	if !ValidLanguage(in.Language) {
-		return invalidf("unknown language %q", in.Language)
-	}
-	if !ValidTimeZone(in.TimeZone) {
-		return invalidf("unknown time zone %q", in.TimeZone)
+	if err := in.Validate(); err != nil {
+		return err
 	}
 	_, err := q.ExecContext(ctx, `
 		INSERT INTO user_settings

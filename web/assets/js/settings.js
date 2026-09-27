@@ -7,6 +7,7 @@ import { icons, colorLabel } from "./icons.js";
 import { errorText, toast } from "./undo.js";
 import { t, locale, userTimeZone } from "./i18n.js";
 import { openPage, topPage } from "./pages.js";
+import { factItem } from "./panels.js";
 
 let dialog;
 let themeInputs;
@@ -115,18 +116,13 @@ export function initSettings(handlers = {}) {
     const swatch = event.target.closest(".swatch");
     if (swatch) saveSetting({ bandColor: swatch.dataset.color });
   });
-  bandOpacity.addEventListener("input", () => {
-    showKnob(bandOpacityOut, bandOpacity.value, "%");
-    document.documentElement.style.setProperty("--today-opacity", `${bandOpacity.value}%`);
-  });
-  bandOpacity.addEventListener("change",
-    () => saveSetting({ bandOpacity: Number(bandOpacity.value) }));
-  bandFillOpacity.addEventListener("input", () => {
-    showKnob(bandFillOpacityOut, bandFillOpacity.value, "%");
-    document.documentElement.style.setProperty("--band-opacity", `${bandFillOpacity.value}%`);
-  });
-  bandFillOpacity.addEventListener("change",
-    () => saveSetting({ bandFillOpacity: Number(bandFillOpacity.value) }));
+  // The sliders preview their value while they move and save it on release.
+  bindSlider(bandOpacity, bandOpacityOut, "bandOpacity", "--today-opacity");
+  bindSlider(bandFillOpacity, bandFillOpacityOut, "bandFillOpacity", "--band-opacity");
+  bindSlider(bgDim, bgDimOut, "backgroundDim", "--bg-dim");
+  bindSlider(bgBlur, bgBlurOut, "backgroundBlur", "--bg-blur", blurLength);
+  bindSlider(surfaceOpacity, surfaceOpacityOut, "surfaceOpacity", "--surface-opacity");
+  bindSlider(surfaceBlur, surfaceBlurOut, "surfaceBlur", "--surface-blur", blurLength);
   showBandInput.addEventListener("change", () => saveSetting({ showBand: showBandInput.checked }));
 
   alignInput.addEventListener("change", () => saveSetting({ alignWeeks: alignInput.checked }));
@@ -143,31 +139,6 @@ export function initSettings(handlers = {}) {
     if (file) uploadBackground(file);
   });
   bgRemove.addEventListener("click", removeBackground);
-
-  // Save while the slider moves, for live preview of the background.
-  bgDim.addEventListener("input", () => {
-    showKnob(bgDimOut, bgDim.value, "%");
-    document.documentElement.style.setProperty("--bg-dim", `${bgDim.value}%`);
-  });
-  bgBlur.addEventListener("input", () => {
-    showKnob(bgBlurOut, bgBlur.value, "%");
-    document.documentElement.style.setProperty("--bg-blur", blurLength(bgBlur.value));
-  });
-  bgDim.addEventListener("change", () => saveSetting({ backgroundDim: Number(bgDim.value) }));
-  bgBlur.addEventListener("change", () => saveSetting({ backgroundBlur: Number(bgBlur.value) }));
-
-  surfaceOpacity.addEventListener("input", () => {
-    showKnob(surfaceOpacityOut, surfaceOpacity.value, "%");
-    document.documentElement.style.setProperty("--surface-opacity", `${surfaceOpacity.value}%`);
-  });
-  surfaceBlur.addEventListener("input", () => {
-    showKnob(surfaceBlurOut, surfaceBlur.value, "%");
-    document.documentElement.style.setProperty("--surface-blur", blurLength(surfaceBlur.value));
-  });
-  surfaceOpacity.addEventListener("change",
-    () => saveSetting({ surfaceOpacity: Number(surfaceOpacity.value) }));
-  surfaceBlur.addEventListener("change",
-    () => saveSetting({ surfaceBlur: Number(surfaceBlur.value) }));
 
   languageSelect.addEventListener("change", async () => {
     // Reload the page to apply the new language, once the server has it.
@@ -187,59 +158,58 @@ export function initSettings(handlers = {}) {
 }
 
 function paint() {
-  if (!dialog) return;
-  const theme = state.settings?.theme ?? "system";
-  const font = state.settings?.font ?? "inter";
-  const density = state.settings?.density ?? "standard";
-  const pattern = state.settings?.pattern ?? "none";
-  const days = state.settings?.overviewDays ?? 0;
-  const reorder = state.settings?.reorderMode ?? "drag";
+  // Before the state is loaded, there is nothing to show.
+  if (!dialog || !state.user) return;
+  const settings = state.settings;
 
-  for (const input of themeInputs) input.checked = input.value === theme;
-  fontSelect.value = font;
-  for (const input of densityInputs) input.checked = input.value === density;
-  patternSelect.value = pattern;
-  paintBandChoices(state.settings?.bandColor ?? NEUTRAL_BAND);
-  bandOpacity.value = String(state.settings?.bandOpacity ?? 100);
+  for (const input of themeInputs) input.checked = input.value === settings.theme;
+  fontSelect.value = settings.font;
+  for (const input of densityInputs) input.checked = input.value === settings.density;
+  patternSelect.value = settings.pattern;
+  paintBandChoices(settings.bandColor);
+  bandOpacity.value = String(settings.bandOpacity);
   showKnob(bandOpacityOut, bandOpacity.value, "%");
-  showBandInput.checked = state.settings?.showBand ?? true;
-  bandFillOpacity.value = String(state.settings?.bandFillOpacity ?? 30);
+  showBandInput.checked = settings.showBand;
+  bandFillOpacity.value = String(settings.bandFillOpacity);
   showKnob(bandFillOpacityOut, bandFillOpacity.value, "%");
   // The slider is only shown while the band is on.
-  bandFillOpacity.closest(".slider").hidden = !showBandInput.checked;
-  for (const input of reorderInputs) input.checked = input.value === reorder;
-  reorderHint.textContent = reorder === "drag"
+  bandFillOpacity.closest(".slider").hidden = !settings.showBand;
+  for (const input of reorderInputs) input.checked = input.value === settings.reorderMode;
+  reorderHint.textContent = settings.reorderMode === "drag"
     ? t("Categories and habits are moved by their handle.")
     : t("Categories and habits are moved with arrows — by keyboard too.");
-  for (const input of dayInputs) input.checked = Number(input.value) === days;
 
+  const days = settings.overviewDays;
   const shown = effectiveDays();
-  daysHint.textContent = days === 0
-    ? t("As many days are shown as fit in the window — currently {n}.", { n: shown })
-    : shown < days
-      ? t("Only {n} days fit in the window right now. In a wider window it will be {days}.",
-        { n: shown, days })
-      : t("{n} days are shown right now.", { n: shown });
+  for (const input of dayInputs) input.checked = Number(input.value) === days;
+  if (days === 0) {
+    daysHint.textContent = t("As many days are shown as fit in the window — currently {n}.", { n: shown });
+  } else if (shown < days) {
+    daysHint.textContent = t("Only {n} days fit in the window right now. In a wider window it will be {days}.",
+      { n: shown, days });
+  } else {
+    daysHint.textContent = t("{n} days are shown right now.", { n: shown });
+  }
 
-  const aligned = state.settings?.alignWeeks ?? false;
-  alignInput.checked = aligned;
-  // Week alignment requires at least seven columns.
-  alignHint.textContent = !aligned
-    ? t("The overview ends on today.")
-    : shown < 7
-      ? t("Possible from 7 columns on — {n} fit right now.", { n: shown })
-      : t("The overview shows whole calendar weeks, including the remaining days of this week.");
+  alignInput.checked = settings.alignWeeks;
+  if (!settings.alignWeeks) {
+    alignHint.textContent = t("The overview ends on today.");
+  } else if (shown < 7) {
+    // Week alignment requires at least seven columns.
+    alignHint.textContent = t("Possible from 7 columns on — {n} fit right now.", { n: shown });
+  } else {
+    alignHint.textContent = t("The overview shows whole calendar weeks, including the remaining days of this week.");
+  }
 
   paintBackground();
   paintRegion();
   paintAccount();
   paintVersion();
 
-  const archived = state.archivedCount ?? 0;
-  const on = state.settings?.showArchived ?? false;
-  archivedInput.checked = on;
+  const archived = state.archivedCount;
+  archivedInput.checked = settings.showArchived;
   // Hidden if there are no archived habits and the switch is off.
-  archiveItem.hidden = archived === 0 && !on;
+  archiveItem.hidden = archived === 0 && !settings.showArchived;
   archiveHint.textContent = archived === 1
     ? t("1 habit is archived.")
     : t("{n} habits are archived.", { n: archived });
@@ -249,7 +219,7 @@ function paint() {
 
 /** Fills the card of the signed-in user from state.user. */
 function paintAccount() {
-  const user = state.user ?? {};
+  const user = state.user;
   // Without a display name (e.g. single-user mode), the ID stands in.
   const name = user.name || user.id || t("Unknown");
   // The ID is only worth a line if the name does not show it already.
@@ -277,7 +247,7 @@ function initials(name) {
 
 /** Fills the version page and the version row's hint from state.build. */
 function paintVersion() {
-  const build = state.build ?? {};
+  const build = state.build;
   const version = build.version || t("Development build");
   // Twelve characters identify a commit well enough.
   const revision = build.revision
@@ -292,15 +262,8 @@ function paintVersion() {
     [t("Built"), formatBuildTime(build.time)],
     [t("Go version"), build.goVersion || t("Unknown")],
   ];
-  document.getElementById("version-facts").replaceChildren(...facts.map(([label, value]) => {
-    const row = document.createElement("div");
-    const dt = document.createElement("dt");
-    const dd = document.createElement("dd");
-    dt.textContent = label;
-    dd.textContent = value;
-    row.append(dt, dd);
-    return row;
-  }));
+  document.getElementById("version-facts")
+    .replaceChildren(...facts.map(([label, value]) => factItem(label, value)));
 }
 
 /** Formats the RFC 3339 build time in the user's language, or "Unknown". */
@@ -364,16 +327,16 @@ function buildTimeZoneOptions() {
 }
 
 function paintRegion() {
-  languageSelect.value = state.settings?.language ?? "system";
+  languageSelect.value = state.settings.language;
 
   buildTimeZoneOptions();
-  const server = state.serverTimeZone ?? "";
+  const server = state.serverTimeZone;
   // "Local" is a server zone without a name.
   timeZoneSelect.options[0].textContent = server && server !== "Local"
     ? t("Server default ({zone})", { zone: server })
     : t("Server default");
 
-  const chosen = state.settings?.timeZone ?? "";
+  const chosen = state.settings.timeZone;
   // Add the chosen zone if the browser does not list it.
   if (chosen && ![...timeZoneSelect.options].some((o) => o.value === chosen)) {
     const option = document.createElement("option");
@@ -415,7 +378,7 @@ const NEUTRAL_BAND = "neutral";
 
 /** Builds the band colour choices: neutral, followed by the habit palette. */
 function paintBandChoices(chosen) {
-  const wanted = [NEUTRAL_BAND, ...(state.colors ?? [])];
+  const wanted = [NEUTRAL_BAND, ...state.colors];
   if (bandChoices.childElementCount !== wanted.length) {
     bandChoices.replaceChildren(...wanted.map((color) => {
       const b = document.createElement("button");
@@ -451,7 +414,7 @@ async function saveSetting(patch) {
   replaceState({ settings: { ...state.settings, ...patch } });
   try {
     replaceState({ settings: await api.saveSettings(patch) });
-    if (errorBox) errorBox.hidden = true;
+    errorBox.hidden = true;
     return true;
   } catch (err) {
     replaceState({ settings: before });
@@ -462,7 +425,7 @@ async function saveSetting(patch) {
 
 /** Updates the background section: preview, buttons and sliders. */
 function paintBackground() {
-  const version = state.backgroundVersion ?? "";
+  const version = state.backgroundVersion;
   const has = version !== "";
 
   patternImageOption.disabled = !has;
@@ -472,10 +435,10 @@ function paintBackground() {
   bgPreview.style.backgroundImage = has ? `url("/api/background?v=${version}")` : "";
   bgPreview.classList.toggle("is-empty", !has);
 
-  bgDim.value = String(state.settings?.backgroundDim ?? 55);
-  bgBlur.value = String(state.settings?.backgroundBlur ?? 0);
-  surfaceOpacity.value = String(state.settings?.surfaceOpacity ?? 88);
-  surfaceBlur.value = String(state.settings?.surfaceBlur ?? 30);
+  bgDim.value = String(state.settings.backgroundDim);
+  bgBlur.value = String(state.settings.backgroundBlur);
+  surfaceOpacity.value = String(state.settings.surfaceOpacity);
+  surfaceBlur.value = String(state.settings.surfaceBlur);
   showKnob(bgDimOut, bgDim.value, "%");
   showKnob(bgBlurOut, bgBlur.value, "%");
   showKnob(surfaceOpacityOut, surfaceOpacity.value, "%");
@@ -487,12 +450,25 @@ function showKnob(out, value, unit) {
 }
 
 /**
+ * Wires a percent slider: while it moves, it shows its value in `out` and
+ * previews it through the custom property `cssVar`; on release, it saves the
+ * value as the setting `key`. `toCss` converts the percentage for the
+ * property.
+ */
+function bindSlider(slider, out, key, cssVar, toCss = (percent) => `${percent}%`) {
+  slider.addEventListener("input", () => {
+    showKnob(out, slider.value, "%");
+    document.documentElement.style.setProperty(cssVar, toCss(slider.value));
+  });
+  slider.addEventListener("change", () => saveSetting({ [key]: Number(slider.value) }));
+}
+
+/**
  * Converts a blur percentage to a CSS length, using state.blurAtFull from the
  * server.
  */
 export function blurLength(percent) {
-  const atFull = state.blurAtFull ?? 40;
-  return `${((Number(percent) || 0) * atFull) / 100}px`;
+  return `${(Number(percent) * state.blurAtFull) / 100}px`;
 }
 
 async function uploadBackground(file) {
@@ -508,7 +484,7 @@ async function uploadBackground(file) {
     // The new version bypasses the cached image.
     document.documentElement.style.setProperty(
       "--pattern-image", `url("/api/background?v=${res.version}")`);
-    if (errorBox) errorBox.hidden = true;
+    errorBox.hidden = true;
   } catch (err) {
     report(errorText(err));
   } finally {
@@ -521,7 +497,7 @@ async function removeBackground() {
     const res = await api.deleteBackground();
     replaceState({ settings: res.settings, backgroundVersion: "" });
     document.documentElement.style.removeProperty("--pattern-image");
-    if (errorBox) errorBox.hidden = true;
+    errorBox.hidden = true;
   } catch (err) {
     report(errorText(err));
   }

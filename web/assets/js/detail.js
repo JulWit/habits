@@ -2,13 +2,14 @@
 
 import {
   addDays, startOfWeek, daysBetween, MONTH_SHORT, MONTH_LONG, monthIndex, dayOfMonth,
-  formatFull, formatLong, formatDayMonth,
+  formatFull, formatLong, formatDayMonth, localISO,
 } from "./dates.js";
 import { t, locale, userTimeZone } from "./i18n.js";
 import { state } from "./state.js";
 import * as H from "./habit.js";
 import { habitIconBadge } from "./icons.js";
 import { appBar } from "./appbar.js";
+import { statRow, factsPanel, factItem } from "./panels.js";
 import { showTooltip, hideTooltip } from "./tooltip.js";
 
 let root;
@@ -89,22 +90,12 @@ function streakText(count, unit) {
 
 function stats(habit) {
   const s = habit.stats;
-  const row = document.createElement("div");
-  row.className = "stat-row";
-  for (const [label, value] of [
+  return statRow([
     [t("Current streak"), streakText(s.currentStreak, s.streakUnit)],
     [t("Best streak"), streakText(s.bestStreak, s.streakUnit)],
     [t("Rate (30 days)"), `${Math.round(s.completionRate * 100)} %`],
     [t("Total"), H.formatTotal(habit, s.total)],
-  ]) {
-    const tile = document.createElement("div");
-    tile.className = "stat";
-    tile.innerHTML = `<div class="value"></div><div class="label"></div>`;
-    tile.querySelector(".value").textContent = value;
-    tile.querySelector(".label").textContent = label;
-    row.append(tile);
-  }
-  return row;
+  ]);
 }
 
 /**
@@ -112,24 +103,13 @@ function stats(habit) {
  * habits), category and, if archived, its status.
  */
 function details(habit) {
-  const panel = document.createElement("section");
-  panel.className = "panel details";
-
-  const title = document.createElement("h3");
-  title.textContent = t("Details");
-
-  const list = document.createElement("dl");
-  list.className = "activity-list";
-
-  list.append(activityItem(t("Frequency"), H.describeFrequency(habit)));
+  const items = [factItem(t("Frequency"), H.describeFrequency(habit))];
   const target = H.describeTarget(habit);
-  if (target) list.append(activityItem(t("Daily target"), target));
+  if (target) items.push(factItem(t("Daily target"), target));
   const category = state.categories.find((c) => c.id === habit.categoryId);
-  list.append(activityItem(t("Category"), category?.name ?? t("No category")));
-  if (habit.archivedAt) list.append(activityItem(t("Status"), t("Archived")));
-
-  panel.append(title, list);
-  return panel;
+  items.push(factItem(t("Category"), category?.name ?? t("No category")));
+  if (habit.archivedAt) items.push(factItem(t("Status"), t("Archived")));
+  return factsPanel(t("Details"), items);
 }
 
 /**
@@ -137,47 +117,11 @@ function details(habit) {
  * (the server's updatedAt).
  */
 function activity(habit) {
-  const panel = document.createElement("section");
-  panel.className = "panel activity";
-
-  const title = document.createElement("h3");
-  title.textContent = t("Activity");
-
-  const list = document.createElement("dl");
-  list.className = "activity-list";
-
   const done = lastDone(habit);
-  list.append(
-    activityItem(
-      t("Last done"),
-      done ? formatLong(done) : t("Not yet"),
-      done ? daysAgo(done) : "",
-    ),
-    activityItem(
-      t("Last changed"),
-      formatStamp(habit.updatedAt),
-      timeAgo(habit.updatedAt),
-    ),
-  );
-
-  panel.append(title, list);
-  return panel;
-}
-
-function activityItem(label, value, note) {
-  const item = document.createElement("div");
-  const dt = document.createElement("dt");
-  dt.textContent = label;
-  const dd = document.createElement("dd");
-  dd.textContent = value;
-  if (note) {
-    const small = document.createElement("span");
-    small.className = "note";
-    small.textContent = note;
-    dd.append(small);
-  }
-  item.append(dt, dd);
-  return item;
+  return factsPanel(t("Activity"), [
+    factItem(t("Last done"), done ? formatLong(done) : t("Not yet"), done ? daysAgo(done) : ""),
+    factItem(t("Last changed"), formatStamp(habit.updatedAt), timeAgo(habit.updatedAt)),
+  ], "activity");
 }
 
 /** Returns the latest day up to today whose value reached the target, or null. */
@@ -204,7 +148,7 @@ function formatStamp(stamp) {
   const at = new Date(stamp);
   const time = at.toLocaleTimeString(locale,
     { hour: "2-digit", minute: "2-digit", timeZone: userTimeZone() });
-  return `${formatLong(localISO(at))}, ${time}`;
+  return `${formatLong(localISO(stamp))}, ${time}`;
 }
 
 /** Formats a timestamp as "just now", "12 min ago", "3 h ago" or in days. */
@@ -213,16 +157,7 @@ function timeAgo(stamp) {
   if (minutes < 1) return t("just now");
   if (minutes < 60) return t("{n} min ago", { n: minutes });
   if (minutes < 24 * 60) return t("{n} h ago", { n: Math.floor(minutes / 60) });
-  return daysAgo(localISO(new Date(stamp)));
-}
-
-/**
- * Returns the ISO date of `at` in the user's time zone. en-CA formats dates as
- * YYYY-MM-DD.
- */
-function localISO(at) {
-  return at.toLocaleDateString("en-CA",
-    { year: "numeric", month: "2-digit", day: "2-digit", timeZone: userTimeZone() });
+  return daysAgo(localISO(stamp));
 }
 
 function heatmap(habit) {
@@ -305,23 +240,24 @@ function heatCell(habit, iso, yearStart, yearEnd) {
   else if (!ahead) el.dataset.level = String(H.heatLevel(habit, value));
 
   el.dataset.date = iso;
-  // Future days only show planned values.
-  el.dataset.status = ahead
-    ? value > 0
-      ? t("{value} planned", { value: H.formatValue(habit, value) })
-      : off ? t("not scheduled") : t("still ahead")
-    : value > 0
-      ? t("{value} of {target}",
-        { value: H.formatValue(habit, value), target: H.formatValue(habit, H.target(habit)) })
-      : H.isScheduled(habit, iso)
-        ? t("nothing recorded")
-        : t("not scheduled");
+  el.dataset.status = heatStatus(habit, iso, value);
   // Uses the custom tooltip instead of a title attribute; the aria-label holds
   // the same text.
   el.setAttribute("role", "img");
   const when = iso === state.today ? t("Today, {date}", { date: formatFull(iso) }) : formatFull(iso);
   el.setAttribute("aria-label", `${when} — ${el.dataset.status}`);
   return el;
+}
+
+/** Describes a day of the heatmap. Future days only show planned values. */
+function heatStatus(habit, iso, value) {
+  const vars = { value: H.formatValue(habit, value), target: H.formatValue(habit, H.target(habit)) };
+  if (iso > state.today) {
+    if (value > 0) return t("{value} planned", vars);
+    return H.isScheduled(habit, iso) ? t("still ahead") : t("not scheduled");
+  }
+  if (value > 0) return t("{value} of {target}", vars);
+  return H.isScheduled(habit, iso) ? t("nothing recorded") : t("not scheduled");
 }
 
 function legend(yearStart, year) {

@@ -4,14 +4,14 @@
 
 import {
   addDays, daysBetween, dayOfMonth, monthIndex, yearOf, weekdayIndex, MONTH_LONG, MONTH_SHORT,
-  WEEKDAY_LONG, formatLong,
+  formatLong, formatFull,
 } from "./dates.js";
 import { state, subscribe, groupedHabits } from "./state.js";
 import * as H from "./habit.js";
 import { dayCell, habitLabel, dayEntry } from "./cells.js";
 import { icons, categoryIconBadge } from "./icons.js";
 import { enableDragReorder } from "./reorder.js";
-import { t, lang } from "./i18n.js";
+import { t } from "./i18n.js";
 
 const LONG_PRESS_MS = 450;
 
@@ -112,16 +112,12 @@ export function initOverview(handlers) {
   subscribe(render);
 
   // Drag and drop for both categories and habit rows; the handle determines
-  // which list is reordered.
-  enableDragReorder({
-    container: board,
-    item: ".block[data-category]",
-    handle: '[data-role="drag-category"]',
-    key: "category",
+  // which list is reordered. Rendering pauses during a drag (see dragging).
+  const dragCallbacks = (save) => ({
     onStart: () => { dragging = true; },
     onDrop: (ids) => {
       dragging = false;
-      actions.setCategoryOrder(ids);
+      save(ids);
     },
     onCancel: () => {
       dragging = false;
@@ -129,21 +125,19 @@ export function initOverview(handlers) {
       render();
     },
   });
-
+  enableDragReorder({
+    container: board,
+    item: ".block[data-category]",
+    handle: '[data-role="drag-category"]',
+    key: "category",
+    ...dragCallbacks(actions.setCategoryOrder),
+  });
   enableDragReorder({
     container: board,
     item: ".habit-row",
     handle: '[data-role="drag-habit"]',
     key: "habit",
-    onStart: () => { dragging = true; },
-    onDrop: (ids) => {
-      dragging = false;
-      actions.setHabitOrder(ids);
-    },
-    onCancel: () => {
-      dragging = false;
-      render();
-    },
+    ...dragCallbacks(actions.setHabitOrder),
   });
 
   // Re-render when the available width changes, including when the view
@@ -174,19 +168,33 @@ function availableWidth() {
   return outer - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
 }
 
+/** Minimum number of day columns. */
+const MIN_DAYS = 7;
+
+/** Returns a size token of <html> in pixels, or 0 if it is not set. */
+function token(name) {
+  return parseFloat(getComputedStyle(document.documentElement).getPropertyValue(name)) || 0;
+}
+
+/**
+ * Returns the width of `width` left for the name and day columns: without the
+ * card's padding and border, and without the reorder column (zero without
+ * handles; as --tools-track).
+ */
+function roomForColumns(width) {
+  const padX = token("--block-pad-x");
+  const tools = token("--tools-col");
+  const track = tools > 0 ? tools + padX + 2 : 0;
+  const card = 2 * padX + 2;
+  return width - track - card;
+}
+
 /** Returns the maximum number of day columns that fit into `width`. */
 function fittingDays(width) {
-  const styles = getComputedStyle(document.documentElement);
-  const cell = parseFloat(styles.getPropertyValue("--cell")) || 40;
-  // Same tokens as the grid template.
-  const labelMin = parseFloat(styles.getPropertyValue("--label-min")) || 148;
-  const padX = parseFloat(styles.getPropertyValue("--block-pad-x")) || 0;
-  const tools = parseFloat(styles.getPropertyValue("--tools-col")) || 0;
-  // As --tools-track; zero without handles.
-  const track = tools > 0 ? tools + padX + 2 : 0;
-  // Card padding and border on both sides.
-  const card = 2 * padX + 2;
-  return Math.max(3, Math.floor((width - labelMin - track - card) / (cell + 2)));
+  // Same tokens as the grid template; each column has a 2px gap.
+  const cell = token("--cell") || 40;
+  const labelMin = token("--label-min") || 148;
+  return Math.max(3, Math.floor((roomForColumns(width) - labelMin) / (cell + 2)));
 }
 
 /**
@@ -209,9 +217,6 @@ function visibleDays(width) {
   return least;
 }
 
-/** Minimum number of day columns. */
-const MIN_DAYS = 7;
-
 /** Resets the board to its normal sizes. */
 function loosen() {
   const root = document.documentElement;
@@ -229,20 +234,11 @@ function loosen() {
 function tighten(width, days) {
   const root = document.documentElement;
   root.setAttribute("data-tight", "");
-  const styles = getComputedStyle(root);
-  const px = (name) => parseFloat(styles.getPropertyValue(name)) || 0;
+  const room = roomForColumns(width);
 
-  const padX = px("--block-pad-x");
-  const tools = px("--tools-col");
-  const track = tools > 0 ? tools + padX + 2 : 0;
-  const card = 2 * padX + 2;
-  const room = width - track - card;
-
-  const labelFloor = px("--label-tight-min");
-  const cellFloor = px("--cell-tight-min");
-  const cellUsual = px("--cell");
   // The widest cell that leaves the name column its minimum width.
-  const cell = Math.max(cellFloor, Math.min(cellUsual, Math.floor((room - labelFloor) / days) - 2));
+  const widest = Math.floor((room - token("--label-tight-min")) / days) - 2;
+  const cell = Math.max(token("--cell-tight-min"), Math.min(token("--cell"), widest));
   const label = Math.max(0, Math.floor(room - days * (cell + 2)));
 
   root.style.setProperty("--cell", `${cell}px`);
@@ -280,8 +276,6 @@ async function showWindow(next) {
 /** Whether only habits due and still open on the active day are shown. Not
  *  persisted. */
 let onlyOpen = false;
-
-const filtering = () => onlyOpen;
 
 /**
  * Reports whether a habit passes the filter: with it, only habits due on the
@@ -334,12 +328,12 @@ export function render() {
   // the rows.
   const blocks = all
     .map((b) => ({ ...b, visible: b.habits.filter(matches) }))
-    .filter((b) => !filtering() || b.visible.length > 0);
+    .filter((b) => !onlyOpen || b.visible.length > 0);
 
   // Reordering is disabled while filtering, as the order would be incomplete.
-  document.documentElement.dataset.filtering = filtering() ? "on" : "off";
+  document.documentElement.dataset.filtering = onlyOpen ? "on" : "off";
   emptyState.hidden = all.length > 0;
-  noMatch.hidden = !(filtering() && blocks.length === 0);
+  noMatch.hidden = !(onlyOpen && blocks.length === 0);
   // With habits, the board is shown even when the filter leaves no block, so
   // the day header stays available for choosing another day.
   board.hidden = all.length === 0;
@@ -495,6 +489,14 @@ function dayNav() {
   return nav;
 }
 
+/** Builds the name cell of a row. */
+function nameCell(habit) {
+  const cell = document.createElement("div");
+  cell.className = "habit-cell";
+  cell.append(habitLabel(habit));
+  return cell;
+}
+
 function renderBlock({ category, habits, visible }, dates, labelled, active) {
   const rows = visible ?? habits;
   const section = document.createElement("section");
@@ -518,7 +520,7 @@ function renderBlock({ category, habits, visible }, dates, labelled, active) {
     row.className = "habit-row";
     row.dataset.habit = habit.id;
     row.append(
-      habitCell(habit),
+      nameCell(habit),
       ...dates.map((iso) => dayEntry(habit, iso, active)),
       habitTools(habit, habits),
     );
@@ -526,17 +528,6 @@ function renderBlock({ category, habits, visible }, dates, labelled, active) {
   }
   section.append(list);
   return section;
-}
-
-/**
- * Builds the name cell of a row: the label, with the move arrows overlaid on
- * its right end.
- */
-function habitCell(habit) {
-  const cell = document.createElement("div");
-  cell.className = "habit-cell";
-  cell.append(habitLabel(habit));
-  return cell;
 }
 
 /**
@@ -627,9 +618,7 @@ function daySummary(habits, day) {
   const date = document.createElement("h2");
   date.className = "day-summary-date";
   // The year only if it is not the current one.
-  const year = yearOf(day) === yearOf(state.today) ? "" : ` ${yearOf(day)}`;
-  date.textContent = `${WEEKDAY_LONG[weekdayIndex(day)]}, ` +
-    `${dayOfMonth(day)}${lang === "de" ? "." : ""} ${MONTH_LONG[monthIndex(day)]}${year}`;
+  date.textContent = formatFull(day, yearOf(day) !== yearOf(state.today));
   el.setAttribute("aria-label", date.textContent);
 
   const count = document.createElement("p");

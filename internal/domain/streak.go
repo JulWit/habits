@@ -55,10 +55,7 @@ func dailyRuns(h Habit, entries map[Date]int, today Date) []StreakRun {
 // weeklyRuns returns the runs of a times-per-week habit, based on completed
 // weeks but expressed in days.
 func weeklyRuns(h Habit, entries map[Date]int, today Date) []StreakRun {
-	target := h.Frequency.TimesPerWeek
-	if target < 1 {
-		target = 1
-	}
+	target := max(h.Frequency.TimesPerWeek, 1)
 	start := historyStart(h, entries)
 	if start.IsZero() || start.After(today) {
 		return nil
@@ -68,16 +65,7 @@ func weeklyRuns(h Habit, entries map[Date]int, today Date) []StreakRun {
 	var runs []StreakRun
 	var open *StreakRun
 	for week := start.StartOfWeek(); !week.After(currentWeek); week = week.AddDays(7) {
-		done := 0
-		for i := 0; i < 7; i++ {
-			d := week.AddDays(i)
-			if d.Before(start) || d.After(today) {
-				continue
-			}
-			if h.IsComplete(entries[d]) {
-				done++
-			}
-		}
+		done, _ := weekCompletions(h, entries, week, start, today)
 		switch {
 		case done >= target:
 			if open == nil {

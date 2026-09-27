@@ -29,9 +29,13 @@ func invalidf(format string, args ...any) error {
 	return domain.Invalid(fmt.Sprintf(format, args...))
 }
 
-// execer is implemented by *sql.DB and *sql.Tx.
+// execer and queryer are implemented by *sql.DB and *sql.Tx.
 type execer interface {
 	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
+}
+
+type queryer interface {
+	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
 }
 
 // Store provides access to the database.

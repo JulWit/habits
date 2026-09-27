@@ -103,11 +103,11 @@ export function dayEntry(habit, iso, active = state.today) {
   mark.style.setProperty("--habit-color", habit.color);
   mark.style.setProperty("--p", String(H.progress(habit, value)));
 
-  if (!scheduled) mark.classList.add("is-off");
+  // Unscheduled days without a value are drawn as off.
+  if (!scheduled && value === 0) mark.classList.add("is-off");
   // Future days are dimmed.
   if (future) mark.classList.add("is-future");
   if (H.isComplete(habit, value)) {
-    mark.classList.remove("is-off");
     mark.classList.add("is-complete");
     // Longer runs are drawn with a stronger streak colour. Level 0 changes
     // nothing.
@@ -116,7 +116,6 @@ export function dayEntry(habit, iso, active = state.today) {
     if (habit.kind === "check") mark.innerHTML = CHECK_SVG;
     else mark.append(numberLabel(H.cellValue(habit, value)));
   } else if (value > 0) {
-    mark.classList.remove("is-off");
     mark.append(numberLabel(H.cellValue(habit, value)));
   }
 
@@ -128,36 +127,34 @@ export function dayEntry(habit, iso, active = state.today) {
 // ::after with z-index.
 function numberLabel(text) {
   const el = document.createElement("span");
+  el.className = "mark-value";
   // Smaller font sizes for values with three or four characters.
-  el.className = text.length >= 4
-    ? "mark-value is-tiny"
-    : text.length === 3
-      ? "mark-value is-small"
-      : "mark-value";
+  if (text.length === 3) el.classList.add("is-small");
+  if (text.length >= 4) el.classList.add("is-tiny");
   el.textContent = text;
   return el;
 }
 
 function cellLabel(habit, iso, value, scheduled, streakDays = 0) {
   const when = formatRelative(iso, state.today);
-  // Future days are announced as planned rather than done.
-  const ahead = iso > state.today;
-  const reached = H.isComplete(habit, value);
-  const vars = { value: H.formatValue(habit, value), target: H.formatValue(habit, H.target(habit)) };
-  const status = reached && !ahead
-    ? t("done")
-    : reached && habit.kind === "check"
-      ? t("planned")
-      : reached
-        ? t("{value} planned", vars)
-        : value > 0
-          ? ahead ? t("{value} of {target} planned", vars) : t("{value} of {target}", vars)
-          : scheduled
-            ? t("open")
-            : t("not scheduled");
+  const status = cellStatus(habit, iso, value, scheduled);
   // Announce the streak length on days that are part of a run.
-  const run = reached && !ahead && streakDays > 0
-    ? t(", day {n} of a streak", { n: streakDays })
-    : "";
+  const done = H.isComplete(habit, value) && iso <= state.today;
+  const run = done && streakDays > 0 ? t(", day {n} of a streak", { n: streakDays }) : "";
   return `${habit.name}, ${when}: ${status}${run}`;
+}
+
+/** Describes a day's value. Future days are announced as planned. */
+function cellStatus(habit, iso, value, scheduled) {
+  const ahead = iso > state.today;
+  const vars = { value: H.formatValue(habit, value), target: H.formatValue(habit, H.target(habit)) };
+
+  if (H.isComplete(habit, value)) {
+    if (!ahead) return t("done");
+    return habit.kind === "check" ? t("planned") : t("{value} planned", vars);
+  }
+  if (value > 0) {
+    return ahead ? t("{value} of {target} planned", vars) : t("{value} of {target}", vars);
+  }
+  return scheduled ? t("open") : t("not scheduled");
 }

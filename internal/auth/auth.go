@@ -33,7 +33,7 @@ func FromContext(ctx context.Context) (User, bool) {
 func MustUser(ctx context.Context) User {
 	u, ok := FromContext(ctx)
 	if !ok {
-		panic("auth: handler ohne auth.Middleware eingebunden")
+		panic("auth: handler registered without auth.Middleware")
 	}
 	return u
 }
@@ -87,7 +87,7 @@ func resolve(cfg config.Config, r *http.Request) (User, *authError) {
 	if id == "" {
 		return User{}, &authError{
 			Status:  http.StatusUnauthorized,
-			Message: "Nicht angemeldet",
+			Message: "Not signed in",
 			Reason:  "header " + cfg.UserHeader + " is missing or empty",
 		}
 	}

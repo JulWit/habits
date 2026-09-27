@@ -145,12 +145,18 @@ func (s *Store) CreateHabit(ctx context.Context, userID string, h *domain.Habit)
 // requireOwnCategory returns a validation error if categoryID is not "" and
 // not a category of the user.
 func (s *Store) requireOwnCategory(ctx context.Context, q queryer, userID, categoryID string) error {
-	ok, err := s.categoryBelongsTo(ctx, q, userID, categoryID)
-	if err != nil {
-		return err
+	if categoryID == "" {
+		return nil
 	}
-	if !ok {
+	var found string
+	err := q.QueryRowContext(ctx,
+		`SELECT id FROM categories WHERE id = ? AND user_id = ? AND deleted_at IS NULL`,
+		categoryID, userID).Scan(&found)
+	if errors.Is(err, sql.ErrNoRows) {
 		return domain.Invalid("unknown category")
+	}
+	if err != nil {
+		return fmt.Errorf("checking category: %w", err)
 	}
 	return nil
 }
@@ -249,9 +255,10 @@ func (s *Store) requireKindKeepsHistoryMeaningful(ctx context.Context, q queryer
 // SoftDeleteHabit marks the habit as deleted. It can be restored with
 // RestoreHabit until PurgeDeleted removes it.
 func (s *Store) SoftDeleteHabit(ctx context.Context, userID, id string) error {
+	now := formatTime(time.Now())
 	res, err := s.db.ExecContext(ctx,
 		`UPDATE habits SET deleted_at = ?, updated_at = ? WHERE id = ? AND user_id = ? AND deleted_at IS NULL`,
-		formatTime(time.Now()), formatTime(time.Now()), id, userID)
+		now, now, id, userID)
 	if err != nil {
 		return fmt.Errorf("deleting habit: %w", err)
 	}

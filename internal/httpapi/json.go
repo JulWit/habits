@@ -7,7 +7,6 @@ import (
 	"log/slog"
 	"mime"
 	"net/http"
-	"strings"
 
 	"github.com/JulWit/habits/internal/domain"
 	"github.com/JulWit/habits/internal/store"
@@ -92,14 +91,7 @@ func (s *Server) writeStoreError(w http.ResponseWriter, err error, context strin
 	case errors.Is(err, store.ErrNotFound):
 		writeError(w, http.StatusNotFound, "Not found")
 	case errors.Is(err, domain.ErrValidation):
-		var p *domain.Problem
-		if errors.As(err, &p) {
-			writeProblem(w, http.StatusUnprocessableEntity, p)
-			return
-		}
-		// Strip the "validation error: " prefix.
-		msg := strings.TrimPrefix(err.Error(), domain.ErrValidation.Error()+": ")
-		writeError(w, http.StatusUnprocessableEntity, msg)
+		writeProblem(w, http.StatusUnprocessableEntity, err)
 	default:
 		s.log.Error(context, "error", err)
 		writeError(w, http.StatusInternalServerError, "Internal server error")

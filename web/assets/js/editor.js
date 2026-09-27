@@ -33,13 +33,14 @@ export function initEditor() {
 
   buildWeekdayButtons();
   form.addEventListener("change", syncVisibility);
-  // Clear the error message on any input.
-  for (const type of ["input", "change", "click"]) {
-    form.addEventListener(type, (event) => {
-      if (type === "click" && !event.target.closest(".weekday")) return;
-      errorBox.hidden = true;
-    });
-  }
+  // Clear the error message on any input. The weekday buttons change the
+  // input without an input event.
+  const hideError = () => { errorBox.hidden = true; };
+  form.addEventListener("input", hideError);
+  form.addEventListener("change", hideError);
+  form.addEventListener("click", (event) => {
+    if (event.target.closest(".weekday")) hideError();
+  });
   form.addEventListener("submit", handleSubmit);
   guardPage(dialog, () => JSON.stringify(collect()) !== initial);
 
@@ -123,8 +124,16 @@ function selectIcon(name) {
   markIconChoice(document.getElementById("icon-choices"), name);
 }
 
-/** Stored units per unit typed into a target field. */
-const unitsPerTyped = (kind) => H.scaleOf(kind);
+/**
+ * Each measured kind has its own target and step field, so switching the kind
+ * keeps what was typed for the others. Targets are prefilled with a default;
+ * an empty step field means the kind's default step.
+ */
+const KIND_FIELDS = {
+  count: { target: "targetCount", step: "stepCount", defaultTarget: 8 },
+  time: { target: "targetTime", step: "stepTime", defaultTarget: 20 },
+  distance: { target: "targetDistance", step: "stepDistance", defaultTarget: 5 },
+};
 
 /**
  * Shows only the fields of the selected kind and frequency. Hidden fields are
@@ -170,23 +179,15 @@ export function openEditor(habit, handler) {
 
   f.name.value = habit?.name ?? "";
   f.kind.value = habit?.kind ?? "check";
-  // Each kind has its own target field.
-  f.targetCount.value = habit?.kind === "count" ? habit.targetValue / unitsPerTyped(habit.kind) : 8;
-  f.targetTime.value = habit?.kind === "time" ? habit.targetValue / unitsPerTyped(habit.kind) : 20;
-  f.targetDistance.value = habit?.kind === "distance"
-    ? habit.targetValue / unitsPerTyped(habit.kind)
-    : 5;
+  for (const [kind, fields] of Object.entries(KIND_FIELDS)) {
+    f[fields.target].value = fields.defaultTarget;
+    f[fields.step].value = "";
+    if (habit?.kind === kind) {
+      f[fields.target].value = habit.targetValue / H.scaleOf(kind);
+      if (habit.stepValue) f[fields.step].value = habit.stepValue / H.scaleOf(kind);
+    }
+  }
   f.unit.value = habit?.kind === "count" ? habit.unit : "";
-  // Each kind has its own step field. Empty means the kind's default step.
-  f.stepCount.value = habit?.kind === "count" && habit.stepValue
-    ? habit.stepValue / unitsPerTyped(habit.kind)
-    : "";
-  f.stepTime.value = habit?.kind === "time" && habit.stepValue
-    ? habit.stepValue / unitsPerTyped(habit.kind)
-    : "";
-  f.stepDistance.value = habit?.kind === "distance" && habit.stepValue
-    ? habit.stepValue / unitsPerTyped(habit.kind)
-    : "";
 
   const freq = habit?.frequency ?? { kind: "daily" };
   f.freq.value = freq.kind;
@@ -194,13 +195,20 @@ export function openEditor(habit, handler) {
   f.intervalDays.value = freq.intervalDays || 3;
   f.anchorDate.value = freq.anchorDate || state.today;
 
-  const narrowed = freq.kind === "weekdays";
-  f.weekRepeat.value = narrowed && freq.weekOfMonth
-    ? "monthly"
-    : narrowed && freq.weekInterval > 1 ? "interval" : "weekly";
-  f.weekInterval.value = narrowed && freq.weekInterval > 1 ? freq.weekInterval : 4;
-  f.weekOfMonth.value = String(narrowed && freq.weekOfMonth ? freq.weekOfMonth : 1);
-  f.weekAnchorDate.value = (narrowed && freq.anchorDate) || state.today;
+  // Weekday schedules repeat every week, every n-th week, or in one week of
+  // the month.
+  f.weekRepeat.value = "weekly";
+  f.weekInterval.value = 4;
+  f.weekOfMonth.value = "1";
+  f.weekAnchorDate.value = state.today;
+  if (freq.kind === "weekdays" && freq.weekOfMonth) {
+    f.weekRepeat.value = "monthly";
+    f.weekOfMonth.value = String(freq.weekOfMonth);
+  } else if (freq.kind === "weekdays" && freq.weekInterval > 1) {
+    f.weekRepeat.value = "interval";
+    f.weekInterval.value = freq.weekInterval;
+    f.weekAnchorDate.value = freq.anchorDate || state.today;
+  }
 
   const mask = freq.weekdays || 0;
   for (const b of document.querySelectorAll("#weekday-choices .weekday")) {
@@ -232,19 +240,12 @@ function collect() {
     },
   };
 
-  // An empty step field sends 0, i.e. the kind's default step.
-  if (kind === "count") {
-    input.targetValue = Math.round(Number(f.targetCount.value) * unitsPerTyped(kind));
-    input.stepValue = Math.round(Number(f.stepCount.value) * unitsPerTyped(kind));
-  }
-  if (kind === "time") {
-    input.targetValue = Math.round(Number(f.targetTime.value) * unitsPerTyped(kind));
-    input.stepValue = Math.round(Number(f.stepTime.value) * unitsPerTyped(kind));
-  }
-  // Round to whole metres.
-  if (kind === "distance") {
-    input.targetValue = Math.round(Number(f.targetDistance.value) * unitsPerTyped(kind));
-    input.stepValue = Math.round(Number(f.stepDistance.value) * unitsPerTyped(kind));
+  // Typed values are converted to stored units. An empty step field sends 0,
+  // i.e. the kind's default step.
+  const fields = KIND_FIELDS[kind];
+  if (fields) {
+    input.targetValue = Math.round(Number(f[fields.target].value) * H.scaleOf(kind));
+    input.stepValue = Math.round(Number(f[fields.step].value) * H.scaleOf(kind));
   }
 
   switch (input.frequency.kind) {

@@ -5,7 +5,6 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"html/template"
 	"io/fs"
@@ -14,6 +13,7 @@ import (
 	"net/http"
 	"path"
 	"runtime/debug"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -131,38 +131,16 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 		settings = store.DefaultSettings()
 	}
 	data := struct {
-		Lang       string
-		Theme      string
-		Font       string
-		Density    string
-		Pattern    string
-		BandColor  string
-		BandOp     int
-		BandFillOp int
-		ShowBand   bool
-		Dim        int
-		Blur       string
-		SurfaceOp  int
-		SurfaceBlr string
-		User       string
-	}{
-		Lang:       resolveLanguage(settings.Language, r.Header.Get("Accept-Language")),
-		Theme:      settings.Theme,
-		Font:       settings.Font,
-		Density:    settings.Density,
-		Pattern:    settings.Pattern,
-		BandColor:  settings.BandColor,
-		BandOp:     settings.BandOpacity,
-		BandFillOp: settings.BandFillOpacity,
-		ShowBand:   settings.ShowBand,
-		Dim:        settings.BackgroundDim,
+		store.Settings
+		Lang string
 		// Blur settings are converted from percent to pixels.
-		Blur: strconv.FormatFloat(
-			float64(settings.BackgroundBlur)*store.BackgroundBlurAtFull/100, 'f', -1, 64),
-		SurfaceOp: settings.SurfaceOpacity,
-		SurfaceBlr: strconv.FormatFloat(
-			float64(settings.SurfaceBlur)*store.BackgroundBlurAtFull/100, 'f', -1, 64),
-		User: user.Name,
+		BackgroundBlurPx string
+		SurfaceBlurPx    string
+	}{
+		Settings:         settings,
+		Lang:             resolveLanguage(settings.Language, r.Header.Get("Accept-Language")),
+		BackgroundBlurPx: blurPixels(settings.BackgroundBlur),
+		SurfaceBlurPx:    blurPixels(settings.SurfaceBlur),
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -170,6 +148,11 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	if err := s.shell.Execute(w, data); err != nil {
 		s.log.Error("rendering index failed", "error", err)
 	}
+}
+
+// blurPixels converts a blur setting from percent to a CSS length in pixels.
+func blurPixels(percent int) string {
+	return strconv.FormatFloat(float64(percent)*store.BackgroundBlurAtFull/100, 'f', -1, 64)
 }
 
 // location returns the user's time zone, or the server's if the user has not
@@ -197,13 +180,13 @@ func (s *Server) todayFor(ctx context.Context, userID string) domain.Date {
 // resolveLanguage returns the UI language. For "system" it returns the first
 // supported language in Accept-Language, or "en".
 func resolveLanguage(chosen, acceptLanguage string) string {
-	if chosen != "system" && store.ValidLanguage(chosen) {
+	if chosen != "system" && slices.Contains(store.Languages, chosen) {
 		return chosen
 	}
 	for _, part := range strings.Split(acceptLanguage, ",") {
 		tag, _, _ := strings.Cut(strings.TrimSpace(part), ";")
 		primary, _, _ := strings.Cut(strings.ToLower(tag), "-")
-		if primary != "system" && store.ValidLanguage(primary) {
+		if primary != "system" && slices.Contains(store.Languages, primary) {
 			return primary
 		}
 	}
@@ -233,7 +216,8 @@ func (s *Server) recoverPanics(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			if v := recover(); v != nil {
-				if errors.Is(asError(v), http.ErrAbortHandler) {
+				// ErrAbortHandler deliberately aborts the response; net/http handles it.
+				if v == http.ErrAbortHandler {
 					panic(v)
 				}
 				s.log.Error("panic in handler",
@@ -243,14 +227,6 @@ func (s *Server) recoverPanics(next http.Handler) http.Handler {
 		}()
 		next.ServeHTTP(w, r)
 	})
-}
-
-// asError returns v if it is an error, otherwise nil.
-func asError(v any) error {
-	if err, ok := v.(error); ok {
-		return err
-	}
-	return nil
 }
 
 // statusRecorder records the status code written to a ResponseWriter.

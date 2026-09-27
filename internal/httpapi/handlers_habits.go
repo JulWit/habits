@@ -203,33 +203,15 @@ type habitInput struct {
 
 // applyTo copies the set fields of in to h.
 func (in habitInput) applyTo(h *domain.Habit) {
-	if in.Name != nil {
-		h.Name = *in.Name
-	}
-	if in.Color != nil {
-		h.Color = *in.Color
-	}
-	if in.Icon != nil {
-		h.Icon = *in.Icon
-	}
-	if in.Kind != nil {
-		h.Kind = *in.Kind
-	}
-	if in.CategoryID != nil {
-		h.CategoryID = *in.CategoryID
-	}
-	if in.TargetValue != nil {
-		h.TargetValue = *in.TargetValue
-	}
-	if in.StepValue != nil {
-		h.StepValue = *in.StepValue
-	}
-	if in.Unit != nil {
-		h.Unit = *in.Unit
-	}
-	if in.Frequency != nil {
-		h.Frequency = *in.Frequency
-	}
+	setIf(&h.Name, in.Name)
+	setIf(&h.Color, in.Color)
+	setIf(&h.Icon, in.Icon)
+	setIf(&h.Kind, in.Kind)
+	setIf(&h.CategoryID, in.CategoryID)
+	setIf(&h.TargetValue, in.TargetValue)
+	setIf(&h.StepValue, in.StepValue)
+	setIf(&h.Unit, in.Unit)
+	setIf(&h.Frequency, in.Frequency)
 	if in.Archived != nil {
 		switch {
 		case *in.Archived && h.ArchivedAt == nil:

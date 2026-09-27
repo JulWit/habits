@@ -62,20 +62,17 @@ func (s *Store) reorder(ctx context.Context, table, userID string, ids []string,
 		}
 	}
 
-	query := `UPDATE ` + table + ` SET position = ? WHERE id = ?`
-	args := func(i int, id string) []any { return []any{i, id} }
-	if touchUpdated {
-		now := formatTime(time.Now())
-		query = `UPDATE ` + table + ` SET position = ?, updated_at = ? WHERE id = ?`
-		args = func(i int, id string) []any { return []any{i, now, id} }
-	}
-	stmt, err := tx.PrepareContext(ctx, query)
-	if err != nil {
-		return fmt.Errorf("preparing reorder: %w", err)
-	}
-	defer stmt.Close()
+	now := formatTime(time.Now())
 	for i, id := range order {
-		if _, err := stmt.ExecContext(ctx, args(i, id)...); err != nil {
+		var err error
+		if touchUpdated {
+			_, err = tx.ExecContext(ctx,
+				`UPDATE `+table+` SET position = ?, updated_at = ? WHERE id = ?`, i, now, id)
+		} else {
+			_, err = tx.ExecContext(ctx,
+				`UPDATE `+table+` SET position = ? WHERE id = ?`, i, id)
+		}
+		if err != nil {
 			return fmt.Errorf("saving order: %w", err)
 		}
 	}

@@ -29,13 +29,14 @@ export function initCategoryEditor() {
 
   form.addEventListener("submit", handleSubmit);
   guardPage(dialog, () => JSON.stringify(collect()) !== initial);
-  // Clear the error message on any input.
-  for (const type of ["input", "change", "click"]) {
-    form.addEventListener(type, (event) => {
-      if (type === "click" && !event.target.closest("#category-color-choices, #category-icon-choices")) return;
-      errorBox.hidden = true;
-    });
-  }
+  // Clear the error message on any input. The colour and icon buttons change
+  // the input without an input event.
+  const hideError = () => { errorBox.hidden = true; };
+  form.addEventListener("input", hideError);
+  form.addEventListener("change", hideError);
+  form.addEventListener("click", (event) => {
+    if (event.target.closest("#category-color-choices, #category-icon-choices")) hideError();
+  });
 }
 
 /**

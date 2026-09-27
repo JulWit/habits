@@ -4,6 +4,7 @@ import (
 	"errors"
 	"math/bits"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 )
@@ -26,14 +27,7 @@ const (
 var AllKinds = []Kind{KindCheck, KindCount, KindTime, KindDistance}
 
 // Valid reports whether k is one of AllKinds.
-func (k Kind) Valid() bool {
-	for _, known := range AllKinds {
-		if k == known {
-			return true
-		}
-	}
-	return false
-}
+func (k Kind) Valid() bool { return slices.Contains(AllKinds, k) }
 
 // KindInfo describes a kind's value range for the client.
 type KindInfo struct {
@@ -135,15 +129,6 @@ const (
 	FreqCustomInterval FrequencyKind = "custom_interval"
 )
 
-// Valid reports whether f is a known frequency kind.
-func (f FrequencyKind) Valid() bool {
-	switch f {
-	case FreqDaily, FreqTimesPerWeek, FreqWeekdays, FreqCustomInterval:
-		return true
-	}
-	return false
-}
-
 // Weekdays is a set of weekdays as a bitmask: bit 0 is Monday, bit 6 Sunday.
 type Weekdays uint8
 
@@ -216,11 +201,11 @@ const (
 func targetTooSmall(k Kind) error {
 	switch k {
 	case KindTime:
-		return invalid("time must be at least 0.1 minutes")
+		return Invalid("time must be at least 0.1 minutes")
 	case KindDistance:
-		return invalid("distance must be at least 1 metre")
+		return Invalid("distance must be at least 1 metre")
 	}
-	return invalid("target must be at least 0.1")
+	return Invalid("target must be at least 0.1")
 }
 
 // tooLarge returns the error for a value above the maximum of k, stated in
@@ -229,11 +214,11 @@ func tooLarge(what string, k Kind) error {
 	limit := k.MaxTarget() / k.Scale()
 	switch k {
 	case KindTime:
-		return invalid(what+" may be at most {max} minutes", "max", limit)
+		return Invalid(what+" may be at most {max} minutes", "max", limit)
 	case KindDistance:
-		return invalid(what+" may be at most {max} kilometres", "max", limit)
+		return Invalid(what+" may be at most {max} kilometres", "max", limit)
 	}
-	return invalid(what+" may be at most {max}", "max", limit)
+	return Invalid(what+" may be at most {max}", "max", limit)
 }
 
 func targetTooLarge(k Kind) error {
@@ -246,8 +231,6 @@ func targetTooLarge(k Kind) error {
 	return tooLarge("target", k)
 }
 
-var invalid = Invalid
-
 // Validate normalises h in place and returns a validation error if h is
 // invalid.
 func (h *Habit) Validate() error {
@@ -255,29 +238,29 @@ func (h *Habit) Validate() error {
 	h.Unit = strings.TrimSpace(h.Unit)
 
 	if h.Name == "" {
-		return invalid("name must not be empty")
+		return Invalid("name must not be empty")
 	}
 	if len([]rune(h.Name)) > MaxNameLen {
-		return invalid("name is longer than {max} characters", "max", MaxNameLen)
+		return Invalid("name is longer than {max} characters", "max", MaxNameLen)
 	}
 	if len([]rune(h.Unit)) > MaxUnitLen {
-		return invalid("unit is longer than {max} characters", "max", MaxUnitLen)
+		return Invalid("unit is longer than {max} characters", "max", MaxUnitLen)
 	}
 	if h.Color == "" {
 		h.Color = DefaultColors[0]
 	}
 	if !colorPattern.MatchString(h.Color) {
-		return invalid("colour must be a hex value like #4caf50")
+		return Invalid("colour must be a hex value like #4caf50")
 	}
 	h.Color = strings.ToLower(h.Color)
 
 	h.Icon = strings.TrimSpace(h.Icon)
 	if h.Icon != "" && !ValidIcon(h.Icon) {
-		return invalid(`unknown icon "{icon}"`, "icon", h.Icon)
+		return Invalid(`unknown icon "{icon}"`, "icon", h.Icon)
 	}
 
 	if !h.Kind.Valid() {
-		return invalid(`unknown habit kind "{kind}"`, "kind", h.Kind)
+		return Invalid(`unknown habit kind "{kind}"`, "kind", h.Kind)
 	}
 	if h.Kind == KindCheck {
 		h.TargetValue = 1
@@ -303,73 +286,85 @@ func (h *Habit) Validate() error {
 	return h.normaliseFrequency()
 }
 
-// normaliseFrequency validates h.Frequency and resets the fields its kind does
-// not use.
+// normaliseFrequency validates h.Frequency and keeps only the fields its kind
+// uses.
 func (h *Habit) normaliseFrequency() error {
-	f := &h.Frequency
-	if !f.Kind.Valid() {
-		return invalid(`unknown frequency "{frequency}"`, "frequency", f.Kind)
-	}
+	f := h.Frequency
 	switch f.Kind {
 	case FreqDaily:
-		f.TimesPerWeek, f.Weekdays, f.IntervalDays, f.AnchorDate = 0, 0, 0, Date{}
-		f.WeekInterval, f.WeekOfMonth = 0, 0
+		h.Frequency = Frequency{Kind: FreqDaily}
+
 	case FreqTimesPerWeek:
 		if f.TimesPerWeek < 1 || f.TimesPerWeek > 7 {
-			return invalid("times per week must be between 1 and 7")
+			return Invalid("times per week must be between 1 and 7")
 		}
-		f.Weekdays, f.IntervalDays, f.AnchorDate = 0, 0, Date{}
-		f.WeekInterval, f.WeekOfMonth = 0, 0
+		h.Frequency = Frequency{Kind: FreqTimesPerWeek, TimesPerWeek: f.TimesPerWeek}
+
 	case FreqWeekdays:
 		if f.Weekdays == 0 {
-			return invalid("at least one weekday must be selected")
+			return Invalid("at least one weekday must be selected")
 		}
 		if f.Weekdays > 0b1111111 {
-			return invalid("invalid weekday selection")
+			return Invalid("invalid weekday selection")
 		}
 		// 0 means every week, for clients that do not send a week interval.
 		if f.WeekInterval == 0 {
 			f.WeekInterval = 1
 		}
 		if f.WeekInterval < 1 || f.WeekInterval > 52 {
-			return invalid("week interval must be between 1 and 52 weeks")
+			return Invalid("week interval must be between 1 and 52 weeks")
 		}
 		if f.WeekOfMonth != LastWeekOfMonth && (f.WeekOfMonth < 0 || f.WeekOfMonth > 4) {
-			return invalid("week of the month must be 1 to 4 or the last")
+			return Invalid("week of the month must be 1 to 4 or the last")
 		}
 		if f.WeekInterval > 1 && f.WeekOfMonth != 0 {
-			return invalid("a week interval and a week of the month cannot be combined")
+			return Invalid("a week interval and a week of the month cannot be combined")
 		}
 		// Only a week interval greater than 1 needs an anchor.
+		anchor := Date{}
 		if f.WeekInterval > 1 {
-			if f.AnchorDate.IsZero() {
-				f.AnchorDate = DateFromTime(h.CreatedAt)
-			}
-		} else {
-			f.AnchorDate = Date{}
+			anchor = h.anchorOr(f.AnchorDate)
 		}
-		f.TimesPerWeek, f.IntervalDays = 0, 0
+		h.Frequency = Frequency{
+			Kind:         FreqWeekdays,
+			Weekdays:     f.Weekdays,
+			WeekInterval: f.WeekInterval,
+			WeekOfMonth:  f.WeekOfMonth,
+			AnchorDate:   anchor,
+		}
+
 	case FreqCustomInterval:
 		if f.IntervalDays < 1 || f.IntervalDays > 365 {
-			return invalid("interval must be between 1 and 365 days")
+			return Invalid("interval must be between 1 and 365 days")
 		}
-		if f.AnchorDate.IsZero() {
-			f.AnchorDate = DateFromTime(h.CreatedAt)
+		h.Frequency = Frequency{
+			Kind:         FreqCustomInterval,
+			IntervalDays: f.IntervalDays,
+			AnchorDate:   h.anchorOr(f.AnchorDate),
 		}
-		f.TimesPerWeek, f.Weekdays = 0, 0
-		f.WeekInterval, f.WeekOfMonth = 0, 0
+
+	default:
+		return Invalid(`unknown frequency "{frequency}"`, "frequency", f.Kind)
 	}
 	return nil
+}
+
+// anchorOr returns anchor, or the habit's creation day if anchor is zero.
+func (h Habit) anchorOr(anchor Date) Date {
+	if anchor.IsZero() {
+		return DateFromTime(h.CreatedAt)
+	}
+	return anchor
 }
 
 // ValidateEntryValue checks that a day's value lies between 0 and the kind's
 // MaxTarget.
 func ValidateEntryValue(k Kind, value int) error {
 	if !k.Valid() {
-		return invalid(`unknown habit kind "{kind}"`, "kind", k)
+		return Invalid(`unknown habit kind "{kind}"`, "kind", k)
 	}
 	if value < 0 {
-		return invalid("value must not be negative")
+		return Invalid("value must not be negative")
 	}
 	if value > k.MaxTarget() {
 		return tooLarge("value", k)
@@ -382,10 +377,7 @@ func (h Habit) Target() int {
 	if h.Kind == KindCheck {
 		return 1
 	}
-	if h.TargetValue < 1 {
-		return 1
-	}
-	return h.TargetValue
+	return max(h.TargetValue, 1)
 }
 
 // IsComplete reports whether a day's value reaches the habit's target.
@@ -404,15 +396,8 @@ func (h Habit) IsScheduled(d Date) bool {
 		if n < 1 {
 			return false
 		}
-		anchor := h.Frequency.AnchorDate
-		if anchor.IsZero() {
-			anchor = DateFromTime(h.CreatedAt)
-		}
-		diff := d.DaysSince(anchor)
-		if diff < 0 {
-			return false
-		}
-		return diff%n == 0
+		diff := d.DaysSince(h.anchorOr(h.Frequency.AnchorDate))
+		return diff >= 0 && diff%n == 0
 	}
 	return false
 }
@@ -428,10 +413,7 @@ func (h Habit) inScheduledWeek(d Date) bool {
 		return (d.Day-1)/7+1 == f.WeekOfMonth
 	}
 	if f.WeekInterval > 1 {
-		anchor := f.AnchorDate
-		if anchor.IsZero() {
-			anchor = DateFromTime(h.CreatedAt)
-		}
+		anchor := h.anchorOr(f.AnchorDate)
 		if d.Before(anchor) {
 			return false
 		}
@@ -471,11 +453,4 @@ var HabitIcons = []string{
 }
 
 // ValidIcon reports whether name is one of HabitIcons.
-func ValidIcon(name string) bool {
-	for _, known := range HabitIcons {
-		if name == known {
-			return true
-		}
-	}
-	return false
-}
+func ValidIcon(name string) bool { return slices.Contains(HabitIcons, name) }

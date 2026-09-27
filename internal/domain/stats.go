@@ -107,10 +107,7 @@ func dailyStats(h Habit, entries map[Date]int, today Date, windowDays int) Stats
 // rounded up to whole weeks.
 func weeklyStats(h Habit, entries map[Date]int, today Date, windowDays int) Stats {
 	st := Stats{StreakUnit: "weeks", Total: totalValue(entries, today)}
-	target := h.Frequency.TimesPerWeek
-	if target < 1 {
-		target = 1
-	}
+	target := max(h.Frequency.TimesPerWeek, 1)
 	start := historyStart(h, entries)
 	if start.IsZero() || start.After(today) {
 		return st
@@ -123,18 +120,7 @@ func weeklyStats(h Habit, entries map[Date]int, today Date, windowDays int) Stat
 
 	run := 0
 	for week := firstWeek; !week.After(currentWeek); week = week.AddDays(7) {
-		// open is the number of days of the week within the habit's history.
-		done, open := 0, 0
-		for i := 0; i < 7; i++ {
-			d := week.AddDays(i)
-			if d.Before(start) || d.After(today) {
-				continue
-			}
-			open++
-			if h.IsComplete(entries[d]) {
-				done++
-			}
-		}
+		done, open := weekCompletions(h, entries, week, start, today)
 		switch {
 		case done >= target:
 			run++
@@ -163,4 +149,21 @@ func weeklyStats(h Habit, entries map[Date]int, today Date, windowDays int) Stat
 		st.CompletionRate = float64(st.Achieved) / float64(st.Expected)
 	}
 	return st
+}
+
+// weekCompletions returns the number of completed days in the week starting
+// on week, and the number of its days that lie within the habit's history,
+// i.e. between start and today.
+func weekCompletions(h Habit, entries map[Date]int, week, start, today Date) (done, open int) {
+	for i := range 7 {
+		d := week.AddDays(i)
+		if d.Before(start) || d.After(today) {
+			continue
+		}
+		open++
+		if h.IsComplete(entries[d]) {
+			done++
+		}
+	}
+	return done, open
 }

@@ -21,18 +21,10 @@ type categoryInput struct {
 
 // applyTo copies the set fields of in to c.
 func (in categoryInput) applyTo(c *domain.Category) {
-	if in.Name != nil {
-		c.Name = *in.Name
-	}
-	if in.Icon != nil {
-		c.Icon = *in.Icon
-	}
-	if in.Color != nil {
-		c.Color = *in.Color
-	}
-	if in.ShowProgress != nil {
-		c.ShowProgress = *in.ShowProgress
-	}
+	setIf(&c.Name, in.Name)
+	setIf(&c.Icon, in.Icon)
+	setIf(&c.Color, in.Color)
+	setIf(&c.ShowProgress, in.ShowProgress)
 }
 
 // handleCreateCategory creates a category. The name is required.

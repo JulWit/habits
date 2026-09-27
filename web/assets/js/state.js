@@ -3,7 +3,8 @@
 
 export const state = {
   user: null,
-  settings: { theme: "light", overviewDays: 0, showArchived: false },
+  // Complete once the state is loaded.
+  settings: {},
   today: "",
   categories: [],
   habits: [],
@@ -45,14 +46,22 @@ export function upsertHabit(view) {
  * the old order if the request fails.
  */
 export function reorderHabitsLocal(ids) {
-  const byId = new Map(state.habits.map((h) => [h.id, h]));
-  const next = ids.map((id) => byId.get(id)).filter(Boolean);
-  for (const habit of state.habits) {
-    if (!ids.includes(habit.id)) next.push(habit);
-  }
-  next.forEach((habit, i) => { habit.position = i; });
-  state.habits = next;
+  state.habits = inOrder(state.habits, ids);
   notify();
+}
+
+/**
+ * Returns `items` sorted by `ids`, followed by the items missing from `ids`,
+ * and renumbers their positions.
+ */
+function inOrder(items, ids) {
+  const byId = new Map(items.map((item) => [item.id, item]));
+  const sorted = ids.map((id) => byId.get(id)).filter(Boolean);
+  for (const item of items) {
+    if (!ids.includes(item.id)) sorted.push(item);
+  }
+  sorted.forEach((item, i) => { item.position = i; });
+  return sorted;
 }
 
 export function removeHabit(id) {
@@ -95,14 +104,7 @@ export function upsertCategory(category) {
  * their positions. The caller restores the old order if the request fails.
  */
 export function reorderCategoriesLocal(ids) {
-  const byId = new Map(state.categories.map((c) => [c.id, c]));
-  const next = ids.map((id) => byId.get(id)).filter(Boolean);
-  // Categories missing from `ids` are appended.
-  for (const category of state.categories) {
-    if (!ids.includes(category.id)) next.push(category);
-  }
-  next.forEach((category, i) => { category.position = i; });
-  state.categories = next;
+  state.categories = inOrder(state.categories, ids);
   notify();
 }
 

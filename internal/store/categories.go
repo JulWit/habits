@@ -162,27 +162,3 @@ func (s *Store) PurgeDeletedCategories(ctx context.Context, olderThan time.Durat
 	}
 	return res.RowsAffected()
 }
-
-// categoryBelongsTo reports whether categoryID is "" or a non-deleted category
-// of the user.
-func (s *Store) categoryBelongsTo(ctx context.Context, q queryer, userID, categoryID string) (bool, error) {
-	if categoryID == "" {
-		return true, nil
-	}
-	var found string
-	err := q.QueryRowContext(ctx,
-		`SELECT id FROM categories WHERE id = ? AND user_id = ? AND deleted_at IS NULL`,
-		categoryID, userID).Scan(&found)
-	if errors.Is(err, sql.ErrNoRows) {
-		return false, nil
-	}
-	if err != nil {
-		return false, fmt.Errorf("checking category: %w", err)
-	}
-	return true, nil
-}
-
-// queryer is implemented by *sql.DB and *sql.Tx.
-type queryer interface {
-	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
-}

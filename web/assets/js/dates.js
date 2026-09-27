@@ -1,6 +1,6 @@
 // Date helpers. Dates are ISO strings ("2026-09-13"); arithmetic is done in UTC.
 
-import { t, lang } from "./i18n.js";
+import { t, lang, userTimeZone } from "./i18n.js";
 
 const DAY_MS = 86400000;
 
@@ -57,6 +57,7 @@ const NAMES = {
 export const WEEKDAY_SHORT = NAMES.weekdayShort;
 export const WEEKDAY_LONG = NAMES.weekdayLong;
 export const MONTH_SHORT = NAMES.monthShort;
+export const MONTH_LONG = NAMES.monthLong;
 
 export function dayOfMonth(iso) {
   return new Date(toUTC(iso)).getUTCDate();
@@ -70,16 +71,28 @@ export function monthIndex(iso) {
   return new Date(toUTC(iso)).getUTCMonth();
 }
 
+/** Formats the day of the month: "13" / "13.". */
+function dayNumber(iso) {
+  return lang === "de" ? `${dayOfMonth(iso)}.` : String(dayOfMonth(iso));
+}
+
 /** Formats a date without year: "13 Sep" / "13. Sep". */
 export function formatDayMonth(iso) {
-  const d = new Date(toUTC(iso));
-  const day = lang === "de" ? `${d.getUTCDate()}.` : String(d.getUTCDate());
-  return `${day} ${MONTH_SHORT[d.getUTCMonth()]}`;
+  return `${dayNumber(iso)} ${MONTH_SHORT[monthIndex(iso)]}`;
 }
 
 /** Formats a date as "Mon, 13 Sep 2026". */
 export function formatLong(iso) {
   return `${WEEKDAY_SHORT[weekdayIndex(iso)]}, ${formatDayMonth(iso)} ${yearOf(iso)}`;
+}
+
+/**
+ * Formats a date as "Thursday, 1 January 2026", or without the year if
+ * `withYear` is false.
+ */
+export function formatFull(iso, withYear = true) {
+  const date = `${WEEKDAY_LONG[weekdayIndex(iso)]}, ${dayNumber(iso)} ${MONTH_LONG[monthIndex(iso)]}`;
+  return withYear ? `${date} ${yearOf(iso)}` : date;
 }
 
 /** Formats a date as "today", "yesterday" or a long date. */
@@ -93,19 +106,11 @@ export function formatRelative(iso, today) {
   return formatLong(iso);
 }
 
-/** Returns all dates from `from` to `to`, inclusive. */
-export function range(from, to) {
-  const out = [];
-  for (let d = from; daysBetween(d, to) >= 0; d = addDays(d, 1)) out.push(d);
-  return out;
-}
-
-export const MONTH_LONG = NAMES.monthLong;
-
-/** Formats a date as "Thursday, 1 January 2026". */
-export function formatFull(iso) {
-  const d = new Date(toUTC(iso));
-  const day = lang === "de" ? `${d.getUTCDate()}.` : String(d.getUTCDate());
-  return `${WEEKDAY_LONG[weekdayIndex(iso)]}, ${day} ` +
-    `${MONTH_LONG[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
+/**
+ * Returns the ISO date of a timestamp in the user's time zone. en-CA formats
+ * dates as YYYY-MM-DD.
+ */
+export function localISO(stamp) {
+  return new Date(stamp).toLocaleDateString("en-CA",
+    { year: "numeric", month: "2-digit", day: "2-digit", timeZone: userTimeZone() });
 }

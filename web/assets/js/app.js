@@ -18,46 +18,6 @@ import { paintIcons } from "./icons.js";
 import { translateDocument } from "./i18n.js";
 import { initTooltips } from "./tooltip.js";
 
-// Theme labels.
-const THEME_LABEL = { system: "System", light: "Light", dark: "Dark" };
-const DEFAULT_THEME = "system";
-
-/** Returns `theme` if it is known, otherwise the default. */
-function knownTheme(theme) {
-  return THEME_LABEL[theme] ? theme : DEFAULT_THEME;
-}
-
-/** Known fonts, as in store.Fonts. Unknown values fall back to the default. */
-const FONTS = ["system", "inter", "roboto", "geist", "opensans", "montserrat", "poppins", "lato"];
-const DEFAULT_FONT = "inter";
-
-function knownFont(font) {
-  return FONTS.includes(font) ? font : DEFAULT_FONT;
-}
-
-/** Known densities, as in store.Densities. */
-const DENSITIES = ["compact", "standard", "comfortable"];
-const DEFAULT_DENSITY = "standard";
-
-function knownDensity(density) {
-  return DENSITIES.includes(density) ? density : DEFAULT_DENSITY;
-}
-
-/** Known background patterns, as in store.Patterns. */
-const PATTERNS = ["none", "dots", "grid", "diagonal", "cross", "lines", "checks", "gradient", "glow", "image"];
-const DEFAULT_PATTERN = "none";
-
-function knownPattern(pattern) {
-  return PATTERNS.includes(pattern) ? pattern : DEFAULT_PATTERN;
-}
-
-/** Returns `value` clamped to [min, max], or `fallback` if it is not a number. */
-function clampNumber(value, min, max, fallback) {
-  const n = Number(value);
-  if (!Number.isFinite(n)) return fallback;
-  return Math.min(max, Math.max(min, Math.round(n)));
-}
-
 /** Whether reorder mode is active. Not persisted. */
 let editing = false;
 
@@ -316,40 +276,33 @@ function syncRoute() {
 // ---------- theme ----------
 
 /**
- * Applies the appearance settings to <html> whenever the state changes. The
- * server already sets them in the initial HTML.
+ * Applies the appearance settings to <html> whenever the state changes. Until
+ * the state is loaded, the initial HTML carries them, set by the server. The
+ * server also validates them, so they are applied as they are.
  */
 function initAppearance() {
-  const apply = () => {
+  subscribe(() => {
+    const settings = state.settings;
     const root = document.documentElement;
-    const theme = knownTheme(state.settings?.theme);
-    root.dataset.theme = theme;
-    applyThemeColor(theme);
-    root.dataset.font = knownFont(state.settings?.font);
+    root.dataset.theme = settings.theme;
+    applyThemeColor(settings.theme);
+    root.dataset.font = settings.font;
     // Affects the column width, so this runs before the board is rendered.
-    root.dataset.density = knownDensity(state.settings?.density);
-    root.dataset.pattern = knownPattern(state.settings?.pattern);
+    root.dataset.density = settings.density;
+    root.dataset.pattern = settings.pattern;
     // Affects the width of the last column.
-    root.dataset.reorder = state.settings?.reorderMode === "buttons" ? "buttons" : "drag";
-    // Unknown colours fall back to the neutral band.
-    const band = state.settings?.bandColor;
-    root.dataset.band = state.colors?.includes(band) ? band : "neutral";
-    root.style.setProperty("--today-opacity",
-      `${clampNumber(state.settings?.bandOpacity, 0, 100, 100)}%`);
-    root.style.setProperty("--band-opacity",
-      `${clampNumber(state.settings?.bandFillOpacity, 0, 100, 30)}%`);
-    root.dataset.todayBand = state.settings?.showBand === false ? "off" : "on";
+    root.dataset.reorder = settings.reorderMode;
+    root.dataset.band = settings.bandColor;
+    root.dataset.todayBand = settings.showBand ? "on" : "off";
 
     // Custom properties, as the stylesheet computes with them.
-    root.style.setProperty("--bg-dim", `${clampNumber(state.settings?.backgroundDim, 0, 100, 55)}%`);
-    root.style.setProperty("--bg-blur", blurLength(clampNumber(state.settings?.backgroundBlur, 0, 100, 0)));
-    root.style.setProperty("--surface-opacity",
-      `${clampNumber(state.settings?.surfaceOpacity, 20, 100, 88)}%`);
-    root.style.setProperty("--surface-blur",
-      blurLength(clampNumber(state.settings?.surfaceBlur, 0, 100, 30)));
-  };
-  subscribe(apply);
-  apply();
+    root.style.setProperty("--today-opacity", `${settings.bandOpacity}%`);
+    root.style.setProperty("--band-opacity", `${settings.bandFillOpacity}%`);
+    root.style.setProperty("--bg-dim", `${settings.backgroundDim}%`);
+    root.style.setProperty("--bg-blur", blurLength(settings.backgroundBlur));
+    root.style.setProperty("--surface-opacity", `${settings.surfaceOpacity}%`);
+    root.style.setProperty("--surface-blur", blurLength(settings.surfaceBlur));
+  });
   rememberColorScheme();
 }
 

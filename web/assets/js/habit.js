@@ -147,28 +147,13 @@ export function formatValue(habit, value) {
   }
 }
 
-/** Formats a total with its unit, e.g. "3 h 45 min". */
+/** Formats a total with its unit. Times of an hour or more include hours: "3 h 45 min". */
 export function formatTotal(habit, total) {
-  switch (habit.kind) {
-    case "time": {
-      const minutes = total / scale(habit);
-      const hours = Math.floor(minutes / 60);
-      if (hours === 0) return `${formatMinutes(minutes)} min`;
-      return `${hours} h ${formatMinutes(minutes % 60)} min`;
-    }
-    case "distance":
-      return formatDistance(total);
-    case "count": {
-      const n = written(habit, total);
-      return habit.unit ? `${n} ${habit.unit}` : `${n}×`;
-    }
-    default:
-      return `${total}×`;
-  }
+  const minutes = total / scale(habit);
+  if (habit.kind !== "time" || minutes < 60) return formatValue(habit, total);
+  const rest = (minutes % 60).toLocaleString(locale, { maximumFractionDigits: 1 });
+  return `${Math.floor(minutes / 60)} h ${rest} min`;
 }
-
-const formatMinutes = (minutes) =>
-  minutes.toLocaleString(locale, { maximumFractionDigits: 1 });
 
 /** Reports whether the habit's values can be summed. */
 export function isCountable(habit) {
@@ -226,17 +211,9 @@ function monthsBetween(from, to) {
     Number(to.slice(5, 7)) - Number(from.slice(5, 7));
 }
 
+/** Formats the daily target with its unit; "" for check habits. */
 export function describeTarget(habit) {
-  switch (habit.kind) {
-    case "count":
-      return `${written(habit, habit.targetValue)}${habit.unit ? " " + habit.unit : "×"}`;
-    case "time":
-      return `${written(habit, habit.targetValue)} min`;
-    case "distance":
-      return formatDistance(habit.targetValue);
-    default:
-      return "";
-  }
+  return habit.kind === "check" ? "" : formatValue(habit, habit.targetValue);
 }
 
 export function describeFrequency(habit) {

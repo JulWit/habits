@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/fs"
+	"maps"
 	"net/http"
 
 	"github.com/JulWit/habits/internal/auth"
@@ -51,10 +52,7 @@ func (s *Server) handleManifest(w http.ResponseWriter, r *http.Request) {
 		color = manifestColors["system"]
 	}
 
-	m := make(map[string]any, len(s.manifest))
-	for k, v := range s.manifest {
-		m[k] = v
-	}
+	m := maps.Clone(s.manifest)
 	m["theme_color"] = color
 	m["background_color"] = color
 

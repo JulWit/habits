@@ -1,13 +1,14 @@
 // Category detail view: its habits and its perfect days, i.e. days on which
 // every scheduled habit of the category was completed.
 
-import { addDays, formatDayMonth, formatLong } from "./dates.js";
-import { t, userTimeZone } from "./i18n.js";
+import { addDays, formatDayMonth, formatLong, localISO } from "./dates.js";
+import { t } from "./i18n.js";
 import { state } from "./state.js";
 import * as H from "./habit.js";
 import { habitIconBadge, categoryIconBadge } from "./icons.js";
 import { appBar } from "./appbar.js";
 import { openCategoryEditor } from "./categoryeditor.js";
+import { statRow, factsPanel, factItem } from "./panels.js";
 
 let root;
 let actions;
@@ -59,14 +60,14 @@ function header(category) {
 }
 
 /**
- * Returns the perfect days between `from` and `to`. Days without scheduled
- * habits and an open today are skipped. Habits count from their creation day.
+ * Counts the perfect days between `from` and `to`, the days with scheduled
+ * habits (`due`) and the current run of perfect days (`streak`). Days without
+ * scheduled habits are skipped. Habits count from their creation day.
  */
 function perfectDays(habits, from, to) {
   let perfect = 0;
   let due = 0;
-  let streak = 0;
-  let best = 0;
+  // The current run of perfect days; an open today does not end it.
   let run = 0;
 
   const bornOn = new Map(habits.map((h) => [h.id, (h.createdAt ?? "").slice(0, 10)]));
@@ -79,13 +80,11 @@ function perfectDays(habits, from, to) {
     if (scheduled.every((h) => H.isComplete(h, h.entries[day] ?? 0))) {
       perfect++;
       run++;
-      if (run > best) best = run;
     } else if (day !== state.today) {
       run = 0;
     }
   }
-  streak = run;
-  return { perfect, due, streak, best };
+  return { perfect, due, streak: run };
 }
 
 /** Returns January 1 of this year, or the start of the loaded entries if later. */
@@ -104,22 +103,12 @@ function stats(habits) {
   const achieved = habits.reduce((sum, h) => sum + (h.stats?.achieved ?? 0), 0);
   const rate = expected > 0 ? Math.round((achieved / expected) * 100) : 0;
 
-  const row = document.createElement("div");
-  row.className = "stat-row";
-  for (const [label, value] of [
+  return statRow([
     [t("Current streak"), streak === 1 ? t("1 day") : t("{n} days", { n: streak })],
     [t("Perfect days {since}", { since: sinceLabel(from) }), t("{n} of {total}", { n: perfect, total: due })],
     [t("Rate (30 days)"), `${rate} %`],
     [t("Habits"), String(habits.length)],
-  ]) {
-    const tile = document.createElement("div");
-    tile.className = "stat";
-    tile.innerHTML = `<div class="value"></div><div class="label"></div>`;
-    tile.querySelector(".value").textContent = value;
-    tile.querySelector(".label").textContent = label;
-    row.append(tile);
-  }
-  return row;
+  ]);
 }
 
 /**
@@ -127,40 +116,10 @@ function stats(habits) {
  * was created.
  */
 function details(category) {
-  const panel = document.createElement("section");
-  panel.className = "panel details";
-
-  const title = document.createElement("h3");
-  title.textContent = t("Details");
-
-  const list = document.createElement("dl");
-  list.className = "activity-list";
-
-  list.append(detailItem(t("Progress"),
-    category.showProgress ? t("Shown on the board") : t("Not shown")));
-  if (category.createdAt) list.append(detailItem(t("Created"), formatLong(localISO(category.createdAt))));
-
-  panel.append(title, list);
-  return panel;
-}
-
-function detailItem(label, value) {
-  const item = document.createElement("div");
-  const dt = document.createElement("dt");
-  dt.textContent = label;
-  const dd = document.createElement("dd");
-  dd.textContent = value;
-  item.append(dt, dd);
-  return item;
-}
-
-/**
- * Returns the ISO date of a timestamp in the user's time zone. en-CA formats
- * dates as YYYY-MM-DD.
- */
-function localISO(stamp) {
-  return new Date(stamp).toLocaleDateString("en-CA",
-    { year: "numeric", month: "2-digit", day: "2-digit", timeZone: userTimeZone() });
+  const items = [factItem(t("Progress"),
+    category.showProgress ? t("Shown on the board") : t("Not shown"))];
+  if (category.createdAt) items.push(factItem(t("Created"), formatLong(localISO(category.createdAt))));
+  return factsPanel(t("Details"), items);
 }
 
 /** Returns "(2026)" for a full year, "(since 12 Mar)" otherwise. */

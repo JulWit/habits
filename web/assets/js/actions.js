@@ -71,14 +71,18 @@ function clearClosedDay(habit, iso) {
   if ((habit.entries[iso] ?? 0) > 0) writeEntry(habit, iso, 0);
 }
 
-/** Pending requests per cell, so that writes to the same day stay in order. */
+/**
+ * The last request per cell. Each write waits for the previous one to the same
+ * day, so they reach the server in order.
+ */
 const inFlight = new Map();
 
 function serialize(key, task) {
-  const chain = (inFlight.get(key) ?? Promise.resolve()).then(task, task);
-  // Ignore failures, so the next write still runs.
-  inFlight.set(key, chain.catch(() => {}));
-  return chain;
+  const previous = inFlight.get(key) ?? Promise.resolve();
+  const request = previous.then(task);
+  // Stored without its failure, so the next write still runs.
+  inFlight.set(key, request.catch(() => {}));
+  return request;
 }
 
 /**
@@ -258,43 +262,60 @@ export async function createCategory(name) {
 
 /**
  * Saves a new order of the habits of one category. Habits of other categories
- * keep their positions.
+ * keep their positions: the category's slots are refilled in the new order.
  */
-export async function setHabitOrder(ids) {
-  const before = state.habits.map((h) => h.id);
-  const wanted = [...ids];
-  const inBlock = new Set(ids);
-  const after = before.map((id) => (inBlock.has(id) ? wanted.shift() : id));
-
-  reorderHabitsLocal(after);
-  try {
-    await api.reorderHabits(after);
-  } catch (err) {
-    reorderHabitsLocal(before);
-    toast(errorText(err), { error: true });
+export function setHabitOrder(ids) {
+  const inCategory = new Set(ids);
+  const after = [];
+  let next = 0;
+  for (const habit of state.habits) {
+    if (inCategory.has(habit.id)) {
+      after.push(ids[next]);
+      next++;
+    } else {
+      after.push(habit.id);
+    }
   }
+  saveHabitOrder(after);
 }
 
 /**
  * Moves a habit one place up (-1) or down (+1) within its category, as shown
  * on the board.
  */
-export async function moveHabit(id, delta) {
+export function moveHabit(id, delta) {
   const block = groupedHabits().find((b) => b.habits.some((h) => h.id === id));
   if (!block) return;
   const at = block.habits.findIndex((h) => h.id === id);
   const neighbour = block.habits[at + delta];
   if (!neighbour) return;
 
-  const before = state.habits.map((h) => h.id);
-  const after = [...before];
-  const i = after.indexOf(id);
-  const j = after.indexOf(neighbour.id);
-  [after[i], after[j]] = [after[j], after[i]];
+  const after = state.habits.map((h) => h.id);
+  swap(after, after.indexOf(id), after.indexOf(neighbour.id));
+  saveHabitOrder(after);
+}
 
-  reorderHabitsLocal(after);
+/** Moves a category one place up (-1) or down (+1). No undo step is recorded. */
+export function moveCategory(id, delta) {
+  const after = state.categories.map((c) => c.id);
+  const from = after.indexOf(id);
+  const to = from + delta;
+  if (from === -1 || to < 0 || to >= after.length) return;
+
+  swap(after, from, to);
+  setCategoryOrder(after);
+}
+
+function swap(list, i, j) {
+  [list[i], list[j]] = [list[j], list[i]];
+}
+
+/** Shows the new habit order at once and restores the old one if saving fails. */
+async function saveHabitOrder(ids) {
+  const before = state.habits.map((h) => h.id);
+  reorderHabitsLocal(ids);
   try {
-    await api.reorderHabits(after);
+    await api.reorderHabits(ids);
   } catch (err) {
     reorderHabitsLocal(before);
     toast(errorText(err), { error: true });
@@ -302,33 +323,14 @@ export async function moveHabit(id, delta) {
 }
 
 /**
- * Saves a new order of the categories. The board already shows it; on failure
- * the server's order is restored.
+ * Saves a new order of the categories. It is shown at once and restored if
+ * saving fails.
  */
 export async function setCategoryOrder(ids) {
   const before = state.categories.map((c) => c.id);
   reorderCategoriesLocal(ids);
   try {
     await api.reorderCategories(ids);
-  } catch (err) {
-    reorderCategoriesLocal(before);
-    toast(errorText(err), { error: true });
-  }
-}
-
-/** Moves a category one place up (-1) or down (+1). No undo step is recorded. */
-export async function moveCategory(id, delta) {
-  const before = state.categories.map((c) => c.id);
-  const from = before.indexOf(id);
-  const to = from + delta;
-  if (from === -1 || to < 0 || to >= before.length) return;
-
-  const after = [...before];
-  after.splice(to, 0, ...after.splice(from, 1));
-  // Apply locally first; restored if the request fails.
-  reorderCategoriesLocal(after);
-  try {
-    await api.reorderCategories(after);
   } catch (err) {
     reorderCategoriesLocal(before);
     toast(errorText(err), { error: true });
@@ -377,12 +379,12 @@ export async function deleteCategory(id) {
   }
   removeCategory(id);
 
+  let label = t("Category \"{name}\" deleted — {n} habits kept", { name: category.name, n: affected });
+  if (affected === 0) label = t("Category \"{name}\" deleted", { name: category.name });
+  if (affected === 1) label = t("Category \"{name}\" deleted — 1 habit kept", { name: category.name });
+
   record({
-    label: affected === 0
-      ? t("Category \"{name}\" deleted", { name: category.name })
-      : affected === 1
-        ? t("Category \"{name}\" deleted — 1 habit kept", { name: category.name })
-        : t("Category \"{name}\" deleted — {n} habits kept", { name: category.name, n: affected }),
+    label,
     undo: async () => {
       upsertCategory(await api.restoreCategory(id));
       await deps.refresh();

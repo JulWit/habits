@@ -684,6 +684,10 @@ html[data-pattern="image"] .account {
   padding-top: calc(.85 * var(--space));
 }
 
+/* The create row has no margin of its own, unlike form fields, so the card
+   gets the same padding below as above. */
+.page-body:has(> .picker-create) { padding-bottom: calc(1.25 * var(--space)); }
+
 .picker-create input {
   flex: 1;
   min-width: 0;

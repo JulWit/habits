@@ -20,10 +20,10 @@ func mustPrefix(t *testing.T, s string) netip.Prefix {
 	return p
 }
 
-func autheliaConfig(t *testing.T, trusted ...string) config.Config {
+func trustedHeaderConfig(t *testing.T, trusted ...string) config.Config {
 	t.Helper()
 	cfg := config.Config{
-		AuthMode:      config.AuthModeAuthelia,
+		AuthMode:      config.AuthModeTrustedHeader,
 		UserHeader:    "Remote-User",
 		DisplayHeader: "Remote-Name",
 		EmailHeader:   "Remote-Email",
@@ -72,7 +72,7 @@ func TestSingleUserIgnoresHeaders(t *testing.T) {
 
 // Identity headers from untrusted peers are rejected.
 func TestUntrustedPeerIsRefused(t *testing.T) {
-	cfg := autheliaConfig(t, "172.18.0.0/16")
+	cfg := trustedHeaderConfig(t, "172.18.0.0/16")
 	for _, peer := range []string{"10.0.0.5:5000", "203.0.113.9:443", "[2001:db8::1]:443"} {
 		w, _, reached := run(cfg, func(r *http.Request) {
 			r.RemoteAddr = peer
@@ -89,7 +89,7 @@ func TestUntrustedPeerIsRefused(t *testing.T) {
 }
 
 func TestTrustedPeerIsBelieved(t *testing.T) {
-	cfg := autheliaConfig(t, "172.18.0.0/16", "127.0.0.1/32")
+	cfg := trustedHeaderConfig(t, "172.18.0.0/16", "127.0.0.1/32")
 	for _, peer := range []string{"172.18.0.7:40000", "127.0.0.1:40000"} {
 		w, user, reached := run(cfg, func(r *http.Request) {
 			r.RemoteAddr = peer
@@ -108,7 +108,7 @@ func TestTrustedPeerIsBelieved(t *testing.T) {
 
 // ::ffff:127.0.0.1 matches 127.0.0.1/32.
 func TestIPv4MappedPeerMatchesItsIPv4Prefix(t *testing.T) {
-	cfg := autheliaConfig(t, "127.0.0.1/32")
+	cfg := trustedHeaderConfig(t, "127.0.0.1/32")
 	_, _, reached := run(cfg, func(r *http.Request) {
 		r.RemoteAddr = "[::ffff:127.0.0.1]:40000"
 		r.Header.Set("Remote-User", "alice")
@@ -120,7 +120,7 @@ func TestIPv4MappedPeerMatchesItsIPv4Prefix(t *testing.T) {
 
 // A trusted peer without a user header gets 401.
 func TestTrustedPeerWithoutIdentityIs401(t *testing.T) {
-	cfg := autheliaConfig(t, "127.0.0.1/32")
+	cfg := trustedHeaderConfig(t, "127.0.0.1/32")
 	for _, header := range []string{"", "   "} {
 		w, _, reached := run(cfg, func(r *http.Request) {
 			r.RemoteAddr = "127.0.0.1:40000"
@@ -138,7 +138,7 @@ func TestTrustedPeerWithoutIdentityIs401(t *testing.T) {
 }
 
 func TestOptionalHeadersAreCarriedThrough(t *testing.T) {
-	cfg := autheliaConfig(t, "127.0.0.1/32")
+	cfg := trustedHeaderConfig(t, "127.0.0.1/32")
 	_, user, reached := run(cfg, func(r *http.Request) {
 		r.RemoteAddr = "127.0.0.1:40000"
 		r.Header.Set("Remote-User", "alice")
@@ -159,7 +159,7 @@ func TestOptionalHeadersAreCarriedThrough(t *testing.T) {
 
 // Without a display name, the user ID is used as the name.
 func TestNameFallsBackToTheIdentifier(t *testing.T) {
-	cfg := autheliaConfig(t, "127.0.0.1/32")
+	cfg := trustedHeaderConfig(t, "127.0.0.1/32")
 	_, user, _ := run(cfg, func(r *http.Request) {
 		r.RemoteAddr = "127.0.0.1:40000"
 		r.Header.Set("Remote-User", "Alice")

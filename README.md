@@ -60,9 +60,9 @@ All configuration is done through environment variables.
 | `HABITS_ADDR` | `:8080` | Listen address |
 | `HABITS_DB` | `habits.db` | Path to the SQLite file |
 | `HABITS_TZ` | `Local` | Default time zone for "today" (e.g. `Europe/Berlin`); users can override it in the settings |
-| `HABITS_AUTH_MODE` | `single-user` | `single-user` or `authelia` |
+| `HABITS_AUTH_MODE` | `single-user` | `single-user` or `trusted-header` (formerly `authelia`, still accepted) |
 | `HABITS_DEFAULT_USER` | `local` | User in `single-user` mode |
-| `HABITS_TRUSTED_PROXIES` | — | **Required** in `authelia` mode: comma-separated IPs/CIDRs |
+| `HABITS_TRUSTED_PROXIES` | — | **Required** in `trusted-header` mode: comma-separated IPs/CIDRs |
 | `HABITS_USER_HEADER` | `Remote-User` | Header with the user ID |
 | `HABITS_NAME_HEADER` | `Remote-Name` | Display name (optional) |
 | `HABITS_EMAIL_HEADER` | `Remote-Email` | Email (optional) |
@@ -96,7 +96,7 @@ services:
     image: ghcr.io/julwit/habits:latest
     environment:
       HABITS_TZ: Europe/Berlin
-      HABITS_AUTH_MODE: authelia
+      HABITS_AUTH_MODE: trusted-header
       HABITS_TRUSTED_PROXIES: 172.18.0.0/16
     volumes:
       - habits-data:/data
@@ -108,15 +108,17 @@ volumes:
 
 There is no `ports:` mapping on purpose, see the next section.
 
-## Authelia
+## Authentication through a reverse proxy
 
-The app has no user accounts. In `authelia` mode it reads the user from the
-`Remote-User` header set by the reverse proxy after Authelia's `/api/verify`.
+The app has no user accounts. In `trusted-header` mode it reads the user from
+the `Remote-User` header set by the reverse proxy after its authentication. The
+examples use Authelia (`/api/verify`); Authentik, oauth2-proxy and others work
+the same way, with the header names adjusted if needed.
 Each user only sees their own data. User IDs are stored in lower case, so
 `Alice` and `alice` are the same user.
 
 > **Important:** Anyone who can reach the port directly can send any
-> `Remote-User` header. Therefore `authelia` mode requires
+> `Remote-User` header. Therefore `trusted-header` mode requires
 > `HABITS_TRUSTED_PROXIES` and answers requests from other peers with 403. Only
 > expose the port on the internal network (Docker: no `ports:` mapping, only a
 > shared network).
@@ -145,7 +147,7 @@ habits.example.com {
 Environment for either:
 
 ```bash
-HABITS_AUTH_MODE=authelia
+HABITS_AUTH_MODE=trusted-header
 HABITS_TRUSTED_PROXIES=172.18.0.0/16
 HABITS_TZ=Europe/Berlin
 HABITS_DB=/data/habits.db
@@ -311,7 +313,7 @@ frequency rule needs no client change beyond the editor.
 ```
 main.go                     Startup, signal handling, embedded frontend
 internal/config             Configuration from environment variables
-internal/auth               User identification (single-user or Authelia)
+internal/auth               User identification (single-user or trusted headers)
 internal/domain             Habits, schedules, streaks, statistics (no I/O)
 internal/store              SQLite: schema, migrations, queries
 internal/httpapi            Routing, JSON API, frontend delivery

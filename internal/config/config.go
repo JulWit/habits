@@ -14,9 +14,13 @@ import (
 type AuthMode string
 
 const (
-	// AuthModeAuthelia reads the user from headers set by a trusted reverse
-	// proxy with Authelia.
-	AuthModeAuthelia AuthMode = "authelia"
+	// AuthModeTrustedHeader reads the user from headers set by a trusted
+	// reverse proxy after its authentication, e.g. with Authelia, Authentik or
+	// oauth2-proxy.
+	AuthModeTrustedHeader AuthMode = "trusted-header"
+	// authModeAuthelia is the former name of AuthModeTrustedHeader, still
+	// accepted.
+	authModeAuthelia AuthMode = "authelia"
 	// AuthModeSingleUser assigns every request to DefaultUser, without
 	// authentication.
 	AuthModeSingleUser AuthMode = "single-user"
@@ -29,14 +33,14 @@ type Config struct {
 	Location     *time.Location
 
 	AuthMode AuthMode
-	// UserHeader holds the user ID (Authelia: Remote-User).
+	// UserHeader holds the user ID (Authelia and Authentik: Remote-User).
 	UserHeader string
 	// DisplayHeader, EmailHeader and GroupsHeader are optional.
 	DisplayHeader string
 	EmailHeader   string
 	GroupsHeader  string
 	// TrustedProxies are the peers whose identity headers are accepted.
-	// Required in authelia mode.
+	// Required in trusted-header mode.
 	TrustedProxies []netip.Prefix
 	// DefaultUser is the user in single-user mode.
 	DefaultUser string
@@ -44,6 +48,9 @@ type Config struct {
 	// DeletedRetention is how long deleted habits and categories can be
 	// restored.
 	DeletedRetention time.Duration
+
+	// Warnings about deprecated settings, logged on startup.
+	Warnings []string
 }
 
 // env returns the trimmed value of key, or fallback if it is unset or blank.
@@ -74,24 +81,30 @@ func Load() (Config, error) {
 	}
 	cfg.Location = loc
 
+	if cfg.AuthMode == authModeAuthelia {
+		cfg.AuthMode = AuthModeTrustedHeader
+		cfg.Warnings = append(cfg.Warnings,
+			"HABITS_AUTH_MODE=authelia is deprecated, use trusted-header (it works with any proxy that sets identity headers)")
+	}
+
 	switch cfg.AuthMode {
 	case AuthModeSingleUser:
 		if cfg.DefaultUser == "" {
 			return Config{}, errors.New("HABITS_DEFAULT_USER must not be empty in single-user mode")
 		}
-	case AuthModeAuthelia:
+	case AuthModeTrustedHeader:
 		cfg.TrustedProxies, err = parsePrefixes(os.Getenv("HABITS_TRUSTED_PROXIES"))
 		if err != nil {
 			return Config{}, fmt.Errorf("HABITS_TRUSTED_PROXIES: %w", err)
 		}
 		if len(cfg.TrustedProxies) == 0 {
 			return Config{}, errors.New(
-				"HABITS_TRUSTED_PROXIES must be set in authelia mode " +
+				"HABITS_TRUSTED_PROXIES must be set in trusted-header mode " +
 					"(e.g. 127.0.0.1/32,172.18.0.0/16) — otherwise any client could " +
 					"set the Remote-User header itself")
 		}
 	default:
-		return Config{}, fmt.Errorf("HABITS_AUTH_MODE: unknown value %q (allowed: authelia, single-user)", cfg.AuthMode)
+		return Config{}, fmt.Errorf("HABITS_AUTH_MODE: unknown value %q (allowed: trusted-header, single-user)", cfg.AuthMode)
 	}
 
 	if cfg.UserHeader == "" {

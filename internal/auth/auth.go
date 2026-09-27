@@ -40,7 +40,7 @@ func MustUser(ctx context.Context) User {
 }
 
 // Middleware stores the user of each request in its context and rejects
-// requests without one. In authelia mode, identity headers are accepted only
+// requests without one. In trusted-header mode, identity headers are accepted only
 // from trusted proxies.
 func Middleware(cfg config.Config, log *slog.Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {

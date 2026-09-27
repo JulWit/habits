@@ -53,6 +53,10 @@ func run(log *slog.Logger) error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
+	for _, w := range cfg.Warnings {
+		log.Warn(w)
+	}
+
 	st, err := store.Open(ctx, cfg.DatabasePath)
 	if err != nil {
 		return err

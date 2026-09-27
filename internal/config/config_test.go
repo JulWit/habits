@@ -60,28 +60,28 @@ func TestBlankEnvFallsBackToTheDefault(t *testing.T) {
 	}
 }
 
-// Authelia mode requires HABITS_TRUSTED_PROXIES.
-func TestAutheliaRefusesToStartWithoutTrustedProxies(t *testing.T) {
-	withEnv(t, map[string]string{"HABITS_AUTH_MODE": "authelia"})
+// Trusted-header mode requires HABITS_TRUSTED_PROXIES.
+func TestTrustedHeaderRefusesToStartWithoutTrustedProxies(t *testing.T) {
+	withEnv(t, map[string]string{"HABITS_AUTH_MODE": "trusted-header"})
 	_, err := Load()
 	if err == nil {
-		t.Fatal("authelia without HABITS_TRUSTED_PROXIES was accepted")
+		t.Fatal("trusted-header without HABITS_TRUSTED_PROXIES was accepted")
 	}
 	if !strings.Contains(err.Error(), "HABITS_TRUSTED_PROXIES") {
 		t.Errorf("the error message does not name the variable: %v", err)
 	}
 }
 
-func TestAutheliaParsesTrustedProxies(t *testing.T) {
+func TestTrustedHeaderParsesTrustedProxies(t *testing.T) {
 	withEnv(t, map[string]string{
-		"HABITS_AUTH_MODE":       "AUTHELIA", // case must not matter
+		"HABITS_AUTH_MODE":       "Trusted-Header", // case must not matter
 		"HABITS_TRUSTED_PROXIES": "127.0.0.1, 172.18.0.0/16 ,10.0.0.0/8",
 	})
 	cfg, err := Load()
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
-	if cfg.AuthMode != AuthModeAuthelia {
+	if cfg.AuthMode != AuthModeTrustedHeader {
 		t.Errorf("AuthMode = %q", cfg.AuthMode)
 	}
 	if len(cfg.TrustedProxies) != 3 {
@@ -107,10 +107,10 @@ func TestLoadRejects(t *testing.T) {
 		{"unknown time zone",
 			map[string]string{"HABITS_TZ": "Mars/Olympus_Mons"}, "HABITS_TZ"},
 		{"broken CIDR", map[string]string{
-			"HABITS_AUTH_MODE": "authelia", "HABITS_TRUSTED_PROXIES": "172.18.0.0/99",
+			"HABITS_AUTH_MODE": "trusted-header", "HABITS_TRUSTED_PROXIES": "172.18.0.0/99",
 		}, "HABITS_TRUSTED_PROXIES"},
 		{"not an IP", map[string]string{
-			"HABITS_AUTH_MODE": "authelia", "HABITS_TRUSTED_PROXIES": "proxy.example.com",
+			"HABITS_AUTH_MODE": "trusted-header", "HABITS_TRUSTED_PROXIES": "proxy.example.com",
 		}, "HABITS_TRUSTED_PROXIES"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -135,5 +135,24 @@ func TestNamedTimezoneResolves(t *testing.T) {
 	}
 	if cfg.Location.String() != "Europe/Berlin" {
 		t.Errorf("Location = %q", cfg.Location)
+	}
+}
+
+// The former name "authelia" still selects trusted-header mode, with a
+// warning.
+func TestAutheliaIsAnAliasWithAWarning(t *testing.T) {
+	withEnv(t, map[string]string{
+		"HABITS_AUTH_MODE":       "AUTHELIA",
+		"HABITS_TRUSTED_PROXIES": "127.0.0.1",
+	})
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if cfg.AuthMode != AuthModeTrustedHeader {
+		t.Errorf("AuthMode = %q, want trusted-header", cfg.AuthMode)
+	}
+	if len(cfg.Warnings) != 1 || !strings.Contains(cfg.Warnings[0], "trusted-header") {
+		t.Errorf("warnings = %q", cfg.Warnings)
 	}
 }

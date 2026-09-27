@@ -36,7 +36,7 @@ async function request(method, path, body, type) {
   }
 
   if (res.status === 401 || res.status === 403) {
-    // The Authelia session has expired.
+    // The session at the reverse proxy has expired.
     throw new ApiError("Session expired — please reload the page", res.status, {
       code: "session_expired",
     });

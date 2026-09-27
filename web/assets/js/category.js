@@ -5,7 +5,7 @@ import { addDays, formatDayMonth, formatLong, localISO } from "./dates.js";
 import { t } from "./i18n.js";
 import { state } from "./state.js";
 import * as H from "./habit.js";
-import { habitIconBadge, categoryIconBadge } from "./icons.js";
+import { habitIconBadge, categoryIconBadge, colorValue } from "./icons.js";
 import { appBar } from "./appbar.js";
 import { openCategoryEditor } from "./categoryeditor.js";
 import { statRow, factsPanel, factItem } from "./panels.js";
@@ -152,7 +152,7 @@ function habitList(habits) {
     row.className = "cat-habit";
     row.dataset.action = "open-habit";
     row.dataset.habit = habit.id;
-    row.style.setProperty("--habit-color", habit.color);
+    row.style.setProperty("--habit-color", colorValue(habit.color));
     row.innerHTML = `
       <span class="dot"></span>
       <span class="cat-habit-text">

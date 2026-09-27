@@ -384,7 +384,7 @@ const de = {
   "category name must not be empty": "Der Name der Kategorie darf nicht leer sein.",
   "category name is longer than {max} characters":
     "Der Name der Kategorie darf höchstens {max} Zeichen lang sein.",
-  "colour must be a hex value like #4caf50": "Die Farbe muss ein Hex-Wert wie #4caf50 sein.",
+  "unknown colour \"{color}\"": "Unbekannte Farbe „{color}“.",
   "unknown icon \"{icon}\"": "Unbekanntes Symbol „{icon}“.",
   "unknown habit kind \"{kind}\"": "Unbekannte Art „{kind}“.",
   "unknown frequency \"{frequency}\"": "Unbekannte Häufigkeit „{frequency}“.",

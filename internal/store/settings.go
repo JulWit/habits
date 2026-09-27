@@ -37,7 +37,7 @@ type Settings struct {
 	// AlignWeeks starts the overview on a Monday instead of ending it today.
 	AlignWeeks bool `json:"alignWeeks"`
 	// BandColor is the colour of the today highlight: NeutralBand or one of
-	// domain.DefaultColors.
+	// domain.Colors.
 	BandColor string `json:"bandColor"`
 	// BandOpacity is the opacity of the today highlight in the header, in
 	// percent.
@@ -146,7 +146,7 @@ var checks = map[string]func(Settings) error{
 		return nil
 	},
 	"bandColor": func(s Settings) error {
-		if s.BandColor != NeutralBand && !slices.Contains(domain.DefaultColors, s.BandColor) {
+		if s.BandColor != NeutralBand && !domain.ValidColor(s.BandColor) {
 			return domain.Invalid("band colour must be neutral or one of the habit colours")
 		}
 		return nil

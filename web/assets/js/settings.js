@@ -3,7 +3,7 @@
 
 import { api } from "./api.js";
 import { state, replaceState, subscribe } from "./state.js";
-import { icons, colorLabel } from "./icons.js";
+import { icons, colorLabel, colorValue } from "./icons.js";
 import { errorText, toast } from "./undo.js";
 import { t, locale, userTimeZone } from "./i18n.js";
 import { openPage, topPage } from "./pages.js";
@@ -391,7 +391,7 @@ function paintBandChoices(chosen) {
         b.setAttribute("aria-label", t("Neutral"));
         b.title = t("Neutral");
       } else {
-        b.style.setProperty("--swatch", color);
+        b.style.setProperty("--swatch", colorValue(color));
         b.setAttribute("aria-label", t("Colour {color}", { color: colorLabel(color) }));
         b.title = colorLabel(color);
       }

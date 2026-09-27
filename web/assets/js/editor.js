@@ -5,7 +5,9 @@ import { WEEKDAY_SHORT, WEEKDAY_LONG } from "./dates.js";
 import { state, categoryById } from "./state.js";
 import { errorText } from "./undo.js";
 import { openCategoryPicker } from "./categorypicker.js";
-import { icons, buildIconChoices, markIconChoice, categoryIconBadge, colorLabel } from "./icons.js";
+import {
+  icons, buildIconChoices, markIconChoice, categoryIconBadge, colorLabel, colorValue,
+} from "./icons.js";
 import * as H from "./habit.js";
 import { t } from "./i18n.js";
 import { openPage, closePage, guardPage } from "./pages.js";
@@ -109,7 +111,7 @@ function buildSwatches() {
       const b = document.createElement("button");
       b.type = "button";
       b.className = "swatch";
-      b.style.setProperty("--swatch", color);
+      b.style.setProperty("--swatch", colorValue(color));
       b.dataset.color = color;
       b.setAttribute("role", "radio");
       b.setAttribute("aria-label", t("Colour {color}", { color: colorLabel(color) }));
@@ -126,7 +128,7 @@ function selectColor(color) {
     el.setAttribute("aria-checked", String(el.dataset.color === color));
   }
   // Show the icons in the selected colour.
-  document.getElementById("icon-choices").style.setProperty("--habit-color", color);
+  document.getElementById("icon-choices").style.setProperty("--habit-color", colorValue(color));
 }
 
 function selectIcon(name) {

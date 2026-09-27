@@ -5,7 +5,7 @@ import { state, categoryById } from "./state.js";
 import { errorText } from "./undo.js";
 import { t } from "./i18n.js";
 import { openPage, closePage, guardPage } from "./pages.js";
-import { buildIconChoices, markIconChoice, colorLabel } from "./icons.js";
+import { buildIconChoices, markIconChoice, colorLabel, colorValue } from "./icons.js";
 
 let dialog;
 let form;
@@ -71,7 +71,7 @@ function buildSwatches() {
       const b = document.createElement("button");
       b.type = "button";
       b.className = color ? "swatch" : "swatch is-none";
-      if (color) b.style.setProperty("--swatch", color);
+      if (color) b.style.setProperty("--swatch", colorValue(color));
       b.dataset.color = color;
       b.setAttribute("role", "radio");
       b.setAttribute("aria-label",
@@ -90,7 +90,7 @@ function selectColor(color) {
   }
   // Show the icons in the selected colour.
   iconHost.classList.toggle("is-neutral", !color);
-  if (color) iconHost.style.setProperty("--habit-color", color);
+  if (color) iconHost.style.setProperty("--habit-color", colorValue(color));
   else iconHost.style.removeProperty("--habit-color");
 }
 

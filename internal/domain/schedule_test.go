@@ -8,7 +8,7 @@ import (
 // countHabit returns a count habit with a target of six, created long ago.
 func countHabit() Habit {
 	return Habit{
-		Name: "Water", Color: "#0284c7", Kind: KindCount, TargetValue: 60,
+		Name: "Water", Color: "sky", Kind: KindCount, TargetValue: 60,
 		CreatedAt: longAgo, Frequency: Frequency{Kind: FreqDaily},
 	}
 }

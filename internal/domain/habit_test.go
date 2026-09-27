@@ -10,7 +10,7 @@ import (
 func baseHabit() Habit {
 	return Habit{
 		Name:        "Reading",
-		Color:       "#16a34a",
+		Color:       "green",
 		Kind:        KindCheck,
 		TargetValue: 1,
 		CreatedAt:   time.Date(2026, 9, 14, 8, 0, 0, 0, time.UTC), // a Monday
@@ -21,7 +21,7 @@ func baseHabit() Habit {
 func TestValidateNormalises(t *testing.T) {
 	h := baseHabit()
 	h.Name = "  Lesen  "
-	h.Color = "#16A34A"
+	h.Color = "Green"
 	h.Unit = "  Seiten  "
 
 	if err := h.Validate(); err != nil {
@@ -30,7 +30,7 @@ func TestValidateNormalises(t *testing.T) {
 	if h.Name != "Lesen" {
 		t.Errorf("name = %q, want trimmed", h.Name)
 	}
-	if h.Color != "#16a34a" {
+	if h.Color != "green" {
 		t.Errorf("color = %q, want lower-cased", h.Color)
 	}
 	// KindCheck has no unit and a step of 1.

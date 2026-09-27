@@ -2,7 +2,7 @@
 
 import { dayOfMonth, WEEKDAY_SHORT, weekdayIndex, formatRelative, formatLong } from "./dates.js";
 import { state } from "./state.js";
-import { habitIconBadge, icons } from "./icons.js";
+import { habitIconBadge, icons, colorValue } from "./icons.js";
 import * as H from "./habit.js";
 import { t } from "./i18n.js";
 
@@ -89,7 +89,7 @@ export function dayEntry(habit, iso, active = state.today) {
   btn.dataset.habit = habit.id;
   btn.dataset.date = iso;
   btn.dataset.role = "cell";
-  btn.style.setProperty("--habit-color", habit.color);
+  btn.style.setProperty("--habit-color", colorValue(habit.color));
   const label = cellLabel(habit, iso, value, scheduled, streakDays);
   btn.setAttribute("aria-label", label);
   // The same text as a tooltip, so the state is not told by the mark's colour
@@ -100,7 +100,7 @@ export function dayEntry(habit, iso, active = state.today) {
 
   const mark = document.createElement("span");
   mark.className = "mark";
-  mark.style.setProperty("--habit-color", habit.color);
+  mark.style.setProperty("--habit-color", colorValue(habit.color));
   mark.style.setProperty("--p", String(H.progress(habit, iso, value)));
 
   // Unscheduled days without a value are drawn as off.

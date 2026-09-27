@@ -2,7 +2,7 @@
 // "/". Selecting a result opens it.
 
 import { subscribe, groupedHabits } from "./state.js";
-import { habitIconBadge, categoryIconBadge } from "./icons.js";
+import { habitIconBadge, categoryIconBadge, colorValue } from "./icons.js";
 import * as H from "./habit.js";
 import { t } from "./i18n.js";
 
@@ -116,7 +116,7 @@ function option(entry, index) {
   if (!dot) {
     dot = document.createElement("span");
     dot.className = entry.kind === "habit" ? "dot" : "dot is-category";
-    if (entry.kind === "habit") dot.style.setProperty("--habit-color", entry.item.color);
+    if (entry.kind === "habit") dot.style.setProperty("--habit-color", colorValue(entry.item.color));
   }
 
   const name = document.createElement("span");

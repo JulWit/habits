@@ -17,6 +17,7 @@ func TestBadSettingsAnswer422(t *testing.T) {
 		`{"overviewDays":999}`,
 		`{"surfaceOpacity":0}`,
 		`{"bandColor":"#123456"}`,
+		`{"bandColor":"purple"}`,
 	} {
 		w := do(t, h, "PATCH", "/api/settings", body, "application/json")
 		if w.Code != http.StatusUnprocessableEntity {

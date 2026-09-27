@@ -9,7 +9,7 @@ import {
 import { state, subscribe, groupedHabits } from "./state.js";
 import * as H from "./habit.js";
 import { dayCell, habitLabel, dayEntry } from "./cells.js";
-import { icons, categoryIconBadge } from "./icons.js";
+import { icons, categoryIconBadge, colorValue } from "./icons.js";
 import { enableDragReorder } from "./reorder.js";
 import { t } from "./i18n.js";
 
@@ -829,7 +829,10 @@ function visibleTop() {
   return top;
 }
 
-/** Shows a short flash where an orb leaves the visible area. */
+/**
+ * Shows a short flash where an orb leaves the visible area. `color` is a CSS
+ * colour value, taken from the orb.
+ */
 function flash(x, y, size, color) {
   const el = document.createElement("span");
   el.className = "orb orb-flash";
@@ -873,7 +876,7 @@ function launchOrbs({ color, x, y }) {
   for (let i = 0; i < ORBS_PER_HABIT; i++) {
     const orb = document.createElement("span");
     orb.className = "orb";
-    orb.style.setProperty("--habit-color", color);
+    orb.style.setProperty("--habit-color", colorValue(color));
     const size = 7 + Math.random() * 5;
     orb.style.width = orb.style.height = `${size}px`;
     orb.style.transform = `translate(${x - size / 2}px, ${y - size / 2}px) scale(0)`;

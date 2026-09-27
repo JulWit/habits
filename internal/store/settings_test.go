@@ -142,7 +142,7 @@ func TestSettingsMigrationKeepsTheValues(t *testing.T) {
 	}
 	want := Settings{
 		Theme: "dark", OverviewDays: 21, ShowArchived: true, Font: "geist", Density: "compact",
-		ReorderMode: "buttons", Pattern: "dots", AlignWeeks: true, BandColor: "#2563eb",
+		ReorderMode: "buttons", Pattern: "dots", AlignWeeks: true, BandColor: "blue",
 		BandOpacity: 40, BandFillOpacity: 25, ShowBand: false, BackgroundDim: 60,
 		BackgroundBlur: 10, SurfaceOpacity: 70, SurfaceBlur: 20, Language: "de",
 		TimeZone: "Europe/Berlin",

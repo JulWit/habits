@@ -11,7 +11,7 @@ type Category struct {
 	Name string `json:"name"`
 	// Icon is one of HabitIcons, or "" for no icon.
 	Icon string `json:"icon"`
-	// Color is the icon colour as a hex value, or "" for the default colour.
+	// Color is the icon colour, one of Colors, or "" for the default colour.
 	Color string `json:"color"`
 	// ShowProgress shows today's progress in the category heading.
 	ShowProgress bool      `json:"showProgress"`
@@ -38,8 +38,8 @@ func (c *Category) Validate() error {
 		return Invalid(`unknown icon "{icon}"`, "icon", c.Icon)
 	}
 	c.Color = strings.ToLower(strings.TrimSpace(c.Color))
-	if c.Color != "" && !colorPattern.MatchString(c.Color) {
-		return Invalid("colour must be a hex value like #4caf50")
+	if c.Color != "" && !ValidColor(c.Color) {
+		return Invalid(`unknown colour "{color}"`, "color", c.Color)
 	}
 	return nil
 }

@@ -131,7 +131,7 @@ func (s *Server) handleState(w http.ResponseWriter, r *http.Request) {
 		Categories:        categories,
 		ArchivedCount:     archivedCount,
 		Habits:            views,
-		Colors:            domain.DefaultColors,
+		Colors:            domain.Colors,
 		Icons:             domain.HabitIcons,
 		Kinds:             domain.KindDescriptors(),
 		BlurAtFull:        store.BackgroundBlurAtFull,
@@ -263,7 +263,7 @@ func (s *Server) handleCreateHabit(w http.ResponseWriter, r *http.Request) {
 	today := s.todayFor(r.Context(), user.ID)
 	// The first schedule starts on the user's today, which may differ from the
 	// UTC day of the creation time.
-	h := domain.Habit{Kind: domain.KindCheck, TargetValue: 1, Color: domain.DefaultColors[0], Since: today}
+	h := domain.Habit{Kind: domain.KindCheck, TargetValue: 1, Color: domain.Colors[0], Since: today}
 	in.applyTo(&h)
 	if len(in.Schedules) > 0 {
 		writeError(w, http.StatusBadRequest, "schedules cannot be set on a new habit")

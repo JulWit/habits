@@ -96,18 +96,18 @@ func TestCategoryShowProgress(t *testing.T) {
 	}
 }
 
-// A category colour is stored in lower case, can be reset and must be a hex
-// value.
+// A category colour is stored in lower case, can be reset and must be a
+// palette name.
 func TestCategoryColor(t *testing.T) {
 	ctx := context.Background()
 	st := openTestStore(t)
 
-	c := domain.Category{Name: "Sport", Color: "#16A34A"}
+	c := domain.Category{Name: "Sport", Color: "Green"}
 	if err := st.CreateCategory(ctx, "alice", &c); err != nil {
 		t.Fatalf("CreateCategory: %v", err)
 	}
-	if got, _ := st.GetCategory(ctx, "alice", c.ID); got.Color != "#16a34a" {
-		t.Errorf("color = %q, want #16a34a", got.Color)
+	if got, _ := st.GetCategory(ctx, "alice", c.ID); got.Color != "green" {
+		t.Errorf("color = %q, want green", got.Color)
 	}
 
 	c.Color = ""
@@ -118,8 +118,8 @@ func TestCategoryColor(t *testing.T) {
 		t.Errorf("color = %q after clearing it, want empty", got.Color)
 	}
 
-	c.Color = "green"
+	c.Color = "#16a34a"
 	if err := st.UpdateCategory(ctx, "alice", &c); !errors.Is(err, domain.ErrValidation) {
-		t.Errorf("colour name: err = %v, want ErrValidation", err)
+		t.Errorf("hex value: err = %v, want ErrValidation", err)
 	}
 }

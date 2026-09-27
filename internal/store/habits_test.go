@@ -78,7 +78,7 @@ func TestEverythingButTheKindStaysEditable(t *testing.T) {
 	}
 
 	h.Name = "Wasser trinken"
-	h.Color = "#0284c7"
+	h.Color = "sky"
 	h.TargetValue = 100
 	h.StepValue = 20
 	h.Frequency = domain.Frequency{Kind: domain.FreqTimesPerWeek, TimesPerWeek: 4}

@@ -274,7 +274,10 @@ need an entry in `i18n.js`.
 
 `/api/state` also contains:
 
-- `colors`: the colour palette
+- `colors`: the colour palette as names (`red`, `teal`, …). Habits, categories
+  and the accent colour store these names; `base.css` defines their shades as
+  `--c-red` and so on, and `colorValue()` in `icons.js` maps a name to its
+  custom property. Changing a shade needs no migration.
 - `kinds`: `scale`, `step`, `max` and `unit` per kind
 - `icons`: valid icon names (`domain.HabitIcons`); `""` means no icon. The
   drawings are in `web/assets/js/icons.js`.

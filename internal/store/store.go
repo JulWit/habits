@@ -431,6 +431,32 @@ var migrations = []string{
 		FROM user_settings;
 	DROP TABLE user_settings;
 	ALTER TABLE user_settings_v2 RENAME TO user_settings;`,
+
+	// Colours are stored as palette names instead of hex values, so the palette
+	// can change without rewriting the data. Values outside the palette (only
+	// possible through the API) become slate.
+	`UPDATE habits SET color = CASE lower(color)
+		WHEN '#dc2626' THEN 'red'    WHEN '#ea580c' THEN 'orange' WHEN '#eab308' THEN 'yellow'
+		WHEN '#65a30d' THEN 'lime'   WHEN '#16a34a' THEN 'green'  WHEN '#0d9488' THEN 'teal'
+		WHEN '#0284c7' THEN 'sky'    WHEN '#2563eb' THEN 'blue'   WHEN '#4f46e5' THEN 'indigo'
+		WHEN '#7c3aed' THEN 'violet' WHEN '#db2777' THEN 'pink'   ELSE 'slate'
+	END;
+	UPDATE categories SET color = CASE lower(color)
+		WHEN '' THEN ''
+		WHEN '#dc2626' THEN 'red'    WHEN '#ea580c' THEN 'orange' WHEN '#eab308' THEN 'yellow'
+		WHEN '#65a30d' THEN 'lime'   WHEN '#16a34a' THEN 'green'  WHEN '#0d9488' THEN 'teal'
+		WHEN '#0284c7' THEN 'sky'    WHEN '#2563eb' THEN 'blue'   WHEN '#4f46e5' THEN 'indigo'
+		WHEN '#7c3aed' THEN 'violet' WHEN '#db2777' THEN 'pink'   ELSE 'slate'
+	END;
+	UPDATE user_settings SET data = json_set(data, '$.bandColor',
+		CASE lower(json_extract(data, '$.bandColor'))
+			WHEN '#dc2626' THEN 'red'    WHEN '#ea580c' THEN 'orange' WHEN '#eab308' THEN 'yellow'
+			WHEN '#65a30d' THEN 'lime'   WHEN '#16a34a' THEN 'green'  WHEN '#0d9488' THEN 'teal'
+			WHEN '#0284c7' THEN 'sky'    WHEN '#2563eb' THEN 'blue'   WHEN '#4f46e5' THEN 'indigo'
+			WHEN '#7c3aed' THEN 'violet' WHEN '#db2777' THEN 'pink'   WHEN '#64748b' THEN 'slate'
+			ELSE 'neutral'
+		END)
+	WHERE json_extract(data, '$.bandColor') IS NOT NULL;`,
 }
 
 // migrate applies all migrations newer than the schema version, each in its

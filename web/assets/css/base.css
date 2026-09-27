@@ -39,8 +39,24 @@
   --primary-text: light-dark(#ffffff, #121212);
   /* Darker on light, brighter on dark. */
   --primary-hover: light-dark(#15161a, #f4f4f4);
+  /* The habit palette, as domain.Colors. Habits, categories and the accent
+     store the names; these shades can change, or become light-dark() pairs,
+     without touching the data. */
+  --c-red: #dc2626;
+  --c-orange: #ea580c;
+  --c-yellow: #eab308;
+  --c-lime: #65a30d;
+  --c-green: #16a34a;
+  --c-teal: #0d9488;
+  --c-sky: #0284c7;
+  --c-blue: #2563eb;
+  --c-indigo: #4f46e5;
+  --c-violet: #7c3aed;
+  --c-pink: #db2777;
+  --c-slate: #64748b;
+
   /* The red of the habit colours. */
-  --danger: #dc2626;
+  --danger: var(--c-red);
   /* The red as text (buttons, errors, menus), at 4.5:1 on every surface. */
   --danger-text: light-dark(#b91c1c, #f87171);
   /* Completed day or category; darker as text on light, at 4.5:1. */
@@ -211,19 +227,19 @@ html[data-tight][data-edit="on"][data-reorder="buttons"]:not([data-filtering="on
 
 /* ---------- the today band in a habit colour ----------
 
-   The habit palette, as in domain.DefaultColors. */
-html[data-band="#dc2626"] { --band-ink: #dc2626; }
-html[data-band="#ea580c"] { --band-ink: #ea580c; }
-html[data-band="#eab308"] { --band-ink: #eab308; }
-html[data-band="#65a30d"] { --band-ink: #65a30d; }
-html[data-band="#16a34a"] { --band-ink: #16a34a; }
-html[data-band="#0d9488"] { --band-ink: #0d9488; }
-html[data-band="#0284c7"] { --band-ink: #0284c7; }
-html[data-band="#2563eb"] { --band-ink: #2563eb; }
-html[data-band="#4f46e5"] { --band-ink: #4f46e5; }
-html[data-band="#7c3aed"] { --band-ink: #7c3aed; }
-html[data-band="#db2777"] { --band-ink: #db2777; }
-html[data-band="#64748b"] { --band-ink: #64748b; }
+   The attribute holds a palette name, see --c-red and following. */
+html[data-band="red"] { --band-ink: var(--c-red); }
+html[data-band="orange"] { --band-ink: var(--c-orange); }
+html[data-band="yellow"] { --band-ink: var(--c-yellow); }
+html[data-band="lime"] { --band-ink: var(--c-lime); }
+html[data-band="green"] { --band-ink: var(--c-green); }
+html[data-band="teal"] { --band-ink: var(--c-teal); }
+html[data-band="sky"] { --band-ink: var(--c-sky); }
+html[data-band="blue"] { --band-ink: var(--c-blue); }
+html[data-band="indigo"] { --band-ink: var(--c-indigo); }
+html[data-band="violet"] { --band-ink: var(--c-violet); }
+html[data-band="pink"] { --band-ink: var(--c-pink); }
+html[data-band="slate"] { --band-ink: var(--c-slate); }
 
 /* A chosen accent colour tints the today band and also colours buttons,
    selections and the focus ring; the neutral one keeps the neutral --primary. */
@@ -236,7 +252,7 @@ html[data-band]:not([data-band="neutral"]) {
 }
 
 /* White text is too faint on yellow. */
-html[data-band="#eab308"] { --primary-text: #1b1d21; }
+html[data-band="yellow"] { --primary-text: #1b1d21; }
 
 /* Where relative colours work, the text follows the accent: white on dark
    colours, near-black on light ones. The threshold (OKLCH lightness) is where

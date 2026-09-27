@@ -3,7 +3,6 @@ package domain
 import (
 	"errors"
 	"math/bits"
-	"regexp"
 	"slices"
 	"strings"
 	"time"
@@ -199,7 +198,6 @@ type Habit struct {
 var (
 	// ErrValidation is matched by every validation error (see Problem).
 	ErrValidation = errors.New("validation error")
-	colorPattern  = regexp.MustCompile(`^#[0-9a-fA-F]{6}$`)
 )
 
 // Maximum lengths of a habit's name and unit, in characters.
@@ -257,13 +255,13 @@ func (h *Habit) Validate() error {
 	if len([]rune(h.Unit)) > MaxUnitLen {
 		return Invalid("unit is longer than {max} characters", "max", MaxUnitLen)
 	}
+	h.Color = strings.ToLower(strings.TrimSpace(h.Color))
 	if h.Color == "" {
-		h.Color = DefaultColors[0]
+		h.Color = Colors[0]
 	}
-	if !colorPattern.MatchString(h.Color) {
-		return Invalid("colour must be a hex value like #4caf50")
+	if !ValidColor(h.Color) {
+		return Invalid(`unknown colour "{color}"`, "color", h.Color)
 	}
-	h.Color = strings.ToLower(h.Color)
 
 	h.Icon = strings.TrimSpace(h.Icon)
 	if h.Icon != "" && !ValidIcon(h.Icon) {
@@ -415,12 +413,16 @@ func (h Habit) IsScheduled(d Date) bool { return h.ScheduleOn(d).IsScheduled(d) 
 // IsArchived reports whether the habit is archived.
 func (h Habit) IsArchived() bool { return h.ArchivedAt != nil }
 
-// DefaultColors is the colour palette offered in the editor.
-var DefaultColors = []string{
-	"#dc2626", "#ea580c", "#eab308", "#65a30d",
-	"#16a34a", "#0d9488", "#0284c7", "#2563eb",
-	"#4f46e5", "#7c3aed", "#db2777", "#64748b",
+// Colors is the colour palette offered in the editor. Colours are stored as
+// these names; the client maps each to a CSS custom property (--c-red, …),
+// so the shades can change, or differ per theme, without touching the data.
+var Colors = []string{
+	"red", "orange", "yellow", "lime", "green", "teal",
+	"sky", "blue", "indigo", "violet", "pink", "slate",
 }
+
+// ValidColor reports whether name is one of Colors.
+func ValidColor(name string) bool { return slices.Contains(Colors, name) }
 
 // HabitIcons lists the valid icon names, in the order the editor offers them.
 // The icons themselves are defined in the client.

@@ -7,7 +7,7 @@ import {
 import { t, locale, userTimeZone } from "./i18n.js";
 import { state } from "./state.js";
 import * as H from "./habit.js";
-import { habitIconBadge } from "./icons.js";
+import { habitIconBadge, colorValue } from "./icons.js";
 import { appBar } from "./appbar.js";
 import { statRow, factsPanel, factItem } from "./panels.js";
 import { showTooltip, hideTooltip } from "./tooltip.js";
@@ -37,7 +37,7 @@ export function renderDetail(habit) {
   // The tooltip's target is about to be replaced.
   hideTooltip();
   root.dataset.habit = habit.id;
-  root.style.setProperty("--habit-color", habit.color);
+  root.style.setProperty("--habit-color", colorValue(habit.color));
   // The cumulative chart is only shown for countable habits.
   const panels = [header(habit), stats(habit), details(habit), activity(habit), heatmap(habit)];
   if (H.isCountable(habit)) panels.push(cumulative(habit));

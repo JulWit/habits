@@ -216,7 +216,7 @@ function iconBadge(name, color, className) {
   if (!svg) return null;
   const el = document.createElement("span");
   el.className = className;
-  if (color) el.style.setProperty("--habit-color", color);
+  if (color) el.style.setProperty("--habit-color", colorValue(color));
   else el.classList.add("is-neutral");
   el.innerHTML = svg;
   return el;
@@ -246,18 +246,17 @@ const ICON_LABELS = {
 };
 
 const COLOR_LABELS = {
-  "#dc2626": "Red", "#ea580c": "Orange", "#eab308": "Yellow", "#65a30d": "Lime",
-  "#16a34a": "Green", "#0d9488": "Teal", "#0284c7": "Sky blue", "#2563eb": "Blue",
-  "#4f46e5": "Indigo", "#7c3aed": "Violet", "#db2777": "Pink", "#64748b": "Slate",
+  red: "Red", orange: "Orange", yellow: "Yellow", lime: "Lime", green: "Green", teal: "Teal",
+  sky: "Sky blue", blue: "Blue", indigo: "Indigo", violet: "Violet", pink: "Pink", slate: "Slate",
 };
 
 export function iconLabel(name) {
   return t(ICON_LABELS[name] ?? name);
 }
 
-export function colorLabel(hex) {
-  const label = COLOR_LABELS[hex?.toLowerCase()];
-  return label ? t(label) : hex;
+export function colorLabel(name) {
+  const label = COLOR_LABELS[name];
+  return label ? t(label) : name;
 }
 
 /**
@@ -301,4 +300,13 @@ export function paintIcons(root = document) {
     if (!svg || el.querySelector("svg")) continue;
     el.insertAdjacentHTML("afterbegin", svg);
   }
+}
+
+/**
+ * Returns the CSS value of a palette colour. Habits, categories and the accent
+ * store palette names (domain.Colors); base.css defines their shades as
+ * --c-red and so on.
+ */
+export function colorValue(name) {
+  return `var(--c-${name})`;
 }

@@ -17,12 +17,22 @@
   --surface-2: light-dark(#eceef2, #252525);
   --border: light-dark(#dcdfe6, #323232);
   --border-strong: light-dark(#c3c8d2, #454545);
+  /* Text fields and dropdowns are sunk into the card; hover takes them one
+     step towards the text colour, as on every other control. */
+  --field: light-dark(#e6e8ec, #0f0f0f);
+  --field-hover: light-dark(#dcdfe6, #252525);
+  /* Segmented controls and the weekday buttons. On light the same grey as
+     the fields beside them; on dark raised above the card. */
+  --control: light-dark(#e6e8ec, #252525);
+  /* What floats above the page (menus, dropdown lists, toasts, the floating
+     button): raised in both themes, white on light. */
+  --float: light-dark(#ffffff, #252525);
   /* Not pure white, to avoid halation on dark backgrounds. */
   --text: light-dark(#1b1d21, #ececec);
-  --text-muted: light-dark(#6b7280, #a3a3a3);
-  /* At least 4.5:1 on the surfaces (WCAG AA), barely lighter than
-     --text-muted on light, darker on dark. */
-  --text-faint: light-dark(#6f7682, #8c8c8c);
+  /* Muted and faint text keep the same steps in both themes: about 7:1 and
+     5:1 on the card, and at least 4.5:1 on --surface-2 (WCAG AA). */
+  --text-muted: light-dark(#525a66, #a3a3a3);
+  --text-faint: light-dark(#5f6672, #8c8c8c);
   /* Accent for buttons, selections, checkboxes and the focus ring. Neutral,
      unless an accent colour is chosen (see the today band below). */
   --primary: light-dark(#24262b, #e3e3e3);
@@ -31,10 +41,11 @@
   --primary-hover: light-dark(#15161a, #f4f4f4);
   /* The red of the habit colours. */
   --danger: #dc2626;
-  /* The red as text on the grey panes (menus), at 4.5:1. */
+  /* The red as text (buttons, errors, menus), at 4.5:1 on every surface. */
   --danger-text: light-dark(#b91c1c, #f87171);
-  /* Completed day or category. */
+  /* Completed day or category; darker as text on light, at 4.5:1. */
   --done: light-dark(#16a34a, #22c55e);
+  --done-text: light-dark(#15803d, #22c55e);
   /* Tooltips, inverted: dark on light, light on dark. */
   --tooltip-bg: light-dark(#24262b, #e3e3e3);
   --tooltip-text: light-dark(#ffffff, #121212);
@@ -591,7 +602,7 @@ html[data-scrolled="on"] .day-header-backdrop {
 .button:active:not(.primary, .ghost) { background: var(--border-strong); }
 .button.ghost:active { background: var(--border); }
 
-.button.danger { color: var(--danger); }
+.button.danger { color: var(--danger-text); }
 .button.danger:hover { background: color-mix(in srgb, var(--danger) 12%, var(--surface)); }
 
 .button.round {
@@ -660,7 +671,7 @@ html[data-scrolled="on"] .day-header-backdrop {
 .field-hint:not(:last-child) { margin-bottom: calc(.9 * var(--space)); }
 
 .error {
-  color: var(--danger);
+  color: var(--danger-text);
   font-size: var(--text-md);
   margin: calc(.5 * var(--space)) 0 0;
 }

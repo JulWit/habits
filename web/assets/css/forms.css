@@ -262,7 +262,7 @@ html[data-pattern="image"] .page-body:has(> .menu) {
 .field input[type="date"],
 .field textarea {
   width: 100%;
-  background: var(--bg);
+  background: var(--field);
   border: 1px solid transparent;
   border-radius: var(--radius-sm);
   padding: calc(.5 * var(--space)) calc(.6 * var(--space));
@@ -285,7 +285,7 @@ html[data-pattern="image"] .page-body:has(> .menu) {
   --segment-inset: 4px;
   display: flex;
   gap: var(--segment-inset);
-  background: var(--surface-2);
+  background: var(--control);
   border-radius: var(--radius-sm);
   padding: var(--segment-inset);
 }
@@ -403,7 +403,7 @@ html[data-pattern="image"] .page-body:has(> .menu) {
   border-radius: 50%;
   /* Transparent border, so selecting a day does not change its size. */
   border: var(--ring) solid transparent;
-  background: var(--surface-2);
+  background: var(--control);
   cursor: pointer;
   font-size: var(--text-sm);
   font-weight: var(--weight-semibold);
@@ -424,7 +424,7 @@ html[data-pattern="image"] .page-body:has(> .menu) {
   border-radius: var(--radius-sm);
   /* The chevron in a grey that reads in both themes, as an image cannot use
      the colour tokens. */
-  background: var(--bg) no-repeat right calc(.6 * var(--space)) center / 1rem
+  background: var(--field) no-repeat right calc(.6 * var(--space)) center / 1rem
     url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="%238b909a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9.5 12 15.5l6-6"/></svg>');
   padding: calc(.5 * var(--space)) calc(1.2 * var(--space) + 1rem) calc(.5 * var(--space))
     calc(.6 * var(--space));
@@ -432,7 +432,7 @@ html[data-pattern="image"] .page-body:has(> .menu) {
   transition: var(--fill-fade);
 }
 
-.select:hover { background-color: var(--surface-2); }
+.select:hover { background-color: var(--field-hover); }
 
 /* The ring only for the keyboard (see the text fields); a click opens the list
    instead. */
@@ -465,12 +465,12 @@ html[data-pattern="image"] .page-body:has(> .menu) {
 
   .select:open::picker-icon { rotate: 180deg; }
 
-  .select:open { background-color: var(--surface-2); }
+  .select:open { background-color: var(--field-hover); }
 
   .select::picker(select) {
     border: none;
     border-radius: var(--radius-sm);
-    background: var(--surface-2);
+    background: var(--float);
     color: var(--text);
     padding: 4px;
     margin-block: 4px;
@@ -535,7 +535,7 @@ html[data-pattern="image"] .page-body:has(> .menu) {
   text-align: center;
   font-size: var(--text-xl);
   font-weight: var(--weight-bold);
-  background: var(--bg);
+  background: var(--field);
   border: 1px solid transparent;
   border-radius: var(--radius-sm);
   padding: calc(.4 * var(--space));
@@ -601,7 +601,7 @@ html[data-pattern="image"] .page-body:has(> .menu) {
   gap: calc(.5 * var(--space));
   width: 100%;
   text-align: left;
-  background: var(--bg);
+  background: var(--field);
   border: 1px solid transparent;
   border-radius: var(--radius-sm);
   padding: calc(.5 * var(--space)) calc(.6 * var(--space));
@@ -609,7 +609,7 @@ html[data-pattern="image"] .page-body:has(> .menu) {
   transition: var(--fill-fade);
 }
 
-.picker:hover { background: var(--surface-2); }
+.picker:hover { background: var(--field-hover); }
 
 .picker-value { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .picker-value.is-empty { color: var(--text-faint); }
@@ -672,7 +672,7 @@ html[data-pattern="image"] .page-body:has(> .menu) {
 .picker-create input {
   flex: 1;
   min-width: 0;
-  background: var(--bg);
+  background: var(--field);
   border: 1px solid transparent;
   border-radius: var(--radius-sm);
   padding: calc(.5 * var(--space)) calc(.6 * var(--space));

@@ -22,7 +22,7 @@
 
 #search-input {
   width: 100%;
-  background: var(--bg);
+  background: var(--field);
   border: 1px solid transparent;
   border-radius: var(--radius-sm);
   /* Left padding leaves room for the magnifier. */
@@ -32,6 +32,24 @@
 
 #search-input::placeholder { color: var(--text-faint); }
 #search-input:focus { outline: none; }
+
+/* The clear button in the token colour, instead of the browser's own (blue
+   in Chrome on light). */
+/* display: block, as Chrome does not draw the button otherwise once its
+   appearance is reset; it still hides it while the field is empty. */
+#search-input::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+  appearance: none;
+  display: block;
+  width: 1rem;
+  height: 1rem;
+  background: var(--text-faint);
+  -webkit-mask: no-repeat center / contain
+    url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="%23000" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>');
+  cursor: pointer;
+}
+
+#search-input::-webkit-search-cancel-button:hover { background: var(--text); }
 
 .search-results {
   display: flex;
@@ -490,7 +508,7 @@ html[data-scrolled="on"] .day-header-backdrop {
   display: flex;
   align-items: center;
   gap: calc(.35 * var(--space));
-  color: var(--done);
+  color: var(--done-text);
   font-weight: var(--weight-semibold);
 }
 
@@ -977,9 +995,16 @@ html[data-filtering="on"] {
 .cell:disabled { cursor: default; }
 
 /* Day mark: a ring whose fill (conic gradient) shows the progress towards the
-   target. */
+   target. The inks below are fallbacks for browsers without relative colours
+   (see the @supports rule after this one). */
 .mark {
   --p: 0;
+  /* Text on a filled mark and the halo that lifts it off light gradients. */
+  --mark-ink: #fff;
+  --mark-halo: rgb(0 0 0 / .45);
+  /* The ring of an open day and the value inside it. */
+  --ring-ink: color-mix(in srgb, var(--habit-color) 45%, transparent);
+  --value-ink: var(--habit-color);
   position: relative;
   /* No wider than the column. */
   width: min(1.65rem, calc(var(--cell) - 1px));
@@ -992,7 +1017,22 @@ html[data-filtering="on"] {
   color: var(--text-muted);
   background:
     conic-gradient(var(--habit-color) calc(var(--p) * 360deg), transparent 0);
-  box-shadow: inset 0 0 0 var(--ring) color-mix(in srgb, var(--habit-color) 45%, transparent);
+  box-shadow: inset 0 0 0 var(--ring) var(--ring-ink);
+}
+
+/* Text on a filled mark follows the habit colour as the accent's does: white
+   on dark colours, near-black on light ones, with a halo in the opposite
+   tone. On light, light colours (yellow, lime, orange) are darkened for the
+   ring and the value, so every colour reads about as well as on dark. */
+@supports (color: oklch(from red l c h)) {
+  .mark {
+    --mark-ink: oklch(from var(--habit-color) clamp(.2, calc((var(--ink-flip) - l) * 1000), 1) 0 0);
+    --mark-halo: oklch(from var(--habit-color) clamp(0, calc((l - var(--ink-flip)) * 1000), 1) 0 0 / .45);
+    --ring-ink: light-dark(
+      oklch(from var(--habit-color) min(l, .6) c h / .5),
+      color-mix(in srgb, var(--habit-color) 45%, transparent));
+    --value-ink: light-dark(oklch(from var(--habit-color) min(l, .55) c h), var(--habit-color));
+  }
 }
 
 .mark::after {
@@ -1016,18 +1056,18 @@ html[data-filtering="on"] {
 /* text-box trims the line box to cap height and baseline, so the digits are
    centred exactly, independent of the font. */
 .mark-value {
-  color: var(--habit-color);
+  color: var(--value-ink);
   font-variant-numeric: tabular-nums;
   text-box: trim-both cap alphabetic;
 }
 .mark-value.is-small { font-size: .62rem; }
 .mark-value.is-tiny { font-size: .54rem; letter-spacing: -.02em; }
-.mark.is-complete .mark-value { color: #fff; }
+.mark.is-complete .mark-value { color: var(--mark-ink); }
 
 .mark.is-complete {
   background: var(--habit-color);
   box-shadow: none;
-  color: #fff;
+  color: var(--mark-ink);
 }
 
 .mark.is-complete::after { display: none; }
@@ -1057,7 +1097,7 @@ html[data-filtering="on"] {
       var(--habit-color) 45%,
       oklch(from var(--habit-color) calc(l - .25) calc(c * 1.1) calc(h + 70)));
   /* Shadow keeps the check mark readable on light gradients. */
-  text-shadow: 0 0 2px rgb(0 0 0 / .45);
+  text-shadow: 0 0 2px var(--mark-halo);
 }
 
 .mark.is-complete[data-streak="2"] { --veil: 52%; }
@@ -1066,7 +1106,7 @@ html[data-filtering="on"] {
 .mark.is-complete[data-streak="5"] { --veil: 10%; }
 .mark.is-complete[data-streak="6"] { --veil: 0%; }
 
-.mark.is-complete[data-streak] svg { filter: drop-shadow(0 0 1.5px rgb(0 0 0 / .45)); }
+.mark.is-complete[data-streak] svg { filter: drop-shadow(0 0 1.5px var(--mark-halo)); }
 
 /* Unscheduled days are dimmed. */
 .mark.is-off {
@@ -1089,7 +1129,7 @@ html[data-filtering="on"] {
   );
 }
 
-.mark.is-future.is-complete .mark-value { text-shadow: 0 0 2px rgb(0 0 0 / .5); }
+.mark.is-future.is-complete .mark-value { text-shadow: 0 0 2px var(--mark-halo); }
 
 /* ---------- detail view ---------- */
 
@@ -1168,7 +1208,7 @@ html.route-detail .view { padding-top: 0; }
   padding: 4px;
   border: none;
   border-radius: var(--radius-sm);
-  background: var(--surface-2);
+  background: var(--float);
   color: var(--text);
   box-shadow: var(--shadow-float);
 }
@@ -1366,7 +1406,7 @@ html.route-detail .view { padding-top: 0; }
   z-index: 55;
   border-radius: 999px;
   padding-inline: calc(.9 * var(--space)) calc(1.1 * var(--space));
-  background: var(--surface-2);
+  background: var(--float);
   border-color: var(--border);
   box-shadow: var(--shadow-float);
 }
@@ -1399,14 +1439,15 @@ html.route-detail .view { padding-top: 0; }
   display: flex;
   align-items: center;
   gap: calc(.75 * var(--space));
-  background: var(--surface-2);
+  background: var(--float);
+  box-shadow: var(--shadow-float);
   border-radius: var(--radius);
   padding: calc(.6 * var(--space)) calc(.6 * var(--space)) calc(.6 * var(--space)) calc(.9 * var(--space));
   animation: toast-in .16s ease-out;
 }
 
 .toast .text { flex: 1; min-width: 0; font-size: var(--text-md); }
-.toast.is-error { background: color-mix(in srgb, var(--danger) 16%, var(--surface-2)); }
+.toast.is-error { background: color-mix(in srgb, var(--danger) 16%, var(--float)); }
 
 @keyframes toast-in {
   from { opacity: 0; transform: translateY(.5rem); }

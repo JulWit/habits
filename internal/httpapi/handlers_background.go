@@ -63,8 +63,7 @@ func (s *Server) handlePutBackground(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, maxBackgroundBytes)
 	raw, err := io.ReadAll(r.Body)
 	if err != nil {
-		var tooLarge *http.MaxBytesError
-		if errors.As(err, &tooLarge) {
+		if _, ok := errors.AsType[*http.MaxBytesError](err); ok {
 			writeProblem(w, http.StatusRequestEntityTooLarge,
 				domain.Invalid("the image may be at most {max} MB", "max", maxBackgroundBytes>>20))
 			return

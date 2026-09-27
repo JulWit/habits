@@ -130,7 +130,7 @@ func TestWeeklyRunsCoverWholeWeeks(t *testing.T) {
 func TestWeeklyRunSurvivesAnOpenCurrentWeek(t *testing.T) {
 	h := weeklyHabit(3)
 	entries := fillWeekly(friday.AddDays(-27), friday, 3)
-	for i := 0; i < 7; i++ {
+	for i := range 7 {
 		delete(entries, friday.StartOfWeek().AddDays(i))
 	}
 
@@ -147,7 +147,7 @@ func TestWeeklyRunEndsAtAMissedWeek(t *testing.T) {
 	h := weeklyHabit(3)
 	entries := fillWeekly(friday.AddDays(-27), friday, 3)
 	lastWeek := friday.StartOfWeek().AddDays(-7)
-	for i := 0; i < 7; i++ {
+	for i := range 7 {
 		delete(entries, lastWeek.AddDays(i))
 	}
 

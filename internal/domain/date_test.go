@@ -64,7 +64,7 @@ func TestDaysSince(t *testing.T) {
 // Weeks start on Monday throughout, including in the times-per-week frequency.
 func TestStartOfWeek(t *testing.T) {
 	monday := Date{2026, time.September, 14}
-	for offset := 0; offset < 7; offset++ {
+	for offset := range 7 {
 		d := monday.AddDays(offset)
 		if got := d.StartOfWeek(); got != monday {
 			t.Errorf("%v (%v): StartOfWeek = %v, want %v", d, d.Weekday(), got, monday)
@@ -78,7 +78,7 @@ func TestStartOfWeek(t *testing.T) {
 func TestWeekdayBitmaskIsMondayFirst(t *testing.T) {
 	monday := Date{2026, time.September, 14}
 	var all Weekdays = 0b1111111
-	for offset := 0; offset < 7; offset++ {
+	for offset := range 7 {
 		if !all.Has(monday.AddDays(offset).Weekday()) {
 			t.Errorf("the full mask does not cover %v", monday.AddDays(offset).Weekday())
 		}

@@ -104,7 +104,7 @@ func Load() (Config, error) {
 // prefixes, e.g. "127.0.0.1,10.0.0.0/8".
 func parsePrefixes(raw string) ([]netip.Prefix, error) {
 	var out []netip.Prefix
-	for _, part := range strings.Split(raw, ",") {
+	for part := range strings.SplitSeq(raw, ",") {
 		part = strings.TrimSpace(part)
 		if part == "" {
 			continue

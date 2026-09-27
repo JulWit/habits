@@ -183,7 +183,7 @@ func resolveLanguage(chosen, acceptLanguage string) string {
 	if chosen != "system" && slices.Contains(store.Languages, chosen) {
 		return chosen
 	}
-	for _, part := range strings.Split(acceptLanguage, ",") {
+	for part := range strings.SplitSeq(acceptLanguage, ",") {
 		tag, _, _ := strings.Cut(strings.TrimSpace(part), ";")
 		primary, _, _ := strings.Cut(strings.ToLower(tag), "-")
 		if primary != "system" && slices.Contains(store.Languages, primary) {

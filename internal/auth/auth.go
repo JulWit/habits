@@ -102,7 +102,7 @@ func resolve(cfg config.Config, r *http.Request) (User, *authError) {
 		u.Name = id
 	}
 	if g := strings.TrimSpace(r.Header.Get(cfg.GroupsHeader)); g != "" {
-		for _, part := range strings.Split(g, ",") {
+		for part := range strings.SplitSeq(g, ",") {
 			if part = strings.TrimSpace(part); part != "" {
 				u.Groups = append(u.Groups, part)
 			}

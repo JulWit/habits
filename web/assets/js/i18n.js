@@ -411,6 +411,8 @@ const de = {
     "Zeitpläne können nicht zusammen mit Ziel oder Häufigkeit gesetzt werden.",
   "at least one schedule is required": "Mindestens ein Zeitplan ist nötig.",
   "a schedule needs a start day": "Ein Zeitplan braucht einen ersten Tag.",
+  "{setting} must be one of: {options}": "{setting} muss einer dieser Werte sein: {options}",
+  "{setting} must be between {min} and {max}": "{setting} muss zwischen {min} und {max} liegen",
   "invalid weekday selection": "Ungültige Auswahl der Wochentage.",
   "week interval must be between 1 and 52 weeks":
     "Der Wochenabstand muss zwischen 1 und 52 Wochen liegen.",

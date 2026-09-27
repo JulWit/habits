@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"errors"
+	"path/filepath"
 	"testing"
 
 	"github.com/JulWit/habits/internal/domain"
@@ -112,5 +113,61 @@ func TestLanguageAndTimeZone(t *testing.T) {
 	bad.Language = "fr"
 	if err := st.SaveSettings(ctx, "alice", bad); !errors.Is(err, domain.ErrValidation) {
 		t.Errorf("language fr: %v, want ErrValidation", err)
+	}
+}
+
+// The migration to a settings document keeps every stored setting.
+func TestSettingsMigrationKeepsTheValues(t *testing.T) {
+	ctx := context.Background()
+	path := filepath.Join(t.TempDir(), "old.db")
+	db := openAtMigration(t, path, "json_object(")
+	if _, err := db.Exec(`INSERT INTO user_settings (user_id, theme, overview_days, show_archived,
+		font, reorder_mode, pattern, align_weeks, band_color, band_opacity, bg_dim, bg_blur,
+		surface_opacity, surface_blur, density, show_band, band_fill_opacity, language, time_zone,
+		updated_at)
+		VALUES ('alice', 'dark', 21, 1, 'geist', 'buttons', 'dots', 1, '#2563eb', 40, 60, 10,
+		        70, 20, 'compact', 0, 25, 'de', 'Europe/Berlin', '2026-01-01T00:00:00Z')`); err != nil {
+		t.Fatal(err)
+	}
+	db.Close()
+
+	st, err := Open(ctx, path)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	defer st.Close()
+	got, err := st.GetSettings(ctx, "alice")
+	if err != nil {
+		t.Fatalf("GetSettings: %v", err)
+	}
+	want := Settings{
+		Theme: "dark", OverviewDays: 21, ShowArchived: true, Font: "geist", Density: "compact",
+		ReorderMode: "buttons", Pattern: "dots", AlignWeeks: true, BandColor: "#2563eb",
+		BandOpacity: 40, BandFillOpacity: 25, ShowBand: false, BackgroundDim: 60,
+		BackgroundBlur: 10, SurfaceOpacity: 70, SurfaceBlur: 20, Language: "de",
+		TimeZone: "Europe/Berlin",
+	}
+	if got != want {
+		t.Errorf("got  %+v\nwant %+v", got, want)
+	}
+}
+
+// A setting missing from the stored document gets its default, and an invalid
+// one is reset to it.
+func TestStoredSettingsFallBackToTheDefaults(t *testing.T) {
+	ctx := context.Background()
+	st := openTestStore(t)
+	if _, err := st.db.Exec(`INSERT INTO user_settings (user_id, data, updated_at)
+		VALUES ('alice', '{"theme":"dark","font":"comic-sans","bandOpacity":500}', '')`); err != nil {
+		t.Fatal(err)
+	}
+	got, err := st.GetSettings(ctx, "alice")
+	if err != nil {
+		t.Fatalf("GetSettings: %v", err)
+	}
+	want := DefaultSettings()
+	want.Theme = "dark"
+	if got != want {
+		t.Errorf("got  %+v\nwant %+v", got, want)
 	}
 }

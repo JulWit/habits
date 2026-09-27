@@ -318,9 +318,8 @@
     <fieldset class="field">
       <legend class="field-label">Theme</legend>
       <div class="segmented" role="radiogroup" aria-label="Theme">
-        <label><input type="radio" name="settings-theme" value="system" autocomplete="off"><span data-icon="display">System</span></label>
-        <label><input type="radio" name="settings-theme" value="light" autocomplete="off"><span data-icon="sun">Light</span></label>
-        <label><input type="radio" name="settings-theme" value="dark" autocomplete="off"><span data-icon="moon">Dark</span></label>
+        {{range index .Options "theme"}}<label><input type="radio" name="settings-theme" value="{{.Value}}" autocomplete="off"><span data-icon="{{.Icon}}">{{.Label}}</span></label>
+        {{end}}
       </div>
     </fieldset>
 
@@ -329,23 +328,16 @@
       <!-- autocomplete="off" prevents restored form values from overwriting the
            saved setting after a reload. -->
       <select id="settings-font" class="select" autocomplete="off">
-        <option value="system">System</option>
-        <option value="inter">Inter</option>
-        <option value="roboto">Roboto</option>
-        <option value="geist">Geist</option>
-        <option value="opensans">Open Sans</option>
-        <option value="montserrat">Montserrat</option>
-        <option value="poppins">Poppins</option>
-        <option value="lato">Lato</option>
+        {{range index .Options "font"}}<option value="{{.Value}}">{{.Label}}</option>
+        {{end}}
       </select>
     </label>
 
     <fieldset class="field">
       <legend class="field-label">Density</legend>
       <div class="segmented" role="radiogroup" aria-label="Density">
-        <label><input type="radio" name="settings-density" value="compact" autocomplete="off"><span>Compact</span></label>
-        <label><input type="radio" name="settings-density" value="standard" autocomplete="off"><span>Standard</span></label>
-        <label><input type="radio" name="settings-density" value="comfortable" autocomplete="off"><span>Comfortable</span></label>
+        {{range index .Options "density"}}<label><input type="radio" name="settings-density" value="{{.Value}}" autocomplete="off"><span>{{.Label}}</span></label>
+        {{end}}
       </div>
       <p class="field-hint">Spacing inside and around every element, and how heavy its emphasis is set.</p>
     </fieldset>
@@ -377,17 +369,10 @@
     <label class="field">
       <span class="field-label">Background pattern</span>
       <select id="settings-pattern" class="select" autocomplete="off">
-        <option value="none">Plain</option>
-        <option value="dots">Dots</option>
-        <option value="grid">Grid</option>
-        <option value="diagonal">Diagonal</option>
-        <option value="cross">Cross-hatch</option>
-        <option value="lines">Lines</option>
-        <option value="checks">Checks</option>
-        <option value="gradient">Gradient</option>
-        <option value="glow">Glow</option>
-        <!-- Enabled by the script once an image has been uploaded. -->
-        <option value="image" id="pattern-image-option" disabled>Own image</option>
+        <!-- The image option is enabled by the script once an image has been
+             uploaded. -->
+        {{range index .Options "pattern"}}<option value="{{.Value}}"{{if eq .Value "image"}} id="pattern-image-option" disabled{{end}}>{{.Label}}</option>
+        {{end}}
       </select>
     </label>
 
@@ -449,8 +434,8 @@
       </label>
       <p class="field-hint">Shows the handles for moving habits and categories. Applies until the page is next loaded.</p>
       <div class="segmented" role="radiogroup" aria-label="Reordering">
-        <label><input type="radio" name="settings-reorder" value="drag" autocomplete="off"><span data-icon="grip">Drag</span></label>
-        <label><input type="radio" name="settings-reorder" value="buttons" autocomplete="off"><span data-icon="chevronUp">Buttons</span></label>
+        {{range index .Options "reorderMode"}}<label><input type="radio" name="settings-reorder" value="{{.Value}}" autocomplete="off"><span data-icon="{{.Icon}}">{{.Label}}</span></label>
+        {{end}}
       </div>
       <p class="field-hint" id="settings-reorder-hint"></p>
     </fieldset>
@@ -485,9 +470,8 @@
         <span class="field-label">Language</span>
         <!-- Each language is named in its own language. -->
         <select id="settings-language" class="select" autocomplete="off">
-          <option value="system">Browser language</option>
-          <option value="en" lang="en">English</option>
-          <option value="de" lang="de">Deutsch</option>
+          {{range index .Options "language"}}<option value="{{.Value}}"{{with .Lang}} lang="{{.}}"{{end}}>{{.Label}}</option>
+          {{end}}
         </select>
       </label>
       <p class="field-hint">The page reloads to switch the language.</p>

@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"fmt"
 	"path/filepath"
+	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -59,19 +61,7 @@ func TestScheduleMigrationKeepsTheCurrentSchedule(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "old.db")
 
 	// Build the schema as it was before versioned schedules.
-	db, err := sql.Open("sqlite", "file:"+path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	before := len(migrations) - 1
-	for _, m := range migrations[:before] {
-		if _, err := db.Exec(m); err != nil {
-			t.Fatalf("old migration: %v", err)
-		}
-	}
-	if _, err := db.Exec(fmt.Sprintf("PRAGMA user_version = %d", before)); err != nil {
-		t.Fatal(err)
-	}
+	db := openAtMigration(t, path, "CREATE TABLE habit_schedules")
 	created := formatTime(time.Date(2025, 3, 4, 7, 0, 0, 0, time.UTC))
 	if _, err := db.Exec(`INSERT INTO habits (id, user_id, name, color, kind, target_value,
 		freq_kind, freq_weekdays, freq_week_interval, created_at, updated_at)
@@ -98,4 +88,28 @@ func TestScheduleMigrationKeepsTheCurrentSchedule(t *testing.T) {
 	if all := h.Schedules(); len(all) != 1 || all[0] != want {
 		t.Errorf("schedules = %+v, want [%+v]", all, want)
 	}
+}
+
+// openAtMigration creates a database at path with all migrations applied that
+// come before the first one containing marker, and returns it open.
+func openAtMigration(t *testing.T, path, marker string) *sql.DB {
+	t.Helper()
+	before := slices.IndexFunc(migrations, func(m string) bool { return strings.Contains(m, marker) })
+	if before < 0 {
+		t.Fatalf("no migration contains %q", marker)
+	}
+	db, err := sql.Open("sqlite", "file:"+path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { db.Close() })
+	for _, m := range migrations[:before] {
+		if _, err := db.Exec(m); err != nil {
+			t.Fatalf("old migration: %v", err)
+		}
+	}
+	if _, err := db.Exec(fmt.Sprintf("PRAGMA user_version = %d", before)); err != nil {
+		t.Fatal(err)
+	}
+	return db
 }

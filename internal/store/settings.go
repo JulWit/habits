@@ -3,31 +3,37 @@ package store
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
+	"reflect"
 	"slices"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/JulWit/habits/internal/domain"
 )
 
-// Settings are the preferences of a user.
+// Settings are the preferences of a user. They are stored as one JSON
+// document, so a new setting needs no migration: add a field here with its
+// default in DefaultSettings, and its rule (see Validate).
+//
+// Rules are declared, not coded per field: a string field whose JSON name is
+// a key of Options must be one of those options, an int field with a range tag
+// must lie in that range, and checks holds the few rules that need code.
 type Settings struct {
-	// Theme is one of Themes.
 	Theme string `json:"theme"`
 	// OverviewDays is the number of day columns on the overview; 0 shows as
 	// many as fit.
 	OverviewDays int `json:"overviewDays"`
 	// ShowArchived shows archived habits on the overview.
-	ShowArchived bool `json:"showArchived"`
-	// Font is one of Fonts.
-	Font string `json:"font"`
-	// Density is one of Densities.
-	Density string `json:"density"`
-	// ReorderMode is one of ReorderModes.
-	ReorderMode string `json:"reorderMode"`
-	// Pattern is one of Patterns.
-	Pattern string `json:"pattern"`
+	ShowArchived bool   `json:"showArchived"`
+	Font         string `json:"font"`
+	Density      string `json:"density"`
+	ReorderMode  string `json:"reorderMode"`
+	Pattern      string `json:"pattern"`
 	// AlignWeeks starts the overview on a Monday instead of ending it today.
 	AlignWeeks bool `json:"alignWeeks"`
 	// BandColor is the colour of the today highlight: NeutralBand or one of
@@ -35,38 +41,90 @@ type Settings struct {
 	BandColor string `json:"bandColor"`
 	// BandOpacity is the opacity of the today highlight in the header, in
 	// percent.
-	BandOpacity int `json:"bandOpacity"`
+	BandOpacity int `json:"bandOpacity" range:"0,100"`
 	// BandFillOpacity is the opacity of the today band in the cards, in
 	// percent.
-	BandFillOpacity int `json:"bandFillOpacity"`
+	BandFillOpacity int `json:"bandFillOpacity" range:"0,100"`
 	// ShowBand shows the today band in the cards.
 	ShowBand bool `json:"showBand"`
 	// BackgroundDim and BackgroundBlur apply to the background image, in
 	// percent.
-	BackgroundDim  int `json:"backgroundDim"`
-	BackgroundBlur int `json:"backgroundBlur"`
+	BackgroundDim  int `json:"backgroundDim" range:"0,100"`
+	BackgroundBlur int `json:"backgroundBlur" range:"0,100"`
 	// SurfaceOpacity and SurfaceBlur apply to surfaces over the background
 	// image, in percent.
-	SurfaceOpacity int `json:"surfaceOpacity"`
-	SurfaceBlur    int `json:"surfaceBlur"`
-	// Language is one of Languages.
-	Language string `json:"language"`
+	SurfaceOpacity int    `json:"surfaceOpacity" range:"20,100"`
+	SurfaceBlur    int    `json:"surfaceBlur" range:"0,100"`
+	Language       string `json:"language"`
 	// TimeZone is an IANA time zone name, or "" for the server's HABITS_TZ.
 	TimeZone string `json:"timeZone"`
 }
 
-// Allowed values of the enumerated settings. Theme "system" follows the
-// device, Language "system" the browser's Accept-Language header. Font
-// "system" is the system font; all others are embedded. Pattern "image" is the
-// uploaded background image.
-var (
-	Themes       = []string{"system", "light", "dark"}
-	Fonts        = []string{"system", "inter", "roboto", "geist", "opensans", "montserrat", "poppins", "lato"}
-	Densities    = []string{"compact", "standard", "comfortable"}
-	ReorderModes = []string{"drag", "buttons"}
-	Patterns     = []string{"none", "dots", "grid", "diagonal", "cross", "lines", "checks", "gradient", "glow", "image"}
-	Languages    = []string{"system", "en", "de"}
-)
+// Option is an allowed value of an enumerated setting. Label is the English
+// name shown in the settings (translated by the client); Icon names an icon of
+// the client, Lang the language the label is written in.
+type Option struct {
+	Value string
+	Label string
+	Icon  string
+	Lang  string
+}
+
+// Options lists the allowed values of the enumerated settings, keyed by their
+// JSON names, in the order the settings pages offer them. index.html renders
+// its choices from these lists. Theme "system" follows the device, Language
+// "system" the browser's Accept-Language header, Font "system" is the system
+// font and Pattern "image" the uploaded background image.
+var Options = map[string][]Option{
+	"theme": {
+		{Value: "system", Label: "System", Icon: "display"},
+		{Value: "light", Label: "Light", Icon: "sun"},
+		{Value: "dark", Label: "Dark", Icon: "moon"},
+	},
+	"font": {
+		{Value: "system", Label: "System"},
+		{Value: "inter", Label: "Inter"},
+		{Value: "roboto", Label: "Roboto"},
+		{Value: "geist", Label: "Geist"},
+		{Value: "opensans", Label: "Open Sans"},
+		{Value: "montserrat", Label: "Montserrat"},
+		{Value: "poppins", Label: "Poppins"},
+		{Value: "lato", Label: "Lato"},
+	},
+	"density": {
+		{Value: "compact", Label: "Compact"},
+		{Value: "standard", Label: "Standard"},
+		{Value: "comfortable", Label: "Comfortable"},
+	},
+	"reorderMode": {
+		{Value: "drag", Label: "Drag", Icon: "grip"},
+		{Value: "buttons", Label: "Buttons", Icon: "chevronUp"},
+	},
+	"pattern": {
+		{Value: "none", Label: "Plain"},
+		{Value: "dots", Label: "Dots"},
+		{Value: "grid", Label: "Grid"},
+		{Value: "diagonal", Label: "Diagonal"},
+		{Value: "cross", Label: "Cross-hatch"},
+		{Value: "lines", Label: "Lines"},
+		{Value: "checks", Label: "Checks"},
+		{Value: "gradient", Label: "Gradient"},
+		{Value: "glow", Label: "Glow"},
+		{Value: "image", Label: "Own image"},
+	},
+	// Each language is named in its own language.
+	"language": {
+		{Value: "system", Label: "Browser language"},
+		{Value: "en", Label: "English", Lang: "en"},
+		{Value: "de", Label: "Deutsch", Lang: "de"},
+	},
+}
+
+// IsOption reports whether value is one of the options of the setting named
+// key.
+func IsOption(key, value string) bool {
+	return slices.ContainsFunc(Options[key], func(o Option) bool { return o.Value == value })
+}
 
 // NeutralBand is the BandColor for a grey today highlight.
 const NeutralBand = "neutral"
@@ -74,121 +132,96 @@ const NeutralBand = "neutral"
 // MaxOverviewDays is the upper bound of OverviewDays.
 const MaxOverviewDays = 90
 
-// MinSurfaceOpacity is the lower bound of SurfaceOpacity, in percent.
-const MinSurfaceOpacity = 20
-
 // BackgroundBlurAtFull is the blur radius in pixels at 100 percent. The client
 // uses the same value.
 const BackgroundBlurAtFull = 40
 
-func validOverviewDays(n int) bool { return n == 0 || (n >= 3 && n <= MaxOverviewDays) }
-
-func validPercent(n int) bool { return n >= 0 && n <= 100 }
-
-func validSurfaceOpacity(n int) bool { return n >= MinSurfaceOpacity && n <= 100 }
-
-func validBandColor(c string) bool {
-	return c == NeutralBand || slices.Contains(domain.DefaultColors, c)
+// checks are the rules that options and ranges cannot express, keyed by the
+// JSON name of their setting.
+var checks = map[string]func(Settings) error{
+	"overviewDays": func(s Settings) error {
+		if n := s.OverviewDays; n != 0 && (n < 3 || n > MaxOverviewDays) {
+			return domain.Invalid("overviewDays must be 0 (automatic) or between 3 and {max}", "max", MaxOverviewDays)
+		}
+		return nil
+	},
+	"bandColor": func(s Settings) error {
+		if s.BandColor != NeutralBand && !slices.Contains(domain.DefaultColors, s.BandColor) {
+			return domain.Invalid("band colour must be neutral or one of the habit colours")
+		}
+		return nil
+	},
+	// A known IANA name or "" for the server's zone; "Local" is not accepted.
+	"timeZone": func(s Settings) error {
+		if s.TimeZone == "" {
+			return nil
+		}
+		if _, err := time.LoadLocation(s.TimeZone); err != nil || s.TimeZone == "Local" {
+			return domain.Invalid(`unknown time zone "{zone}"`, "zone", s.TimeZone)
+		}
+		return nil
+	},
 }
 
-// validTimeZone reports whether tz is "" or a known IANA time zone name.
-// "Local" is not accepted.
-func validTimeZone(tz string) bool {
-	if tz == "" {
-		return true
-	}
-	if tz == "Local" {
-		return false
-	}
-	_, err := time.LoadLocation(tz)
-	return err == nil
-}
+var settingsType = reflect.TypeFor[Settings]()
 
 // Validate returns a validation error for the first invalid setting.
 func (s Settings) Validate() error {
-	switch {
-	case !slices.Contains(Themes, s.Theme):
-		return invalidf("theme must be one of %v", Themes)
-	case !validOverviewDays(s.OverviewDays):
-		return invalidf("overviewDays must be 0 (automatic) or between 3 and %d", MaxOverviewDays)
-	case !slices.Contains(Fonts, s.Font):
-		return invalidf("font must be one of %v", Fonts)
-	case !slices.Contains(Densities, s.Density):
-		return invalidf("density must be one of %v", Densities)
-	case !slices.Contains(ReorderModes, s.ReorderMode):
-		return invalidf("reorder mode must be one of %v", ReorderModes)
-	case !slices.Contains(Patterns, s.Pattern):
-		return invalidf("background pattern must be one of %v", Patterns)
-	case !validBandColor(s.BandColor):
-		return invalidf("band colour must be neutral or one of the habit colours")
-	case !validPercent(s.BandOpacity):
-		return invalidf("band opacity must be between 0 and 100")
-	case !validPercent(s.BandFillOpacity):
-		return invalidf("band fill opacity must be between 0 and 100")
-	case !validPercent(s.BackgroundDim):
-		return invalidf("background dim must be between 0 and 100")
-	case !validPercent(s.BackgroundBlur):
-		return invalidf("background blur must be between 0 and 100")
-	case !validSurfaceOpacity(s.SurfaceOpacity):
-		return invalidf("surface opacity must be between %d and 100", MinSurfaceOpacity)
-	case !validPercent(s.SurfaceBlur):
-		return invalidf("surface blur must be between 0 and 100")
-	case !slices.Contains(Languages, s.Language):
-		return invalidf("language must be one of %v", Languages)
-	case !validTimeZone(s.TimeZone):
-		return domain.Invalid(`unknown time zone "{zone}"`, "zone", s.TimeZone)
+	for i := range settingsType.NumField() {
+		if err := s.fieldError(i); err != nil {
+			return err
+		}
 	}
 	return nil
+}
+
+// fieldError returns a validation error if the i-th field breaks its rule.
+func (s Settings) fieldError(i int) error {
+	field := settingsType.Field(i)
+	key, _, _ := strings.Cut(field.Tag.Get("json"), ",")
+	value := reflect.ValueOf(s).Field(i)
+
+	if options, ok := Options[key]; ok && !IsOption(key, value.String()) {
+		values := make([]string, len(options))
+		for i, o := range options {
+			values[i] = o.Value
+		}
+		return domain.Invalid("{setting} must be one of: {options}",
+			"setting", key, "options", strings.Join(values, ", "))
+	}
+	if r := field.Tag.Get("range"); r != "" {
+		lo, hi := parseRange(r)
+		if n := int(value.Int()); n < lo || n > hi {
+			return domain.Invalid("{setting} must be between {min} and {max}",
+				"setting", key, "min", lo, "max", hi)
+		}
+	}
+	if check := checks[key]; check != nil {
+		return check(s)
+	}
+	return nil
+}
+
+// parseRange parses a range tag "lo,hi". A malformed tag is a programming
+// error.
+func parseRange(tag string) (lo, hi int) {
+	a, b, _ := strings.Cut(tag, ",")
+	lo, err1 := strconv.Atoi(a)
+	hi, err2 := strconv.Atoi(b)
+	if err1 != nil || err2 != nil {
+		panic("store: malformed range tag " + strconv.Quote(tag))
+	}
+	return lo, hi
 }
 
 // resetInvalid replaces invalid values, e.g. of options removed since they
 // were saved, by their defaults.
 func (s *Settings) resetInvalid() {
-	d := DefaultSettings()
-	if !slices.Contains(Themes, s.Theme) {
-		s.Theme = d.Theme
-	}
-	if !validOverviewDays(s.OverviewDays) {
-		s.OverviewDays = d.OverviewDays
-	}
-	if !slices.Contains(Fonts, s.Font) {
-		s.Font = d.Font
-	}
-	if !slices.Contains(Densities, s.Density) {
-		s.Density = d.Density
-	}
-	if !slices.Contains(ReorderModes, s.ReorderMode) {
-		s.ReorderMode = d.ReorderMode
-	}
-	if !slices.Contains(Patterns, s.Pattern) {
-		s.Pattern = d.Pattern
-	}
-	if !validBandColor(s.BandColor) {
-		s.BandColor = d.BandColor
-	}
-	if !validPercent(s.BandOpacity) {
-		s.BandOpacity = d.BandOpacity
-	}
-	if !validPercent(s.BandFillOpacity) {
-		s.BandFillOpacity = d.BandFillOpacity
-	}
-	if !validPercent(s.BackgroundDim) {
-		s.BackgroundDim = d.BackgroundDim
-	}
-	if !validPercent(s.BackgroundBlur) {
-		s.BackgroundBlur = d.BackgroundBlur
-	}
-	if !validSurfaceOpacity(s.SurfaceOpacity) {
-		s.SurfaceOpacity = d.SurfaceOpacity
-	}
-	if !validPercent(s.SurfaceBlur) {
-		s.SurfaceBlur = d.SurfaceBlur
-	}
-	if !slices.Contains(Languages, s.Language) {
-		s.Language = d.Language
-	}
-	if !validTimeZone(s.TimeZone) {
-		s.TimeZone = d.TimeZone
+	defaults := reflect.ValueOf(DefaultSettings())
+	for i := range settingsType.NumField() {
+		if s.fieldError(i) != nil {
+			reflect.ValueOf(s).Elem().Field(i).Set(defaults.Field(i))
+		}
 	}
 }
 
@@ -242,24 +275,22 @@ func (s *Store) UpdateSettings(ctx context.Context, userID string, apply func(*S
 	return settings, nil
 }
 
-// getSettings loads the settings of the user. Invalid stored values are
-// replaced by their defaults.
+// getSettings loads the settings of the user. Settings missing from the
+// stored document get their defaults, and invalid values are replaced by
+// them.
 func (s *Store) getSettings(ctx context.Context, q queryer, userID string) (Settings, error) {
-	out := DefaultSettings()
-	err := q.QueryRowContext(ctx,
-		`SELECT theme, overview_days, show_archived, font, reorder_mode, pattern, align_weeks,
-		        band_color, band_opacity, bg_dim, bg_blur, surface_opacity, surface_blur, density,
-		        show_band, band_fill_opacity, language, time_zone
-		 FROM user_settings WHERE user_id = ?`,
-		userID).Scan(&out.Theme, &out.OverviewDays, &out.ShowArchived, &out.Font, &out.ReorderMode,
-		&out.Pattern, &out.AlignWeeks, &out.BandColor, &out.BandOpacity,
-		&out.BackgroundDim, &out.BackgroundBlur, &out.SurfaceOpacity, &out.SurfaceBlur, &out.Density,
-		&out.ShowBand, &out.BandFillOpacity, &out.Language, &out.TimeZone)
+	var data string
+	err := q.QueryRowContext(ctx, `SELECT data FROM user_settings WHERE user_id = ?`, userID).Scan(&data)
 	if errors.Is(err, sql.ErrNoRows) {
 		return DefaultSettings(), nil
 	}
 	if err != nil {
 		return DefaultSettings(), fmt.Errorf("loading settings: %w", err)
+	}
+	out := DefaultSettings()
+	if err := json.Unmarshal([]byte(data), &out); err != nil {
+		// A value of the wrong type keeps its default, like an invalid one.
+		slog.Warn("stored settings are partly unreadable", "user", userID, "error", err)
 	}
 	out.resetInvalid()
 	return out, nil
@@ -275,36 +306,14 @@ func (s *Store) saveSettings(ctx context.Context, q execer, userID string, in Se
 	if err := in.Validate(); err != nil {
 		return err
 	}
-	_, err := q.ExecContext(ctx, `
-		INSERT INTO user_settings
-			(user_id, theme, overview_days, show_archived, font, reorder_mode, pattern,
-			 align_weeks, band_color, band_opacity, bg_dim, bg_blur, surface_opacity,
-			 surface_blur, density, show_band, band_fill_opacity, language, time_zone, updated_at)
-			VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-		ON CONFLICT(user_id) DO UPDATE SET
-			theme = excluded.theme,
-			overview_days = excluded.overview_days,
-			show_archived = excluded.show_archived,
-			font = excluded.font,
-			reorder_mode = excluded.reorder_mode,
-			pattern = excluded.pattern,
-			align_weeks = excluded.align_weeks,
-			band_color = excluded.band_color,
-			band_opacity = excluded.band_opacity,
-			bg_dim = excluded.bg_dim,
-			bg_blur = excluded.bg_blur,
-			surface_opacity = excluded.surface_opacity,
-			surface_blur = excluded.surface_blur,
-			density = excluded.density,
-			show_band = excluded.show_band,
-			band_fill_opacity = excluded.band_fill_opacity,
-			language = excluded.language,
-			time_zone = excluded.time_zone,
-			updated_at = excluded.updated_at`,
-		userID, in.Theme, in.OverviewDays, in.ShowArchived, in.Font, in.ReorderMode, in.Pattern,
-		in.AlignWeeks, in.BandColor, in.BandOpacity, in.BackgroundDim, in.BackgroundBlur,
-		in.SurfaceOpacity, in.SurfaceBlur, in.Density, in.ShowBand, in.BandFillOpacity,
-		in.Language, in.TimeZone, formatTime(time.Now()))
+	data, err := json.Marshal(in)
+	if err != nil {
+		return fmt.Errorf("encoding settings: %w", err)
+	}
+	_, err = q.ExecContext(ctx, `
+		INSERT INTO user_settings (user_id, data, updated_at) VALUES (?,?,?)
+		ON CONFLICT(user_id) DO UPDATE SET data = excluded.data, updated_at = excluded.updated_at`,
+		userID, string(data), formatTime(time.Now()))
 	if err != nil {
 		return fmt.Errorf("saving settings: %w", err)
 	}

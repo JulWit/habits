@@ -358,8 +358,14 @@ user_version` stores the schema version.
 handle it in `Scale`, `Step`, `MaxTarget` and `Unit`. The client receives these
 values via `kinds`; the editor needs its input fields.
 
-**New language**: A dictionary in `i18n.js`, an entry in `store.Languages`, an
-`<option>` in `index.html` and the day and month names in `dates.js`.
+**New language**: A dictionary in `i18n.js`, an entry under `"language"` in
+`store.Options` and the day and month names in `dates.js`.
+
+**New setting**: A field in `store.Settings` with its default in
+`DefaultSettings` and its rule: an entry in `store.Options` for a choice (the
+settings page renders its options from it), a `range:"lo,hi"` tag for a number,
+or a function in `checks`. Then its control in `index.html` and `settings.js`.
+No migration is needed; stored documents without the field get the default.
 
 **Undo for a new action**: Perform the action in `web/assets/js/actions.js`,
 then call `record({label, undo, redo})`. `undo` and `redo` are server calls.
@@ -374,7 +380,8 @@ always computed by the server over the full history.
 
 ## Settings
 
-Settings are stored per user on the server and saved immediately.
+Settings are stored per user on the server as one JSON document and saved
+immediately. Missing or invalid values fall back to their defaults.
 
 | Key | Values | Meaning |
 |---|---|---|
@@ -413,9 +420,6 @@ board, the day a tap writes to and the open day for streaks.
 
 - The SQLite pool uses a single connection. If read throughput becomes an
   issue, add a separate read-only pool.
-- The lists of fonts, densities and patterns exist in
-  `internal/store/settings.go`, `web/assets/js/app.js` and `index.html`.
-  Unknown values fall back to the default.
 - The kind of a habit cannot be changed once it has entries, since stored
   values depend on the kind.
 - The detail view only shows the current calendar year.

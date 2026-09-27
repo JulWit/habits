@@ -13,7 +13,6 @@ import (
 	"net/http"
 	"path"
 	"runtime/debug"
-	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -136,11 +135,14 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 		// Blur settings are converted from percent to pixels.
 		BackgroundBlurPx string
 		SurfaceBlurPx    string
+		// Options are the choices of the enumerated settings.
+		Options map[string][]store.Option
 	}{
 		Settings:         settings,
 		Lang:             resolveLanguage(settings.Language, r.Header.Get("Accept-Language")),
 		BackgroundBlurPx: blurPixels(settings.BackgroundBlur),
 		SurfaceBlurPx:    blurPixels(settings.SurfaceBlur),
+		Options:          store.Options,
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -180,13 +182,13 @@ func (s *Server) todayFor(ctx context.Context, userID string) domain.Date {
 // resolveLanguage returns the UI language. For "system" it returns the first
 // supported language in Accept-Language, or "en".
 func resolveLanguage(chosen, acceptLanguage string) string {
-	if chosen != "system" && slices.Contains(store.Languages, chosen) {
+	if chosen != "system" && store.IsOption("language", chosen) {
 		return chosen
 	}
 	for part := range strings.SplitSeq(acceptLanguage, ",") {
 		tag, _, _ := strings.Cut(strings.TrimSpace(part), ";")
 		primary, _, _ := strings.Cut(strings.ToLower(tag), "-")
-		if primary != "system" && slices.Contains(store.Languages, primary) {
+		if primary != "system" && store.IsOption("language", primary) {
 			return primary
 		}
 	}

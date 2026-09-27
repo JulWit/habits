@@ -1,6 +1,8 @@
 package httpapi
 
 import (
+	"bytes"
+	"encoding/json"
 	"net/http"
 
 	"github.com/JulWit/habits/internal/auth"
@@ -18,61 +20,39 @@ func (s *Server) handleGetSettings(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, settings)
 }
 
-// handleUpdateSettings updates the settings given in the request body. The
-// store validates the result.
+// handleUpdateSettings updates the settings given in the request body; the
+// others are left unchanged. The store validates the result.
 func (s *Server) handleUpdateSettings(w http.ResponseWriter, r *http.Request) {
-	// Nil fields are left unchanged.
-	var in struct {
-		Theme           *string `json:"theme"`
-		OverviewDays    *int    `json:"overviewDays"`
-		ShowArchived    *bool   `json:"showArchived"`
-		Font            *string `json:"font"`
-		Density         *string `json:"density"`
-		ReorderMode     *string `json:"reorderMode"`
-		Pattern         *string `json:"pattern"`
-		AlignWeeks      *bool   `json:"alignWeeks"`
-		BandColor       *string `json:"bandColor"`
-		BandOpacity     *int    `json:"bandOpacity"`
-		BandFillOpacity *int    `json:"bandFillOpacity"`
-		ShowBand        *bool   `json:"showBand"`
-		BackgroundDim   *int    `json:"backgroundDim"`
-		BackgroundBlur  *int    `json:"backgroundBlur"`
-		SurfaceOpacity  *int    `json:"surfaceOpacity"`
-		SurfaceBlur     *int    `json:"surfaceBlur"`
-		Language        *string `json:"language"`
-		TimeZone        *string `json:"timeZone"`
+	var patch json.RawMessage
+	if !decodeJSON(w, r, &patch) {
+		return
 	}
-	if !decodeJSON(w, r, &in) {
+	// Unknown settings and values of the wrong type are rejected before the
+	// patch is applied.
+	var probe store.Settings
+	if err := decodeSettings(patch, &probe); err != nil {
+		writeError(w, http.StatusBadRequest, "Invalid request body: "+err.Error())
 		return
 	}
 	user := auth.MustUser(r.Context())
 
 	settings, err := s.store.UpdateSettings(r.Context(), user.ID, func(cur *store.Settings) error {
-		setIf(&cur.Theme, in.Theme)
-		setIf(&cur.OverviewDays, in.OverviewDays)
-		setIf(&cur.ShowArchived, in.ShowArchived)
-		setIf(&cur.Font, in.Font)
-		setIf(&cur.Density, in.Density)
-		setIf(&cur.ReorderMode, in.ReorderMode)
-		setIf(&cur.Pattern, in.Pattern)
-		setIf(&cur.AlignWeeks, in.AlignWeeks)
-		setIf(&cur.BandColor, in.BandColor)
-		setIf(&cur.BandOpacity, in.BandOpacity)
-		setIf(&cur.BandFillOpacity, in.BandFillOpacity)
-		setIf(&cur.ShowBand, in.ShowBand)
-		setIf(&cur.BackgroundDim, in.BackgroundDim)
-		setIf(&cur.BackgroundBlur, in.BackgroundBlur)
-		setIf(&cur.SurfaceOpacity, in.SurfaceOpacity)
-		setIf(&cur.SurfaceBlur, in.SurfaceBlur)
-		setIf(&cur.Language, in.Language)
-		setIf(&cur.TimeZone, in.TimeZone)
-		return nil
+		// Decoding onto the current settings changes only the fields in the
+		// patch.
+		return decodeSettings(patch, cur)
 	})
 	if err != nil {
 		s.writeStoreError(w, err, "saving settings")
 		return
 	}
 	writeJSON(w, http.StatusOK, settings)
+}
+
+// decodeSettings decodes a settings patch onto dst, rejecting unknown fields.
+func decodeSettings(patch []byte, dst *store.Settings) error {
+	dec := json.NewDecoder(bytes.NewReader(patch))
+	dec.DisallowUnknownFields()
+	return dec.Decode(dst)
 }
 
 // setIf sets *dst to *src unless src is nil.

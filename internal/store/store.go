@@ -399,6 +399,38 @@ var migrations = []string{
 	ALTER TABLE habits DROP COLUMN freq_anchor_date;
 	ALTER TABLE habits DROP COLUMN freq_week_interval;
 	ALTER TABLE habits DROP COLUMN freq_week_of_month;`,
+
+	// Settings become one JSON document per user, so a new setting needs no
+	// migration. Keys are the JSON names of store.Settings.
+	`CREATE TABLE user_settings_v2 (
+		user_id    TEXT PRIMARY KEY,
+		data       TEXT NOT NULL,
+		updated_at TEXT NOT NULL
+	);
+	INSERT INTO user_settings_v2 (user_id, data, updated_at)
+		SELECT user_id, json_object(
+			'theme', theme,
+			'overviewDays', overview_days,
+			'showArchived', json(CASE WHEN show_archived THEN 'true' ELSE 'false' END),
+			'font', font,
+			'density', density,
+			'reorderMode', reorder_mode,
+			'pattern', pattern,
+			'alignWeeks', json(CASE WHEN align_weeks THEN 'true' ELSE 'false' END),
+			'bandColor', band_color,
+			'bandOpacity', band_opacity,
+			'bandFillOpacity', band_fill_opacity,
+			'showBand', json(CASE WHEN show_band THEN 'true' ELSE 'false' END),
+			'backgroundDim', bg_dim,
+			'backgroundBlur', bg_blur,
+			'surfaceOpacity', surface_opacity,
+			'surfaceBlur', surface_blur,
+			'language', language,
+			'timeZone', time_zone
+		), updated_at
+		FROM user_settings;
+	DROP TABLE user_settings;
+	ALTER TABLE user_settings_v2 RENAME TO user_settings;`,
 }
 
 // migrate applies all migrations newer than the schema version, each in its

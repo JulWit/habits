@@ -32,6 +32,9 @@ func schemaOf(t *testing.T, db *sql.DB) map[string]string {
 		def = strings.ReplaceAll(def, `"`, "")
 		out[name] = space.ReplaceAllString(def, " ")
 	}
+	if err := rows.Err(); err != nil {
+		t.Fatal(err)
+	}
 	return out
 }
 

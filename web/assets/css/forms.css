@@ -55,8 +55,6 @@
   background-size: var(--pattern-size);
 }
 
-/* Over a background image, veil and blur as on body::before (see base.css). */
-
 /* Slides in from the right, as a new screen does. */
 .dialog.page[open] { animation: page-in .22s cubic-bezier(.2, .8, .2, 1); }
 
@@ -119,14 +117,12 @@ html:has(.dialog.page[open]) { overflow: hidden; }
 /* ---------- settings menu ---------- */
 
 /* The settings menu has a card per section instead of one for the page. */
-.page-body:has(> .menu),
-html[data-pattern="image"] .page-body:has(> .menu) {
+.page-body:has(> .menu) {
   display: flex;
   flex-direction: column;
   gap: var(--card-gap);
   padding: 0;
   background: none;
-  backdrop-filter: none;
 }
 
 /* A section, each row opening its page. The rows reach to the card's edge. */
@@ -516,9 +512,6 @@ html[data-pattern="image"] .page-body:has(> .menu) {
 #settings-font option[value="roboto"] { font-family: "Roboto", var(--font-system); }
 #settings-font option[value="geist"] { font-family: "Geist", var(--font-system); }
 #settings-font option[value="opensans"] { font-family: "Open Sans", var(--font-system); }
-#settings-font option[value="montserrat"] { font-family: "Montserrat", var(--font-system); }
-#settings-font option[value="poppins"] { font-family: "Poppins", var(--font-system); }
-#settings-font option[value="lato"] { font-family: "Lato", var(--font-system); }
 
 /* ---------- stepper ---------- */
 
@@ -694,38 +687,6 @@ html[data-pattern="image"] .page-body:has(> .menu) {
   flex: none;
 }
 
-/* ---------- the uploaded background ----------
-
-   Preview thumbnail and buttons. */
-.upload {
-  display: flex;
-  align-items: center;
-  gap: calc(.75 * var(--space));
-}
-
-.upload-preview {
-  width: 5.5rem;
-  height: 3.4rem;
-  flex: none;
-  border-radius: var(--radius-sm);
-  background-color: var(--surface-2);
-  background-size: cover;
-  background-position: center;
-}
-
-/* No image uploaded. */
-.upload-preview.is-empty { background-image: none; }
-
-.upload-actions {
-  display: flex;
-  align-items: center;
-  gap: calc(.5 * var(--space));
-  flex-wrap: wrap;
-}
-
-/* The file input is hidden; its label is styled as a button. */
-.upload-actions .button { cursor: pointer; }
-
 /* Slider with its value beside it. */
 .slider {
   display: grid;
@@ -753,16 +714,6 @@ html[data-pattern="image"] .page-body:has(> .menu) {
   accent-color: var(--primary);
   cursor: pointer;
 }
-
-/* Caption for a group of sliders. */
-.knob-group {
-  margin: calc(1.1 * var(--space)) 0 0;
-  color: var(--text-muted);
-  font-size: var(--text-xs);
-  font-weight: var(--weight-semibold);
-}
-
-.knob-group + .slider { margin-top: calc(.5 * var(--space)); }
 
 /* ---------- pressed state ----------
 

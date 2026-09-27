@@ -43,15 +43,10 @@ type stateResponse struct {
 	Icons []string `json:"icons"`
 	// Kinds describes the value range of each habit kind.
 	Kinds map[domain.Kind]domain.KindInfo `json:"kinds"`
-	// BlurAtFull is the blur radius in pixels at 100 percent.
-	BlurAtFull int `json:"blurAtFull"`
 	// EntriesFrom is the first day covered by the sent entries.
 	EntriesFrom domain.Date `json:"entriesFrom"`
 	// EarliestEntry is the earliest date an entry may have.
 	EarliestEntry domain.Date `json:"earliestEntry"`
-	// BackgroundVersion is the ETag of the background image, or "" if there is
-	// none.
-	BackgroundVersion string `json:"backgroundVersion"`
 	// ServerTimeZone is the server's default time zone (HABITS_TZ).
 	ServerTimeZone string `json:"serverTimeZone"`
 	// Build describes the running binary.
@@ -118,28 +113,20 @@ func (s *Server) handleState(w http.ResponseWriter, r *http.Request) {
 		views = append(views, s.viewFor(h, entries[h.ID], today, from))
 	}
 
-	bgVersion, err := s.store.BackgroundVersion(ctx, user.ID)
-	if err != nil {
-		s.writeStoreError(w, err, "loading background version")
-		return
-	}
-
 	writeJSON(w, http.StatusOK, stateResponse{
-		User:              user,
-		Settings:          settings,
-		Today:             today,
-		Categories:        categories,
-		ArchivedCount:     archivedCount,
-		Habits:            views,
-		Colors:            domain.Colors,
-		Icons:             domain.HabitIcons,
-		Kinds:             domain.KindDescriptors(),
-		BlurAtFull:        store.BackgroundBlurAtFull,
-		EntriesFrom:       from,
-		EarliestEntry:     EarliestEntry,
-		BackgroundVersion: bgVersion,
-		ServerTimeZone:    s.cfg.Location.String(),
-		Build:             currentBuild(),
+		User:           user,
+		Settings:       settings,
+		Today:          today,
+		Categories:     categories,
+		ArchivedCount:  archivedCount,
+		Habits:         views,
+		Colors:         domain.Colors,
+		Icons:          domain.HabitIcons,
+		Kinds:          domain.KindDescriptors(),
+		EntriesFrom:    from,
+		EarliestEntry:  EarliestEntry,
+		ServerTimeZone: s.cfg.Location.String(),
+		Build:          currentBuild(),
 	})
 }
 

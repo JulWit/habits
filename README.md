@@ -254,9 +254,6 @@ All endpoints are under `/api` and return JSON.
 | `POST` | `/api/categories/{id}/restore` | Restore |
 | `POST` | `/api/categories/reorder` | Set the order (same rules as for habits) |
 | `GET`/`PATCH` | `/api/settings` | Settings, see below |
-| `GET` | `/api/background` | Background image (404 if none) |
-| `PUT` | `/api/background` | Upload an image (raw body, JPEG or PNG, max. 12 MB) |
-| `DELETE` | `/api/background` | Remove the image |
 
 Writing endpoints require `Content-Type: application/json`. This forces a CORS
 preflight and protects against CSRF.
@@ -417,21 +414,17 @@ immediately. Missing or invalid values fall back to their defaults.
 | Key | Values | Meaning |
 |---|---|---|
 | `theme` | `system`, `light`, `dark` | Colour scheme; `system` follows the device |
-| `font` | `system`, `inter`, `roboto`, `geist`, `opensans`, `montserrat`, `poppins`, `lato` | Font (all embedded) |
+| `font` | `system`, `inter`, `roboto`, `geist`, `opensans` | Font (all embedded) |
 | `density` | `compact`, `standard`, `comfortable` | Spacing and font weights |
 | `overviewDays` | 0 (automatic) or 3–90 | Day columns on the board |
 | `alignWeeks` | bool | Align the board to calendar weeks |
 | `showArchived` | bool | Show archived habits |
 | `reorderMode` | `drag`, `buttons` | Reorder by drag and drop or with arrow buttons |
-| `pattern` | `none`, `dots`, `grid`, `diagonal`, `cross`, `lines`, `checks`, `gradient`, `glow`, `image` | Page background; `image` is the uploaded image |
+| `pattern` | `none`, `grain`, `dots`, `grid`, `lines` | Page background; `grain` is a rough texture |
 | `bandColor` | `neutral` or a palette colour | Colour of the day marker and band (on the active day) |
 | `bandOpacity` | 0–100 | Opacity of the day marker in the header |
 | `bandFillOpacity` | 0–100 | Opacity of the band in the cards |
 | `showBand` | bool | Show the band in the cards |
-| `backgroundDim` | 0–100 | Dimming of the background image |
-| `backgroundBlur` | 0–100 | Blur of the background image |
-| `surfaceOpacity` | 20–100 | Opacity of the cards over the image |
-| `surfaceBlur` | 0–100 | Blur behind the cards |
 | `language` | `system`, `en`, `de` | UI language; `system` uses the browser's `Accept-Language`, falling back to English |
 | `timeZone` | `""` or an IANA name | Time zone for "today"; `""` uses `HABITS_TZ` |
 

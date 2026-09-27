@@ -98,7 +98,10 @@ const schemaVersion = 1000
 // migrations change schema; migration i brings a database to version
 // schemaVersion+i+1. Do not change released migrations, append new ones, and
 // keep schema describing a new database, so both paths end up alike.
-var migrations = []string{}
+var migrations = []string{
+	// The uploaded background image is no longer offered.
+	`DROP TABLE backgrounds;`,
+}
 
 // migrate brings the database to the current version: a new database gets
 // schema, an old one runs its missing legacy migrations and is converted, and

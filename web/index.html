@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="{{.Lang}}" data-theme="{{.Theme}}" data-font="{{.Font}}" data-density="{{.Density}}" data-pattern="{{.Pattern}}" data-band="{{.BandColor}}" data-today-band="{{if .ShowBand}}on{{else}}off{{end}}" style="--today-opacity: {{.BandOpacity}}%; --band-opacity: {{.BandFillOpacity}}%; --bg-dim: {{.BackgroundDim}}%; --bg-blur: {{.BackgroundBlurPx}}px; --surface-opacity: {{.SurfaceOpacity}}%; --surface-blur: {{.SurfaceBlurPx}}px">
+<html lang="{{.Lang}}" data-theme="{{.Theme}}" data-font="{{.Font}}" data-density="{{.Density}}" data-pattern="{{.Pattern}}" data-band="{{.BandColor}}" data-today-band="{{if .ShowBand}}on{{else}}off{{end}}" style="--today-opacity: {{.BandOpacity}}%; --band-opacity: {{.BandFillOpacity}}%">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -372,54 +372,10 @@
     <label class="field">
       <span class="field-label">Background pattern</span>
       <select id="settings-pattern" class="select" autocomplete="off">
-        <!-- The image option is enabled by the script once an image has been
-             uploaded. -->
-        {{range index .Options "pattern"}}<option value="{{.Value}}"{{if eq .Value "image"}} id="pattern-image-option" disabled{{end}}>{{.Label}}</option>
+        {{range index .Options "pattern"}}<option value="{{.Value}}">{{.Label}}</option>
         {{end}}
       </select>
     </label>
-
-    <fieldset class="field">
-      <legend class="field-label">Background image</legend>
-      <div class="upload">
-        <span class="upload-preview" id="bg-preview" aria-hidden="true"></span>
-        <div class="upload-actions">
-          <!-- The hidden file input, with its label styled as a button. -->
-          <label class="button">
-            <input type="file" id="bg-file" accept="image/jpeg,image/png" hidden>
-            Choose image
-          </label>
-          <button type="button" class="button ghost" id="bg-remove" hidden>Remove</button>
-        </div>
-      </div>
-      <p class="field-hint" id="bg-hint">JPEG or PNG, at most 12 MB. The image is stored unchanged.</p>
-
-      <div id="bg-knobs" hidden>
-        <p class="knob-group">Image</p>
-        <label class="slider">
-          <span class="field-label">Dim</span>
-          <input type="range" id="bg-dim" min="0" max="100" step="5" autocomplete="off">
-          <output id="bg-dim-out"></output>
-        </label>
-        <label class="slider">
-          <span class="field-label">Blur</span>
-          <input type="range" id="bg-blur" min="0" max="100" step="5" autocomplete="off">
-          <output id="bg-blur-out"></output>
-        </label>
-
-        <p class="knob-group">Surfaces</p>
-        <label class="slider">
-          <span class="field-label">Opacity</span>
-          <input type="range" id="surface-opacity" min="20" max="100" step="5" autocomplete="off">
-          <output id="surface-opacity-out"></output>
-        </label>
-        <label class="slider">
-          <span class="field-label">Blur</span>
-          <input type="range" id="surface-blur" min="0" max="100" step="5" autocomplete="off">
-          <output id="surface-blur-out"></output>
-        </label>
-      </div>
-    </fieldset>
   </div>
 </dialog>
 

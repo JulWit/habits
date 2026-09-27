@@ -10,7 +10,7 @@ import { initCategory, renderCategory } from "./category.js";
 import { initEditor } from "./editor.js";
 import { initCategoryPicker } from "./categorypicker.js";
 import { initCategoryEditor } from "./categoryeditor.js";
-import { initSettings, blurLength } from "./settings.js";
+import { initSettings } from "./settings.js";
 import { initValueDialog } from "./value.js";
 import { initSearch, openSearch } from "./search.js";
 import * as actions from "./actions.js";
@@ -361,10 +361,6 @@ function initAppearance() {
     // Custom properties, as the stylesheet computes with them.
     root.style.setProperty("--today-opacity", `${settings.bandOpacity}%`);
     root.style.setProperty("--band-opacity", `${settings.bandFillOpacity}%`);
-    root.style.setProperty("--bg-dim", `${settings.backgroundDim}%`);
-    root.style.setProperty("--bg-blur", blurLength(settings.backgroundBlur));
-    root.style.setProperty("--surface-opacity", `${settings.surfaceOpacity}%`);
-    root.style.setProperty("--surface-blur", blurLength(settings.surfaceBlur));
   });
   rememberColorScheme();
 }

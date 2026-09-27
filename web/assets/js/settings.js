@@ -30,19 +30,6 @@ let alignHint;
 let archiveItem;
 let archiveHint;
 let errorBox;
-let bgFile;
-let bgRemove;
-let bgPreview;
-let bgKnobs;
-let bgDim;
-let bgBlur;
-let bgDimOut;
-let bgBlurOut;
-let surfaceOpacity;
-let surfaceBlur;
-let surfaceOpacityOut;
-let surfaceBlurOut;
-let patternImageOption;
 let languageSelect;
 let timeZoneSelect;
 let timeZoneHint;
@@ -78,19 +65,6 @@ export function initSettings(handlers = {}) {
   archiveItem = document.getElementById("settings-archive-item");
   archiveHint = document.getElementById("settings-archive-hint");
   errorBox = document.getElementById("settings-error");
-  bgFile = document.getElementById("bg-file");
-  bgRemove = document.getElementById("bg-remove");
-  bgPreview = document.getElementById("bg-preview");
-  bgKnobs = document.getElementById("bg-knobs");
-  bgDim = document.getElementById("bg-dim");
-  bgBlur = document.getElementById("bg-blur");
-  bgDimOut = document.getElementById("bg-dim-out");
-  bgBlurOut = document.getElementById("bg-blur-out");
-  surfaceOpacity = document.getElementById("surface-opacity");
-  surfaceBlur = document.getElementById("surface-blur");
-  surfaceOpacityOut = document.getElementById("surface-opacity-out");
-  surfaceBlurOut = document.getElementById("surface-blur-out");
-  patternImageOption = document.getElementById("pattern-image-option");
   languageSelect = document.getElementById("settings-language");
   timeZoneSelect = document.getElementById("settings-timezone");
   timeZoneHint = document.getElementById("settings-timezone-hint");
@@ -119,10 +93,6 @@ export function initSettings(handlers = {}) {
   // The sliders preview their value while they move and save it on release.
   bindSlider(bandOpacity, bandOpacityOut, "bandOpacity", "--today-opacity");
   bindSlider(bandFillOpacity, bandFillOpacityOut, "bandFillOpacity", "--band-opacity");
-  bindSlider(bgDim, bgDimOut, "backgroundDim", "--bg-dim");
-  bindSlider(bgBlur, bgBlurOut, "backgroundBlur", "--bg-blur", blurLength);
-  bindSlider(surfaceOpacity, surfaceOpacityOut, "surfaceOpacity", "--surface-opacity");
-  bindSlider(surfaceBlur, surfaceBlurOut, "surfaceBlur", "--surface-blur", blurLength);
   showBandInput.addEventListener("change", () => saveSetting({ showBand: showBandInput.checked }));
 
   alignInput.addEventListener("change", () => saveSetting({ alignWeeks: alignInput.checked }));
@@ -132,13 +102,6 @@ export function initSettings(handlers = {}) {
   for (const input of dayInputs) {
     input.addEventListener("change", () => saveSetting({ overviewDays: Number(input.value) }));
   }
-  bgFile.addEventListener("change", () => {
-    const file = bgFile.files?.[0];
-    // Reset, so selecting the same file again triggers a change.
-    bgFile.value = "";
-    if (file) uploadBackground(file);
-  });
-  bgRemove.addEventListener("click", removeBackground);
 
   languageSelect.addEventListener("change", async () => {
     // Reload the page to apply the new language, once the server has it.
@@ -201,7 +164,6 @@ function paint() {
     alignHint.textContent = t("The overview shows whole calendar weeks, including the remaining days of this week.");
   }
 
-  paintBackground();
   paintRegion();
   paintAccount();
   paintVersion();
@@ -423,28 +385,6 @@ async function saveSetting(patch) {
   }
 }
 
-/** Updates the background section: preview, buttons and sliders. */
-function paintBackground() {
-  const version = state.backgroundVersion;
-  const has = version !== "";
-
-  patternImageOption.disabled = !has;
-  bgRemove.hidden = !has;
-  bgKnobs.hidden = !has;
-  // The version in the URL bypasses the browser cache after an upload.
-  bgPreview.style.backgroundImage = has ? `url("/api/background?v=${version}")` : "";
-  bgPreview.classList.toggle("is-empty", !has);
-
-  bgDim.value = String(state.settings.backgroundDim);
-  bgBlur.value = String(state.settings.backgroundBlur);
-  surfaceOpacity.value = String(state.settings.surfaceOpacity);
-  surfaceBlur.value = String(state.settings.surfaceBlur);
-  showKnob(bgDimOut, bgDim.value, "%");
-  showKnob(bgBlurOut, bgBlur.value, "%");
-  showKnob(surfaceOpacityOut, surfaceOpacity.value, "%");
-  showKnob(surfaceBlurOut, surfaceBlur.value, "%");
-}
-
 function showKnob(out, value, unit) {
   out.textContent = `${value}${unit}`;
 }
@@ -452,55 +392,14 @@ function showKnob(out, value, unit) {
 /**
  * Wires a percent slider: while it moves, it shows its value in `out` and
  * previews it through the custom property `cssVar`; on release, it saves the
- * value as the setting `key`. `toCss` converts the percentage for the
- * property.
+ * value as the setting `key`.
  */
-function bindSlider(slider, out, key, cssVar, toCss = (percent) => `${percent}%`) {
+function bindSlider(slider, out, key, cssVar) {
   slider.addEventListener("input", () => {
     showKnob(out, slider.value, "%");
-    document.documentElement.style.setProperty(cssVar, toCss(slider.value));
+    document.documentElement.style.setProperty(cssVar, `${slider.value}%`);
   });
   slider.addEventListener("change", () => saveSetting({ [key]: Number(slider.value) }));
-}
-
-/**
- * Converts a blur percentage to a CSS length, using state.blurAtFull from the
- * server.
- */
-export function blurLength(percent) {
-  return `${(Number(percent) * state.blurAtFull) / 100}px`;
-}
-
-async function uploadBackground(file) {
-  // Check the size before uploading; the server checks everything else.
-  if (file.size > 12 * 1024 * 1024) {
-    report(t("The image may be at most 12 MB."));
-    return;
-  }
-  bgFile.disabled = true;
-  try {
-    const res = await api.uploadBackground(file);
-    replaceState({ settings: res.settings, backgroundVersion: res.version });
-    // The new version bypasses the cached image.
-    document.documentElement.style.setProperty(
-      "--pattern-image", `url("/api/background?v=${res.version}")`);
-    errorBox.hidden = true;
-  } catch (err) {
-    report(errorText(err));
-  } finally {
-    bgFile.disabled = false;
-  }
-}
-
-async function removeBackground() {
-  try {
-    const res = await api.deleteBackground();
-    replaceState({ settings: res.settings, backgroundVersion: "" });
-    document.documentElement.style.removeProperty("--pattern-image");
-    errorBox.hidden = true;
-  } catch (err) {
-    report(errorText(err));
-  }
 }
 
 /** Shows an error in the open settings page, since pages cover the toasts. */

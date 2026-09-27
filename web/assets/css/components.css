@@ -717,19 +717,6 @@ html[data-tight] .habit-tools .icon-button svg { width: .95rem; height: .95rem; 
   line-height: 1.25;
 }
 
-/* Over a background image, the scrolled header card uses the same translucent
-   surface as the habit cards. Its backdrop is a second instance of the fixed
-   body::before layer, masked to the strip, so it matches the page exactly.
-   Placed here to override the transparent header in base.css. */
-html[data-pattern="image"][data-scrolled="on"] .day-header::before {
-  background: var(--surface-veil);
-  backdrop-filter: blur(var(--surface-blur));
-}
-
-html[data-pattern="image"][data-scrolled="on"] .day-header-backdrop {
-  background: none;
-}
-
 /* Today is marked by a disc behind weekday and day. isolation keeps the disc
    (negative z-index) above the header background. */
 .grid-head.is-today {
@@ -738,7 +725,7 @@ html[data-pattern="image"][data-scrolled="on"] .day-header-backdrop {
   font-weight: var(--weight-bold);
   /* The resulting disc colour: the today colour at its opacity over the
      background. Used to pick the text colour. */
-  --today-disc: color-mix(in srgb, var(--today) var(--today-opacity), var(--today-under, var(--bg)));
+  --today-disc: color-mix(in srgb, var(--today) var(--today-opacity), var(--bg));
   /* White on dark discs, near-black on light ones (threshold: lightness 0.7). */
   color: oklch(from var(--today-disc) clamp(.2, calc((var(--ink-flip) - l) * 1000), 1) 0 0);
 }

@@ -46,16 +46,8 @@ type Settings struct {
 	// percent.
 	BandFillOpacity int `json:"bandFillOpacity" range:"0,100"`
 	// ShowBand shows the today band in the cards.
-	ShowBand bool `json:"showBand"`
-	// BackgroundDim and BackgroundBlur apply to the background image, in
-	// percent.
-	BackgroundDim  int `json:"backgroundDim" range:"0,100"`
-	BackgroundBlur int `json:"backgroundBlur" range:"0,100"`
-	// SurfaceOpacity and SurfaceBlur apply to surfaces over the background
-	// image, in percent.
-	SurfaceOpacity int    `json:"surfaceOpacity" range:"20,100"`
-	SurfaceBlur    int    `json:"surfaceBlur" range:"0,100"`
-	Language       string `json:"language"`
+	ShowBand bool   `json:"showBand"`
+	Language string `json:"language"`
 	// TimeZone is an IANA time zone name, or "" for the server's HABITS_TZ.
 	TimeZone string `json:"timeZone"`
 }
@@ -73,8 +65,8 @@ type Option struct {
 // Options lists the allowed values of the enumerated settings, keyed by their
 // JSON names, in the order the settings pages offer them. index.html renders
 // its choices from these lists. Theme "system" follows the device, Language
-// "system" the browser's Accept-Language header, Font "system" is the system
-// font and Pattern "image" the uploaded background image.
+// "system" the browser's Accept-Language header and Font "system" is the
+// system font.
 var Options = map[string][]Option{
 	"theme": {
 		{Value: "system", Label: "System", Icon: "display"},
@@ -87,9 +79,6 @@ var Options = map[string][]Option{
 		{Value: "roboto", Label: "Roboto"},
 		{Value: "geist", Label: "Geist"},
 		{Value: "opensans", Label: "Open Sans"},
-		{Value: "montserrat", Label: "Montserrat"},
-		{Value: "poppins", Label: "Poppins"},
-		{Value: "lato", Label: "Lato"},
 	},
 	"density": {
 		{Value: "compact", Label: "Compact"},
@@ -102,15 +91,10 @@ var Options = map[string][]Option{
 	},
 	"pattern": {
 		{Value: "none", Label: "Plain"},
+		{Value: "grain", Label: "Grain"},
 		{Value: "dots", Label: "Dots"},
 		{Value: "grid", Label: "Grid"},
-		{Value: "diagonal", Label: "Diagonal"},
-		{Value: "cross", Label: "Cross-hatch"},
 		{Value: "lines", Label: "Lines"},
-		{Value: "checks", Label: "Checks"},
-		{Value: "gradient", Label: "Gradient"},
-		{Value: "glow", Label: "Glow"},
-		{Value: "image", Label: "Own image"},
 	},
 	// Each language is named in its own language.
 	"language": {
@@ -131,10 +115,6 @@ const NeutralBand = "neutral"
 
 // MaxOverviewDays is the upper bound of OverviewDays.
 const MaxOverviewDays = 90
-
-// BackgroundBlurAtFull is the blur radius in pixels at 100 percent. The client
-// uses the same value.
-const BackgroundBlurAtFull = 40
 
 // checks are the rules that options and ranges cannot express, keyed by the
 // JSON name of their setting.
@@ -237,9 +217,6 @@ func DefaultSettings() Settings {
 		BandOpacity:     100,
 		BandFillOpacity: 30,
 		ShowBand:        true,
-		BackgroundDim:   55,
-		SurfaceOpacity:  88,
-		SurfaceBlur:     30,
 		Language:        "system",
 	}
 }

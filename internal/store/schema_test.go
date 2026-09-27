@@ -82,8 +82,9 @@ func TestLegacyConversionMatchesTheSchema(t *testing.T) {
 			t.Errorf("left over after the conversion: %s", name)
 		}
 	}
-	if v, _ := old.version(ctx); v != schemaVersion {
-		t.Errorf("version = %d, want %d", v, schemaVersion)
+	latest := schemaVersion + len(migrations)
+	if v, _ := old.version(ctx); v != latest {
+		t.Errorf("version = %d, want %d", v, latest)
 	}
 
 	// Every owner became a user; the rows came along, cleaned where needed.

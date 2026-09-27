@@ -93,12 +93,12 @@ func TestSecurityHeadersAreOnEveryResponse(t *testing.T) {
 func TestIndexCarriesTheStoredAppearance(t *testing.T) {
 	h := newTestServer(t)
 
-	if w := do(t, h, "PATCH", "/api/settings", `{"theme":"dark","font":"lato"}`, "application/json"); w.Code != http.StatusOK {
+	if w := do(t, h, "PATCH", "/api/settings", `{"theme":"dark","font":"geist"}`, "application/json"); w.Code != http.StatusOK {
 		t.Fatalf("writing settings: %d (%s)", w.Code, w.Body)
 	}
 	w := do(t, h, "GET", "/", "", "")
 	if body := w.Body.String(); !strings.Contains(body, `data-theme="dark"`) ||
-		!strings.Contains(body, `data-font="lato"`) {
+		!strings.Contains(body, `data-font="geist"`) {
 		t.Errorf("shell without the stored appearance: %s", body)
 	}
 	if cc := w.Header().Get("Cache-Control"); cc != "no-store" {

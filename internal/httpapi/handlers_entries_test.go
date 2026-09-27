@@ -15,7 +15,8 @@ func TestBadSettingsAnswer422(t *testing.T) {
 		`{"theme":"neon"}`,
 		`{"font":"comic-sans"}`,
 		`{"overviewDays":999}`,
-		`{"surfaceOpacity":0}`,
+		`{"bandOpacity":101}`,
+		`{"pattern":"image"}`,
 		`{"bandColor":"#123456"}`,
 		`{"bandColor":"purple"}`,
 	} {

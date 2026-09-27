@@ -64,25 +64,25 @@ func TestUpdateSettingsIsAtomic(t *testing.T) {
 		t.Fatalf("UpdateSettings: %v", err)
 	}
 	got, err := st.UpdateSettings(ctx, "alice", func(s *Settings) error {
-		s.Font = "lato"
+		s.Font = "roboto"
 		return nil
 	})
 	if err != nil {
 		t.Fatalf("UpdateSettings: %v", err)
 	}
-	if got.Theme != "dark" || got.Font != "lato" {
+	if got.Theme != "dark" || got.Font != "roboto" {
 		t.Errorf("one of the two changes was lost: %+v", got)
 	}
 
 	// A failing apply writes nothing.
 	boom := errors.New("nope")
 	if _, err := st.UpdateSettings(ctx, "alice", func(s *Settings) error {
-		s.Font = "poppins"
+		s.Font = "opensans"
 		return boom
 	}); !errors.Is(err, boom) {
 		t.Errorf("UpdateSettings swallowed the error: %v", err)
 	}
-	if after, _ := st.GetSettings(ctx, "alice"); after.Font != "lato" {
+	if after, _ := st.GetSettings(ctx, "alice"); after.Font != "roboto" {
 		t.Errorf("font = %q — an aborted update must write nothing", after.Font)
 	}
 }
@@ -143,8 +143,7 @@ func TestSettingsMigrationKeepsTheValues(t *testing.T) {
 	want := Settings{
 		Theme: "dark", OverviewDays: 21, ShowArchived: true, Font: "geist", Density: "compact",
 		ReorderMode: "buttons", Pattern: "dots", AlignWeeks: true, BandColor: "blue",
-		BandOpacity: 40, BandFillOpacity: 25, ShowBand: false, BackgroundDim: 60,
-		BackgroundBlur: 10, SurfaceOpacity: 70, SurfaceBlur: 20, Language: "de",
+		BandOpacity: 40, BandFillOpacity: 25, ShowBand: false, Language: "de",
 		TimeZone: "Europe/Berlin",
 	}
 	if got != want {
@@ -152,14 +151,14 @@ func TestSettingsMigrationKeepsTheValues(t *testing.T) {
 	}
 }
 
-// A setting missing from the stored document gets its default, and an invalid
-// one is reset to it.
+// A setting missing from the stored document gets its default, an invalid one
+// (such as a removed option) is reset to it, and a removed setting is ignored.
 func TestStoredSettingsFallBackToTheDefaults(t *testing.T) {
 	ctx := context.Background()
 	st := openTestStore(t)
 	if _, err := st.db.Exec(`INSERT INTO users (id, created_at) VALUES ('alice', '');
 		INSERT INTO user_settings (user_id, data, updated_at)
-		VALUES ('alice', '{"theme":"dark","font":"comic-sans","bandOpacity":500}', '')`); err != nil {
+		VALUES ('alice', '{"theme":"dark","font":"lato","pattern":"image","bandOpacity":500,"surfaceBlur":30}', '')`); err != nil {
 		t.Fatal(err)
 	}
 	got, err := st.GetSettings(ctx, "alice")

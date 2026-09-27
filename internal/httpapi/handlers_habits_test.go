@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/JulWit/habits/internal/domain"
-	"github.com/JulWit/habits/internal/store"
 )
 
 // The state response contains the kind descriptors.
@@ -27,7 +26,6 @@ func TestStateCarriesTheKindDescriptors(t *testing.T) {
 			Max   int    `json:"max"`
 			Unit  string `json:"unit"`
 		} `json:"kinds"`
-		BlurAtFull int `json:"blurAtFull"`
 	}
 	if err := json.Unmarshal(w.Body.Bytes(), &got); err != nil {
 		t.Fatalf("reading response: %v", err)
@@ -42,9 +40,6 @@ func TestStateCarriesTheKindDescriptors(t *testing.T) {
 	}
 	if got.Kinds["time"].Unit != "min" {
 		t.Errorf("time.unit = %q, want min", got.Kinds["time"].Unit)
-	}
-	if got.BlurAtFull != store.BackgroundBlurAtFull {
-		t.Errorf("blurAtFull = %d, want %d", got.BlurAtFull, store.BackgroundBlurAtFull)
 	}
 	if len(got.Colors) == 0 {
 		t.Error("colors is empty")

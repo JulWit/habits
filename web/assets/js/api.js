@@ -16,20 +16,15 @@ export class ApiError extends Error {
   }
 }
 
-/**
- * Sends a request. With `type`, `body` is sent as is with that content type;
- * otherwise it is sent as JSON.
- */
-async function request(method, path, body, type) {
+/** Sends a request, with `body` as JSON. */
+async function request(method, path, body) {
   let res;
   try {
     res = await fetch(path, {
       method,
       credentials: "same-origin",
-      headers: body === undefined
-        ? undefined
-        : { "Content-Type": type || "application/json" },
-      body: body === undefined ? undefined : (type ? body : JSON.stringify(body)),
+      headers: body === undefined ? undefined : { "Content-Type": "application/json" },
+      body: body === undefined ? undefined : JSON.stringify(body),
     });
   } catch (cause) {
     throw new ApiError("No connection to the server", 0, { cause, code: "offline" });
@@ -82,10 +77,6 @@ export const api = {
       expect === undefined ? { value } : { value, expect },
     ),
   saveSettings: (settings) => request("PATCH", "/api/settings", settings),
-
-  // Sends the file as the request body.
-  uploadBackground: (file) => request("PUT", "/api/background", file, file.type),
-  deleteBackground: () => request("DELETE", "/api/background"),
 
   createCategory: (input) => request("POST", "/api/categories", input),
   updateCategory: (id, input) => request("PATCH", `/api/categories/${encodeURIComponent(id)}`, input),

@@ -11,9 +11,6 @@
 
   --bg: light-dark(#e6e8ec, #0f0f0f);
   --surface: light-dark(#ffffff, #191919);
-  /* Title bar pane, used over a background image only (see .topbar). Not
-     derived from --bg, as nested light-dark() does not resolve. */
-  --topbar-base: light-dark(#e6e8ec, #0f0f0f);
   --surface-2: light-dark(#eceef2, #252525);
   --border: light-dark(#dcdfe6, #323232);
   --border-strong: light-dark(#c3c8d2, #454545);
@@ -156,9 +153,6 @@ html[data-font="inter"] { --font: "Inter", var(--font-system); }
 html[data-font="roboto"] { --font: "Roboto", var(--font-system); }
 html[data-font="geist"] { --font: "Geist", var(--font-system); }
 html[data-font="opensans"] { --font: "Open Sans", var(--font-system); }
-html[data-font="montserrat"] { --font: "Montserrat", var(--font-system); }
-html[data-font="poppins"] { --font: "Poppins", var(--font-system); }
-html[data-font="lato"] { --font: "Lato", var(--font-system); }
 
 /* ---------- density ----------
 
@@ -272,9 +266,29 @@ html[data-band="yellow"] { --primary-text: #1b1d21; }
    Faint gradient patterns, mixed from the text colour so they follow the
    theme. */
 :root {
-  --pattern-ink: color-mix(in srgb, var(--text) 11%, transparent);
+  --pattern-ink: color-mix(in srgb, var(--text) 7%, transparent);
   --pattern-image: none;
   --pattern-size: auto;
+}
+
+/* A rough texture, as on sandpaper, in the plain background colour. The noise
+   is opaque grey around 50% (the turbulence averages about 73%, hence the
+   offset of -.23) and is blended with the background colour by
+   overlay: mid grey leaves it unchanged, lighter and darker grains lighten and
+   darken it in proportion. The page thus stays as dark (or light) as plain,
+   and the grain follows the theme although an SVG cannot use its colours. */
+html[data-pattern="grain"] {
+  --pattern-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='1 0 0 0 -.23 1 0 0 0 -.23 1 0 0 0 -.23 0 0 0 0 1'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  --pattern-size: 180px 180px;
+}
+
+/* Every layer that paints the pattern (see body::before, the sticky bars and
+   the page backdrop) blends it with the background colour. */
+html[data-pattern="grain"] body::before,
+html[data-pattern="grain"] :is(.topbar, .app-bar, .page-head, .day-header, .day-header-backdrop),
+html[data-pattern="grain"] .dialog.page::backdrop {
+  background-color: var(--bg);
+  background-blend-mode: overlay;
 }
 
 html[data-pattern="dots"] {
@@ -289,80 +303,14 @@ html[data-pattern="grid"] {
   --pattern-size: 26px 26px;
 }
 
-html[data-pattern="diagonal"] {
-  --pattern-image:
-    repeating-linear-gradient(45deg, var(--pattern-ink) 0 1px, transparent 1px 11px);
-}
-
-html[data-pattern="cross"] {
-  --pattern-image:
-    repeating-linear-gradient(45deg, var(--pattern-ink) 0 1px, transparent 1px 14px),
-    repeating-linear-gradient(-45deg, var(--pattern-ink) 0 1px, transparent 1px 14px);
-}
-
 /* Ruled lines, as on writing paper. */
 html[data-pattern="lines"] {
   --pattern-image: linear-gradient(var(--pattern-ink) 1px, transparent 1px);
   --pattern-size: 100% 28px;
 }
 
-/* A checkerboard, fainter than the lines, as its squares are filled. */
-html[data-pattern="checks"] {
-  --pattern-image: conic-gradient(var(--pattern-ink-soft) 25%, transparent 0 50%,
-    var(--pattern-ink-soft) 0 75%, transparent 0);
-  --pattern-size: 28px 28px;
-}
-
-/* The two colour washes, tinted with the accent colour (grey if neutral).
-   They span the viewport, as every pattern layer is fixed to it. */
-:root {
-  --pattern-ink-soft: color-mix(in srgb, var(--text) 5%, transparent);
-  --pattern-tint: var(--band-ink, var(--text));
-}
-
-/* A diagonal wash from the top left corner. */
-html[data-pattern="gradient"] {
-  --pattern-image: linear-gradient(155deg,
-    color-mix(in srgb, var(--pattern-tint) 24%, transparent),
-    color-mix(in srgb, var(--pattern-tint) 6%, transparent) 55%,
-    transparent 85%);
-}
-
-/* Soft light from two opposite corners. */
-html[data-pattern="glow"] {
-  --pattern-image:
-    radial-gradient(70% 55% at 0% 0%,
-      color-mix(in srgb, var(--pattern-tint) 30%, transparent), transparent 70%),
-    radial-gradient(60% 50% at 100% 100%,
-      color-mix(in srgb, var(--pattern-tint) 20%, transparent), transparent 70%);
-}
-
-/* ---------- the uploaded background ----------
-
-   Background image with a dark veil and a blur. The script appends the version
-   to the URL after an upload to bypass the cache. */
-html[data-pattern="image"] {
-  --pattern-image: url("/api/background");
-  --pattern-size: cover;
-}
-
-:root {
-  /* Set by the server and the script. */
-  --bg-dim: 55%;
-  --bg-blur: 0px;
-  /* Black in both themes, so dimming always darkens. */
-  --bg-veil: rgb(0 0 0 / var(--bg-dim));
-  /* Opacity and blur of surfaces over the image; set by the server and the
-     script. */
-  --surface-opacity: 88%;
-  --surface-blur: 12px;
-  --surface-veil: color-mix(in srgb, var(--surface) var(--surface-opacity), transparent);
-}
-
-/* Fixed background layer behind the content, so the pattern does not scroll.
-   The day header uses a second instance (see .day-header-backdrop). */
-body::before,
-html[data-pattern="image"][data-scrolled="on"] .day-header-backdrop::before {
+/* Fixed background layer behind the content, so the pattern does not scroll. */
+body::before {
   content: "";
   position: fixed;
   inset: 0;
@@ -370,67 +318,6 @@ html[data-pattern="image"][data-scrolled="on"] .day-header-backdrop::before {
   pointer-events: none;
   background-image: var(--pattern-image);
   background-size: var(--pattern-size);
-}
-
-/* Background image with veil. The veil is a second background layer, so it is
-   blurred together with the image. The layer extends beyond the viewport by
-   twice the blur radius, so the edges do not fade. */
-html[data-pattern="image"] body::before,
-html[data-pattern="image"][data-scrolled="on"] .day-header-backdrop::before,
-html[data-pattern="image"] .dialog.page::backdrop {
-  inset: calc(-2 * var(--bg-blur));
-  background-image: linear-gradient(var(--bg-veil), var(--bg-veil)), var(--pattern-image);
-  background-size: auto, cover;
-  background-position: center, center;
-  background-repeat: no-repeat, no-repeat;
-  filter: blur(var(--bg-blur));
-}
-
-/* ---------- surfaces over a picture ----------
-
-   Surfaces over a background image are translucent and blur what is behind
-   them. The title bars (app, habit and category views, pages) get a pane. */
-html[data-pattern="image"] {
-  --topbar-bg: color-mix(in srgb, var(--topbar-base) var(--surface-opacity), transparent);
-}
-
-html[data-pattern="image"] :is(.topbar, .app-bar, .page-head) {
-  background: var(--topbar-bg);
-  backdrop-filter: blur(var(--surface-blur));
-}
-
-html[data-pattern="image"] .block::after,
-html[data-pattern="image"] :is(.day-summary, .panel, .stat, .page-body, .menu, .account) {
-  background: var(--surface-veil);
-  backdrop-filter: blur(var(--surface-blur));
-}
-
-/* The ring's inner cutout must be translucent like the card. */
-html[data-pattern="image"] .mark::after {
-  background: var(--surface-veil);
-}
-
-/* Over a background image the day header is transparent and only gets a pane
-   while the page is scrolled (set by the script). Its text is mixed towards
-   white by the veil strength, to stay readable on the darkened image. When
-   scrolled, the header uses the theme colours again. */
-html[data-pattern="image"] .day-header {
-  background-image: none;
-  background-color: transparent;
-  --header-ink: var(--text);
-}
-
-html[data-pattern="image"]:not([data-scrolled="on"]) .day-header {
-  --header-ink: color-mix(in srgb, #fff min(100%, calc(var(--bg-dim) * 1.6)), var(--text));
-  /* Estimated background of the today disc, for its text colour. */
-  --today-under: color-mix(in srgb, #000 min(100%, calc(var(--bg-dim) * 1.6)), var(--bg));
-}
-
-/* Dates, months and the paging arrows; today keeps its own text colour. */
-html[data-pattern="image"] .grid-head:not(.is-today),
-html[data-pattern="image"] .month-label,
-html[data-pattern="image"] .day-nav .icon-button {
-  color: var(--header-ink);
 }
 
 * { box-sizing: border-box; }

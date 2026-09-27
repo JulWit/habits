@@ -13,7 +13,6 @@ import (
 	"net/http"
 	"path"
 	"runtime/debug"
-	"strconv"
 	"strings"
 	"time"
 
@@ -74,9 +73,6 @@ func New(cfg config.Config, st *store.Store, log *slog.Logger, webFS fs.FS) (htt
 	mux.HandleFunc("POST /api/categories/{id}/restore", s.handleRestoreCategory)
 	mux.HandleFunc("GET /api/settings", s.handleGetSettings)
 	mux.HandleFunc("PATCH /api/settings", s.handleUpdateSettings)
-	mux.HandleFunc("GET /api/background", s.handleGetBackground)
-	mux.HandleFunc("PUT /api/background", s.handlePutBackground)
-	mux.HandleFunc("DELETE /api/background", s.handleDeleteBackground)
 	mux.HandleFunc("/api/", notFoundJSON)
 
 	mux.HandleFunc("GET /{$}", s.handleIndex)
@@ -132,17 +128,12 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	data := struct {
 		store.Settings
 		Lang string
-		// Blur settings are converted from percent to pixels.
-		BackgroundBlurPx string
-		SurfaceBlurPx    string
 		// Options are the choices of the enumerated settings.
 		Options map[string][]store.Option
 	}{
-		Settings:         settings,
-		Lang:             resolveLanguage(settings.Language, r.Header.Get("Accept-Language")),
-		BackgroundBlurPx: blurPixels(settings.BackgroundBlur),
-		SurfaceBlurPx:    blurPixels(settings.SurfaceBlur),
-		Options:          store.Options,
+		Settings: settings,
+		Lang:     resolveLanguage(settings.Language, r.Header.Get("Accept-Language")),
+		Options:  store.Options,
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -150,11 +141,6 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	if err := s.shell.Execute(w, data); err != nil {
 		s.log.Error("rendering index failed", "error", err)
 	}
-}
-
-// blurPixels converts a blur setting from percent to a CSS length in pixels.
-func blurPixels(percent int) string {
-	return strconv.FormatFloat(float64(percent)*store.BackgroundBlurAtFull/100, 'f', -1, 64)
 }
 
 // location returns the user's time zone, or the server's if the user has not

@@ -156,25 +156,10 @@ const de = {
   "Band opacity": "Deckkraft des Bands",
   "Background pattern": "Hintergrundmuster",
   "Plain": "Schlicht",
+  "Grain": "Körnung",
   "Dots": "Punkte",
   "Grid": "Raster",
-  "Diagonal": "Diagonal",
-  "Cross-hatch": "Kreuzschraffur",
   "Lines": "Linien",
-  "Checks": "Karos",
-  "Gradient": "Verlauf",
-  "Glow": "Leuchten",
-  "Own image": "Eigenes Bild",
-  "Background image": "Hintergrundbild",
-  "Choose image": "Bild wählen",
-  "Remove": "Entfernen",
-  "JPEG or PNG, at most 12 MB. The image is stored unchanged.":
-    "JPEG oder PNG, höchstens 12 MB. Das Bild wird unverändert gespeichert.",
-  "The image may be at most 12 MB.": "Das Bild darf höchstens 12 MB groß sein.",
-  "Image": "Bild",
-  "Dim": "Abdunkeln",
-  "Blur": "Weichzeichnen",
-  "Surfaces": "Flächen",
   "Reordering": "Anordnen",
   "Arrange": "Anordnen",
   "Shows the handles for moving habits and categories. Applies until the page is next loaded.":
@@ -463,16 +448,6 @@ const deErrors = {
   overview_days_range: "Die Anzahl der Tage muss 0 (automatisch) oder zwischen 3 und {max} liegen.",
   band_color_invalid: "Die Akzentfarbe muss neutral oder eine der Farben der Gewohnheiten sein.",
   unknown_time_zone: "Unbekannte Zeitzone „{zone}“.",
-
-  // Background image.
-  background_missing: "Es ist kein Hintergrundbild gespeichert.",
-  image_unreadable: "Das Bild konnte nicht gelesen werden",
-  image_too_large: "Das Bild darf höchstens {max} MB groß sein.",
-  image_not_jpeg_png: "Die Datei ist kein JPEG- oder PNG-Bild.",
-  image_format: "Nur JPEG und PNG werden unterstützt, nicht {format}.",
-  image_empty: "Das Bild hat keine Fläche.",
-  image_too_wide: "Das Bild darf höchstens {max} Pixel pro Kante haben.",
-  image_too_many_pixels: "Das Bild hat zu viele Pixel (höchstens {max} Millionen).",
 };
 
 /**

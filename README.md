@@ -163,7 +163,7 @@ HABITS_DB=/data/habits.db
 | Clear a value | Long press or right-click, then "Delete" or 0 |
 | Undo / redo | `Ctrl+Z` / `Ctrl+Shift+Z` or `Ctrl+Y`, or "Undo" in the toast |
 | Select a day | Click the day in the day header; click today to go back |
-| Back to today | Button next to the paging arrows (on phones: the floating button at the bottom) |
+| Back to today | Floating button at the bottom of the screen |
 | Show only open habits | Filter in the header |
 | New habit | `N` |
 | Search habits and categories | Magnifier in the header, `/` or `Ctrl+K` |

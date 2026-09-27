@@ -22,8 +22,7 @@ let board;
 let emptyState;
 let noMatch;
 let actions;
-/** Floating "back to today" button, shown on narrow screens instead of the
- *  one in the day header (see forms.css). */
+/** Floating "back to today" button at the bottom centre of the screen. */
 let todayPill;
 
 /** Reports whether reordering uses drag and drop (otherwise arrow buttons). */
@@ -491,11 +490,8 @@ function dayNav() {
   // Disabled rather than hidden at the limit.
   newer.disabled = offset <= -MAX_AHEAD_DAYS;
   older.disabled = offset >= maxBackDays();
+  // Back to today is the floating button (todayPill).
   nav.append(older, newer);
-
-  if (offset !== 0 || selectedDay !== null) {
-    nav.append(toolButton("page-today", icons.toToday, t("Back to today")));
-  }
   return nav;
 }
 
@@ -1082,9 +1078,6 @@ function onBoardClick(event) {
       break;
     case "page-newer":
       showWindow(offset - pageStep(renderedDays));
-      break;
-    case "page-today":
-      backToToday();
       break;
     case "select-day":
       selectDay(el.dataset.date);

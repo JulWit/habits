@@ -665,17 +665,23 @@ html[data-scrolled="on"] .day-header-backdrop {
   align-items: center;
   gap: calc(.15 * var(--space));
   /* Align the arrows with the text of the dates. */
-  padding: 0 0 calc(.15 * var(--space)) calc(.3 * var(--space));
+  padding-bottom: calc(.15 * var(--space));
+  /* The left button starts just inside the left edge of the cards, past the
+     header's padding and border. */
+  margin-left: calc(2px - var(--block-pad-x) - 1px);
 }
 
 .day-nav .icon-button {
-  width: 2.15rem;
-  height: 2.15rem;
+  width: 1.8rem;
+  height: 1.8rem;
+  /* No padding, which would squeeze the arrow in the small button. */
+  padding: 0;
   /* Same text colour as the dates; hover is shown by the button fill. */
   color: var(--text);
 }
 
-.day-nav .icon-button svg { width: 1.3rem; height: 1.3rem; }
+/* The same arrow size as on touch screens, in a compact button. */
+.day-nav .icon-button svg { width: 1.2rem; height: 1.2rem; }
 
 /* ---------- a tight board ----------
 
@@ -1388,8 +1394,8 @@ html[data-pattern="image"] .app-bar {
 
 /* ---------- back to today ----------
 
-   Floating button at the bottom of the screen, only on narrow screens (see
-   forms.css); wider screens use the button in the day header. */
+   Floating button at the bottom centre of the screen, shown while the board
+   is paged away from today or another day is active. */
 .today-pill {
   display: none;
   position: fixed;
@@ -1404,8 +1410,16 @@ html[data-pattern="image"] .app-bar {
   box-shadow: 0 4px 16px rgb(0 0 0 / .25);
 }
 
+.today-pill:not([hidden]) { display: inline-flex; }
 .today-pill svg { width: 1.15rem; height: 1.15rem; }
 .today-pill:active { transform: translateX(-50%) translateY(1px); }
+
+/* Room below the last row, so it can be scrolled clear of the button. */
+#view-overview:has(.today-pill:not([hidden])) { padding-bottom: 5rem; }
+/* Toasts appear above the floating button. */
+#view-overview:not([hidden]):has(.today-pill:not([hidden])) ~ .toasts {
+  bottom: calc(4.75rem + env(safe-area-inset-bottom, 0px));
+}
 
 /* ---------- toasts ---------- */
 

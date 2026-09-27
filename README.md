@@ -162,12 +162,23 @@ HABITS_DB=/data/habits.db
 | Set an exact value | Long press or right-click |
 | Clear a value | Long press or right-click, then "Delete" or 0 |
 | Undo / redo | `Ctrl+Z` / `Ctrl+Shift+Z` or `Ctrl+Y`, or "Undo" in the toast |
+| Select a day | Click the day in the day header; click today to go back |
+| Back to today | Button next to the paging arrows (on phones: the floating button at the bottom) |
+| Show only open habits | Filter in the header |
 | New habit | `N` |
 | Search habits and categories | Magnifier in the header, `/` or `Ctrl+K` |
 | Settings | Gear in the header |
 | Assign or create a category | "Category" field in the habit editor |
 | Edit or delete a category | Click the category heading, then "Edit" or "Delete" |
 | Close the detail view | `Esc` |
+
+**Active day**: The board has one active day, today by default. The day
+marker in the header, the band in the cards, the day summary, the categories'
+progress bars and the "only open" filter all refer to it. The filter shows the
+habits due on the active day that are not yet complete. While another day is
+active, today's date is underlined in the header. The selection is not saved;
+it resets to today on reload and with "Back to today". Tapping a cell still
+writes to that cell's day, whichever day is active.
 
 Deleted habits and categories can be restored for 30 days. After that, they are
 removed permanently on the next start.
@@ -279,7 +290,7 @@ web/                        Frontend (ES modules, no build step)
   assets/js/api.js            API client
   assets/js/actions.js        All data changes with their undo steps
   assets/js/undo.js           Undo/redo and toasts
-  assets/js/overview.js       Board with category blocks and day header
+  assets/js/overview.js       Board with category blocks, day header and active day
   assets/js/cells.js          Habit row and day cell
   assets/js/habit.js          Schedule, value and streak helpers
   assets/js/detail.js         Habit detail view
@@ -351,10 +362,10 @@ Settings are stored per user on the server and saved immediately.
 | `showArchived` | bool | Show archived habits |
 | `reorderMode` | `drag`, `buttons` | Reorder by drag and drop or with arrow buttons |
 | `pattern` | `none`, `dots`, `grid`, `diagonal`, `cross`, `lines`, `checks`, `gradient`, `glow`, `image` | Page background; `image` is the uploaded image |
-| `bandColor` | `neutral` or a palette colour | Colour of the today highlight |
-| `bandOpacity` | 0–100 | Opacity of the today highlight in the header |
-| `bandFillOpacity` | 0–100 | Opacity of the today band in the cards |
-| `showBand` | bool | Show the today band in the cards |
+| `bandColor` | `neutral` or a palette colour | Colour of the day marker and band (on the active day) |
+| `bandOpacity` | 0–100 | Opacity of the day marker in the header |
+| `bandFillOpacity` | 0–100 | Opacity of the band in the cards |
+| `showBand` | bool | Show the band in the cards |
 | `backgroundDim` | 0–100 | Dimming of the background image |
 | `backgroundBlur` | 0–100 | Blur of the background image |
 | `surfaceOpacity` | 20–100 | Opacity of the cards over the image |

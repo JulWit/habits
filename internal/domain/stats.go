@@ -32,9 +32,9 @@ func ComputeStats(h Habit, entries map[Date]int, today Date, windowDays int) Sta
 	return dailyStats(h, entries, today, windowDays)
 }
 
-// historyStart returns the creation day of the habit, or the earliest entry if
-// that is earlier.
-func historyStart(h Habit, entries map[Date]int) Date {
+// HistoryStart returns the first day of the habit's history: its creation day,
+// or its earliest entry if that is earlier.
+func HistoryStart(h Habit, entries map[Date]int) Date {
 	start := DateFromTime(h.CreatedAt)
 	for d := range entries {
 		if start.IsZero() || d.Before(start) {
@@ -59,7 +59,7 @@ func totalValue(entries map[Date]int, today Date) int {
 // dailyStats computes the statistics of a habit with fixed due days.
 func dailyStats(h Habit, entries map[Date]int, today Date, windowDays int) Stats {
 	st := Stats{StreakUnit: "days", Total: totalValue(entries, today)}
-	start := historyStart(h, entries)
+	start := HistoryStart(h, entries)
 	if start.IsZero() || start.After(today) {
 		return st
 	}
@@ -107,7 +107,7 @@ func dailyStats(h Habit, entries map[Date]int, today Date, windowDays int) Stats
 // rounded up to whole weeks.
 func weeklyStats(h Habit, entries map[Date]int, today Date, windowDays int) Stats {
 	st := Stats{StreakUnit: "weeks", Total: totalValue(entries, today)}
-	start := historyStart(h, entries)
+	start := HistoryStart(h, entries)
 	if start.IsZero() || start.After(today) {
 		return st
 	}

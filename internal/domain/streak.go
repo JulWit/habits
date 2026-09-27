@@ -18,7 +18,7 @@ func StreakRuns(h Habit, entries map[Date]int, today Date) []StreakRun {
 
 // dailyRuns returns the runs of a habit with fixed due days.
 func dailyRuns(h Habit, entries map[Date]int, today Date) []StreakRun {
-	start := historyStart(h, entries)
+	start := HistoryStart(h, entries)
 	if start.IsZero() || start.After(today) {
 		return nil
 	}
@@ -55,7 +55,7 @@ func dailyRuns(h Habit, entries map[Date]int, today Date) []StreakRun {
 // weeklyRuns returns the runs of a times-per-week habit, based on completed
 // weeks but expressed in days.
 func weeklyRuns(h Habit, entries map[Date]int, today Date) []StreakRun {
-	start := historyStart(h, entries)
+	start := HistoryStart(h, entries)
 	if start.IsZero() || start.After(today) {
 		return nil
 	}

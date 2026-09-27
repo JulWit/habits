@@ -21,6 +21,11 @@ type habitView struct {
 	// Schedules are all versions of target and frequency, oldest first; the last
 	// one is the current TargetValue and Frequency.
 	Schedules []domain.Schedule `json:"schedules"`
+	// Due has one character per day from DueFrom on: '1' if the habit is due
+	// on that day, '0' if not. The client shows the schedule from it and does
+	// not evaluate the frequency rules itself.
+	DueFrom domain.Date `json:"dueFrom"`
+	Due     string      `json:"due"`
 }
 
 // stateResponse is the response of GET /api/state.
@@ -148,6 +153,14 @@ func (s *Server) viewFor(h domain.Habit, all store.EntryMap, today, from domain.
 			windowed[d.String()] = v
 		}
 	}
+	// The due days cover the sent entries up to the entry horizon. A full view
+	// covers the whole history and at least this year and the default window.
+	dueFrom := from
+	if dueFrom.IsZero() {
+		dueFrom = domain.HistoryStart(h, all).
+			Min(domain.Date{Year: today.Year, Month: time.January, Day: 1}).
+			Min(today.AddDays(-(entryWindowDays - 1)))
+	}
 	runs := domain.StreakRuns(h, all, today)
 	visible := make([]domain.StreakRun, 0, len(runs))
 	for _, run := range runs {
@@ -161,6 +174,8 @@ func (s *Server) viewFor(h domain.Habit, all store.EntryMap, today, from domain.
 		Entries:    windowed,
 		StreakRuns: visible,
 		Schedules:  h.Schedules(),
+		DueFrom:    dueFrom,
+		Due:        domain.DueDays(h, dueFrom, today.AddDays(EntryHorizonDays)),
 	}
 }
 

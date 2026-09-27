@@ -4,11 +4,24 @@
 import { state } from "./state.js";
 import { dayCell, habitLabel, dayEntry } from "./cells.js";
 import { paintIcons } from "./icons.js";
-import { addDays } from "./dates.js";
+import { addDays, daysBetween, weekdayIndex } from "./dates.js";
 import { STREAK_LEVELS } from "./habit.js";
 
 /** Returns the date `back` days before today. */
 const day = (back) => addDays(state.today, -back);
+
+/**
+ * Returns the due days of a sample habit from 400 days ago to tomorrow, in the
+ * form the server sends them: `isDue` decides each day.
+ */
+function dueDays(isDue = () => true) {
+  const from = day(400);
+  let due = "";
+  for (let iso = from; iso <= addDays(state.today, 1); iso = addDays(iso, 1)) {
+    due += isDue(iso) ? "1" : "0";
+  }
+  return { dueFrom: from, due };
+}
 
 /** Returns sample habits, one per kind and state. */
 function samples() {
@@ -18,6 +31,7 @@ function samples() {
   });
   const base = {
     unit: "", archivedAt: null, categoryId: "",
+    ...dueDays(),
     stats: { currentStreak: 0, streakUnit: "days", completionRate: 0, longestStreak: 0, total: 0 },
   };
   return {
@@ -41,12 +55,14 @@ function samples() {
     distance: {
       ...base, id: "sg-distance", name: "Running", color: "#ea580c", kind: "distance",
       targetValue: 5000, frequency: freq({ kind: "custom_interval", intervalDays: 3, anchorDate: day(0) }),
+      ...dueDays((iso) => { const n = daysBetween(day(0), iso); return n >= 0 && n % 3 === 0; }),
       entries: { [day(0)]: 5200, [day(1)]: 2400, [day(2)]: 5000 },
     },
     // Scheduled on Mondays only.
     sparse: {
       ...base, id: "sg-sparse", name: "Laundry", color: "#64748b", kind: "check",
       targetValue: 1, frequency: freq({ kind: "weekdays", weekdays: 1 }), entries: {},
+      ...dueDays((iso) => weekdayIndex(iso) === 0),
     },
     archived: {
       ...base, id: "sg-archived", name: "Old habit", color: "#db2777", kind: "check",

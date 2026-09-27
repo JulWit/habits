@@ -283,8 +283,14 @@ need an entry in `i18n.js`.
 back.
 
 Every habit carries `schedules` (`[{from, targetValue, frequency}]`, oldest
-first); `targetValue` and `frequency` are the current ones. The client uses
-them to judge each day by the schedule that applied on it.
+first); `targetValue` and `frequency` are the current ones. The client takes
+each day's target from them.
+
+The frequency rules exist only on the server (`domain.Schedule.IsScheduled`).
+Each habit carries its due days as `due`, one character per day from `dueFrom`
+(`1` due, `0` not), up to one year ahead. The client reads them in
+`isScheduled` in `habit.js` and never evaluates a frequency itself, so a new
+frequency rule needs no client change beyond the editor.
 
 ## Structure
 
@@ -407,8 +413,6 @@ board, the day a tap writes to and the open day for streaks.
 
 - The SQLite pool uses a single connection. If read throughput becomes an
   issue, add a separate read-only pool.
-- The scheduling logic exists in both `internal/domain/habit.go` and
-  `web/assets/js/habit.js`. Changes to frequency rules must be made in both.
 - The lists of fonts, densities and patterns exist in
   `internal/store/settings.go`, `web/assets/js/app.js` and `index.html`.
   Unknown values fall back to the default.

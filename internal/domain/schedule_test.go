@@ -183,3 +183,21 @@ func TestLaterScheduleAnchorsAtItsStart(t *testing.T) {
 		t.Errorf("anchor = %v, want %v", h.Frequency.AnchorDate, start)
 	}
 }
+
+// DueDays marks the due days by the schedule of each day.
+func TestDueDays(t *testing.T) {
+	h := dailyHabit()
+	prev := h.Current()
+	// Mondays only, from this Monday on.
+	h.Frequency = Frequency{Kind: FreqWeekdays, Weekdays: 1}
+	if err := h.Reschedule(prev, monday, false); err != nil {
+		t.Fatal(err)
+	}
+	// Saturday and Sunday before, then Monday to Wednesday.
+	if got := DueDays(h, monday.AddDays(-2), monday.AddDays(2)); got != "11100" {
+		t.Errorf("DueDays = %q, want 11100", got)
+	}
+	if got := DueDays(h, monday, monday.AddDays(-1)); got != "" {
+		t.Errorf("empty range: %q", got)
+	}
+}

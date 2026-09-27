@@ -1,8 +1,6 @@
 // Presentation helpers shared by the overview and the detail view.
 
-import {
-  weekdayIndex, daysBetween, addDays, startOfWeek, dayOfMonth, monthIndex, WEEKDAY_SHORT,
-} from "./dates.js";
+import { daysBetween, addDays, startOfWeek, WEEKDAY_SHORT } from "./dates.js";
 import { state } from "./state.js";
 import { t, locale } from "./i18n.js";
 
@@ -22,40 +20,15 @@ export function scheduleOn(habit, iso) {
 }
 
 /**
- * Reports whether the habit is due on `iso`, by the schedule of that day.
- * Mirrors domain.Schedule.IsScheduled on the server.
+ * Reports whether the habit is due on `iso`. The server computes the due days
+ * (`due`, one character per day from `dueFrom`), so the frequency rules exist
+ * only in domain.Schedule.IsScheduled. Days outside the sent range count as
+ * not due.
  */
 export function isScheduled(habit, iso) {
-  const f = scheduleOn(habit, iso).frequency;
-  switch (f.kind) {
-    case "daily":
-    case "times_per_week":
-      return true;
-    case "weekdays":
-      return (f.weekdays & (1 << weekdayIndex(iso))) !== 0 && inScheduledWeek(f, iso);
-    case "custom_interval": {
-      if (!f.intervalDays || !f.anchorDate) return false;
-      const diff = daysBetween(f.anchorDate, iso);
-      return diff >= 0 && diff % f.intervalDays === 0;
-    }
-    default:
-      return false;
-  }
-}
-
-/**
- * Reports whether `iso` lies in a week selected by the week interval or week
- * of month. Mirrors domain.Habit.inScheduledWeek.
- */
-function inScheduledWeek(f, iso) {
-  if (f.weekOfMonth === -1) return monthIndex(addDays(iso, 7)) !== monthIndex(iso);
-  if (f.weekOfMonth > 0) return Math.floor((dayOfMonth(iso) - 1) / 7) + 1 === f.weekOfMonth;
-  if (f.weekInterval > 1) {
-    if (!f.anchorDate || iso < f.anchorDate) return false;
-    const weeks = daysBetween(startOfWeek(f.anchorDate), startOfWeek(iso)) / 7;
-    return weeks % f.weekInterval === 0;
-  }
-  return true;
+  if (!habit.due || !habit.dueFrom) return false;
+  const i = daysBetween(habit.dueFrom, iso);
+  return i >= 0 && i < habit.due.length && habit.due[i] === "1";
 }
 
 /** Reports whether a value may be recorded on `iso`: only on due days. */

@@ -180,3 +180,34 @@ func TestSchedulesExcludeTargetAndFrequency(t *testing.T) {
 		t.Errorf("status %d, want 422 (%s)", w.Code, w.Body)
 	}
 }
+
+// Every habit carries its due days, computed by the server, up to a year
+// ahead.
+func TestStateCarriesTheDueDays(t *testing.T) {
+	h := newTestServer(t)
+	today := domain.Today(time.UTC)
+	todayOnly := 1 << ((int(today.Weekday()) + 6) % 7)
+	body := fmt.Sprintf(`{"name":"Laundry","kind":"check","frequency":{"kind":"weekdays","weekdays":%d}}`, todayOnly)
+	if w := do(t, h, "POST", "/api/habits", body, "application/json"); w.Code != http.StatusCreated {
+		t.Fatalf("create: %d (%s)", w.Code, w.Body)
+	}
+
+	w := do(t, h, "GET", "/api/state", "", "")
+	var got struct {
+		Habits []struct {
+			DueFrom domain.Date `json:"dueFrom"`
+			Due     string      `json:"due"`
+		} `json:"habits"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &got); err != nil || len(got.Habits) != 1 {
+		t.Fatalf("reading response: %v (%s)", err, w.Body)
+	}
+	v := got.Habits[0]
+	if want := today.AddDays(EntryHorizonDays).DaysSince(v.DueFrom) + 1; len(v.Due) != want {
+		t.Fatalf("%d due days, want %d", len(v.Due), want)
+	}
+	i := today.DaysSince(v.DueFrom)
+	if v.Due[i:i+8] != "10000001" {
+		t.Errorf("due from today = %q, want weekly", v.Due[i:i+8])
+	}
+}

@@ -320,7 +320,8 @@ html[data-scrolled="on"] .day-header-backdrop {
   gap: calc(.6 * var(--space));
   /* The right side is handled by a margin (see below), so the heading ends with
      the card surface. */
-  padding: calc(.4 * var(--space)) 0 calc(.5 * var(--space)) calc(.55 * var(--space));
+  /* The bottom leaves room between the link's hover fill and the separator. */
+  padding: calc(.4 * var(--space)) 0 calc(.7 * var(--space)) calc(.55 * var(--space));
   margin-right: var(--tools-inset);
   margin-bottom: var(--head-gap);
   /* Dotted separator below the heading. */

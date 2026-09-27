@@ -32,7 +32,7 @@ func dailyHabit() Habit {
 func fillWeekly(from, today Date, n int) map[Date]int {
 	entries := map[Date]int{}
 	for week := from.StartOfWeek(); !week.After(today); week = week.AddDays(7) {
-		for i := 0; i < n; i++ {
+		for i := range n {
 			if d := week.AddDays(i); !d.After(today) {
 				entries[d] = 1
 			}
@@ -99,7 +99,7 @@ func TestWeeklyRateCountsAMissedWeek(t *testing.T) {
 	entries := fillWeekly(friday.AddDays(-400), friday, 3)
 	// Wipe the week before last.
 	missed := friday.StartOfWeek().AddDays(-14)
-	for i := 0; i < 7; i++ {
+	for i := range 7 {
 		delete(entries, missed.AddDays(i))
 	}
 
@@ -128,7 +128,7 @@ func TestWeeklyStreakSurvivesAnOpenCurrentWeek(t *testing.T) {
 	h := weeklyHabit(3)
 	entries := fillWeekly(friday.AddDays(-400), friday, 3)
 	// Clear the current week.
-	for i := 0; i < 7; i++ {
+	for i := range 7 {
 		delete(entries, friday.StartOfWeek().AddDays(i))
 	}
 

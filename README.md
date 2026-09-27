@@ -331,6 +331,7 @@ web/                        Frontend (ES modules, no build step)
   assets/js/undo.js           Undo/redo and toasts
   assets/js/outbox.js         Offline: remembered state and waiting entry writes
   assets/js/overview.js       Board with category blocks, day header and active day
+  assets/js/summary.js        Day summary with progress ring and the orbs flying into it
   assets/js/cells.js          Habit row and day cell
   assets/js/habit.js          Schedule, value and streak helpers
   assets/js/detail.js         Habit detail view

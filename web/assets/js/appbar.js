@@ -15,9 +15,11 @@ import { t } from "./i18n.js";
  * @param {string|string[]} [bar.sub]  details shown after the title, e.g.
  *   frequency and target, each set off by a dot
  * @param {Node|null} [bar.badge]  shown before the title
- * @param {Array} bar.menu  the overflow menu's items, see overflowMenu
+ * @param {boolean} [bar.edit]  whether the bar has an edit button
+ * @param {Array} bar.menu  the overflow menu's items, see overflowMenu; an
+ *   empty list omits the menu
  */
-export function appBar({ title, sub = "", badge = null, menu }) {
+export function appBar({ title, sub = "", badge = null, edit = true, menu }) {
   const bar = document.createElement("header");
   bar.className = "app-bar";
   bar.innerHTML = `
@@ -30,7 +32,8 @@ export function appBar({ title, sub = "", badge = null, menu }) {
       <button class="icon-button" type="button" data-action="edit"></button>
     </div>`;
   labelled(bar.querySelector('[data-action="back"]'), icons.arrowLeft, t("Back"));
-  labelled(bar.querySelector('[data-action="edit"]'), icons.edit, t("Edit"));
+  if (edit) labelled(bar.querySelector('[data-action="edit"]'), icons.edit, t("Edit"));
+  else bar.querySelector('[data-action="edit"]').remove();
   bar.querySelector(".name").textContent = title;
   if (badge) bar.querySelector("h2").prepend(badge);
   // One element per detail, so the dots between them are drawn by the
@@ -47,7 +50,7 @@ export function appBar({ title, sub = "", badge = null, menu }) {
   } else {
     subLine.remove();
   }
-  bar.querySelector(".app-bar-actions").append(...overflowMenu(menu));
+  if (menu.length > 0) bar.querySelector(".app-bar-actions").append(...overflowMenu(menu));
   return bar;
 }
 

@@ -7,6 +7,7 @@ import { setChangeHandler, toast, errorText, undoLast, redoLast } from "./undo.j
 import { initOverview, render as renderOverview, currentDays } from "./overview.js";
 import { initDetail, renderDetail } from "./detail.js";
 import { initCategory, renderCategory } from "./category.js";
+import { initDays, renderDays } from "./days.js";
 import { initEditor } from "./editor.js";
 import { initCategoryPicker } from "./categorypicker.js";
 import { initCategoryEditor } from "./categoryeditor.js";
@@ -28,6 +29,7 @@ let editing = false;
 const overviewView = document.getElementById("view-overview");
 const detailView = document.getElementById("view-detail");
 const categoryView = document.getElementById("view-category");
+const daysView = document.getElementById("view-days");
 const styleguideView = document.getElementById("view-styleguide");
 
 const handlers = {
@@ -35,6 +37,8 @@ const handlers = {
   closeHabit: goHome,
   openCategory: (id) => openView(`#/category/${id}`),
   closeCategory: goHome,
+  openDays: () => openView("#/days"),
+  closeDays: goHome,
   createHabit: actions.createHabit,
   editHabit: actions.editHabit,
   deleteHabit: actions.deleteHabit,
@@ -103,6 +107,7 @@ async function main() {
   initSearch(handlers);
   initDetail(handlers);
   initCategory(handlers);
+  initDays(handlers);
   initEditMode();
   initScrollState();
   initServiceWorker();
@@ -284,12 +289,27 @@ function syncRoute() {
     overviewView.hidden = true;
     detailView.hidden = true;
     categoryView.hidden = true;
+    daysView.hidden = true;
     styleguideView.hidden = false;
     showStyleguide();
     return;
   }
   styleguideView.hidden = true;
   document.documentElement.classList.remove("route-styleguide");
+
+  // Day statistics.
+  if (location.hash === "#/days") {
+    document.documentElement.classList.add("route-detail");
+    overviewView.hidden = true;
+    detailView.hidden = true;
+    categoryView.hidden = true;
+    daysView.hidden = false;
+    renderDays();
+    // The statistics cover the whole year.
+    if (state.today) extendHistory(`${state.today.slice(0, 4)}-01-01`);
+    return;
+  }
+  daysView.hidden = true;
 
   // Category detail view.
   const categoryId = currentCategoryId();
@@ -419,7 +439,7 @@ function initShortcuts() {
     } else if (((key === "/" && !mod) || (mod && key === "k")) && !inField && !inDialog) {
       event.preventDefault();
       openSearch();
-    } else if (event.key === "Escape" && !inDialog && (currentHabitId() || currentCategoryId())) {
+    } else if (event.key === "Escape" && !inDialog && (currentHabitId() || currentCategoryId() || location.hash === "#/days")) {
       goHome();
     }
   });

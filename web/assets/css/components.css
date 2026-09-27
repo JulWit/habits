@@ -483,6 +483,17 @@ html[data-scrolled="on"] .day-header-backdrop {
   background: var(--surface);
 }
 
+/* Opens the day statistics. */
+.day-summary {
+  cursor: pointer;
+  transition: var(--fill-fade);
+}
+@media (hover: hover) {
+  .day-summary:hover { background: color-mix(in srgb, var(--surface) 80%, var(--surface-2)); }
+}
+/* Pressed, one step beyond hover, so a tap shows. */
+.day-summary:active { background: color-mix(in srgb, var(--surface) 55%, var(--surface-2)); }
+
 .day-summary-text {
   display: flex;
   flex-direction: column;
@@ -1329,6 +1340,17 @@ html.route-detail .view { padding-top: 0; }
 /* Days of the neighbouring years: keep their space, but hidden. */
 .heat.is-outside { visibility: hidden; }
 
+/* Day statistics: each day is shaded by its share of completed habits
+   (--rate, 0…1); nothing done stays at the empty square. Perfect days get the
+   full colour and a ring. */
+.days-heatmap .heat:not(.is-off, .is-future, .is-outside) {
+  background: color-mix(in srgb, var(--done) calc(var(--rate, 0) * 100%), var(--surface-2));
+}
+.days-heatmap .heat.is-perfect {
+  background: var(--done);
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--done) 60%, var(--text));
+}
+
 .heatmap-legend {
   display: flex;
   align-items: center;
@@ -1697,3 +1719,35 @@ html.route-detail .view { padding-top: 0; }
   border-radius: var(--radius-sm);
   box-shadow: var(--shadow-drag);
 }
+
+/* ---------- day statistics: bars per weekday and month ---------- */
+
+.day-bars { display: flex; flex-direction: column; gap: calc(.45 * var(--space)); }
+
+.day-bar {
+  display: grid;
+  grid-template-columns: 3rem 1fr 3.5rem;
+  align-items: center;
+  gap: calc(.6 * var(--space));
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.day-bar-label { color: var(--text-muted); }
+
+.day-bar-track {
+  height: .6rem;
+  border-radius: 999px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+
+.day-bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--done);
+}
+
+.day-bar-value { text-align: right; }
+.day-bar.is-empty .day-bar-value { color: var(--text-faint); }

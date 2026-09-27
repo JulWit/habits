@@ -40,7 +40,17 @@ export function daySummary(habits, day) {
   date.className = "day-summary-date";
   // The year only if it is not the current one.
   date.textContent = formatFull(day, yearOf(day) !== yearOf(state.today));
-  el.setAttribute("aria-label", date.textContent);
+  el.setAttribute("aria-label", `${date.textContent} — ${t("Show day statistics")}`);
+  // Opens the day statistics (overview.js handles the click).
+  el.dataset.role = "open-days";
+  el.setAttribute("role", "button");
+  el.tabIndex = 0;
+  el.title = t("Show day statistics");
+  el.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    event.preventDefault();
+    el.click();
+  });
 
   const count = document.createElement("p");
   count.className = "day-summary-count";

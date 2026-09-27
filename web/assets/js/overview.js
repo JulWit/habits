@@ -685,6 +685,9 @@ function onBoardClick(event) {
     case "open-category":
       actions.openCategory(categoryId);
       break;
+    case "open-days":
+      actions.openDays();
+      break;
     case "move-habit-up":
       actions.moveHabit(el.dataset.habit, -1);
       break;

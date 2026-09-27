@@ -1,8 +1,8 @@
 // Category detail view: its habits and its perfect days, i.e. days on which
 // every scheduled habit of the category was completed.
 
-import { addDays, formatDayMonth } from "./dates.js";
-import { t } from "./i18n.js";
+import { addDays, formatDayMonth, formatLong } from "./dates.js";
+import { t, userTimeZone } from "./i18n.js";
 import { state } from "./state.js";
 import * as H from "./habit.js";
 import { habitIconBadge, categoryIconBadge } from "./icons.js";
@@ -34,8 +34,9 @@ export function renderCategory(category) {
 
   const habits = habitsOf(category.id);
   root.replaceChildren(
-    header(category, habits),
+    header(category),
     stats(habits),
+    details(category),
     habitList(habits),
   );
 }
@@ -45,11 +46,13 @@ function habitsOf(id) {
   return state.habits.filter((h) => h.categoryId === id && !h.archivedAt);
 }
 
-/** The view's title bar: back, name and habit count, edit, and delete in the menu. */
-function header(category, habits) {
+/**
+ * The view's title bar: back, name, edit, and delete in the menu. The habit
+ * count is a stat tile; other details are in the details panel.
+ */
+function header(category) {
   return appBar({
     title: category.name,
-    sub: habits.length === 1 ? t("1 habit") : t("{n} habits", { n: habits.length }),
     badge: categoryIconBadge(category, "habit-icon"),
     menu: [{ action: "delete", label: t("Delete"), icon: "trash", danger: true }],
   });
@@ -117,6 +120,47 @@ function stats(habits) {
     row.append(tile);
   }
   return row;
+}
+
+/**
+ * Shows whether the category's progress is shown on the board and when it
+ * was created.
+ */
+function details(category) {
+  const panel = document.createElement("section");
+  panel.className = "panel details";
+
+  const title = document.createElement("h3");
+  title.textContent = t("Details");
+
+  const list = document.createElement("dl");
+  list.className = "activity-list";
+
+  list.append(detailItem(t("Progress"),
+    category.showProgress ? t("Shown on the board") : t("Not shown")));
+  if (category.createdAt) list.append(detailItem(t("Created"), formatLong(localISO(category.createdAt))));
+
+  panel.append(title, list);
+  return panel;
+}
+
+function detailItem(label, value) {
+  const item = document.createElement("div");
+  const dt = document.createElement("dt");
+  dt.textContent = label;
+  const dd = document.createElement("dd");
+  dd.textContent = value;
+  item.append(dt, dd);
+  return item;
+}
+
+/**
+ * Returns the ISO date of a timestamp in the user's time zone. en-CA formats
+ * dates as YYYY-MM-DD.
+ */
+function localISO(stamp) {
+  return new Date(stamp).toLocaleDateString("en-CA",
+    { year: "numeric", month: "2-digit", day: "2-digit", timeZone: userTimeZone() });
 }
 
 /** Returns "(2026)" for a full year, "(since 12 Mar)" otherwise. */

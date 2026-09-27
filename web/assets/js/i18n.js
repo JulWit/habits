@@ -71,6 +71,9 @@ const de = {
   "Frequency": "Häufigkeit",
   "Details": "Details",
   "Status": "Status",
+  "Shown on the board": "In der Übersicht angezeigt",
+  "Not shown": "Nicht angezeigt",
+  "Created": "Angelegt",
   "Daily": "Täglich",
   "Times per week": "Mal pro Woche",
   "Weekdays": "Wochentage",
@@ -208,8 +211,6 @@ const de = {
   "Show today's progress": "Heutigen Fortschritt zeigen",
   "The bar and the count beside the name on the board.":
     "Der Balken und die Anzahl neben dem Namen auf der Übersicht.",
-  "1 habit": "1 Gewohnheit",
-  "{n} habits": "{n} Gewohnheiten",
   "Habits": "Gewohnheiten",
   "Perfect days {since}": "Perfekte Tage {since}",
   "(since {date})": "(seit {date})",

@@ -343,8 +343,17 @@ needed for a release.
 ## Extending
 
 **New migration**: Append a string to `migrations` in
-`internal/store/store.go`. Never change released migrations; `PRAGMA
-user_version` stores the schema version.
+`internal/store/schema.go` and make the same change to `schema`, which
+creates new databases. `TestLegacyConversionMatchesTheSchema` compares a
+converted database with a new one. Never change released migrations; `PRAGMA
+user_version` stores the schema version (1000 for `schema`, one more per
+migration after it).
+
+**Schema**: The tables are `STRICT`, with `CHECK` constraints for kinds,
+frequencies, dates and values. Every user-owned row refers to `users` with `ON
+DELETE CASCADE`; a user is recorded on their first write. Databases from before
+the redesign (schema versions up to 37) run their remaining steps from
+`internal/store/legacy.go` and are then converted once on startup.
 
 **New habit field**:
 

@@ -56,6 +56,9 @@ func (s *Store) BackgroundVersion(ctx context.Context, userID string) (string, e
 // SaveBackground stores the user's background image, replacing any previous
 // one.
 func (s *Store) SaveBackground(ctx context.Context, userID string, bg Background) error {
+	if err := ensureUser(ctx, s.db, userID); err != nil {
+		return err
+	}
 	_, err := s.db.ExecContext(ctx, `
 		INSERT INTO backgrounds (user_id, mime, bytes, etag, updated_at)
 			VALUES (?,?,?,?,?)

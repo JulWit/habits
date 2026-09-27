@@ -122,6 +122,9 @@ func (s *Store) CreateHabit(ctx context.Context, userID string, h *domain.Habit)
 	}
 	h.Position = int(next.Int64) + 1
 
+	if err := ensureUser(ctx, tx, userID); err != nil {
+		return err
+	}
 	if err := s.requireOwnCategory(ctx, tx, userID, h.CategoryID); err != nil {
 		return err
 	}

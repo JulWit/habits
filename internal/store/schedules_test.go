@@ -94,7 +94,7 @@ func TestScheduleMigrationKeepsTheCurrentSchedule(t *testing.T) {
 // come before the first one containing marker, and returns it open.
 func openAtMigration(t *testing.T, path, marker string) *sql.DB {
 	t.Helper()
-	before := slices.IndexFunc(migrations, func(m string) bool { return strings.Contains(m, marker) })
+	before := slices.IndexFunc(legacyMigrations, func(m string) bool { return strings.Contains(m, marker) })
 	if before < 0 {
 		t.Fatalf("no migration contains %q", marker)
 	}
@@ -103,7 +103,7 @@ func openAtMigration(t *testing.T, path, marker string) *sql.DB {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { db.Close() })
-	for _, m := range migrations[:before] {
+	for _, m := range legacyMigrations[:before] {
 		if _, err := db.Exec(m); err != nil {
 			t.Fatalf("old migration: %v", err)
 		}

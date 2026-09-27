@@ -306,6 +306,9 @@ func (s *Store) saveSettings(ctx context.Context, q execer, userID string, in Se
 	if err := in.Validate(); err != nil {
 		return err
 	}
+	if err := ensureUser(ctx, q, userID); err != nil {
+		return err
+	}
 	data, err := json.Marshal(in)
 	if err != nil {
 		return fmt.Errorf("encoding settings: %w", err)

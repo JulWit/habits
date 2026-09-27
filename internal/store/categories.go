@@ -95,6 +95,9 @@ func (s *Store) CreateCategory(ctx context.Context, userID string, c *domain.Cat
 	}
 	c.Position = int(next.Int64) + 1
 
+	if err := ensureUser(ctx, tx, userID); err != nil {
+		return err
+	}
 	if _, err := tx.ExecContext(ctx,
 		`INSERT INTO categories (id, user_id, name, icon, color, show_progress, position, created_at, updated_at)
 		 VALUES (?,?,?,?,?,?,?,?,?)`,

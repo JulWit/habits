@@ -197,6 +197,24 @@ const de = {
   "Use this device's time zone ({zone})": "Zeitzone dieses Geräts verwenden ({zone})",
   "Decides when a new day begins on the board.": "Bestimmt, wann auf der Übersicht ein neuer Tag beginnt.",
   "It is {time} there now.": "Dort ist es jetzt {time} Uhr.",
+  "Import & export": "Import & Export",
+  "Habits as a file": "Gewohnheiten als Datei",
+  "Export": "Export",
+  "Import": "Import",
+  "Saves your habits and categories with their settings as a file. Recorded days and statistics are not included.":
+    "Speichert deine Gewohnheiten und Kategorien mit ihren Einstellungen als Datei. Erfasste Tage und Statistiken sind nicht enthalten.",
+  "Export habits": "Gewohnheiten exportieren",
+  "Adds the habits of an exported file. Habits whose name already exists are skipped; categories of the same name are shared. Schedules start today.":
+    "Fügt die Gewohnheiten einer exportierten Datei hinzu. Gewohnheiten, deren Name schon existiert, werden übersprungen; gleichnamige Kategorien werden gemeinsam genutzt. Die Zeitpläne beginnen heute.",
+  "Import habits": "Gewohnheiten importieren",
+  "The file is not an export of the habits.": "Die Datei ist kein Export der Gewohnheiten.",
+  "1 habit imported.": "1 Gewohnheit importiert.",
+  "{n} habits imported.": "{n} Gewohnheiten importiert.",
+  "1 category created.": "1 Kategorie angelegt.",
+  "{n} categories created.": "{n} Kategorien angelegt.",
+  "1 habit already existed and was skipped.": "1 Gewohnheit gab es schon; sie wurde übersprungen.",
+  "{n} habits already existed and were skipped.": "{n} Gewohnheiten gab es schon; sie wurden übersprungen.",
+  "\"{name}\": {message}": "„{name}“: {message}",
 
   // ---------- category dialogs and screen ----------
   "Choose category": "Kategorie wählen",
@@ -461,6 +479,9 @@ const deErrors = {
   overview_days_range: "Die Anzahl der Tage muss 0 (automatisch) oder zwischen 3 und {max} liegen.",
   band_color_invalid: "Die Akzentfarbe muss neutral oder eine der Farben der Gewohnheiten sein.",
   unknown_time_zone: "Unbekannte Zeitzone „{zone}“.",
+
+  // Import.
+  import_format: "Die Datei ist kein Export der Gewohnheiten in Version {version}.",
 };
 
 /**

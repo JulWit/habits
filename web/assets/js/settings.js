@@ -116,6 +116,8 @@ export function initSettings(handlers) {
     await reload();
   });
 
+  initTransfer();
+
   // Update the hint with the number of columns actually shown.
   subscribe(paint);
 }
@@ -233,6 +235,92 @@ function formatBuildTime(time) {
   const date = time ? new Date(time) : null;
   if (!date || Number.isNaN(date.getTime())) return t("Unknown");
   return date.toLocaleString(locale, { dateStyle: "medium", timeStyle: "short" });
+}
+
+// ---------- import & export ----------
+
+/** Wires the export and import buttons. */
+function initTransfer() {
+  const exportButton = document.getElementById("settings-export");
+  const importButton = document.getElementById("settings-import");
+  const fileInput = document.getElementById("settings-import-file");
+  const result = document.getElementById("settings-import-result");
+
+  exportButton.addEventListener("click", async () => {
+    exportButton.disabled = true;
+    try {
+      const data = await api.exportHabits();
+      download(`habits-${state.today}.json`, JSON.stringify(data, null, 2));
+      errorBox.hidden = true;
+    } catch (err) {
+      report(errorText(err));
+    } finally {
+      exportButton.disabled = false;
+    }
+  });
+
+  importButton.addEventListener("click", () => fileInput.click());
+  fileInput.addEventListener("change", async () => {
+    const file = fileInput.files[0];
+    // Cleared, so that choosing the same file again fires "change".
+    fileInput.value = "";
+    if (!file) return;
+    result.hidden = true;
+
+    let data;
+    try {
+      data = JSON.parse(await file.text());
+    } catch {
+      report(t("The file is not an export of the habits."));
+      return;
+    }
+    importButton.disabled = true;
+    try {
+      const counts = await api.importHabits(data);
+      errorBox.hidden = true;
+      result.textContent = importSummary(counts);
+      result.hidden = false;
+      await reload();
+    } catch (err) {
+      const message = errorText(err);
+      // The server names the habit or category that is invalid.
+      const name = err.params?.habit ?? err.params?.category;
+      report(name ? t("\"{name}\": {message}", { name, message }) : message);
+    } finally {
+      importButton.disabled = false;
+    }
+  });
+}
+
+/** Describes the result of an import. */
+function importSummary({ habits, categories, skipped }) {
+  const parts = [
+    habits === 1 ? t("1 habit imported.") : t("{n} habits imported.", { n: habits }),
+  ];
+  if (categories > 0) {
+    parts.push(categories === 1
+      ? t("1 category created.")
+      : t("{n} categories created.", { n: categories }));
+  }
+  if (skipped > 0) {
+    parts.push(skipped === 1
+      ? t("1 habit already existed and was skipped.")
+      : t("{n} habits already existed and were skipped.", { n: skipped }));
+  }
+  return parts.join(" ");
+}
+
+/** Offers `text` as a JSON file to save. */
+function download(name, text) {
+  const url = URL.createObjectURL(new Blob([text], { type: "application/json" }));
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = name;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  // Revoked later, as some browsers read the URL after the click.
+  setTimeout(() => URL.revokeObjectURL(url), 10_000);
 }
 
 // ---------- region & language ----------

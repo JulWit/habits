@@ -292,6 +292,11 @@
         <span class="menu-text"><span class="menu-title">Archive</span><span class="menu-hint">Archived habits</span></span>
         <span class="menu-caret" data-icon="chevronRight" aria-hidden="true"></span>
       </button>
+      <button type="button" class="menu-item" data-open-page="settings-data">
+        <span class="menu-icon" data-icon="transfer" aria-hidden="true"></span>
+        <span class="menu-text"><span class="menu-title">Import &amp; export</span><span class="menu-hint">Habits as a file</span></span>
+        <span class="menu-caret" data-icon="chevronRight" aria-hidden="true"></span>
+      </button>
     </nav>
     <nav class="menu" aria-label="About the app">
       <button type="button" class="menu-item" data-open-page="settings-version">
@@ -465,6 +470,28 @@
       </label>
       <p class="field-hint" id="settings-archive-hint"></p>
     </fieldset>
+  </div>
+</dialog>
+
+<dialog id="settings-data" class="dialog page" aria-labelledby="settings-data-title">
+  <header class="page-head">
+    <button type="button" class="icon-button" data-page-back data-icon="arrowLeft" title="Back" aria-label="Back"></button>
+    <h2 id="settings-data-title">Import &amp; export</h2>
+  </header>
+  <div class="page-body">
+    <div class="field">
+      <span class="field-label">Export</span>
+      <p class="field-hint">Saves your habits and categories with their settings as a file. Recorded days and statistics are not included.</p>
+      <button type="button" class="button" id="settings-export" data-icon="download">Export habits</button>
+    </div>
+
+    <div class="field">
+      <span class="field-label">Import</span>
+      <p class="field-hint">Adds the habits of an exported file. Habits whose name already exists are skipped; categories of the same name are shared. Schedules start today.</p>
+      <input type="file" id="settings-import-file" accept=".json,application/json" hidden>
+      <button type="button" class="button" id="settings-import" data-icon="upload">Import habits</button>
+      <p class="field-hint" id="settings-import-result" role="status" hidden></p>
+    </div>
   </div>
 </dialog>
 

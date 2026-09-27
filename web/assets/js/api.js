@@ -77,6 +77,9 @@ export const api = {
       expect === undefined ? { value } : { value, expect },
     ),
   saveSettings: (settings) => request("PATCH", "/api/settings", settings),
+  // The habits and categories with their settings, without entries.
+  exportHabits: () => request("GET", "/api/export"),
+  importHabits: (file) => request("POST", "/api/import", file),
 
   createCategory: (input) => request("POST", "/api/categories", input),
   updateCategory: (id, input) => request("PATCH", `/api/categories/${encodeURIComponent(id)}`, input),

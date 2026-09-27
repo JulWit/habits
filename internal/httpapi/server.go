@@ -73,6 +73,8 @@ func New(cfg config.Config, st *store.Store, log *slog.Logger, webFS fs.FS) (htt
 	mux.HandleFunc("POST /api/categories/{id}/restore", s.handleRestoreCategory)
 	mux.HandleFunc("GET /api/settings", s.handleGetSettings)
 	mux.HandleFunc("PATCH /api/settings", s.handleUpdateSettings)
+	mux.HandleFunc("GET /api/export", s.handleExport)
+	mux.HandleFunc("POST /api/import", s.handleImport)
 	mux.HandleFunc("/api/", notFoundJSON)
 
 	mux.HandleFunc("GET /{$}", s.handleIndex)

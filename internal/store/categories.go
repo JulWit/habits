@@ -82,23 +82,29 @@ func (s *Store) CreateCategory(ctx context.Context, userID string, c *domain.Cat
 	}
 
 	return s.inTx(ctx, "creating category", func(tx *sql.Tx) error {
-		var last sql.NullInt64
-		if err := tx.QueryRowContext(ctx,
-			`SELECT MAX(position) FROM categories WHERE user_id = ? AND deleted_at IS NULL`, userID,
-		).Scan(&last); err != nil {
-			return err
-		}
-		c.Position = int(last.Int64) + 1
-
 		if err := ensureUser(ctx, tx, userID); err != nil {
 			return err
 		}
-		_, err := tx.ExecContext(ctx,
-			`INSERT INTO categories (id, user_id, name, icon, color, show_progress, position, created_at, updated_at)
-		 VALUES (?,?,?,?,?,?,?,?,?)`,
-			c.ID, userID, c.Name, c.Icon, c.Color, c.ShowProgress, c.Position, formatTime(c.CreatedAt), formatTime(c.UpdatedAt))
-		return err
+		return insertCategory(ctx, tx, userID, c)
 	})
+}
+
+// insertCategory inserts the validated category c, whose ID and timestamps are
+// set, at the end of the user's list and sets its position.
+func insertCategory(ctx context.Context, tx *sql.Tx, userID string, c *domain.Category) error {
+	var last sql.NullInt64
+	if err := tx.QueryRowContext(ctx,
+		`SELECT MAX(position) FROM categories WHERE user_id = ? AND deleted_at IS NULL`, userID,
+	).Scan(&last); err != nil {
+		return err
+	}
+	c.Position = int(last.Int64) + 1
+
+	_, err := tx.ExecContext(ctx,
+		`INSERT INTO categories (id, user_id, name, icon, color, show_progress, position, created_at, updated_at)
+		 VALUES (?,?,?,?,?,?,?,?,?)`,
+		c.ID, userID, c.Name, c.Icon, c.Color, c.ShowProgress, c.Position, formatTime(c.CreatedAt), formatTime(c.UpdatedAt))
+	return err
 }
 
 // UpdateCategory updates all fields except the position.

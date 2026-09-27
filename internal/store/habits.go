@@ -117,31 +117,41 @@ func (s *Store) CreateHabit(ctx context.Context, userID string, h *domain.Habit)
 	}
 
 	return s.inTx(ctx, "creating habit", func(tx *sql.Tx) error {
-		var last sql.NullInt64
-		if err := tx.QueryRowContext(ctx,
-			`SELECT MAX(position) FROM habits WHERE user_id = ? AND deleted_at IS NULL`, userID,
-		).Scan(&last); err != nil {
-			return err
-		}
-		h.Position = int(last.Int64) + 1
-
 		if err := ensureUser(ctx, tx, userID); err != nil {
 			return err
 		}
-		if err := requireOwnCategory(ctx, tx, userID, h.CategoryID); err != nil {
-			return err
-		}
-		if _, err := tx.ExecContext(ctx, `
-			INSERT INTO habits (id, user_id, name, color, icon, kind, step_value, unit,
-				position, created_at, updated_at, category_id)
-			VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
-			h.ID, userID, h.Name, h.Color, h.Icon, h.Kind, h.StepValue, h.Unit,
-			h.Position, formatTime(h.CreatedAt), formatTime(h.UpdatedAt), nullableID(h.CategoryID),
-		); err != nil {
-			return err
-		}
-		return saveSchedules(ctx, tx, h)
+		return insertHabit(ctx, tx, userID, h)
 	})
+}
+
+// insertHabit inserts the validated habit h, whose ID and timestamps are set,
+// at the end of the user's list and sets its position.
+func insertHabit(ctx context.Context, tx *sql.Tx, userID string, h *domain.Habit) error {
+	var last sql.NullInt64
+	if err := tx.QueryRowContext(ctx,
+		`SELECT MAX(position) FROM habits WHERE user_id = ? AND deleted_at IS NULL`, userID,
+	).Scan(&last); err != nil {
+		return err
+	}
+	h.Position = int(last.Int64) + 1
+
+	if err := requireOwnCategory(ctx, tx, userID, h.CategoryID); err != nil {
+		return err
+	}
+	var archivedAt any
+	if h.ArchivedAt != nil {
+		archivedAt = formatTime(*h.ArchivedAt)
+	}
+	if _, err := tx.ExecContext(ctx, `
+		INSERT INTO habits (id, user_id, name, color, icon, kind, step_value, unit,
+			position, archived_at, created_at, updated_at, category_id)
+		VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+		h.ID, userID, h.Name, h.Color, h.Icon, h.Kind, h.StepValue, h.Unit,
+		h.Position, archivedAt, formatTime(h.CreatedAt), formatTime(h.UpdatedAt), nullableID(h.CategoryID),
+	); err != nil {
+		return err
+	}
+	return saveSchedules(ctx, tx, h)
 }
 
 // UpdateHabit updates all fields except the position (see ReorderHabits).

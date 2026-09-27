@@ -132,6 +132,13 @@ export const icons = {
   // Funnel: filter.
   filter: draw('<path d="M3.6 5.2h16.8l-6.6 7.7v5.4l-3.6 2.1v-7.5z"/>'),
 
+  // Import and export: arrows in both directions.
+  transfer: draw('<path d="M7.5 20V4.5M3.5 8.5l4-4 4 4M16.5 4v15.5M12.5 15.5l4 4 4-4"/>'),
+  // Arrow into a tray: export to a file.
+  download: draw('<path d="M12 3.5v11.5M7.5 10.5 12 15l4.5-4.5M4 15.5v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/>'),
+  // Arrow out of a tray: import from a file.
+  upload: draw('<path d="M12 15V3.5M7.5 8 12 3.5 16.5 8M4 15.5v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/>'),
+
   trash: draw(
     '<path d="M3.5 6h17"/>' +
     '<path d="M18.5 6v13.5a1.5 1.5 0 0 1-1.5 1.5H7a1.5 1.5 0 0 1-1.5-1.5V6"/>' +

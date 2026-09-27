@@ -255,6 +255,8 @@ All endpoints are under `/api` and return JSON.
 | `POST` | `/api/categories/{id}/restore` | Restore |
 | `POST` | `/api/categories/reorder` | Set the order (same rules as for habits) |
 | `GET`/`PATCH` | `/api/settings` | Settings, see below |
+| `GET` | `/api/export` | Habits (archived ones included) and categories with their settings and current schedule, as a file; no entries or statistics |
+| `POST` | `/api/import` | Add the habits and categories of an export (up to 1 MB); habits whose name exists are skipped, categories are matched by name, schedules start today; all or nothing |
 
 Writing endpoints require `Content-Type: application/json`. This forces a CORS
 preflight and protects against CSRF.

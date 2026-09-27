@@ -78,6 +78,18 @@ func collectEntries(rows *sql.Rows) (map[string]EntryMap, error) {
 // SetEntry sets the value of a habit on date and returns the previous value
 // (for undo). A value of 0 deletes the entry.
 func (s *Store) SetEntry(ctx context.Context, userID, habitID string, date domain.Date, value int) (previous int, err error) {
+	return s.setEntry(ctx, userID, habitID, date, value, nil)
+}
+
+// SetEntryIf is SetEntry on the condition that the stored value (0 without an
+// entry) is still expect; otherwise it changes nothing and returns ErrConflict
+// with the stored value as previous. Undo uses it so that it does not
+// overwrite a change made elsewhere in the meantime.
+func (s *Store) SetEntryIf(ctx context.Context, userID, habitID string, date domain.Date, value, expect int) (previous int, err error) {
+	return s.setEntry(ctx, userID, habitID, date, value, &expect)
+}
+
+func (s *Store) setEntry(ctx context.Context, userID, habitID string, date domain.Date, value int, expect *int) (previous int, err error) {
 	// The value is validated below, once the habit's kind is known.
 	if date.IsZero() {
 		return 0, domain.Invalid("date_missing", "date is missing")
@@ -109,6 +121,9 @@ func (s *Store) SetEntry(ctx context.Context, userID, habitID string, date domai
 		`SELECT value FROM entries WHERE habit_id = ? AND date = ?`, habitID, key).Scan(&previous)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return 0, fmt.Errorf("reading previous value: %w", err)
+	}
+	if expect != nil && previous != *expect {
+		return previous, ErrConflict
 	}
 
 	if value == 0 {

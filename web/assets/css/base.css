@@ -574,6 +574,17 @@ html[data-scrolled="on"] .day-header-backdrop {
   gap: calc(.5 * var(--space));
 }
 
+/* Offline, or writes waiting in the outbox (outbox.js). */
+.sync-status {
+  padding: 2px 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.sync-status[hidden] { display: none; }
+
 /* ---------- buttons ---------- */
 
 .button {

@@ -179,3 +179,31 @@ func TestEntryAnswersWithUpdatedAt(t *testing.T) {
 		t.Errorf("updatedAt = %v, want the stored %v", answer.UpdatedAt, stored.UpdatedAt)
 	}
 }
+
+// A write with expect only happens while the stored value is still the
+// expected one; otherwise it is answered with 409 and the current value.
+func TestConditionalEntryWrite(t *testing.T) {
+	h := newTestServer(t)
+	w := do(t, h, "POST", "/api/habits",
+		`{"name":"Water","kind":"count","targetValue":80,"frequency":{"kind":"daily"}}`,
+		"application/json")
+	var created struct {
+		ID string `json:"id"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &created); err != nil {
+		t.Fatalf("reading response: %v", err)
+	}
+	path := "/api/habits/" + created.ID + "/entries/" + time.Now().UTC().Format("2006-01-02")
+
+	if w := do(t, h, "PUT", path, `{"value":30,"expect":0}`, "application/json"); w.Code != http.StatusOK {
+		t.Fatalf("first write: %d (%s)", w.Code, w.Body)
+	}
+	w = do(t, h, "PUT", path, `{"value":0,"expect":50}`, "application/json")
+	if w.Code != http.StatusConflict {
+		t.Fatalf("status %d, want 409 (%s)", w.Code, w.Body)
+	}
+	if !strings.Contains(w.Body.String(), `"code":"entry_changed"`) ||
+		!strings.Contains(w.Body.String(), `"current":30`) {
+		t.Errorf("body = %s", w.Body)
+	}
+}

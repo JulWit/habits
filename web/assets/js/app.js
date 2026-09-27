@@ -15,8 +15,12 @@ import { initValueDialog } from "./value.js";
 import { initSearch, openSearch } from "./search.js";
 import * as actions from "./actions.js";
 import { paintIcons } from "./icons.js";
-import { translateDocument } from "./i18n.js";
+import { translateDocument, t } from "./i18n.js";
 import { initTooltips } from "./tooltip.js";
+import {
+  rememberState, rememberedState, overlay, pending, isConnectionError, isOffline, setOffline,
+  setStatusHandler, statusText,
+} from "./outbox.js";
 
 /** Whether reorder mode is active. Not persisted. */
 let editing = false;
@@ -105,6 +109,7 @@ async function main() {
   initSettings({ effectiveDays: currentDays, reload: refresh });
   initShortcuts();
   initTooltips();
+  initSync();
 
   document.getElementById("add-habit").addEventListener("click", actions.createHabit);
 
@@ -124,14 +129,71 @@ async function main() {
  */
 let historyFrom = null;
 
+/**
+ * Loads the state from the server. Writes still waiting in the outbox are laid
+ * over it and sent. Without a connection, the last loaded state is shown
+ * instead (on startup), or the current one is kept.
+ */
 async function refresh() {
+  let loaded;
   try {
-    replaceState(await api.loadState(historyFrom));
-    // The reloaded state only contains the entry window again.
-    fullHistoryLoaded.clear();
+    loaded = await api.loadState(historyFrom);
   } catch (err) {
-    toast(errorText(err), { error: true, timeout: 12000 });
+    if (!isConnectionError(err)) {
+      toast(errorText(err), { error: true, timeout: 12000 });
+      return;
+    }
+    setOffline(true);
+    const remembered = state.user ? null : rememberedState();
+    if (remembered) {
+      replaceState(overlay(remembered));
+      toast(t("Offline — showing the last loaded state"));
+    } else if (state.user) {
+      // Keep the current state, with writes queued since (e.g. by undo).
+      replaceState(overlay({ habits: state.habits }));
+    } else {
+      toast(errorText(err), { error: true, timeout: 12000 });
+    }
+    return;
   }
+  rememberState(loaded);
+  setOffline(false);
+  replaceState(overlay(loaded));
+  // The reloaded state only contains the entry window again.
+  fullHistoryLoaded.clear();
+  if (pending().length > 0) actions.syncOutbox();
+}
+
+/** How often to try again while offline or while writes are waiting. */
+const RETRY_MS = 30_000;
+
+/**
+ * Shows the sync status in the header and retries: when the browser reports
+ * a connection, when the page becomes visible, and every RETRY_MS while
+ * something is pending.
+ */
+function initSync() {
+  const status = document.getElementById("sync-status");
+  const paint = () => {
+    const text = statusText();
+    status.textContent = text;
+    status.hidden = !text;
+    document.documentElement.dataset.offline = isOffline() ? "on" : "off";
+  };
+  setStatusHandler(paint);
+  paint();
+
+  const retry = () => {
+    if (pending().length > 0) actions.syncOutbox();
+    else if (isOffline()) refresh();
+  };
+  window.addEventListener("online", retry);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") retry();
+  });
+  setInterval(() => {
+    if (isOffline() || pending().length > 0) retry();
+  }, RETRY_MS);
 }
 
 /** Loads entries back to `from`, unless they are already loaded. */
@@ -154,7 +216,8 @@ async function ensureFullHistory(id) {
     upsertHabit(await api.getHabit(id));
   } catch (err) {
     fullHistoryLoaded.delete(id);
-    toast(errorText(err), { error: true });
+    // Offline, the view shows the loaded entries; the header says why.
+    if (!isConnectionError(err)) toast(errorText(err), { error: true });
   }
 }
 

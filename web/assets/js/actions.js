@@ -11,6 +11,9 @@ import { openEditor } from "./editor.js";
 import { openValueDialog } from "./value.js";
 import { formatRelative } from "./dates.js";
 import * as H from "./habit.js";
+import {
+  enqueue, discard, pending, flush, isConnectionError, isOffline, setOffline,
+} from "./outbox.js";
 import { t } from "./i18n.js";
 
 /** Callbacks set by app.js. */
@@ -86,22 +89,31 @@ function serialize(key, task) {
 }
 
 /**
- * Writes a value and records the undo step. The value is shown immediately;
- * on failure the state is reloaded. Undo writes back the previous value
- * returned by the server.
+ * Writes a value and records the undo step. The value is shown immediately.
+ * Without a connection the write waits in the outbox; if the server rejects
+ * it, the state is reloaded. Undo writes back the previous value on the
+ * condition that the day still holds this one, so it does not overwrite a
+ * change made elsewhere in the meantime.
  */
 async function writeEntry(habit, iso, value) {
+  const before = habit.entries[iso] ?? 0;
   setEntryLocal(habit.id, iso, value);
 
   let result;
   try {
     result = await serialize(`${habit.id}|${iso}`, () => api.setEntry(habit.id, iso, value));
+    sent(habit.id, iso);
+    setEntryLocal(habit.id, iso, value, result);
   } catch (err) {
-    toast(errorText(err), { error: true });
-    await deps.refresh();
-    return;
+    if (!isConnectionError(err)) {
+      toast(errorText(err), { error: true });
+      await deps.refresh();
+      return;
+    }
+    queue(habit.id, iso, value);
+    // The server did not answer; the value before is known locally.
+    result = { previous: before };
   }
-  setEntryLocal(habit.id, iso, value, result);
 
   const when = formatRelative(iso, state.today);
   const cleared = value === 0 && result.previous > 0;
@@ -120,9 +132,57 @@ async function writeEntry(habit, iso, value) {
     // Only clearing a day shows a toast.
     silent: !cleared,
     toastLabel: t("Entry cleared: {name}, {when}", { name: habit.name, when }),
-    undo: () => api.setEntry(habit.id, iso, result.previous),
-    redo: () => api.setEntry(habit.id, iso, value),
+    undo: () => putEntry(habit.id, iso, result.previous, value),
+    redo: () => putEntry(habit.id, iso, value, result.previous),
   });
+}
+
+/**
+ * Writes a value for undo or redo, on the condition that the day still holds
+ * `expect`. Without a connection the write waits in the outbox, and then
+ * without the condition: for each day the last value wins.
+ */
+async function putEntry(habitId, iso, value, expect) {
+  try {
+    await api.setEntry(habitId, iso, value, expect);
+    sent(habitId, iso);
+  } catch (err) {
+    if (!isConnectionError(err)) throw err;
+    queue(habitId, iso, value);
+  }
+}
+
+/** Handles a write that reached the server: a waiting older one is obsolete. */
+function sent(habitId, iso) {
+  discard(habitId, iso);
+  setOffline(false);
+}
+
+/** Queues a write that could not be sent and says so on the first one. */
+function queue(habitId, iso, value) {
+  const wasOffline = isOffline();
+  setOffline(true);
+  if (!enqueue(habitId, iso, value)) {
+    toast(errorText({ message: "No connection to the server", code: "offline" }), { error: true });
+    return;
+  }
+  if (!wasOffline) toast(t("Offline — changes are kept on this device and sent later."));
+}
+
+/**
+ * Sends the writes waiting in the outbox and reloads the state if any were
+ * sent. Writes the server rejects are dropped with a message.
+ */
+export async function syncOutbox() {
+  if (pending().length === 0) return;
+  const n = await flush(
+    // In order with other writes to the same day.
+    (habitId, iso, value) => serialize(`${habitId}|${iso}`, () => api.setEntry(habitId, iso, value)),
+    (err) => toast(t("Not sent: {error}", { error: errorText(err) }), { error: true }),
+  );
+  if (n === 0) return;
+  toast(n === 1 ? t("Back online — 1 change sent") : t("Back online — {n} changes sent", { n }));
+  await deps.refresh();
 }
 
 // ---------- habits ----------

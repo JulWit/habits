@@ -73,11 +73,13 @@ export const api = {
   deleteHabit: (id) => request("DELETE", `/api/habits/${encodeURIComponent(id)}`),
   restoreHabit: (id) => request("POST", `/api/habits/${encodeURIComponent(id)}/restore`, {}),
   reorderHabits: (ids) => request("POST", "/api/habits/reorder", { ids }),
-  setEntry: (habitId, date, value) =>
+  // With `expect`, the server only writes while the day still holds that value
+  // and answers 409 otherwise.
+  setEntry: (habitId, date, value, expect) =>
     request(
       "PUT",
       `/api/habits/${encodeURIComponent(habitId)}/entries/${encodeURIComponent(date)}`,
-      { value },
+      expect === undefined ? { value } : { value, expect },
     ),
   saveSettings: (settings) => request("PATCH", "/api/settings", settings),
 

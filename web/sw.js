@@ -1,7 +1,7 @@
 // Service worker for offline start. /api requests are never cached; all other
 // requests are served from the network, falling back to the cache.
 
-const CACHE = "habits-v4";
+const CACHE = "habits-v5";
 
 // Files cached on install. Other files are cached on first use.
 const SHELL = [

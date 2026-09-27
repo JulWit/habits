@@ -245,7 +245,7 @@ All endpoints are under `/api` and return JSON.
 | `DELETE` | `/api/habits/{id}` | Soft delete |
 | `POST` | `/api/habits/{id}/restore` | Restore |
 | `POST` | `/api/habits/reorder` | Set the order; missing habits keep their relative order after the given ones, duplicate IDs are rejected |
-| `PUT` | `/api/habits/{id}/entries/{date}` | Set a day's value (from 2000-01-01 to one year ahead; 0 clears and works on any day) |
+| `PUT` | `/api/habits/{id}/entries/{date}` | Set a day's value (from 2000-01-01 to one year ahead; 0 clears and works on any day); with `expect`, only while the day still holds that value (409 `entry_changed` otherwise) |
 | `POST` | `/api/categories` | Create a category |
 | `PATCH` | `/api/categories/{id}` | Update name, icon, colour or progress display |
 | `DELETE` | `/api/categories/{id}` | Soft delete |
@@ -285,7 +285,16 @@ The client translates by `code` (`deErrors` in `i18n.js`) and fills in
   drawings are in `web/assets/js/icons.js`.
 
 `PUT …/entries/{date}` returns the replaced value as `previous`. Undo writes it
-back.
+back with `expect` set to the value it takes back, so it does not overwrite a
+change made on another device in the meantime; on 409 the undo step is dropped.
+
+**Offline**: The service worker caches the app shell, and the client keeps the
+last loaded state in `localStorage`, so the app starts without a connection.
+Entry writes that cannot reach the server wait in an outbox (`outbox.js`) and
+are sent once the connection is back (on the `online` event, when the page
+becomes visible, and every 30 seconds). A write sets an absolute value, so for
+each day the last one wins. The header shows how many changes are waiting.
+Other changes (habits, categories, settings) still need a connection.
 
 Every habit carries `schedules` (`[{from, targetValue, frequency}]`, oldest
 first); `targetValue` and `frequency` are the current ones. The client takes
@@ -318,6 +327,7 @@ web/                        Frontend (ES modules, no build step)
   assets/js/api.js            API client
   assets/js/actions.js        All data changes with their undo steps
   assets/js/undo.js           Undo/redo and toasts
+  assets/js/outbox.js         Offline: remembered state and waiting entry writes
   assets/js/overview.js       Board with category blocks, day header and active day
   assets/js/cells.js          Habit row and day cell
   assets/js/habit.js          Schedule, value and streak helpers

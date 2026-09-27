@@ -1,12 +1,14 @@
 package httpapi
 
 import (
+	"errors"
 	"net/http"
 	"strconv"
 	"time"
 
 	"github.com/JulWit/habits/internal/auth"
 	"github.com/JulWit/habits/internal/domain"
+	"github.com/JulWit/habits/internal/store"
 )
 
 // EntryHorizonDays is how many days after today an entry may be dated.
@@ -34,6 +36,10 @@ type setEntryResponse struct {
 func (s *Server) handleSetEntry(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		Value int `json:"value"`
+		// Expect makes the write conditional: it only happens while the stored
+		// value (0 without an entry) is still Expect, otherwise the answer is
+		// 409. Undo sends the value it wants to take back.
+		Expect *int `json:"expect"`
 	}
 	if !decodeJSON(w, r, &body) {
 		return
@@ -72,7 +78,21 @@ func (s *Server) handleSetEntry(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	previous, err := s.store.SetEntry(r.Context(), user.ID, habitID, date, body.Value)
+	var previous int
+	if body.Expect != nil {
+		previous, err = s.store.SetEntryIf(r.Context(), user.ID, habitID, date, body.Value, *body.Expect)
+	} else {
+		previous, err = s.store.SetEntry(r.Context(), user.ID, habitID, date, body.Value)
+	}
+	if errors.Is(err, store.ErrConflict) {
+		writeProblemBody(w, problemBody{
+			Status: http.StatusConflict,
+			Code:   "entry_changed",
+			Detail: "The entry was changed in the meantime",
+			Params: map[string]any{"current": previous},
+		})
+		return
+	}
 	if err != nil {
 		s.writeStoreError(w, err, "saving entry")
 		return

@@ -51,9 +51,7 @@ export async function undoLast() {
     await onChange();
     toast(t("Undone: {label}", { label: action.label }), { actionLabel: t("Redo"), onAction: redoLast });
   } catch (err) {
-    // Keep the action so it can be retried.
-    undoStack.push(action);
-    toast(errorText(err), { error: true });
+    await failed(err, action, undoStack);
   }
 }
 
@@ -66,9 +64,22 @@ export async function redoLast() {
     await onChange();
     toast(t("Redone: {label}", { label: action.label }), { actionLabel: t("Undo"), onAction: undoLast });
   } catch (err) {
-    redoStack.push(action);
-    toast(errorText(err), { error: true });
+    await failed(err, action, redoStack);
   }
+}
+
+/**
+ * Handles a failed undo or redo. The action is kept so it can be retried,
+ * unless the data was changed elsewhere meanwhile (409): then retrying would
+ * fail again, so the action is dropped and the state reloaded.
+ */
+async function failed(err, action, stack) {
+  toast(errorText(err), { error: true });
+  if (err?.status === 409) {
+    await onChange();
+    return;
+  }
+  stack.push(action);
 }
 
 /**

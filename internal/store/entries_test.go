@@ -51,3 +51,25 @@ func TestSetEntryReturnsThePreviousValueAndStaysSparse(t *testing.T) {
 		t.Error("a day set to 0 must have no row, not a row holding 0")
 	}
 }
+
+// SetEntryIf writes only while the stored value is still the expected one.
+func TestSetEntryIfRefusesAChangedValue(t *testing.T) {
+	ctx := context.Background()
+	st := openTestStore(t)
+	h := mustCreateHabit(t, st, "alice", countHabit(domain.KindCount, 80))
+	day := day(2026, time.September, 18)
+
+	if _, err := st.SetEntryIf(ctx, "alice", h.ID, day, 30, 0); err != nil {
+		t.Fatalf("expecting no entry: %v", err)
+	}
+	prev, err := st.SetEntryIf(ctx, "alice", h.ID, day, 0, 20)
+	if !errors.Is(err, ErrConflict) || prev != 30 {
+		t.Fatalf("got %d, %v; want the stored 30 and ErrConflict", prev, err)
+	}
+	if got, _ := st.EntriesForHabit(ctx, "alice", h.ID); got[day] != 30 {
+		t.Errorf("value = %d after a refused write, want 30", got[day])
+	}
+	if _, err := st.SetEntryIf(ctx, "alice", h.ID, day, 0, 30); err != nil {
+		t.Errorf("expecting the stored value: %v", err)
+	}
+}

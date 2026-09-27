@@ -155,7 +155,7 @@ func (s *Store) requireOwnCategory(ctx context.Context, q queryer, userID, categ
 		`SELECT id FROM categories WHERE id = ? AND user_id = ? AND deleted_at IS NULL`,
 		categoryID, userID).Scan(&found)
 	if errors.Is(err, sql.ErrNoRows) {
-		return domain.Invalid("unknown category")
+		return domain.Invalid("unknown_category", "unknown category")
 	}
 	if err != nil {
 		return fmt.Errorf("checking category: %w", err)
@@ -240,11 +240,11 @@ func (s *Store) requireKindKeepsHistoryMeaningful(ctx context.Context, q queryer
 	if entries > 0 {
 		// Separate templates for singular and plural.
 		if entries == 1 {
-			return domain.Invalid(`The kind can no longer be changed: 1 day is already recorded, `+
+			return domain.Invalid("kind_locked_one", `The kind can no longer be changed: 1 day is already recorded, `+
 				`and its value would mean something else as "{kind}". Create a new habit instead.`,
 				"kind", h.Kind.Label())
 		}
-		return domain.Invalid(`The kind can no longer be changed: {count} days are already recorded, `+
+		return domain.Invalid("kind_locked", `The kind can no longer be changed: {count} days are already recorded, `+
 			`and their values would mean something else as "{kind}". Create a new habit instead.`,
 			"count", entries, "kind", h.Kind.Label())
 	}

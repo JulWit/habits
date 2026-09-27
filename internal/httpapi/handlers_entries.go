@@ -40,7 +40,7 @@ func (s *Server) handleSetEntry(w http.ResponseWriter, r *http.Request) {
 	}
 	date, err := domain.ParseDate(r.PathValue("date"))
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "Invalid date, expected YYYY-MM-DD")
+		writeError(w, http.StatusBadRequest, "invalid_date", "Invalid date, expected YYYY-MM-DD")
 		return
 	}
 	user := auth.MustUser(r.Context())
@@ -48,13 +48,13 @@ func (s *Server) handleSetEntry(w http.ResponseWriter, r *http.Request) {
 
 	today := s.todayFor(r.Context(), user.ID)
 	if date.After(today.AddDays(EntryHorizonDays)) {
-		writeError(w, http.StatusUnprocessableEntity, "Entries may be at most one year in the future")
+		writeError(w, http.StatusUnprocessableEntity, "entry_too_far_ahead", "Entries may be at most one year in the future")
 		return
 	}
 	if body.Value > 0 && date.Before(EarliestEntry) {
 		// The year is passed as a string so the client does not format it as
 		// a number.
-		writeProblem(w, http.StatusUnprocessableEntity, domain.Invalid(
+		writeProblem(w, http.StatusUnprocessableEntity, domain.Invalid("entry_too_early",
 			"Entries may not be dated before {year}", "year", strconv.Itoa(EarliestEntry.Year)))
 		return
 	}
@@ -67,7 +67,7 @@ func (s *Server) handleSetEntry(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if !habit.IsScheduled(date) {
-			writeError(w, http.StatusUnprocessableEntity, "The habit is not scheduled on this day")
+			writeError(w, http.StatusUnprocessableEntity, "not_scheduled", "The habit is not scheduled on this day")
 			return
 		}
 	}

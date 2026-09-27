@@ -11,8 +11,6 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/JulWit/habits/internal/domain"
-
 	_ "modernc.org/sqlite" // pure Go driver, no cgo
 )
 
@@ -22,12 +20,6 @@ var (
 	// ErrConflict is returned when a change conflicts with the stored state.
 	ErrConflict = errors.New("conflict")
 )
-
-// invalidf returns a validation error with an untranslated message. Messages
-// the user can trigger through the UI use domain.Invalid instead.
-func invalidf(format string, args ...any) error {
-	return domain.Invalid(fmt.Sprintf(format, args...))
-}
 
 // execer and queryer are implemented by *sql.DB and *sql.Tx.
 type execer interface {

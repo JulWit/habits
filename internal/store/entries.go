@@ -80,7 +80,7 @@ func collectEntries(rows *sql.Rows) (map[string]EntryMap, error) {
 func (s *Store) SetEntry(ctx context.Context, userID, habitID string, date domain.Date, value int) (previous int, err error) {
 	// The value is validated below, once the habit's kind is known.
 	if date.IsZero() {
-		return 0, domain.Invalid("date is missing")
+		return 0, domain.Invalid("date_missing", "date is missing")
 	}
 
 	tx, err := s.db.BeginTx(ctx, nil)

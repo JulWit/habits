@@ -1,19 +1,17 @@
 // Client for the JSON API. Errors are thrown as ApiError.
 
-import { t } from "./i18n.js";
-
 export class ApiError extends Error {
   /**
    * @param {string} message  the English message
    * @param {number} status
-   * @param {{cause?: unknown, template?: string, params?: object}} [options]
-   *   template and params of the message, used for translation
+   * @param {{cause?: unknown, code?: string, params?: object}} [options]
+   *   code and params of the problem, by which errorText translates it
    */
   constructor(message, status, options = {}) {
     super(message, options);
     this.name = "ApiError";
     this.status = status;
-    this.template = options.template;
+    this.code = options.code;
     this.params = options.params;
   }
 }
@@ -34,12 +32,14 @@ async function request(method, path, body, type) {
       body: body === undefined ? undefined : (type ? body : JSON.stringify(body)),
     });
   } catch (cause) {
-    throw new ApiError(t("No connection to the server"), 0, { cause });
+    throw new ApiError("No connection to the server", 0, { cause, code: "offline" });
   }
 
   if (res.status === 401 || res.status === 403) {
     // The Authelia session has expired.
-    throw new ApiError(t("Session expired — please reload the page"), res.status);
+    throw new ApiError("Session expired — please reload the page", res.status, {
+      code: "session_expired",
+    });
   }
   if (res.status === 204) return null;
 
@@ -53,8 +53,10 @@ async function request(method, path, body, type) {
     }
   }
   if (!res.ok) {
-    throw new ApiError(data?.error ?? `${res.status} ${res.statusText}`, res.status, {
-      template: data?.message,
+    // A problem details object (RFC 9457) with the extension members code and
+    // params.
+    throw new ApiError(data?.detail ?? `${res.status} ${res.statusText}`, res.status, {
+      code: data?.code,
       params: data?.params,
     });
   }

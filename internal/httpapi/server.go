@@ -224,7 +224,7 @@ func (s *Server) recoverPanics(next http.Handler) http.Handler {
 				}
 				s.log.Error("panic in handler",
 					"value", v, "path", r.URL.Path, "stack", string(debug.Stack()))
-				writeError(w, http.StatusInternalServerError, "Internal server error")
+				writeError(w, http.StatusInternalServerError, "internal", "Internal server error")
 			}
 		}()
 		next.ServeHTTP(w, r)

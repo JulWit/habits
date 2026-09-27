@@ -16,7 +16,7 @@ func (s *Store) reorder(ctx context.Context, table, userID string, ids []string,
 	named := make(map[string]bool, len(ids))
 	for _, id := range ids {
 		if named[id] {
-			return domain.Invalid("The new order names the same entry twice.")
+			return domain.Invalid("order_duplicate", "The new order names the same entry twice.")
 		}
 		named[id] = true
 	}

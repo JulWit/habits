@@ -38,7 +38,7 @@ func (s *Server) handleGetBackground(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !ok {
-		writeError(w, http.StatusNotFound, "no background image stored")
+		writeError(w, http.StatusNotFound, "background_missing", "no background image stored")
 		return
 	}
 
@@ -65,10 +65,10 @@ func (s *Server) handlePutBackground(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		if _, ok := errors.AsType[*http.MaxBytesError](err); ok {
 			writeProblem(w, http.StatusRequestEntityTooLarge,
-				domain.Invalid("the image may be at most {max} MB", "max", maxBackgroundBytes>>20))
+				domain.Invalid("image_too_large", "the image may be at most {max} MB", "max", maxBackgroundBytes>>20))
 			return
 		}
-		writeError(w, http.StatusBadRequest, "the image could not be read")
+		writeError(w, http.StatusBadRequest, "image_unreadable", "the image could not be read")
 		return
 	}
 
@@ -126,7 +126,7 @@ func (s *Server) handleDeleteBackground(w http.ResponseWriter, r *http.Request) 
 func checkImage(raw []byte) (string, error) {
 	cfg, format, err := image.DecodeConfig(bytes.NewReader(raw))
 	if err != nil {
-		return "", domain.Invalid("the file is not a jpeg or png image")
+		return "", domain.Invalid("image_not_jpeg_png", "the file is not a jpeg or png image")
 	}
 	var mime string
 	switch format {
@@ -135,16 +135,16 @@ func checkImage(raw []byte) (string, error) {
 	case "png":
 		mime = "image/png"
 	default:
-		return "", domain.Invalid("only jpeg and png are supported, not {format}", "format", format)
+		return "", domain.Invalid("image_format", "only jpeg and png are supported, not {format}", "format", format)
 	}
 	if cfg.Width < 1 || cfg.Height < 1 {
-		return "", domain.Invalid("the image has no area")
+		return "", domain.Invalid("image_empty", "the image has no area")
 	}
 	if cfg.Width > maxBackgroundSide || cfg.Height > maxBackgroundSide {
-		return "", domain.Invalid("the image may be at most {max} pixels per edge", "max", maxBackgroundSide)
+		return "", domain.Invalid("image_too_wide", "the image may be at most {max} pixels per edge", "max", maxBackgroundSide)
 	}
 	if cfg.Width*cfg.Height > maxBackgroundPixels {
-		return "", domain.Invalid("the image has too many pixels (at most {max} million)",
+		return "", domain.Invalid("image_too_many_pixels", "the image has too many pixels (at most {max} million)",
 			"max", maxBackgroundPixels/1_000_000)
 	}
 	return mime, nil

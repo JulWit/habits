@@ -4,6 +4,7 @@ package auth
 
 import (
 	"context"
+	"encoding/json"
 	"log/slog"
 	"net"
 	"net/http"
@@ -50,7 +51,7 @@ func Middleware(cfg config.Config, log *slog.Logger) func(http.Handler) http.Han
 					"reason", err.Error(),
 					"peer", r.RemoteAddr,
 					"path", r.URL.Path)
-				http.Error(w, err.Message, err.Status)
+				writeProblem(w, err)
 				return
 			}
 			ctx := context.WithValue(r.Context(), ctxKey{}, user)
@@ -59,12 +60,24 @@ func Middleware(cfg config.Config, log *slog.Logger) func(http.Handler) http.Han
 	}
 }
 
-// authError is a rejected request: Status and Message go to the client,
+// authError is a rejected request: Status, Code and Message go to the client,
 // Reason to the log.
 type authError struct {
 	Status  int
+	Code    string
 	Message string
 	Reason  string
+}
+
+// writeProblem answers a rejected request with a problem details object, in
+// the format of the API's other errors.
+func writeProblem(w http.ResponseWriter, e *authError) {
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.Header().Set("Cache-Control", "no-store")
+	w.WriteHeader(e.Status)
+	json.NewEncoder(w).Encode(map[string]any{
+		"title": http.StatusText(e.Status), "status": e.Status, "code": e.Code, "detail": e.Message,
+	})
 }
 
 func (e *authError) Error() string { return e.Reason }
@@ -78,6 +91,7 @@ func resolve(cfg config.Config, r *http.Request) (User, *authError) {
 	if !peerTrusted(cfg.TrustedProxies, r.RemoteAddr) {
 		return User{}, &authError{
 			Status:  http.StatusForbidden,
+			Code:    "untrusted_proxy",
 			Message: "access only through the configured reverse proxy",
 			Reason:  "peer is not a trusted proxy",
 		}
@@ -87,6 +101,7 @@ func resolve(cfg config.Config, r *http.Request) (User, *authError) {
 	if id == "" {
 		return User{}, &authError{
 			Status:  http.StatusUnauthorized,
+			Code:    "not_signed_in",
 			Message: "Not signed in",
 			Reason:  "header " + cfg.UserHeader + " is missing or empty",
 		}

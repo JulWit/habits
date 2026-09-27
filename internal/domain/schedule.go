@@ -18,7 +18,7 @@ func (s Schedule) sameRules(o Schedule) bool {
 // fields its kind uses. A missing anchor defaults to From.
 func (s *Schedule) normalise(k Kind) error {
 	if s.From.IsZero() {
-		return Invalid("a schedule needs a start day")
+		return Invalid("schedule_start_missing", "a schedule needs a start day")
 	}
 	if k == KindCheck {
 		s.TargetValue = 1
@@ -36,29 +36,29 @@ func (s *Schedule) normalise(k Kind) error {
 
 	case FreqTimesPerWeek:
 		if f.TimesPerWeek < 1 || f.TimesPerWeek > 7 {
-			return Invalid("times per week must be between 1 and 7")
+			return Invalid("times_per_week_range", "times per week must be between 1 and 7")
 		}
 		s.Frequency = Frequency{Kind: FreqTimesPerWeek, TimesPerWeek: f.TimesPerWeek}
 
 	case FreqWeekdays:
 		if f.Weekdays == 0 {
-			return Invalid("at least one weekday must be selected")
+			return Invalid("weekday_missing", "at least one weekday must be selected")
 		}
 		if f.Weekdays > 0b1111111 {
-			return Invalid("invalid weekday selection")
+			return Invalid("weekdays_invalid", "invalid weekday selection")
 		}
 		// 0 means every week, for clients that do not send a week interval.
 		if f.WeekInterval == 0 {
 			f.WeekInterval = 1
 		}
 		if f.WeekInterval < 1 || f.WeekInterval > 52 {
-			return Invalid("week interval must be between 1 and 52 weeks")
+			return Invalid("week_interval_range", "week interval must be between 1 and 52 weeks")
 		}
 		if f.WeekOfMonth != LastWeekOfMonth && (f.WeekOfMonth < 0 || f.WeekOfMonth > 4) {
-			return Invalid("week of the month must be 1 to 4 or the last")
+			return Invalid("week_of_month_invalid", "week of the month must be 1 to 4 or the last")
 		}
 		if f.WeekInterval > 1 && f.WeekOfMonth != 0 {
-			return Invalid("a week interval and a week of the month cannot be combined")
+			return Invalid("week_interval_and_month", "a week interval and a week of the month cannot be combined")
 		}
 		// Only a week interval greater than 1 needs an anchor.
 		anchor := Date{}
@@ -75,7 +75,7 @@ func (s *Schedule) normalise(k Kind) error {
 
 	case FreqCustomInterval:
 		if f.IntervalDays < 1 || f.IntervalDays > 365 {
-			return Invalid("interval must be between 1 and 365 days")
+			return Invalid("interval_range", "interval must be between 1 and 365 days")
 		}
 		s.Frequency = Frequency{
 			Kind:         FreqCustomInterval,
@@ -84,7 +84,7 @@ func (s *Schedule) normalise(k Kind) error {
 		}
 
 	default:
-		return Invalid(`unknown frequency "{frequency}"`, "frequency", f.Kind)
+		return Invalid("unknown_frequency", `unknown frequency "{frequency}"`, "frequency", f.Kind)
 	}
 	return nil
 }

@@ -76,18 +76,19 @@ func TestKindChangeWithHistoryIsRefusedReadably(t *testing.T) {
 		t.Fatalf("status %d, want 422 (%s)", w.Code, w.Body)
 	}
 	var body struct {
-		Error string `json:"error"`
+		Code   string `json:"code"`
+		Detail string `json:"detail"`
 	}
 	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
 		t.Fatalf("reading response: %v", err)
 	}
 	for _, want := range []string{"Count", "1 day is already recorded"} {
-		if !strings.Contains(body.Error, want) {
-			t.Errorf("message %q does not mention %q", body.Error, want)
+		if !strings.Contains(body.Detail, want) {
+			t.Errorf("message %q does not mention %q", body.Detail, want)
 		}
 	}
-	if strings.Contains(body.Error, `"count"`) {
-		t.Errorf("message shows the raw key: %q", body.Error)
+	if strings.Contains(body.Detail, `"count"`) {
+		t.Errorf("message shows the raw key: %q", body.Detail)
 	}
 
 	// With a second entry the message uses the plural.
@@ -103,8 +104,8 @@ func TestKindChangeWithHistoryIsRefusedReadably(t *testing.T) {
 	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
 		t.Fatalf("reading response: %v", err)
 	}
-	if !strings.Contains(body.Error, "2 days are already recorded") {
-		t.Errorf("message %q does not use the plural form", body.Error)
+	if body.Code != "kind_locked" || !strings.Contains(body.Detail, "2 days are already recorded") {
+		t.Errorf("%s: %q does not use the plural form", body.Code, body.Detail)
 	}
 }
 

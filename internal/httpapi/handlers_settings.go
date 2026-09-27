@@ -31,7 +31,7 @@ func (s *Server) handleUpdateSettings(w http.ResponseWriter, r *http.Request) {
 	// patch is applied.
 	var probe store.Settings
 	if err := decodeSettings(patch, &probe); err != nil {
-		writeError(w, http.StatusBadRequest, "Invalid request body: "+err.Error())
+		writeError(w, http.StatusBadRequest, "invalid_body", "Invalid request body: "+err.Error())
 		return
 	}
 	user := auth.MustUser(r.Context())

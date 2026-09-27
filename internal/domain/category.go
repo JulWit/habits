@@ -28,18 +28,18 @@ const MaxCategoryNameLen = 60
 func (c *Category) Validate() error {
 	c.Name = strings.TrimSpace(c.Name)
 	if c.Name == "" {
-		return Invalid("category name must not be empty")
+		return Invalid("category_name_empty", "category name must not be empty")
 	}
 	if len([]rune(c.Name)) > MaxCategoryNameLen {
-		return Invalid("category name is longer than {max} characters", "max", MaxCategoryNameLen)
+		return Invalid("category_name_too_long", "category name is longer than {max} characters", "max", MaxCategoryNameLen)
 	}
 	c.Icon = strings.TrimSpace(c.Icon)
 	if c.Icon != "" && !ValidIcon(c.Icon) {
-		return Invalid(`unknown icon "{icon}"`, "icon", c.Icon)
+		return Invalid("unknown_icon", `unknown icon "{icon}"`, "icon", c.Icon)
 	}
 	c.Color = strings.ToLower(strings.TrimSpace(c.Color))
 	if c.Color != "" && !ValidColor(c.Color) {
-		return Invalid(`unknown colour "{color}"`, "color", c.Color)
+		return Invalid("unknown_color", `unknown colour "{color}"`, "color", c.Color)
 	}
 	return nil
 }

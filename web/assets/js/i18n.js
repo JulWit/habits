@@ -364,78 +364,106 @@ const de = {
     "Kategorie „{name}“ gelöscht — 1 Gewohnheit bleibt erhalten",
   "Category \"{name}\" deleted — {n} habits kept":
     "Kategorie „{name}“ gelöscht — {n} Gewohnheiten bleiben erhalten",
-
-  // ---------- messages from the server and the network ----------
-  "No connection to the server": "Keine Verbindung zum Server",
-  "Session expired — please reload the page": "Sitzung abgelaufen — bitte lade die Seite neu",
-  "Entries may be at most one year in the future":
-    "Einträge dürfen höchstens ein Jahr in der Zukunft liegen",
-  "The habit is not scheduled on this day": "Die Gewohnheit ist an diesem Tag nicht geplant",
-  "Entries may not be dated before {year}": "Einträge dürfen nicht vor dem Jahr {year} liegen.",
-  "The new order names the same entry twice.": "Die neue Reihenfolge nennt einen Eintrag doppelt.",
-  "Internal server error": "Interner Serverfehler",
-  "Not found": "Nicht gefunden",
-  "the image could not be read": "Das Bild konnte nicht gelesen werden",
-
-  // Validation messages, keyed by the server's templates (domain.Invalid).
-  "name must not be empty": "Der Name darf nicht leer sein.",
-  "name is longer than {max} characters": "Der Name darf höchstens {max} Zeichen lang sein.",
-  "unit is longer than {max} characters": "Die Einheit darf höchstens {max} Zeichen lang sein.",
-  "category name must not be empty": "Der Name der Kategorie darf nicht leer sein.",
-  "category name is longer than {max} characters":
-    "Der Name der Kategorie darf höchstens {max} Zeichen lang sein.",
-  "unknown colour \"{color}\"": "Unbekannte Farbe „{color}“.",
-  "unknown icon \"{icon}\"": "Unbekanntes Symbol „{icon}“.",
-  "unknown habit kind \"{kind}\"": "Unbekannte Art „{kind}“.",
-  "unknown frequency \"{frequency}\"": "Unbekannte Häufigkeit „{frequency}“.",
-  "unknown category": "Diese Kategorie gibt es nicht mehr.",
-  "date is missing": "Das Datum fehlt.",
-  "target must be at least 0.1": "Das Tagesziel muss mindestens 0,1 sein.",
-  "time must be at least 0.1 minutes": "Die Zeit muss mindestens 0,1 Minuten betragen.",
-  "distance must be at least 1 metre": "Die Strecke muss mindestens 1 Meter betragen.",
-  "target may be at most {max}": "Das Tagesziel darf höchstens {max} sein.",
-  "time may be at most {max} minutes": "Die Zeit darf höchstens {max} Minuten betragen.",
-  "distance may be at most {max} kilometres": "Die Strecke darf höchstens {max} Kilometer betragen.",
-  "step may be at most {max}": "Der Schritt darf höchstens {max} sein.",
-  "step may be at most {max} minutes": "Der Schritt darf höchstens {max} Minuten betragen.",
-  "step may be at most {max} kilometres": "Der Schritt darf höchstens {max} Kilometer betragen.",
-  "value must not be negative": "Der Wert darf nicht negativ sein.",
-  "value may be at most {max}": "Der Wert darf höchstens {max} sein.",
-  "value may be at most {max} minutes": "Der Wert darf höchstens {max} Minuten betragen.",
-  "value may be at most {max} kilometres": "Der Wert darf höchstens {max} Kilometer betragen.",
-  "times per week must be between 1 and 7": "„Mal pro Woche“ muss zwischen 1 und 7 liegen.",
-  "at least one weekday must be selected": "Bitte wähle mindestens einen Wochentag.",
-  "schedules must start on different days, oldest first":
-    "Die Zeitpläne müssen an verschiedenen Tagen beginnen, der älteste zuerst.",
-  "schedules cannot be combined with targetValue or frequency":
-    "Zeitpläne können nicht zusammen mit Ziel oder Häufigkeit gesetzt werden.",
-  "at least one schedule is required": "Mindestens ein Zeitplan ist nötig.",
-  "a schedule needs a start day": "Ein Zeitplan braucht einen ersten Tag.",
-  "{setting} must be one of: {options}": "{setting} muss einer dieser Werte sein: {options}",
-  "{setting} must be between {min} and {max}": "{setting} muss zwischen {min} und {max} liegen",
-  "invalid weekday selection": "Ungültige Auswahl der Wochentage.",
-  "week interval must be between 1 and 52 weeks":
-    "Der Wochenabstand muss zwischen 1 und 52 Wochen liegen.",
-  "week of the month must be 1 to 4 or the last":
-    "Die Woche im Monat muss die erste bis vierte oder die letzte sein.",
-  "a week interval and a week of the month cannot be combined":
-    "Ein Wochenabstand und eine Woche im Monat lassen sich nicht kombinieren.",
-  "interval must be between 1 and 365 days": "Der Abstand muss zwischen 1 und 365 Tagen liegen.",
-  "The kind can no longer be changed: 1 day is already recorded, and its value would mean something else as \"{kind}\". Create a new habit instead.":
-    "Die Art lässt sich nicht mehr ändern: Es ist schon 1 Tag erfasst, und sein Wert hätte als „{kind}“ eine andere Bedeutung. Leg stattdessen eine neue Gewohnheit an.",
-  "The kind can no longer be changed: {count} days are already recorded, and their values would mean something else as \"{kind}\". Create a new habit instead.":
-    "Die Art lässt sich nicht mehr ändern: Es sind schon {count} Tage erfasst, und ihre Werte hätten als „{kind}“ eine andere Bedeutung. Leg stattdessen eine neue Gewohnheit an.",
-  "the image may be at most {max} MB": "Das Bild darf höchstens {max} MB groß sein.",
-  "the file is not a jpeg or png image": "Die Datei ist kein JPEG- oder PNG-Bild.",
-  "only jpeg and png are supported, not {format}":
-    "Nur JPEG und PNG werden unterstützt, nicht {format}.",
-  "the image has no area": "Das Bild hat keine Fläche.",
-  "the image may be at most {max} pixels per edge":
-    "Das Bild darf höchstens {max} Pixel pro Kante haben.",
-  "the image has too many pixels (at most {max} million)":
-    "Das Bild hat zu viele Pixel (höchstens {max} Millionen).",
-  "unknown time zone \"{zone}\"": "Unbekannte Zeitzone „{zone}“.",
 };
+
+/**
+ * German messages of the server's problem codes (domain.Invalid and
+ * writeError) and of the client's own network errors, keyed by code. The
+ * server's English message is shown for codes missing here and in English.
+ * Placeholders are filled from the problem's params.
+ */
+const deErrors = {
+  // Network and session (api.js).
+  offline: "Keine Verbindung zum Server",
+  session_expired: "Sitzung abgelaufen — bitte lade die Seite neu",
+  not_signed_in: "Sitzung abgelaufen — bitte lade die Seite neu",
+  untrusted_proxy: "Zugriff nur über den eingerichteten Reverse Proxy",
+
+  // Requests.
+  internal: "Interner Serverfehler",
+  not_found: "Nicht gefunden",
+  unknown_endpoint: "Unbekannte Adresse",
+  unsupported_media_type: "Die Anfrage muss JSON sein.",
+  invalid_body: "Die Anfrage ist ungültig.",
+  missing_fields: "In der Anfrage fehlen Angaben.",
+  invalid_date: "Ungültiges Datum, erwartet wird JJJJ-MM-TT.",
+
+  // Entries.
+  entry_too_far_ahead: "Einträge dürfen höchstens ein Jahr in der Zukunft liegen",
+  entry_too_early: "Einträge dürfen nicht vor dem Jahr {year} liegen.",
+  not_scheduled: "Die Gewohnheit ist an diesem Tag nicht geplant",
+  date_missing: "Das Datum fehlt.",
+  value_negative: "Der Wert darf nicht negativ sein.",
+  value_too_large: "Der Wert darf höchstens {max} sein.",
+  value_too_large_minutes: "Der Wert darf höchstens {max} Minuten betragen.",
+  value_too_large_km: "Der Wert darf höchstens {max} Kilometer betragen.",
+
+  // Habits.
+  name_empty: "Der Name darf nicht leer sein.",
+  name_too_long: "Der Name darf höchstens {max} Zeichen lang sein.",
+  unit_too_long: "Die Einheit darf höchstens {max} Zeichen lang sein.",
+  unknown_color: "Unbekannte Farbe „{color}“.",
+  unknown_icon: "Unbekanntes Symbol „{icon}“.",
+  unknown_kind: "Unbekannte Art „{kind}“.",
+  unknown_frequency: "Unbekannte Häufigkeit „{frequency}“.",
+  unknown_category: "Diese Kategorie gibt es nicht mehr.",
+  target_too_small: "Das Tagesziel muss mindestens 0,1 sein.",
+  time_too_small: "Die Zeit muss mindestens 0,1 Minuten betragen.",
+  distance_too_small: "Die Strecke muss mindestens 1 Meter betragen.",
+  target_too_large: "Das Tagesziel darf höchstens {max} sein.",
+  time_too_large_minutes: "Die Zeit darf höchstens {max} Minuten betragen.",
+  distance_too_large_km: "Die Strecke darf höchstens {max} Kilometer betragen.",
+  step_too_large: "Der Schritt darf höchstens {max} sein.",
+  step_too_large_minutes: "Der Schritt darf höchstens {max} Minuten betragen.",
+  step_too_large_km: "Der Schritt darf höchstens {max} Kilometer betragen.",
+  times_per_week_range: "„Mal pro Woche“ muss zwischen 1 und 7 liegen.",
+  weekday_missing: "Bitte wähle mindestens einen Wochentag.",
+  weekdays_invalid: "Ungültige Auswahl der Wochentage.",
+  week_interval_range: "Der Wochenabstand muss zwischen 1 und 52 Wochen liegen.",
+  week_of_month_invalid: "Die Woche im Monat muss die erste bis vierte oder die letzte sein.",
+  week_interval_and_month:
+    "Ein Wochenabstand und eine Woche im Monat lassen sich nicht kombinieren.",
+  interval_range: "Der Abstand muss zwischen 1 und 365 Tagen liegen.",
+  schedules_unordered: "Die Zeitpläne müssen an verschiedenen Tagen beginnen, der älteste zuerst.",
+  schedules_with_target: "Zeitpläne können nicht zusammen mit Ziel oder Häufigkeit gesetzt werden.",
+  schedules_empty: "Mindestens ein Zeitplan ist nötig.",
+  schedules_on_create: "Eine neue Gewohnheit hat noch keine Zeitpläne.",
+  schedule_start_missing: "Ein Zeitplan braucht einen ersten Tag.",
+  kind_locked_one:
+    "Die Art lässt sich nicht mehr ändern: Es ist schon 1 Tag erfasst, und sein Wert hätte als „{kind}“ eine andere Bedeutung. Leg stattdessen eine neue Gewohnheit an.",
+  kind_locked:
+    "Die Art lässt sich nicht mehr ändern: Es sind schon {count} Tage erfasst, und ihre Werte hätten als „{kind}“ eine andere Bedeutung. Leg stattdessen eine neue Gewohnheit an.",
+  order_duplicate: "Die neue Reihenfolge nennt einen Eintrag doppelt.",
+
+  // Categories.
+  category_name_empty: "Der Name der Kategorie darf nicht leer sein.",
+  category_name_too_long: "Der Name der Kategorie darf höchstens {max} Zeichen lang sein.",
+
+  // Settings.
+  setting_not_option: "{setting} muss einer dieser Werte sein: {options}",
+  setting_out_of_range: "{setting} muss zwischen {min} und {max} liegen",
+  overview_days_range: "Die Anzahl der Tage muss 0 (automatisch) oder zwischen 3 und {max} liegen.",
+  band_color_invalid: "Die Akzentfarbe muss neutral oder eine der Farben der Gewohnheiten sein.",
+  unknown_time_zone: "Unbekannte Zeitzone „{zone}“.",
+
+  // Background image.
+  background_missing: "Es ist kein Hintergrundbild gespeichert.",
+  image_unreadable: "Das Bild konnte nicht gelesen werden",
+  image_too_large: "Das Bild darf höchstens {max} MB groß sein.",
+  image_not_jpeg_png: "Die Datei ist kein JPEG- oder PNG-Bild.",
+  image_format: "Nur JPEG und PNG werden unterstützt, nicht {format}.",
+  image_empty: "Das Bild hat keine Fläche.",
+  image_too_wide: "Das Bild darf höchstens {max} Pixel pro Kante haben.",
+  image_too_many_pixels: "Das Bild hat zu viele Pixel (höchstens {max} Millionen).",
+};
+
+/**
+ * Returns the message template for a problem code in the UI language, or
+ * undefined if there is none (then the server's English message is shown).
+ */
+export function errorTemplate(code) {
+  return lang === "de" ? deErrors[code] : undefined;
+}
 
 const dictionary = lang === "de" ? de : {};
 

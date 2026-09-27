@@ -42,21 +42,19 @@ func TestValidationMessagesReachTheUserPlain(t *testing.T) {
 		t.Fatalf("status %d, want 422 (%s)", w.Code, w.Body)
 	}
 	var body struct {
-		Error string `json:"error"`
+		Detail string `json:"detail"`
 	}
 	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
 		t.Fatalf("reading response: %v", err)
 	}
-	if strings.Contains(body.Error, "validation error") {
-		t.Errorf("message carries the sentinel prefix: %q", body.Error)
-	}
-	if body.Error != "name must not be empty" {
-		t.Errorf("message = %q", body.Error)
+	if body.Detail != "name must not be empty" {
+		t.Errorf("detail = %q", body.Detail)
 	}
 }
 
-// Validation errors include their message template.
-func TestValidationMessagesCarryTheirTemplate(t *testing.T) {
+// Errors are problem details with a stable code and the parameters of their
+// message, which the client translates.
+func TestErrorsAreProblemDetailsWithACode(t *testing.T) {
 	h := newTestServer(t)
 	w := do(t, h, "POST", "/api/habits",
 		`{"name":"`+strings.Repeat("x", 81)+`","kind":"check","frequency":{"kind":"daily"}}`,
@@ -65,31 +63,37 @@ func TestValidationMessagesCarryTheirTemplate(t *testing.T) {
 		t.Fatalf("status %d, want 422 (%s)", w.Code, w.Body)
 	}
 	var body struct {
-		Error   string         `json:"error"`
-		Message string         `json:"message"`
-		Params  map[string]any `json:"params"`
+		Title  string         `json:"title"`
+		Status int            `json:"status"`
+		Code   string         `json:"code"`
+		Detail string         `json:"detail"`
+		Params map[string]any `json:"params"`
 	}
 	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
 		t.Fatalf("reading response: %v", err)
 	}
-	if body.Error != "name is longer than 80 characters" {
-		t.Errorf("error = %q", body.Error)
+	if body.Code != "name_too_long" || body.Status != 422 || body.Title != "Unprocessable Entity" {
+		t.Errorf("code %q, status %d, title %q", body.Code, body.Status, body.Title)
 	}
-	if body.Message != "name is longer than {max} characters" {
-		t.Errorf("message = %q", body.Message)
+	if body.Detail != "name is longer than 80 characters" {
+		t.Errorf("detail = %q", body.Detail)
 	}
 	if body.Params["max"] != float64(80) {
 		t.Errorf("params = %v, want max 80", body.Params)
 	}
 }
 
-func TestUnknownAPIPathAnswersJSON(t *testing.T) {
+// Unknown API paths are answered with a problem, and so is every other error.
+func TestUnknownAPIPathAnswersAProblem(t *testing.T) {
 	h := newTestServer(t)
 	w := do(t, h, "GET", "/api/gibtesnicht", "", "")
 	if w.Code != http.StatusNotFound {
 		t.Errorf("status %d, want 404", w.Code)
 	}
-	if ct := w.Header().Get("Content-Type"); !strings.HasPrefix(ct, "application/json") {
-		t.Errorf("Content-Type = %q, want JSON", ct)
+	if ct := w.Header().Get("Content-Type"); ct != "application/problem+json" {
+		t.Errorf("Content-Type = %q, want application/problem+json", ct)
+	}
+	if !strings.Contains(w.Body.String(), `"code":"unknown_endpoint"`) {
+		t.Errorf("body = %s", w.Body)
 	}
 }

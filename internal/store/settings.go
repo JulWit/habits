@@ -141,13 +141,13 @@ const BackgroundBlurAtFull = 40
 var checks = map[string]func(Settings) error{
 	"overviewDays": func(s Settings) error {
 		if n := s.OverviewDays; n != 0 && (n < 3 || n > MaxOverviewDays) {
-			return domain.Invalid("overviewDays must be 0 (automatic) or between 3 and {max}", "max", MaxOverviewDays)
+			return domain.Invalid("overview_days_range", "overviewDays must be 0 (automatic) or between 3 and {max}", "max", MaxOverviewDays)
 		}
 		return nil
 	},
 	"bandColor": func(s Settings) error {
 		if s.BandColor != NeutralBand && !domain.ValidColor(s.BandColor) {
-			return domain.Invalid("band colour must be neutral or one of the habit colours")
+			return domain.Invalid("band_color_invalid", "band colour must be neutral or one of the habit colours")
 		}
 		return nil
 	},
@@ -157,7 +157,7 @@ var checks = map[string]func(Settings) error{
 			return nil
 		}
 		if _, err := time.LoadLocation(s.TimeZone); err != nil || s.TimeZone == "Local" {
-			return domain.Invalid(`unknown time zone "{zone}"`, "zone", s.TimeZone)
+			return domain.Invalid("unknown_time_zone", `unknown time zone "{zone}"`, "zone", s.TimeZone)
 		}
 		return nil
 	},
@@ -186,13 +186,13 @@ func (s Settings) fieldError(i int) error {
 		for i, o := range options {
 			values[i] = o.Value
 		}
-		return domain.Invalid("{setting} must be one of: {options}",
+		return domain.Invalid("setting_not_option", "{setting} must be one of: {options}",
 			"setting", key, "options", strings.Join(values, ", "))
 	}
 	if r := field.Tag.Get("range"); r != "" {
 		lo, hi := parseRange(r)
 		if n := int(value.Int()); n < lo || n > hi {
-			return domain.Invalid("{setting} must be between {min} and {max}",
+			return domain.Invalid("setting_out_of_range", "{setting} must be between {min} and {max}",
 				"setting", key, "min", lo, "max", hi)
 		}
 	}

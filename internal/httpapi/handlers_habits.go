@@ -105,7 +105,7 @@ func (s *Server) handleState(w http.ResponseWriter, r *http.Request) {
 	if v := r.URL.Query().Get("from"); v != "" {
 		asked, err := domain.ParseDate(v)
 		if err != nil {
-			writeError(w, http.StatusBadRequest, "Invalid date, expected YYYY-MM-DD")
+			writeError(w, http.StatusBadRequest, "invalid_date", "Invalid date, expected YYYY-MM-DD")
 			return
 		}
 		// from can only extend the window, not shorten it.
@@ -255,7 +255,7 @@ func (s *Server) handleCreateHabit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if in.Name == nil || in.Kind == nil || in.Frequency == nil {
-		writeError(w, http.StatusBadRequest, "name, kind and frequency are required")
+		writeError(w, http.StatusBadRequest, "missing_fields", "name, kind and frequency are required")
 		return
 	}
 
@@ -266,7 +266,7 @@ func (s *Server) handleCreateHabit(w http.ResponseWriter, r *http.Request) {
 	h := domain.Habit{Kind: domain.KindCheck, TargetValue: 1, Color: domain.Colors[0], Since: today}
 	in.applyTo(&h)
 	if len(in.Schedules) > 0 {
-		writeError(w, http.StatusBadRequest, "schedules cannot be set on a new habit")
+		writeError(w, http.StatusBadRequest, "schedules_on_create", "schedules cannot be set on a new habit")
 		return
 	}
 
@@ -360,10 +360,10 @@ func (s *Server) applyUpdate(r *http.Request, userID string, in habitInput, h *d
 	switch {
 	case in.Schedules != nil:
 		if in.TargetValue != nil || in.Frequency != nil {
-			return domain.Invalid("schedules cannot be combined with targetValue or frequency")
+			return domain.Invalid("schedules_with_target", "schedules cannot be combined with targetValue or frequency")
 		}
 		if len(in.Schedules) == 0 {
-			return domain.Invalid("at least one schedule is required")
+			return domain.Invalid("schedules_empty", "at least one schedule is required")
 		}
 		h.SetSchedules(in.Schedules)
 		return nil

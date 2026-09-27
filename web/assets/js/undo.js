@@ -1,7 +1,7 @@
 // Undo/redo history and the toast. Each action carries server calls to undo
 // and redo it.
 
-import { t, locale } from "./i18n.js";
+import { t, locale, errorTemplate } from "./i18n.js";
 
 const MAX_HISTORY = 50;
 
@@ -71,16 +71,21 @@ export async function redoLast() {
   }
 }
 
+/**
+ * Returns the message of an error in the UI language. Problems from the server
+ * are translated by their code; without a translation, the English message is
+ * shown.
+ */
 export function errorText(err) {
   if (!err?.message) return t("Unknown error");
-  // Messages with parameters are translated by their template.
-  if (!err.template) return t(String(err.message));
+  const template = err.code ? errorTemplate(err.code) : undefined;
+  if (!template) return String(err.message);
   const vars = {};
   for (const [name, value] of Object.entries(err.params ?? {})) {
     // Numbers are formatted for the locale, strings are translated.
     vars[name] = typeof value === "number" ? value.toLocaleString(locale) : t(String(value));
   }
-  return t(err.template, vars);
+  return t(template, vars);
 }
 
 const DEFAULT_TIMEOUT = 7000;

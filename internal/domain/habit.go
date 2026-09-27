@@ -210,11 +210,11 @@ const (
 func targetTooSmall(k Kind) error {
 	switch k {
 	case KindTime:
-		return Invalid("time must be at least 0.1 minutes")
+		return Invalid("time_too_small", "time must be at least 0.1 minutes")
 	case KindDistance:
-		return Invalid("distance must be at least 1 metre")
+		return Invalid("distance_too_small", "distance must be at least 1 metre")
 	}
-	return Invalid("target must be at least 0.1")
+	return Invalid("target_too_small", "target must be at least 0.1")
 }
 
 // tooLarge returns the error for a value above the maximum of k, stated in
@@ -223,11 +223,11 @@ func tooLarge(what string, k Kind) error {
 	limit := k.MaxTarget() / k.Scale()
 	switch k {
 	case KindTime:
-		return Invalid(what+" may be at most {max} minutes", "max", limit)
+		return Invalid(what+"_too_large_minutes", what+" may be at most {max} minutes", "max", limit)
 	case KindDistance:
-		return Invalid(what+" may be at most {max} kilometres", "max", limit)
+		return Invalid(what+"_too_large_km", what+" may be at most {max} kilometres", "max", limit)
 	}
-	return Invalid(what+" may be at most {max}", "max", limit)
+	return Invalid(what+"_too_large", what+" may be at most {max}", "max", limit)
 }
 
 func targetTooLarge(k Kind) error {
@@ -247,29 +247,29 @@ func (h *Habit) Validate() error {
 	h.Unit = strings.TrimSpace(h.Unit)
 
 	if h.Name == "" {
-		return Invalid("name must not be empty")
+		return Invalid("name_empty", "name must not be empty")
 	}
 	if len([]rune(h.Name)) > MaxNameLen {
-		return Invalid("name is longer than {max} characters", "max", MaxNameLen)
+		return Invalid("name_too_long", "name is longer than {max} characters", "max", MaxNameLen)
 	}
 	if len([]rune(h.Unit)) > MaxUnitLen {
-		return Invalid("unit is longer than {max} characters", "max", MaxUnitLen)
+		return Invalid("unit_too_long", "unit is longer than {max} characters", "max", MaxUnitLen)
 	}
 	h.Color = strings.ToLower(strings.TrimSpace(h.Color))
 	if h.Color == "" {
 		h.Color = Colors[0]
 	}
 	if !ValidColor(h.Color) {
-		return Invalid(`unknown colour "{color}"`, "color", h.Color)
+		return Invalid("unknown_color", `unknown colour "{color}"`, "color", h.Color)
 	}
 
 	h.Icon = strings.TrimSpace(h.Icon)
 	if h.Icon != "" && !ValidIcon(h.Icon) {
-		return Invalid(`unknown icon "{icon}"`, "icon", h.Icon)
+		return Invalid("unknown_icon", `unknown icon "{icon}"`, "icon", h.Icon)
 	}
 
 	if !h.Kind.Valid() {
-		return Invalid(`unknown habit kind "{kind}"`, "kind", h.Kind)
+		return Invalid("unknown_kind", `unknown habit kind "{kind}"`, "kind", h.Kind)
 	}
 	// The step defaults to the kind's step and is fixed at 1 for KindCheck.
 	if h.Kind == KindCheck {
@@ -292,11 +292,11 @@ func (h *Habit) Validate() error {
 			return err
 		}
 		if i > 0 && !h.Previous[i-1].From.Before(h.Previous[i].From) {
-			return Invalid("schedules must start on different days, oldest first")
+			return Invalid("schedules_unordered", "schedules must start on different days, oldest first")
 		}
 	}
 	if n := len(h.Previous); n > 0 && !h.Previous[n-1].From.Before(h.Since) {
-		return Invalid("schedules must start on different days, oldest first")
+		return Invalid("schedules_unordered", "schedules must start on different days, oldest first")
 	}
 	current := h.Current()
 	if err := current.normalise(h.Kind); err != nil {
@@ -384,10 +384,10 @@ func (h Habit) ScheduleOn(d Date) Schedule {
 // MaxTarget.
 func ValidateEntryValue(k Kind, value int) error {
 	if !k.Valid() {
-		return Invalid(`unknown habit kind "{kind}"`, "kind", k)
+		return Invalid("unknown_kind", `unknown habit kind "{kind}"`, "kind", k)
 	}
 	if value < 0 {
-		return Invalid("value must not be negative")
+		return Invalid("value_negative", "value must not be negative")
 	}
 	if value > k.MaxTarget() {
 		return tooLarge("value", k)

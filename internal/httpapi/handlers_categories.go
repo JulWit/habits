@@ -34,7 +34,7 @@ func (s *Server) handleCreateCategory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if in.Name == nil {
-		writeError(w, http.StatusBadRequest, "name is required")
+		writeError(w, http.StatusBadRequest, "missing_fields", "name is required")
 		return
 	}
 	user := auth.MustUser(r.Context())

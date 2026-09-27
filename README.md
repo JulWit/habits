@@ -259,18 +259,20 @@ All endpoints are under `/api` and return JSON.
 Writing endpoints require `Content-Type: application/json`. This forces a CORS
 preflight and protects against CSRF.
 
-Errors are returned as `{"error": "..."}` in English. Validation errors also
-include the message template and its parameters, which the client uses for
-translation:
+Errors are problem details (RFC 9457, `application/problem+json`) with two
+extension members: `code` identifies the problem and stays stable when the
+wording changes, `params` holds the values of its message. `detail` is the
+English message:
 
 ```json
-{"error": "name is longer than 80 characters",
- "message": "name is longer than {max} characters",
- "params": {"max": 80}}
+{"title": "Unprocessable Entity", "status": 422, "code": "name_too_long",
+ "detail": "name is longer than 80 characters", "params": {"max": 80}}
 ```
 
-New validation messages therefore use `domain.Invalid` with placeholders and
-need an entry in `i18n.js`.
+The client translates by `code` (`deErrors` in `i18n.js`) and fills in
+`params`; without a translation it shows `detail`. A new validation error uses
+`domain.Invalid(code, template, params...)` and needs an entry in `deErrors`;
+`TestEveryProblemCodeIsTranslated` checks that every code has one.
 
 `/api/state` also contains:
 

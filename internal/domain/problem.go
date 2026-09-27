@@ -7,10 +7,12 @@ import (
 
 // Problem is a validation error with a user-facing message.
 //
-// Template is the English message with {name} placeholders; Params holds their
-// values. Both are sent to the client separately so that it can translate the
-// template (see web/assets/js/i18n.js).
+// Code identifies the problem and stays stable when the wording changes; the
+// client translates by it (see web/assets/js/i18n.js). Template is the English
+// message with {name} placeholders and Params holds their values, which the
+// client fills into its translation.
 type Problem struct {
+	Code     string
 	Template string
 	Params   map[string]any
 }
@@ -19,9 +21,9 @@ var placeholder = regexp.MustCompile(`\{\w+\}`)
 
 // Invalid returns a Problem. params holds alternating names and values:
 //
-//	Invalid("name is longer than {max} characters", "max", MaxNameLen)
-func Invalid(template string, params ...any) error {
-	p := &Problem{Template: template}
+//	Invalid("name_too_long", "name is longer than {max} characters", "max", MaxNameLen)
+func Invalid(code, template string, params ...any) error {
+	p := &Problem{Code: code, Template: template}
 	if len(params) > 0 {
 		p.Params = make(map[string]any, len(params)/2)
 		for i := 0; i+1 < len(params); i += 2 {

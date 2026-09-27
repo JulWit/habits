@@ -14,7 +14,7 @@
 .dialog::backdrop { background: rgba(0, 0, 0, .55); }
 
 .dialog-head {
-  padding: var(--space) calc(1.15 * var(--space)) calc(.25 * var(--space));
+  padding: calc(1.15 * var(--space)) calc(1.15 * var(--space)) calc(.25 * var(--space));
   font-size: var(--text-lg);
   font-weight: var(--weight-bold);
 }
@@ -23,7 +23,7 @@
   display: flex;
   justify-content: flex-end;
   gap: calc(.5 * var(--space));
-  padding: calc(.85 * var(--space)) calc(1.15 * var(--space)) calc(1.1 * var(--space));
+  padding: calc(.85 * var(--space)) calc(1.15 * var(--space)) calc(1.15 * var(--space));
 }
 
 /* ---------- pages ---------- */
@@ -137,11 +137,24 @@ html:has(.dialog.page[open]) { overflow: hidden; }
   :root .dialog.page.is-floating::backdrop { background: rgba(0, 0, 0, .55); }
   :root .dialog.page.is-floating .page-head { background: var(--surface); }
 
+  /* The title bar's buttons keep the same distance from the top edge as the
+     content from the other edges. */
+  .dialog.page.is-floating .page-head {
+    min-height: 0;
+    padding-top: var(--page-inset);
+  }
+
+  /* The same padding on all sides. */
   .dialog.page.is-floating .page-body {
     margin: 0;
-    padding-top: calc(.5 * var(--space));
-    padding-bottom: calc(.5 * var(--space));
+    padding-block: var(--page-inset);
     border-radius: 0;
+  }
+
+  /* The last shown field has no margin below, so the padding alone sets the
+     space above the card's bottom edge. Hidden fields may follow it. */
+  .dialog.page.is-floating .page-body > .field:not([hidden]):not(:has(~ .field:not([hidden]))) {
+    margin-bottom: 0;
   }
 }
 

@@ -69,6 +69,8 @@ const de = {
   "Daily target in km": "Tagesziel in km",
   "Step in km": "Schritt in km",
   "Frequency": "Häufigkeit",
+  "Details": "Details",
+  "Status": "Status",
   "Daily": "Täglich",
   "Times per week": "Mal pro Woche",
   "Weekdays": "Wochentage",

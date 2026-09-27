@@ -38,7 +38,7 @@ export function renderDetail(habit) {
   root.dataset.habit = habit.id;
   root.style.setProperty("--habit-color", habit.color);
   // The cumulative chart is only shown for countable habits.
-  const panels = [header(habit), stats(habit), activity(habit), heatmap(habit)];
+  const panels = [header(habit), stats(habit), details(habit), activity(habit), heatmap(habit)];
   if (H.isCountable(habit)) panels.push(cumulative(habit));
   root.replaceChildren(...panels);
   showNewest(root);
@@ -56,13 +56,11 @@ function showToday(panel) {
 }
 
 /**
- * The view's title bar: back, name with frequency and target, edit, and the
- * overflow menu with archive and delete.
+ * The view's title bar: back, name, edit, and the overflow menu with archive
+ * and delete. Frequency and target are in the details panel.
  */
 function header(habit) {
   const archived = habit.archivedAt != null;
-  // Frequency, then target, as on the board. Empty parts are left out.
-  const sub = [H.describeFrequency(habit), H.describeTarget(habit), archived ? t("archived") : ""];
 
   // Without an icon, a dot in the habit's colour.
   let badge = habitIconBadge(habit, "habit-icon");
@@ -73,7 +71,6 @@ function header(habit) {
 
   return appBar({
     title: habit.name,
-    sub,
     badge,
     menu: [
       archived
@@ -108,6 +105,31 @@ function stats(habit) {
     row.append(tile);
   }
   return row;
+}
+
+/**
+ * Shows how the habit is set up: frequency, daily target (not for check
+ * habits), category and, if archived, its status.
+ */
+function details(habit) {
+  const panel = document.createElement("section");
+  panel.className = "panel details";
+
+  const title = document.createElement("h3");
+  title.textContent = t("Details");
+
+  const list = document.createElement("dl");
+  list.className = "activity-list";
+
+  list.append(activityItem(t("Frequency"), H.describeFrequency(habit)));
+  const target = H.describeTarget(habit);
+  if (target) list.append(activityItem(t("Daily target"), target));
+  const category = state.categories.find((c) => c.id === habit.categoryId);
+  list.append(activityItem(t("Category"), category?.name ?? t("No category")));
+  if (habit.archivedAt) list.append(activityItem(t("Status"), t("Archived")));
+
+  panel.append(title, list);
+  return panel;
 }
 
 /**

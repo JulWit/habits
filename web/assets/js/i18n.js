@@ -98,6 +98,14 @@ const de = {
     "Erster und Montag heißt: der erste Montag jedes Monats.",
   "Every … days": "Alle … Tage",
   "Apply to past days as well": "Auch für vergangene Tage übernehmen",
+  "Days that reached their target stay ticked; the others are cleared. The recorded values are not kept.":
+    "Tage, die ihr Ziel erreicht haben, bleiben abgehakt, die anderen werden geleert. Die erfassten Werte bleiben nicht erhalten.",
+  "Ticked days get the new daily target.": "Abgehakte Tage bekommen das neue Tagesziel.",
+  "Recorded values keep their number in the new unit, e.g. 5 becomes 5 {unit}.":
+    "Erfasste Werte behalten ihre Zahl in der neuen Einheit, aus 5 wird z. B. 5 {unit}.",
+  "minutes": "Minuten",
+  "km": "km",
+  "times": "Mal",
   "Off, the new target and frequency apply from today on. Past days keep the ones they had.":
     "Aus: Ziel und Häufigkeit gelten ab heute. Vergangene Tage behalten die bisherigen.",
   "Cancel": "Abbrechen",

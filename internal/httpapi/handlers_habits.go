@@ -290,11 +290,17 @@ func (s *Server) handleUpdateHabit(w http.ResponseWriter, r *http.Request) {
 		s.writeStoreError(w, err, "loading habit")
 		return
 	}
-	if err := s.applyUpdate(r, user.ID, in, &h); err != nil {
+	converted, err := s.applyUpdate(r, user.ID, in, &h)
+	if err != nil {
 		s.writeStoreError(w, err, "updating habit")
 		return
 	}
-	if err := s.store.UpdateHabit(r.Context(), user.ID, &h); err != nil {
+	if converted != nil {
+		err = s.store.ChangeKind(r.Context(), user.ID, &h, converted)
+	} else {
+		err = s.store.UpdateHabit(r.Context(), user.ID, &h)
+	}
+	if err != nil {
 		s.writeStoreError(w, err, "updating habit")
 		return
 	}
@@ -351,25 +357,52 @@ func (s *Server) handleReorderHabits(w http.ResponseWriter, r *http.Request) {
 
 // applyUpdate copies the set fields of in to h. A new target or frequency
 // starts a new schedule version from today on, unless in.Retroactive is set.
-// A change of kind resets the history, as it is only allowed before the first
-// entry.
-func (s *Server) applyUpdate(r *http.Request, userID string, in habitInput, h *domain.Habit) error {
-	prev, kind := h.Current(), h.Kind
+// A change of kind converts the history (domain.ConvertKind); the converted
+// entries are returned, nil if the kind stays.
+func (s *Server) applyUpdate(r *http.Request, userID string, in habitInput, h *domain.Habit) (map[domain.Date]int, error) {
+	before, prev := *h, h.Current()
 	in.applyTo(h)
+
+	var converted map[domain.Date]int
+	if h.Kind != before.Kind {
+		entries, err := s.store.EntriesForHabit(r.Context(), userID, h.ID)
+		if err != nil {
+			return nil, err
+		}
+		// Ticked days get the new target; undo sends it as the last schedule.
+		target := h.TargetValue
+		if n := len(in.Schedules); n > 0 {
+			target = in.Schedules[n-1].TargetValue
+		}
+		var schedules []domain.Schedule
+		schedules, converted = domain.ConvertKind(before, entries, h.Kind, target)
+		// The converted history is the base; the new target and frequency
+		// follow as for any change.
+		wanted, frequency := h.TargetValue, h.Frequency
+		h.SetSchedules(schedules)
+		prev = h.Current()
+		h.TargetValue, h.Frequency = wanted, frequency
+		// The step and unit of the old kind mean nothing for the new one.
+		if in.StepValue == nil {
+			h.StepValue = 0
+		}
+		if in.Unit == nil {
+			h.Unit = ""
+		}
+	}
 
 	switch {
 	case in.Schedules != nil:
 		if in.TargetValue != nil || in.Frequency != nil {
-			return domain.Invalid("schedules_with_target", "schedules cannot be combined with targetValue or frequency")
+			return nil, domain.Invalid("schedules_with_target", "schedules cannot be combined with targetValue or frequency")
 		}
 		if len(in.Schedules) == 0 {
-			return domain.Invalid("schedules_empty", "at least one schedule is required")
+			return nil, domain.Invalid("schedules_empty", "at least one schedule is required")
 		}
 		h.SetSchedules(in.Schedules)
-		return nil
-	case in.TargetValue != nil || in.Frequency != nil || h.Kind != kind:
+	case in.TargetValue != nil || in.Frequency != nil:
 		today := s.todayFor(r.Context(), userID)
-		return h.Reschedule(prev, today, in.Retroactive || h.Kind != kind)
+		return converted, h.Reschedule(prev, today, in.Retroactive)
 	}
-	return nil
+	return converted, nil
 }

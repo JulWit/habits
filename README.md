@@ -383,6 +383,10 @@ the redesign (schema versions up to 37) run their remaining steps from
 **New habit kind**: Add it to `AllKinds` in `internal/domain/habit.go` and
 handle it in `Scale`, `Step`, `MaxTarget` and `Unit`. The client receives these
 values via `kinds`; the editor needs its input fields.
+Changing the kind of a habit converts its history (`domain.ConvertKind`): to
+check, completed days stay ticked; from check, ticked days get the new target;
+between measured kinds, values and targets keep their number in the new unit.
+Completion and streaks stay the same.
 
 **New language**: A dictionary in `i18n.js`, an entry under `"language"` in
 `store.Options` and the day and month names in `dates.js`.
@@ -446,6 +450,6 @@ board, the day a tap writes to and the open day for streaks.
 
 - The SQLite pool uses a single connection. If read throughput becomes an
   issue, add a separate read-only pool.
-- The kind of a habit cannot be changed once it has entries, since stored
-  values depend on the kind.
+- Changing the kind to check keeps only whether each day was completed; the
+  recorded values are lost, so undoing it gives completed days their target.
 - The detail view only shows the current calendar year.

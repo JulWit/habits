@@ -334,8 +334,32 @@ function scheduleKey(input) {
 function syncRetroactive() {
   const box = document.getElementById("editor-retroactive");
   const input = collect();
+  syncKindHint(input.kind);
   const changed = editing !== null && input.kind === editing.kind &&
     scheduleKey(input) !== initialSchedule;
   box.hidden = !changed;
   if (!changed) form.elements.retroactive.checked = false;
+}
+
+/**
+ * Explains what happens to the recorded days when the kind of a habit with
+ * entries changes (domain.ConvertKind).
+ */
+function syncKindHint(kind) {
+  const hint = document.getElementById("editor-kind-hint");
+  const recorded = editing !== null &&
+    (Object.keys(editing.entries ?? {}).length > 0 || (editing.stats?.total ?? 0) > 0);
+  if (!recorded || kind === editing.kind) {
+    hint.hidden = true;
+    return;
+  }
+  if (kind === "check") {
+    hint.textContent = t("Days that reached their target stay ticked; the others are cleared. The recorded values are not kept.");
+  } else if (editing.kind === "check") {
+    hint.textContent = t("Ticked days get the new daily target.");
+  } else {
+    hint.textContent = t("Recorded values keep their number in the new unit, e.g. 5 becomes 5 {unit}.",
+      { unit: t(kind === "time" ? "minutes" : kind === "distance" ? "km" : "times") });
+  }
+  hint.hidden = false;
 }

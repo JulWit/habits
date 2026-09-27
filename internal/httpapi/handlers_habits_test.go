@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strings"
 	"testing"
 	"time"
 
@@ -52,9 +51,9 @@ func TestStateCarriesTheKindDescriptors(t *testing.T) {
 	}
 }
 
-// Changing the kind of a habit with entries is rejected with a readable
-// message.
-func TestKindChangeWithHistoryIsRefusedReadably(t *testing.T) {
+// Changing the kind of a habit with entries converts its history: values keep
+// their number in the new unit, and the step falls back to the new kind's.
+func TestKindChangeConvertsTheHistory(t *testing.T) {
 	h := newTestServer(t)
 	w := do(t, h, "POST", "/api/habits",
 		`{"name":"Running","kind":"distance","targetValue":5000,"frequency":{"kind":"daily"}}`,
@@ -65,47 +64,37 @@ func TestKindChangeWithHistoryIsRefusedReadably(t *testing.T) {
 	if err := json.Unmarshal(w.Body.Bytes(), &created); err != nil {
 		t.Fatalf("reading response: %v", err)
 	}
-	if w := do(t, h, "PUT", "/api/habits/"+created.ID+"/entries/2026-09-18",
+	day := domain.Today(time.UTC).AddDays(-1).String()
+	if w := do(t, h, "PUT", "/api/habits/"+created.ID+"/entries/"+day,
 		`{"value":5200}`, "application/json"); w.Code != http.StatusOK {
 		t.Fatalf("entry: %d (%s)", w.Code, w.Body)
 	}
 
 	w = do(t, h, "PATCH", "/api/habits/"+created.ID,
-		`{"kind":"count","targetValue":80}`, "application/json")
-	if w.Code != http.StatusUnprocessableEntity {
-		t.Fatalf("status %d, want 422 (%s)", w.Code, w.Body)
+		`{"kind":"time","targetValue":300}`, "application/json")
+	if w.Code != http.StatusOK {
+		t.Fatalf("status %d (%s)", w.Code, w.Body)
 	}
-	var body struct {
-		Code   string `json:"code"`
-		Detail string `json:"detail"`
+	var view struct {
+		StepValue int                 `json:"stepValue"`
+		Unit      string              `json:"unit"`
+		Entries   map[string]int      `json:"entries"`
+		Schedules []domain.Schedule   `json:"schedules"`
+		Stats     struct{ Total int } `json:"stats"`
 	}
-	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+	if err := json.Unmarshal(w.Body.Bytes(), &view); err != nil {
 		t.Fatalf("reading response: %v", err)
 	}
-	for _, want := range []string{"Count", "1 day is already recorded"} {
-		if !strings.Contains(body.Detail, want) {
-			t.Errorf("message %q does not mention %q", body.Detail, want)
-		}
+	// 5.2 km become 5.2 minutes. The habit was created today, so the new
+	// target replaces today's schedule (domain tests cover older ones).
+	if view.Entries[day] != 52 {
+		t.Errorf("entry = %d, want 52 (5.2 minutes)", view.Entries[day])
 	}
-	if strings.Contains(body.Detail, `"count"`) {
-		t.Errorf("message shows the raw key: %q", body.Detail)
+	if len(view.Schedules) != 1 || view.Schedules[0].TargetValue != 300 {
+		t.Errorf("schedules = %+v, want one with 30 minutes", view.Schedules)
 	}
-
-	// With a second entry the message uses the plural.
-	if w := do(t, h, "PUT", "/api/habits/"+created.ID+"/entries/2026-09-17",
-		`{"value":4800}`, "application/json"); w.Code != http.StatusOK {
-		t.Fatalf("second entry: %d (%s)", w.Code, w.Body)
-	}
-	w = do(t, h, "PATCH", "/api/habits/"+created.ID,
-		`{"kind":"count","targetValue":80}`, "application/json")
-	if w.Code != http.StatusUnprocessableEntity {
-		t.Fatalf("status %d, want 422 (%s)", w.Code, w.Body)
-	}
-	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
-		t.Fatalf("reading response: %v", err)
-	}
-	if body.Code != "kind_locked" || !strings.Contains(body.Detail, "2 days are already recorded") {
-		t.Errorf("%s: %q does not use the plural form", body.Code, body.Detail)
+	if view.StepValue != domain.KindTime.Step() || view.Unit != "min" {
+		t.Errorf("step %d, unit %q; want the time defaults", view.StepValue, view.Unit)
 	}
 }
 

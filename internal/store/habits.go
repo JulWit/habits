@@ -171,8 +171,20 @@ func nullableID(id string) any {
 	return id
 }
 
-// UpdateHabit updates all fields except the position (see ReorderHabits).
+// UpdateHabit updates all fields except the position (see ReorderHabits). A
+// change of kind is refused once there are entries; see ChangeKind.
 func (s *Store) UpdateHabit(ctx context.Context, userID string, h *domain.Habit) error {
+	return s.updateHabit(ctx, userID, h, nil)
+}
+
+// ChangeKind is UpdateHabit for a change of kind: it also replaces all entries
+// of the habit with entries, the history converted to the new kind (see
+// domain.ConvertKind).
+func (s *Store) ChangeKind(ctx context.Context, userID string, h *domain.Habit, entries map[domain.Date]int) error {
+	return s.updateHabit(ctx, userID, h, entries)
+}
+
+func (s *Store) updateHabit(ctx context.Context, userID string, h *domain.Habit, entries map[domain.Date]int) error {
 	h.UpdatedAt = time.Now().UTC()
 	if err := h.Validate(); err != nil {
 		return err
@@ -191,8 +203,10 @@ func (s *Store) UpdateHabit(ctx context.Context, userID string, h *domain.Habit)
 	if err := s.requireOwnCategory(ctx, tx, userID, h.CategoryID); err != nil {
 		return err
 	}
-	if err := s.requireKindKeepsHistoryMeaningful(ctx, tx, userID, h); err != nil {
-		return err
+	if entries == nil {
+		if err := s.requireKindKeepsHistoryMeaningful(ctx, tx, userID, h); err != nil {
+			return err
+		}
 	}
 
 	res, err := tx.ExecContext(ctx, `
@@ -212,10 +226,37 @@ func (s *Store) UpdateHabit(ctx context.Context, userID string, h *domain.Habit)
 	if err := saveSchedules(ctx, tx, h); err != nil {
 		return err
 	}
+	if entries != nil {
+		if err := replaceEntries(ctx, tx, h, entries); err != nil {
+			return err
+		}
+	}
 	return tx.Commit()
 }
 
-// requireKindKeepsHistoryMeaningful returns a validation error if the kind of a
+// replaceEntries replaces all entries of the habit.
+func replaceEntries(ctx context.Context, q execer, h *domain.Habit, entries map[domain.Date]int) error {
+	if _, err := q.ExecContext(ctx, `DELETE FROM entries WHERE habit_id = ?`, h.ID); err != nil {
+		return fmt.Errorf("replacing entries: %w", err)
+	}
+	now := formatTime(time.Now())
+	for d, v := range entries {
+		if err := domain.ValidateEntryValue(h.Kind, v); err != nil {
+			return err
+		}
+		if v == 0 {
+			continue
+		}
+		if _, err := q.ExecContext(ctx,
+			`INSERT INTO entries (habit_id, date, value, updated_at) VALUES (?,?,?,?)`,
+			h.ID, d.String(), v, now); err != nil {
+			return fmt.Errorf("saving entry: %w", err)
+		}
+	}
+	return nil
+}
+
+// requireKindKeepsHistoryMeaningful) returns a validation error if the kind of a
 // habit with entries is changed, since stored values depend on the kind.
 func (s *Store) requireKindKeepsHistoryMeaningful(ctx context.Context, q queryer, userID string, h *domain.Habit) error {
 	var current domain.Kind

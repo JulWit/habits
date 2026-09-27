@@ -173,6 +173,23 @@ export const habitIcons = {
   mountain: draw('<path d="m8 3 4 8 5-5 5 15H2z"/>'),
   flame: draw('<path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.4-.5-2-1-3-1.1-2.1-.2-4 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.2.4-2.3 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>'),
   bed: draw('<path d="M2 4v16M2 8h18a2 2 0 0 1 2 2v10M2 17h20M6 8v9"/>'),
+  alarm: draw(
+    '<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2M5 3 2 6M22 6l-3-3M6.4 18.7 4 21M17.6 18.7 20 21"/>',
+  ),
+  // Times of day: the sun rising, high above the horizon, and setting.
+  morning: draw(
+    '<path d="M12 2v8M8 6l4-4 4 4M16 18a4 4 0 0 0-8 0M4.9 10.9l1.4 1.4M19.1 10.9l-1.4 1.4' +
+    'M2 18h2M20 18h2M22 22H2"/>',
+  ),
+  midday: draw(
+    '<circle cx="12" cy="10" r="3.5"/>' +
+    '<path d="M12 2.5V4M12 16v1.5M4 10h1.5M18.5 10H20M6.7 4.7l1 1M17.3 4.7l-1 1' +
+    'M6.7 15.3l1-1M17.3 15.3l-1-1M2 21.5h20"/>',
+  ),
+  evening: draw(
+    '<path d="M12 10V2M16 6l-4 4-4-4M16 18a4 4 0 0 0-8 0M4.9 10.9l1.4 1.4M19.1 10.9l-1.4 1.4' +
+    'M2 18h2M20 18h2M22 22H2"/>',
+  ),
   moon: icons.moon,
   sun: icons.sun,
   book: draw('<path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2zM22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>'),
@@ -211,6 +228,14 @@ export const habitIcons = {
   star: draw('<path d="m12 2 3.1 6.3 6.9 1-5 4.9 1.2 6.8-6.2-3.2-6.2 3.2L7 14.2 2 9.3l6.9-1z"/>'),
   target: draw('<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>'),
   clock: icons.clock,
+  hourglass: draw(
+    '<path d="M5 22h14M5 2h14M17 22v-4.2a2 2 0 0 0-.6-1.4L12 12l-4.4 4.4a2 2 0 0 0-.6 1.4V22' +
+    'M7 2v4.2a2 2 0 0 0 .6 1.4L12 12l4.4-4.4a2 2 0 0 0 .6-1.4V2"/>',
+  ),
+  calendar: draw('<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M8 2v4M16 2v4M3 10h18"/>'),
+  calendarcheck: draw(
+    '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M8 2v4M16 2v4M3 10h18M9 16l2 2 4-4"/>',
+  ),
   check: icons.check,
 };
 
@@ -244,12 +269,14 @@ export function categoryIconBadge(category, className = "habit-icon") {
 const ICON_LABELS = {
   droplet: "Water drop", apple: "Apple", utensils: "Cutlery", coffee: "Coffee",
   pill: "Pill", heart: "Heart", dumbbell: "Dumbbell", bike: "Bicycle",
-  mountain: "Mountain", flame: "Flame", bed: "Bed", moon: "Moon", sun: "Sun",
+  mountain: "Mountain", flame: "Flame", bed: "Bed", alarm: "Alarm clock",
+  morning: "Morning", midday: "Midday", evening: "Evening", moon: "Moon", sun: "Sun",
   book: "Book", pencil: "Pencil", lightbulb: "Light bulb", code: "Code",
   globe: "Globe", music: "Music", palette: "Paint palette", camera: "Camera",
   leaf: "Leaf", home: "House", wallet: "Wallet", users: "People",
   smartphone: "Smartphone", ban: "No entry", smile: "Smile", star: "Star",
-  target: "Target", clock: "Clock", check: "Check mark",
+  target: "Target", clock: "Clock", hourglass: "Hourglass", calendar: "Calendar",
+  calendarcheck: "Calendar with check mark", check: "Check mark",
 };
 
 const COLOR_LABELS = {

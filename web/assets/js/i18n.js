@@ -46,6 +46,8 @@ const de = {
   "Leaf": "Blatt", "House": "Haus", "Wallet": "Geldbörse", "People": "Personen",
   "Smartphone": "Smartphone", "No entry": "Verbotsschild", "Smile": "Lächeln",
   "Star": "Stern", "Target": "Zielscheibe", "Clock": "Uhr", "Check mark": "Häkchen",
+  "Alarm clock": "Wecker", "Morning": "Morgens", "Midday": "Mittags", "Evening": "Abends",
+  "Hourglass": "Sanduhr", "Calendar": "Kalender", "Calendar with check mark": "Kalender mit Häkchen",
   "Red": "Rot", "Orange": "Orange", "Yellow": "Gelb", "Lime": "Hellgrün", "Green": "Grün",
   "Teal": "Petrol", "Sky blue": "Himmelblau", "Blue": "Blau", "Indigo": "Indigo",
   "Violet": "Violett", "Pink": "Pink", "Slate": "Schiefergrau",
@@ -160,6 +162,8 @@ const de = {
   "Dots": "Punkte",
   "Grid": "Raster",
   "Lines": "Linien",
+  "Icons": "Symbole",
+  "Halftone dots": "Halbtonpunkte",
   "Reordering": "Anordnen",
   "Arrange": "Anordnen",
   "Shows the handles for moving habits and categories. Applies until the page is next loaded.":

@@ -16,6 +16,7 @@ import { initValueDialog } from "./value.js";
 import { initSearch, openSearch } from "./search.js";
 import * as actions from "./actions.js";
 import { paintIcons } from "./icons.js";
+import { definePatterns } from "./patterns.js";
 import { translateDocument, t } from "./i18n.js";
 import { initTooltips } from "./tooltip.js";
 import {
@@ -356,6 +357,8 @@ function syncRoute() {
  * server also validates them, so they are applied as they are.
  */
 function initAppearance() {
+  // The images of the icon and halftone patterns.
+  definePatterns(document.documentElement);
   subscribe(() => {
     const settings = state.settings;
     const root = document.documentElement;

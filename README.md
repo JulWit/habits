@@ -425,7 +425,7 @@ immediately. Missing or invalid values fall back to their defaults.
 | `alignWeeks` | bool | Align the board to calendar weeks |
 | `showArchived` | bool | Show archived habits |
 | `reorderMode` | `drag`, `buttons` | Reorder by drag and drop or with arrow buttons |
-| `pattern` | `none`, `grain`, `dots`, `grid`, `lines` | Page background; `grain` is a rough texture |
+| `pattern` | `none`, `grain`, `dots`, `grid`, `lines`, `icons`, `halftone` | Page background; `grain` is a rough texture, `icons` the habit icons in a staggered grid, `halftone` dots in halftone waves |
 | `bandColor` | `neutral` or a palette colour | Colour of the day marker and band (on the active day) |
 | `bandOpacity` | 0–100 | Opacity of the day marker in the header |
 | `bandFillOpacity` | 0–100 | Opacity of the band in the cards |

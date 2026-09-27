@@ -266,19 +266,19 @@ html[data-band="yellow"] { --primary-text: #1b1d21; }
    Faint gradient patterns, mixed from the text colour so they follow the
    theme. */
 :root {
-  --pattern-ink: color-mix(in srgb, var(--text) 7%, transparent);
+  --pattern-ink: color-mix(in srgb, var(--text) 5%, transparent);
   --pattern-image: none;
   --pattern-size: auto;
 }
 
 /* A rough texture, as on sandpaper, in the plain background colour. The noise
-   is opaque grey around 50% (the turbulence averages about 73%, hence the
-   offset of -.23) and is blended with the background colour by
-   overlay: mid grey leaves it unchanged, lighter and darker grains lighten and
+   is opaque grey around 50% (the turbulence averages about 73%; it is scaled
+   by .75 for a softer grain and offset by -.05) and is blended with the
+   background colour by overlay: mid grey leaves it unchanged, lighter and darker grains lighten and
    darken it in proportion. The page thus stays as dark (or light) as plain,
    and the grain follows the theme although an SVG cannot use its colours. */
 html[data-pattern="grain"] {
-  --pattern-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='1 0 0 0 -.23 1 0 0 0 -.23 1 0 0 0 -.23 0 0 0 0 1'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  --pattern-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='.75 0 0 0 -.05 .75 0 0 0 -.05 .75 0 0 0 -.05 0 0 0 0 1'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   --pattern-size: 180px 180px;
 }
 
@@ -307,6 +307,18 @@ html[data-pattern="grid"] {
 html[data-pattern="lines"] {
   --pattern-image: linear-gradient(var(--pattern-ink) 1px, transparent 1px);
   --pattern-size: 100% 28px;
+}
+
+/* The habit icons in a staggered grid, and polka dots in halftone waves. Their
+   SVG tiles are drawn by patterns.js. */
+html[data-pattern="icons"] {
+  --pattern-image: var(--pattern-icons, none);
+  --pattern-size: var(--pattern-icons-size, auto);
+}
+
+html[data-pattern="halftone"] {
+  --pattern-image: var(--pattern-halftone, none);
+  --pattern-size: var(--pattern-halftone-size, auto);
 }
 
 /* Fixed background layer behind the content, so the pattern does not scroll. */
@@ -413,10 +425,12 @@ html[data-scrolled="on"] .day-header-backdrop {
   padding: 0 var(--gutter);
 }
 
-/* The habit and category views are as wide as the overview's cards (the board
-   without its reorder column), so switching views keeps the width. */
+/* The habit, category and day statistics views are as wide as the overview's
+   cards (the board without its reorder column), so switching views keeps the
+   width. */
 #view-detail,
-#view-category {
+#view-category,
+#view-days {
   max-width: calc(var(--board-width) - var(--tools-outset) + 2 * var(--gutter));
 }
 

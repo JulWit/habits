@@ -89,6 +89,8 @@ var Options = map[string][]Option{
 		{Value: "dots", Label: "Dots"},
 		{Value: "grid", Label: "Grid"},
 		{Value: "lines", Label: "Lines"},
+		{Value: "icons", Label: "Icons"},
+		{Value: "halftone", Label: "Halftone dots"},
 	},
 	// Each language is named in its own language.
 	"language": {

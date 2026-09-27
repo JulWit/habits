@@ -201,9 +201,10 @@ html[data-today-band="off"] .cell.is-today .mark::after { background: var(--surf
   /* No row gap, so the month divider is continuous. */
   row-gap: 0;
   border: 1px solid transparent;
-  /* Only the bottom corners are rounded, as the top touches the title bar when
-     scrolled. */
-  border-radius: 0 0 var(--radius) var(--radius);
+  /* Square: it has the page background, and its rounded look when scrolled is
+     drawn by ::before and the backdrop. Firefox clips each background layer
+     before blending the grain pattern, so a rounded edge would show as a
+     light arc. */
   /* Card padding and a transparent border, so the columns align with the cards.
      The vertical padding is always present, so the board does not move when
      scrolling starts. */
@@ -224,8 +225,6 @@ html[data-today-band="off"] .cell.is-today .mark::after { background: var(--surf
 html[data-scrolled="on"] .day-header {
   padding-bottom: calc(var(--header-pad-y) + var(--board-gap));
   margin-bottom: calc(-1 * var(--board-gap));
-  /* The rounding is drawn by the card pseudo-element. */
-  border-radius: 0;
 }
 
 html[data-scrolled="on"] .day-header::before {

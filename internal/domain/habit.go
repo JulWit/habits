@@ -380,9 +380,10 @@ func ValidColor(name string) bool { return slices.Contains(Colors, name) }
 // The icons themselves are defined in the client.
 var HabitIcons = []string{
 	"droplet", "apple", "utensils", "coffee", "pill", "heart", "dumbbell", "bike",
-	"mountain", "flame", "bed", "moon", "sun", "book", "pencil", "lightbulb",
-	"code", "globe", "music", "palette", "camera", "leaf", "home", "wallet",
-	"users", "smartphone", "ban", "smile", "star", "target", "clock", "check",
+	"mountain", "flame", "bed", "alarm", "morning", "midday", "evening", "moon",
+	"sun", "book", "pencil", "lightbulb", "code", "globe", "music", "palette",
+	"camera", "leaf", "home", "wallet", "users", "smartphone", "ban", "smile",
+	"star", "target", "clock", "hourglass", "calendar", "calendarcheck", "check",
 }
 
 // ValidIcon reports whether name is one of HabitIcons.

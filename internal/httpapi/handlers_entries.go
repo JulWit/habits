@@ -78,12 +78,7 @@ func (s *Server) handleSetEntry(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	var previous int
-	if body.Expect != nil {
-		previous, err = s.store.SetEntryIf(r.Context(), user.ID, habitID, date, body.Value, *body.Expect)
-	} else {
-		previous, err = s.store.SetEntry(r.Context(), user.ID, habitID, date, body.Value)
-	}
+	previous, err := s.store.SetEntry(r.Context(), user.ID, habitID, date, body.Value, body.Expect)
 	if errors.Is(err, store.ErrConflict) {
 		writeProblemBody(w, problemBody{
 			Status: http.StatusConflict,

@@ -45,8 +45,8 @@ func TestDailyRunReachesToday(t *testing.T) {
 // Runs of weekday habits are measured in calendar days.
 func TestWeekdayRunIsMeasuredInCalendarDays(t *testing.T) {
 	h := Habit{
-		Kind: KindCheck, TargetValue: 1, CreatedAt: longAgo,
-		Frequency: Frequency{Kind: FreqWeekdays, Weekdays: 0b0010101}, // Mon, Wed, Fri
+		Kind: KindCheck, CreatedAt: longAgo,
+		Schedules: since(longAgo, 1, Frequency{Kind: FreqWeekdays, Weekdays: 0b0010101}), // Mon, Wed, Fri
 	}
 	entries := map[Date]int{}
 	for d := friday.AddDays(-20); !d.After(friday); d = d.AddDays(1) {
@@ -72,8 +72,8 @@ func TestWeekdayRunIsMeasuredInCalendarDays(t *testing.T) {
 func TestRunCoversAnExtraDayTheHabitIsNotDueOn(t *testing.T) {
 	saturday := friday.AddDays(1)
 	h := Habit{
-		Kind: KindCheck, TargetValue: 1, CreatedAt: longAgo,
-		Frequency: Frequency{Kind: FreqWeekdays, Weekdays: 0b0011111}, // Mon–Fri
+		Kind: KindCheck, CreatedAt: longAgo,
+		Schedules: since(longAgo, 1, Frequency{Kind: FreqWeekdays, Weekdays: 0b0011111}), // Mon–Fri
 	}
 	entries := map[Date]int{}
 	for d := friday.AddDays(-4); !d.After(saturday); d = d.AddDays(1) {
@@ -92,8 +92,8 @@ func TestRunCoversAnExtraDayTheHabitIsNotDueOn(t *testing.T) {
 // Unscheduled days do not break a run.
 func TestWeekdayRunIgnoresDaysItIsNotDueOn(t *testing.T) {
 	h := Habit{
-		Kind: KindCheck, TargetValue: 1, CreatedAt: longAgo,
-		Frequency: Frequency{Kind: FreqWeekdays, Weekdays: 0b0011111}, // Mon–Fri
+		Kind: KindCheck, CreatedAt: longAgo,
+		Schedules: since(longAgo, 1, Frequency{Kind: FreqWeekdays, Weekdays: 0b0011111}), // Mon–Fri
 	}
 	entries := map[Date]int{}
 	for d := monday.AddDays(-7); !d.After(friday); d = d.AddDays(1) {

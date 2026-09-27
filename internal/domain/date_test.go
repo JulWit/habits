@@ -92,9 +92,6 @@ func TestWeekdayBitmaskIsMondayFirst(t *testing.T) {
 	if !sundayOnly.Has(time.Sunday) || sundayOnly.Has(time.Monday) {
 		t.Error("bit 6 must be Sunday")
 	}
-	if all.Count() != 7 {
-		t.Errorf("Count = %d, want 7", all.Count())
-	}
 }
 
 // A Date is encoded as "YYYY-MM-DD", the zero Date as "".

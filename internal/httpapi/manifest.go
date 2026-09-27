@@ -10,16 +10,11 @@ import (
 	"github.com/JulWit/habits/internal/auth"
 )
 
-// Colours of the system bars and the splash screen per theme, matching --bg in
-// base.css. The manifest cannot follow the colour scheme, so "system" uses the
-// scheme app.js stores in the color_scheme cookie, or the light colour without
-// one. Chrome then follows the theme-color entries in index.html; Firefox on
-// Android uses the manifest only.
-var manifestColors = map[string]string{
-	"light":  "#e6e8ec",
-	"dark":   "#0f0f0f",
-	"system": "#e6e8ec",
-}
+// Colours of the system bars and the splash screen, matching --bg in base.css.
+const (
+	lightBarColor = "#e6e8ec"
+	darkBarColor  = "#0f0f0f"
+)
 
 // loadManifest reads the web app manifest from webFS.
 func loadManifest(webFS fs.FS) (map[string]any, error) {
@@ -36,20 +31,22 @@ func loadManifest(webFS fs.FS) (map[string]any, error) {
 
 // handleManifest serves the manifest with the colours of the user's theme, so
 // an installed app starts with system bars in that theme.
+//
+// The manifest cannot follow the colour scheme, so for the "system" theme it
+// uses the scheme app.js stores in the color_scheme cookie, light without
+// one. Chrome then follows the theme-color entries in index.html; Firefox on
+// Android uses the manifest only.
 func (s *Server) handleManifest(w http.ResponseWriter, r *http.Request) {
 	user := auth.MustUser(r.Context())
-	theme := "system"
-	if settings, err := s.store.GetSettings(r.Context(), user.ID); err == nil {
-		theme = settings.Theme
+	dark := false
+	if settings, err := s.store.GetSettings(r.Context(), user.ID); err == nil && settings.Theme != "system" {
+		dark = settings.Theme == "dark"
+	} else if c, err := r.Cookie("color_scheme"); err == nil {
+		dark = c.Value == "dark"
 	}
-	if theme == "system" {
-		if c, err := r.Cookie("color_scheme"); err == nil && (c.Value == "light" || c.Value == "dark") {
-			theme = c.Value
-		}
-	}
-	color, ok := manifestColors[theme]
-	if !ok {
-		color = manifestColors["system"]
+	color := lightBarColor
+	if dark {
+		color = darkBarColor
 	}
 
 	m := maps.Clone(s.manifest)

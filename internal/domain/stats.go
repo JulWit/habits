@@ -26,7 +26,7 @@ func ComputeStats(h Habit, entries map[Date]int, today Date, windowDays int) Sta
 	if windowDays < 1 {
 		windowDays = DefaultRateWindowDays
 	}
-	if h.Frequency.Kind == FreqTimesPerWeek {
+	if h.Current().Frequency.Kind == FreqTimesPerWeek {
 		return weeklyStats(h, entries, today, windowDays)
 	}
 	return dailyStats(h, entries, today, windowDays)

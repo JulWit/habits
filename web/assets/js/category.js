@@ -1,7 +1,7 @@
 // Category detail view: its habits and its perfect days, i.e. days on which
 // every scheduled habit of the category was completed.
 
-import { addDays, formatDayMonth, formatLong, localISO } from "./dates.js";
+import { formatLong, localISO } from "./dates.js";
 import { t } from "./i18n.js";
 import { state } from "./state.js";
 import * as H from "./habit.js";
@@ -9,6 +9,7 @@ import { habitIconBadge, categoryIconBadge, colorValue } from "./icons.js";
 import { appBar } from "./appbar.js";
 import { openCategoryEditor } from "./categoryeditor.js";
 import { statRow, factsPanel, factItem } from "./panels.js";
+import { rangeStart, sinceLabel, dayRecords, isPerfect, perfectStreaks } from "./year.js";
 
 let root;
 let actions;
@@ -59,44 +60,12 @@ function header(category) {
   });
 }
 
-/**
- * Counts the perfect days between `from` and `to`, the days with scheduled
- * habits (`due`) and the current run of perfect days (`streak`). Days without
- * scheduled habits are skipped. Habits count from their creation day.
- */
-function perfectDays(habits, from, to) {
-  let perfect = 0;
-  let due = 0;
-  // The current run of perfect days; an open today does not end it.
-  let run = 0;
-
-  const bornOn = new Map(habits.map((h) => [h.id, (h.createdAt ?? "").slice(0, 10)]));
-  for (let day = from; day <= to; day = addDays(day, 1)) {
-    const scheduled = habits.filter(
-      (h) => bornOn.get(h.id) <= day && H.isScheduled(h, day),
-    );
-    if (scheduled.length === 0) continue;
-    due++;
-    if (scheduled.every((h) => H.isComplete(h, day, h.entries[day] ?? 0))) {
-      perfect++;
-      run++;
-    } else if (day !== state.today) {
-      run = 0;
-    }
-  }
-  return { perfect, due, streak: run };
-}
-
-/** Returns January 1 of this year, or the start of the loaded entries if later. */
-function rangeStart() {
-  const yearStart = `${state.today.slice(0, 4)}-01-01`;
-  const loaded = state.entriesFrom ?? yearStart;
-  return loaded > yearStart ? loaded : yearStart;
-}
-
 function stats(habits) {
   const from = rangeStart();
-  const { perfect, due, streak } = perfectDays(habits, from, state.today);
+  const days = dayRecords(habits, from, state.today);
+  const due = days.filter((d) => d.due > 0).length;
+  const perfect = days.filter(isPerfect).length;
+  const streak = perfectStreaks(days).current;
 
   // Summed from the habits' own stats.
   const expected = habits.reduce((sum, h) => sum + (h.stats?.expected ?? 0), 0);
@@ -120,13 +89,6 @@ function details(category) {
     category.showProgress ? t("Shown on the board") : t("Not shown"))];
   if (category.createdAt) items.push(factItem(t("Created"), formatLong(localISO(category.createdAt))));
   return factsPanel(t("Details"), items);
-}
-
-/** Returns "(2026)" for a full year, "(since 12 Mar)" otherwise. */
-function sinceLabel(from) {
-  const year = state.today.slice(0, 4);
-  if (from === `${year}-01-01`) return `(${year})`;
-  return t("(since {date})", { date: formatDayMonth(from) });
 }
 
 function habitList(habits) {

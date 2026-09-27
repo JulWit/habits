@@ -60,7 +60,7 @@ All configuration is done through environment variables.
 | `HABITS_ADDR` | `:8080` | Listen address |
 | `HABITS_DB` | `habits.db` | Path to the SQLite file |
 | `HABITS_TZ` | `Local` | Default time zone for "today" (e.g. `Europe/Berlin`); users can override it in the settings |
-| `HABITS_AUTH_MODE` | `single-user` | `single-user` or `trusted-header` (formerly `authelia`, still accepted) |
+| `HABITS_AUTH_MODE` | `single-user` | `single-user` or `trusted-header` |
 | `HABITS_DEFAULT_USER` | `local` | User in `single-user` mode |
 | `HABITS_TRUSTED_PROXIES` | — | **Required** in `trusted-header` mode: comma-separated IPs/CIDRs |
 | `HABITS_USER_HEADER` | `Remote-User` | Header with the user ID |
@@ -208,8 +208,8 @@ target and frequency they had, so their completion and streaks do not change.
 Several changes on one day replace that day's version, and changing back
 merges it with the previous one. "Apply to past days as well" replaces the
 whole history with the new schedule. The first version also covers days before
-it (entries recorded before the habit was created). A change of kind resets the
-history, as it is only possible before the first entry.
+it (entries recorded before the habit was created). A change of kind converts
+the history (see "New habit kind" below).
 
 For a times-per-week habit, weeks from before a switch to times-per-week are
 met when every day due in them was completed; weeks without a due day neither
@@ -297,8 +297,9 @@ each day the last one wins. The header shows how many changes are waiting.
 Other changes (habits, categories, settings) still need a connection.
 
 Every habit carries `schedules` (`[{from, targetValue, frequency}]`, oldest
-first); `targetValue` and `frequency` are the current ones. The client takes
-each day's target from them.
+first); the last one is the current schedule. The client takes each day's
+target from them. `PATCH /api/habits/{id}` accepts `targetValue` and
+`frequency` to change the current schedule.
 
 The frequency rules exist only on the server (`domain.Schedule.IsScheduled`).
 Each habit carries its due days as `due`, one character per day from `dueFrom`
@@ -334,6 +335,8 @@ web/                        Frontend (ES modules, no build step)
   assets/js/habit.js          Schedule, value and streak helpers
   assets/js/detail.js         Habit detail view
   assets/js/category.js       Category detail view
+  assets/js/days.js           Day statistics
+  assets/js/year.js           Year range, perfect days and heatmap grid of the statistics views
   assets/js/editor.js         Habit dialog
   assets/js/categoryeditor.js Category dialog
   assets/js/categorypicker.js Category picker
@@ -357,16 +360,12 @@ needed for a release.
 
 **New migration**: Append a string to `migrations` in
 `internal/store/schema.go` and make the same change to `schema`, which
-creates new databases. `TestLegacyConversionMatchesTheSchema` compares a
-converted database with a new one. Never change released migrations; `PRAGMA
-user_version` stores the schema version (1000 for `schema`, one more per
-migration after it).
+creates new databases. Never change released migrations. `PRAGMA user_version`
+stores the schema version: 1 plus the number of migrations applied.
 
 **Schema**: The tables are `STRICT`, with `CHECK` constraints for kinds,
 frequencies, dates and values. Every user-owned row refers to `users` with `ON
-DELETE CASCADE`; a user is recorded on their first write. Databases from before
-the redesign (schema versions up to 37) run their remaining steps from
-`internal/store/legacy.go` and are then converted once on startup.
+DELETE CASCADE`; a user is recorded on their first write.
 
 **New habit field**:
 
@@ -392,8 +391,9 @@ Completion and streaks stay the same.
 
 **New setting**: A field in `store.Settings` with its default in
 `DefaultSettings` and its rule: an entry in `store.Options` for a choice (the
-settings page renders its options from it), a `range:"lo,hi"` tag for a number,
-or a function in `checks`. Then its control in `index.html` and `settings.js`.
+settings page renders its options from it) or a check function, called in both
+`Settings.Validate` and `Settings.resetInvalid`. Then its control in
+`index.html` and `settings.js`.
 No migration is needed; stored documents without the field get the default.
 
 **Undo for a new action**: Perform the action in `web/assets/js/actions.js`,

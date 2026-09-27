@@ -15,9 +15,9 @@ export const state = {
 
 const listeners = new Set();
 
+/** Calls `fn` after every change of the state. */
 export function subscribe(fn) {
   listeners.add(fn);
-  return () => listeners.delete(fn);
 }
 
 function notify() {

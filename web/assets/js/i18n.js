@@ -449,10 +449,6 @@ const deErrors = {
   schedules_empty: "Mindestens ein Zeitplan ist nötig.",
   schedules_on_create: "Eine neue Gewohnheit hat noch keine Zeitpläne.",
   schedule_start_missing: "Ein Zeitplan braucht einen ersten Tag.",
-  kind_locked_one:
-    "Die Art lässt sich nicht mehr ändern: Es ist schon 1 Tag erfasst, und sein Wert hätte als „{kind}“ eine andere Bedeutung. Leg stattdessen eine neue Gewohnheit an.",
-  kind_locked:
-    "Die Art lässt sich nicht mehr ändern: Es sind schon {count} Tage erfasst, und ihre Werte hätten als „{kind}“ eine andere Bedeutung. Leg stattdessen eine neue Gewohnheit an.",
   order_duplicate: "Die neue Reihenfolge nennt einen Eintrag doppelt.",
 
   // Categories.

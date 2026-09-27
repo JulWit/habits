@@ -1,5 +1,7 @@
 package domain
 
+import "slices"
+
 // ConvertKind returns the schedules and entries of h converted to kind k, so
 // that a change of kind keeps the history meaningful. target is the daily
 // target for k, in its stored units:
@@ -12,7 +14,7 @@ package domain
 //     in the new unit (8 glasses become 8 minutes), within the new kind's
 //     range. As targets and values scale alike, completion is kept too.
 func ConvertKind(h Habit, entries map[Date]int, k Kind, target int) ([]Schedule, map[Date]int) {
-	schedules := h.Schedules()
+	schedules := slices.Clone(h.Schedules)
 	out := make(map[Date]int, len(entries))
 	for d, v := range entries {
 		switch {

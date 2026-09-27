@@ -8,8 +8,16 @@ import (
 // countHabit returns a count habit with a target of six, created long ago.
 func countHabit() Habit {
 	return Habit{
-		Name: "Water", Color: "sky", Kind: KindCount, TargetValue: 60,
-		CreatedAt: longAgo, Frequency: Frequency{Kind: FreqDaily},
+		Name: "Water", Color: "sky", Kind: KindCount, CreatedAt: longAgo,
+		Schedules: since(longAgo, 60, Frequency{Kind: FreqDaily}),
+	}
+}
+
+// retarget changes the target of h from day on.
+func retarget(t *testing.T, h *Habit, target int, day Date, retroactive bool) {
+	t.Helper()
+	if err := h.Reschedule(target, h.Current().Frequency, day, retroactive); err != nil {
+		t.Fatalf("Reschedule: %v", err)
 	}
 }
 
@@ -21,11 +29,7 @@ func TestRaisingTheTargetKeepsThePast(t *testing.T) {
 		entries[friday.AddDays(-i)] = 60
 	}
 
-	prev := h.Current()
-	h.TargetValue = 80
-	if err := h.Reschedule(prev, friday, false); err != nil {
-		t.Fatalf("Reschedule: %v", err)
-	}
+	retarget(t, &h, 80, friday, false)
 
 	if got := h.Target(friday.AddDays(-1)); got != 60 {
 		t.Errorf("target yesterday = %d, want 60", got)
@@ -42,25 +46,17 @@ func TestRaisingTheTargetKeepsThePast(t *testing.T) {
 // A retroactive change applies the new schedule to every day.
 func TestRetroactiveRescheduleReplacesTheHistory(t *testing.T) {
 	h := countHabit()
-	prev := h.Current()
-	h.TargetValue = 80
-	if err := h.Reschedule(prev, friday.AddDays(-5), false); err != nil {
-		t.Fatalf("Reschedule: %v", err)
-	}
+	retarget(t, &h, 80, friday.AddDays(-5), false)
+	retarget(t, &h, 100, friday, true)
 
-	prev = h.Current()
-	h.TargetValue = 100
-	if err := h.Reschedule(prev, friday, true); err != nil {
-		t.Fatalf("Reschedule: %v", err)
-	}
-	if len(h.Previous) != 0 {
-		t.Fatalf("previous = %v, want none", h.Previous)
+	if len(h.Schedules) != 1 {
+		t.Fatalf("schedules = %v, want one", h.Schedules)
 	}
 	if got := h.Target(friday.AddDays(-100)); got != 100 {
 		t.Errorf("target long ago = %d, want 100", got)
 	}
-	if h.Since != DateFromTime(longAgo) {
-		t.Errorf("since = %v, want the creation day", h.Since)
+	if h.Current().From != DateFromTime(longAgo) {
+		t.Errorf("from = %v, want the first schedule's day", h.Current().From)
 	}
 }
 
@@ -70,50 +66,44 @@ func TestReschedulingTwiceOnADayKeepsOneVersion(t *testing.T) {
 	h := countHabit()
 	original := h.Current()
 
-	h.TargetValue = 80
-	if err := h.Reschedule(original, friday, false); err != nil {
-		t.Fatal(err)
-	}
-	prev := h.Current()
-	h.TargetValue = 90
-	if err := h.Reschedule(prev, friday, false); err != nil {
-		t.Fatal(err)
-	}
-	if len(h.Previous) != 1 || h.Since != friday || h.TargetValue != 90 {
-		t.Fatalf("got previous %v, since %v, target %d; want one previous, today, 90",
-			h.Previous, h.Since, h.TargetValue)
+	retarget(t, &h, 80, friday, false)
+	retarget(t, &h, 90, friday, false)
+	if len(h.Schedules) != 2 || h.Current().From != friday || h.Current().TargetValue != 90 {
+		t.Fatalf("schedules = %v; want the original and one from today with 90", h.Schedules)
 	}
 
-	prev = h.Current()
-	h.TargetValue = 60
-	if err := h.Reschedule(prev, friday, false); err != nil {
-		t.Fatal(err)
-	}
-	if len(h.Previous) != 0 || h.Current() != original {
-		t.Errorf("got previous %v, current %+v; want the original schedule alone",
-			h.Previous, h.Current())
+	retarget(t, &h, 60, friday, false)
+	if len(h.Schedules) != 1 || h.Current() != original {
+		t.Errorf("schedules = %v; want the original schedule alone", h.Schedules)
 	}
 }
 
 // An unchanged schedule does not start a new version.
 func TestRescheduleWithoutAChangeKeepsTheSchedule(t *testing.T) {
 	h := countHabit()
-	prev := h.Current()
-	if err := h.Reschedule(prev, friday, false); err != nil {
-		t.Fatal(err)
+	before := h.Current()
+	retarget(t, &h, before.TargetValue, friday, false)
+	if len(h.Schedules) != 1 || h.Current() != before {
+		t.Errorf("schedules = %v; want no new version", h.Schedules)
 	}
-	if len(h.Previous) != 0 || h.Since != prev.From {
-		t.Errorf("got previous %v, since %v; want no new version", h.Previous, h.Since)
+}
+
+// Reschedule does not change the history of other copies of the habit.
+func TestRescheduleLeavesCopiesAlone(t *testing.T) {
+	h := countHabit()
+	retarget(t, &h, 80, friday.AddDays(-1), false)
+	copied := h
+	retarget(t, &h, 90, friday.AddDays(-1), false)
+	if copied.Current().TargetValue != 80 {
+		t.Errorf("the copy's target changed to %d", copied.Current().TargetValue)
 	}
 }
 
 // Days before a change of frequency are due by the old frequency.
 func TestFrequencyChangeKeepsThePastDueDays(t *testing.T) {
 	h := dailyHabit()
-	prev := h.Current()
 	// Mondays only, from this Monday on.
-	h.Frequency = Frequency{Kind: FreqWeekdays, Weekdays: 1}
-	if err := h.Reschedule(prev, monday, false); err != nil {
+	if err := h.Reschedule(1, Frequency{Kind: FreqWeekdays, Weekdays: 1}, monday, false); err != nil {
 		t.Fatal(err)
 	}
 	if !h.IsScheduled(monday.AddDays(-2)) {
@@ -131,9 +121,7 @@ func TestFrequencyChangeKeepsThePastDueDays(t *testing.T) {
 // daily schedule: a week is met when every day was completed.
 func TestWeeklyHabitJudgesOlderWeeksByTheirSchedule(t *testing.T) {
 	h := dailyHabit()
-	prev := h.Current()
-	h.Frequency = Frequency{Kind: FreqTimesPerWeek, TimesPerWeek: 2}
-	if err := h.Reschedule(prev, monday, false); err != nil {
+	if err := h.Reschedule(1, Frequency{Kind: FreqTimesPerWeek, TimesPerWeek: 2}, monday, false); err != nil {
 		t.Fatal(err)
 	}
 
@@ -155,42 +143,43 @@ func TestWeeklyHabitJudgesOlderWeeksByTheirSchedule(t *testing.T) {
 	}
 }
 
-// Validate rejects schedules that are not in order.
+// Validate rejects schedules that are not in order, and a habit without any.
 func TestValidateRejectsUnorderedSchedules(t *testing.T) {
 	h := baseHabit()
-	h.SetSchedules([]Schedule{
+	h.Schedules = []Schedule{
 		{From: Date{2026, 9, 10}, TargetValue: 1, Frequency: Frequency{Kind: FreqDaily}},
 		{From: Date{2026, 9, 10}, TargetValue: 1, Frequency: Frequency{Kind: FreqDaily}},
-	})
+	}
 	if err := h.Validate(); !errors.Is(err, ErrValidation) {
 		t.Errorf("Validate = %v, want a validation error", err)
+	}
+
+	h.Schedules = nil
+	if err := h.Validate(); !errors.Is(err, ErrValidation) {
+		t.Errorf("no schedule: Validate = %v, want a validation error", err)
 	}
 }
 
 // A custom interval without an anchor in a later schedule is anchored at the
-// schedule's first day, not at the habit's creation.
+// schedule's first day, not at the habit's first schedule.
 func TestLaterScheduleAnchorsAtItsStart(t *testing.T) {
 	h := baseHabit()
 	start := h.Current().From.AddDays(10)
-	h.SetSchedules([]Schedule{
-		h.Current(),
-		{From: start, Frequency: Frequency{Kind: FreqCustomInterval, IntervalDays: 3}},
-	})
+	h.Schedules = append(h.Schedules,
+		Schedule{From: start, Frequency: Frequency{Kind: FreqCustomInterval, IntervalDays: 3}})
 	if err := h.Validate(); err != nil {
 		t.Fatalf("Validate: %v", err)
 	}
-	if h.Frequency.AnchorDate != start {
-		t.Errorf("anchor = %v, want %v", h.Frequency.AnchorDate, start)
+	if h.Current().Frequency.AnchorDate != start {
+		t.Errorf("anchor = %v, want %v", h.Current().Frequency.AnchorDate, start)
 	}
 }
 
 // DueDays marks the due days by the schedule of each day.
 func TestDueDays(t *testing.T) {
 	h := dailyHabit()
-	prev := h.Current()
 	// Mondays only, from this Monday on.
-	h.Frequency = Frequency{Kind: FreqWeekdays, Weekdays: 1}
-	if err := h.Reschedule(prev, monday, false); err != nil {
+	if err := h.Reschedule(1, Frequency{Kind: FreqWeekdays, Weekdays: 1}, monday, false); err != nil {
 		t.Fatal(err)
 	}
 	// Saturday and Sunday before, then Monday to Wednesday.

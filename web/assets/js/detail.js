@@ -1,8 +1,8 @@
 // Habit detail view: statistics, activity chart and calendar heatmap.
 
 import {
-  addDays, startOfWeek, daysBetween, MONTH_SHORT, MONTH_LONG, monthIndex, dayOfMonth,
-  formatFull, formatLong, formatDayMonth, localISO,
+  addDays, daysBetween, MONTH_SHORT, MONTH_LONG, monthIndex, dayOfMonth, formatFull, formatLong,
+  formatDayMonth, localISO,
 } from "./dates.js";
 import { t, locale, userTimeZone } from "./i18n.js";
 import { state } from "./state.js";
@@ -10,7 +10,8 @@ import * as H from "./habit.js";
 import { habitIconBadge, colorValue } from "./icons.js";
 import { appBar } from "./appbar.js";
 import { statRow, factsPanel, factItem } from "./panels.js";
-import { showTooltip, hideTooltip } from "./tooltip.js";
+import { hideTooltip } from "./tooltip.js";
+import { currentYear, yearGrid, centreToday, initChartTooltips } from "./year.js";
 
 let root;
 let actions;
@@ -29,7 +30,7 @@ export function initDetail(handlers) {
       case "delete": actions.deleteHabit(id); break;
     }
   });
-  initTooltip(root);
+  initChartTooltips(root, ".heat[data-date], .cum-col[data-tip]");
 }
 
 export function renderDetail(habit) {
@@ -43,17 +44,7 @@ export function renderDetail(habit) {
   if (H.isCountable(habit)) panels.push(cumulative(habit));
   root.replaceChildren(...panels);
   showNewest(root);
-  showToday(root);
-}
-
-/** Scrolls the year grid so that today's column is centred, if it overflows. */
-function showToday(panel) {
-  const scroller = panel.querySelector(".heatmap-scroll");
-  const cell = scroller?.querySelector(".heat.is-today");
-  if (!cell) return;
-  const box = scroller.getBoundingClientRect();
-  const at = cell.getBoundingClientRect();
-  scroller.scrollLeft += at.left - box.left - (box.width - at.width) / 2;
+  centreToday(root);
 }
 
 /**
@@ -103,10 +94,10 @@ function stats(habit) {
  * habits), category and, if archived, its status.
  */
 function details(habit) {
-  const all = habit.schedules ?? [];
+  const all = habit.schedules;
   // With earlier schedules, the current one is dated.
   const since = all.length > 1 ? t("since {date}", { date: formatLong(all.at(-1).from) }) : "";
-  const items = [factItem(t("Frequency"), H.describeFrequency(habit), since)];
+  const items = [factItem(t("Frequency"), H.describeFrequency(H.currentSchedule(habit).frequency), since)];
   const target = H.describeTarget(habit);
   if (target) items.push(factItem(t("Daily target"), target, since));
   // Earlier schedules, newest first.
@@ -122,8 +113,7 @@ function details(habit) {
 
 /** Describes a schedule of the habit: its frequency and, if any, its target. */
 function describeSchedule(habit, schedule) {
-  const past = { ...habit, frequency: schedule.frequency, targetValue: schedule.targetValue };
-  return [H.describeFrequency(past), H.describeTarget(past)].filter(Boolean).join(" · ");
+  return [H.describeFrequency(schedule.frequency), H.describeTarget(habit, schedule.targetValue)].filter(Boolean).join(" · ");
 }
 
 /**
@@ -178,72 +168,20 @@ function heatmap(habit) {
   const panel = document.createElement("section");
   panel.className = "panel";
 
+  const year = currentYear();
   const title = document.createElement("h3");
-  const year = state.today.slice(0, 4);
-  const yearStart = `${year}-01-01`;
-  const yearEnd = `${year}-12-31`;
-  // One column per week, from the week of 1 January to the week of 31 December.
-  // Days of the neighbouring years are drawn as blanks.
-  const firstWeek = startOfWeek(yearStart);
-  const weeks = Math.floor(daysBetween(firstWeek, yearEnd) / 7) + 1;
-
   title.textContent = t("Year {year}", { year });
-  panel.append(title);
 
-  const scroll = document.createElement("div");
-  scroll.className = "heatmap-scroll";
-
-  const body = document.createElement("div");
-  body.className = "heatmap-body";
-  body.style.setProperty("--weeks", String(weeks));
-
-  const map = document.createElement("div");
-  map.className = "heatmap";
-  for (let w = 0; w < weeks; w++) {
-    for (let d = 0; d < 7; d++) {
-      map.append(heatCell(habit, addDays(firstWeek, w * 7 + d), yearStart, yearEnd));
-    }
-  }
-
-  body.append(monthLabels(firstWeek, weeks, yearStart, yearEnd), map);
-  scroll.append(body);
-  panel.append(scroll, legend(yearStart, year));
+  panel.append(title, yearGrid(year, (iso) => heatCell(habit, iso)), legend(year));
   return panel;
 }
 
-/**
- * Builds the month labels above the grid, each at the week containing the
- * first of the month.
- */
-function monthLabels(firstWeek, weeks, yearStart, yearEnd) {
-  const row = document.createElement("div");
-  row.className = "heatmap-months";
-
-  for (let w = 0; w < weeks; w++) {
-    for (let d = 0; d < 7; d++) {
-      const iso = addDays(firstWeek, w * 7 + d);
-      if (iso < yearStart || iso > yearEnd) continue;
-      if (dayOfMonth(iso) !== 1) continue;
-      const label = document.createElement("span");
-      label.textContent = MONTH_SHORT[monthIndex(iso)];
-      label.style.gridColumn = String(w + 1);
-      row.append(label);
-    }
-  }
-  return row;
-}
-
-function heatCell(habit, iso, yearStart, yearEnd) {
+function heatCell(habit, iso) {
   const el = document.createElement("div");
   el.className = "heat";
   const value = habit.entries[iso] ?? 0;
 
-  if (iso < yearStart || iso > yearEnd) {
-    // Day of the previous or next year.
-    el.classList.add("is-outside");
-    return el;
-  }
-  // Used by showToday().
+  // Used by centreToday().
   if (iso === state.today) el.classList.add("is-today");
   const ahead = iso > state.today;
   // Unscheduled days are marked in the future too, so the schedule stays
@@ -255,7 +193,7 @@ function heatCell(habit, iso, yearStart, yearEnd) {
 
   el.dataset.date = iso;
   el.dataset.status = heatStatus(habit, iso, value);
-  // Uses the custom tooltip instead of a title attribute; the aria-label holds
+  // Uses the chart tooltip instead of a title attribute; the aria-label holds
   // the same text.
   el.setAttribute("role", "img");
   const when = iso === state.today ? t("Today, {date}", { date: formatFull(iso) }) : formatFull(iso);
@@ -274,10 +212,10 @@ function heatStatus(habit, iso, value) {
   return H.isScheduled(habit, iso) ? t("nothing recorded") : t("not scheduled");
 }
 
-function legend(yearStart, year) {
+function legend(year) {
   const el = document.createElement("div");
   el.className = "heatmap-legend";
-  const from = formatDayMonth(yearStart);
+  const from = formatDayMonth(`${year}-01-01`);
   // The grid covers the whole year.
   const to = `${formatDayMonth(`${year}-12-31`)} ${year}`;
   el.innerHTML =
@@ -285,39 +223,6 @@ function legend(yearStart, year) {
     [0, 1, 2, 3, 4].map((l) => `<span class="heat" data-level="${l}"></span>`).join("") +
     `<span>${t("more")}</span>`;
   return el;
-}
-
-// ---------- heatmap tooltip ----------
-//
-// Chart tooltips appear at once, in the app's tooltip pane (tooltip.js).
-
-/** Elements with a tooltip: heatmap squares and chart bars. */
-const TIP_TARGETS = ".heat[data-date], .cum-col[data-tip]";
-
-function showChartTooltip(cell) {
-  const date = document.createElement("div");
-  date.className = "tip-date";
-  // Bars have their own label; squares show their date.
-  date.textContent = cell.dataset.tip ?? formatFull(cell.dataset.date);
-
-  const status = document.createElement("div");
-  status.className = "tip-status";
-  status.textContent = cell.dataset.status;
-
-  showTooltip(cell, [date, status]);
-}
-
-function initTooltip(container) {
-  container.addEventListener("mouseover", (event) => {
-    const cell = event.target.closest(TIP_TARGETS);
-    if (cell) showChartTooltip(cell);
-  });
-  container.addEventListener("mouseout", (event) => {
-    if (event.target.closest(TIP_TARGETS)) hideTooltip();
-  });
-  // Hide the tooltip when the grid scrolls.
-  container.addEventListener("scroll", hideTooltip, { capture: true, passive: true });
-  container.addEventListener("mouseleave", hideTooltip);
 }
 
 /**
@@ -391,7 +296,7 @@ function grainHead(habit) {
 
 function cumulativeBody(habit) {
   const body = document.createElement("div");
-  const year = state.today.slice(0, 4);
+  const year = currentYear();
   const summary = H.periodSummary(habit, `${year}-01-01`, state.today, grain);
 
   if (summary.total === 0) {

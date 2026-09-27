@@ -10,7 +10,7 @@ type StreakRun struct {
 // StreakRuns returns all streak runs of a habit up to today, oldest first. An
 // open today does not end a run.
 func StreakRuns(h Habit, entries map[Date]int, today Date) []StreakRun {
-	if h.Frequency.Kind == FreqTimesPerWeek {
+	if h.Current().Frequency.Kind == FreqTimesPerWeek {
 		return weeklyRuns(h, entries, today)
 	}
 	return dailyRuns(h, entries, today)

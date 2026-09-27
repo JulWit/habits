@@ -2,7 +2,6 @@ package domain
 
 import (
 	"errors"
-	"math/bits"
 	"slices"
 	"strings"
 	"time"
@@ -88,21 +87,6 @@ func (k Kind) Step() int {
 	return 1
 }
 
-// Label returns the display name of the kind, as shown in the editor.
-func (k Kind) Label() string {
-	switch k {
-	case KindCheck:
-		return "Check"
-	case KindCount:
-		return "Count"
-	case KindTime:
-		return "Time"
-	case KindDistance:
-		return "Distance"
-	}
-	return string(k)
-}
-
 // Unit returns the fixed unit of the kind, or "" if the user chooses one.
 func (k Kind) Unit() string {
 	switch k {
@@ -131,13 +115,11 @@ const (
 // Weekdays is a set of weekdays as a bitmask: bit 0 is Monday, bit 6 Sunday.
 type Weekdays uint8
 
-func weekdayBit(d time.Weekday) Weekdays { return 1 << uint((int(d)+6)%7) }
-
 // Has reports whether d is in the set.
-func (w Weekdays) Has(d time.Weekday) bool { return w&weekdayBit(d) != 0 }
-
-// Count returns the number of weekdays in the set.
-func (w Weekdays) Count() int { return bits.OnesCount8(uint8(w)) }
+func (w Weekdays) Has(d time.Weekday) bool {
+	mondayFirst := (int(d) + 6) % 7
+	return w&(1<<mondayFirst) != 0
+}
 
 // Frequency is the schedule of a habit. Only the fields used by Kind are set;
 // Validate resets the others to zero.
@@ -162,10 +144,6 @@ type Frequency struct {
 const LastWeekOfMonth = -1
 
 // Habit is a tracked habit of a single user.
-//
-// TargetValue and Frequency are the current schedule, which applies from
-// Since on. Earlier days are judged by the schedule they had then (see
-// Previous and ScheduleOn), so changing the target does not rewrite the past.
 type Habit struct {
 	ID    string `json:"id"`
 	Name  string `json:"name"`
@@ -175,30 +153,25 @@ type Habit struct {
 	Kind Kind   `json:"kind"`
 	// CategoryID is "" for no category. If it refers to a deleted category,
 	// the habit is shown as uncategorised.
-	CategoryID  string `json:"categoryId"`
-	TargetValue int    `json:"targetValue"`
+	CategoryID string `json:"categoryId"`
 	// StepValue is the increment per tap, in stored units. Always 1 for
 	// KindCheck.
-	StepValue int       `json:"stepValue"`
-	Unit      string    `json:"unit"`
-	Frequency Frequency `json:"frequency"`
-	// Since is the first day of the current schedule. Zero means the creation
-	// day.
-	Since Date `json:"-"`
-	// Previous are the earlier schedules, oldest first. Each applies from its
-	// From until the next one starts; the first one also covers the days
-	// before its From.
-	Previous   []Schedule `json:"-"`
+	StepValue int    `json:"stepValue"`
+	Unit      string `json:"unit"`
+	// Schedules are the versions of target and frequency, oldest first; a
+	// valid habit has at least one. Each applies from its From until the next
+	// one starts, and the first one also covers the days before its From. The
+	// last one is the current schedule. So changing the target does not
+	// rewrite the past.
+	Schedules  []Schedule `json:"schedules"`
 	Position   int        `json:"position"`
 	ArchivedAt *time.Time `json:"archivedAt"`
 	CreatedAt  time.Time  `json:"createdAt"`
 	UpdatedAt  time.Time  `json:"updatedAt"`
 }
 
-var (
-	// ErrValidation is matched by every validation error (see Problem).
-	ErrValidation = errors.New("validation error")
-)
+// ErrValidation is matched by every validation error (see Problem).
+var ErrValidation = errors.New("validation error")
 
 // Maximum lengths of a habit's name and unit, in characters.
 const (
@@ -217,27 +190,41 @@ func targetTooSmall(k Kind) error {
 	return Invalid("target_too_small", "target must be at least 0.1")
 }
 
-// tooLarge returns the error for a value above the maximum of k, stated in
-// display units. what names the value, e.g. "target" or "step".
-func tooLarge(what string, k Kind) error {
+// targetTooLarge returns the error for a target above the maximum of k,
+// stated in display units.
+func targetTooLarge(k Kind) error {
 	limit := k.MaxTarget() / k.Scale()
 	switch k {
 	case KindTime:
-		return Invalid(what+"_too_large_minutes", what+" may be at most {max} minutes", "max", limit)
+		return Invalid("time_too_large_minutes", "time may be at most {max} minutes", "max", limit)
 	case KindDistance:
-		return Invalid(what+"_too_large_km", what+" may be at most {max} kilometres", "max", limit)
+		return Invalid("distance_too_large_km", "distance may be at most {max} kilometres", "max", limit)
 	}
-	return Invalid(what+"_too_large", what+" may be at most {max}", "max", limit)
+	return Invalid("target_too_large", "target may be at most {max}", "max", limit)
 }
 
-func targetTooLarge(k Kind) error {
+// stepTooLarge returns the error for a step above the maximum of k.
+func stepTooLarge(k Kind) error {
+	limit := k.MaxTarget() / k.Scale()
 	switch k {
 	case KindTime:
-		return tooLarge("time", k)
+		return Invalid("step_too_large_minutes", "step may be at most {max} minutes", "max", limit)
 	case KindDistance:
-		return tooLarge("distance", k)
+		return Invalid("step_too_large_km", "step may be at most {max} kilometres", "max", limit)
 	}
-	return tooLarge("target", k)
+	return Invalid("step_too_large", "step may be at most {max}", "max", limit)
+}
+
+// valueTooLarge returns the error for a day's value above the maximum of k.
+func valueTooLarge(k Kind) error {
+	limit := k.MaxTarget() / k.Scale()
+	switch k {
+	case KindTime:
+		return Invalid("value_too_large_minutes", "value may be at most {max} minutes", "max", limit)
+	case KindDistance:
+		return Invalid("value_too_large_km", "value may be at most {max} kilometres", "max", limit)
+	}
+	return Invalid("value_too_large", "value may be at most {max}", "max", limit)
 }
 
 // Validate normalises h in place and returns a validation error if h is
@@ -272,112 +259,80 @@ func (h *Habit) Validate() error {
 		return Invalid("unknown_kind", `unknown habit kind "{kind}"`, "kind", h.Kind)
 	}
 	// The step defaults to the kind's step and is fixed at 1 for KindCheck.
-	if h.Kind == KindCheck {
+	switch {
+	case h.Kind == KindCheck:
 		h.StepValue = 1
-	} else if h.StepValue < 1 {
+	case h.StepValue < 1:
 		h.StepValue = h.Kind.Step()
-	} else if h.StepValue > h.Kind.MaxTarget() {
-		return tooLarge("step", h.Kind)
+	case h.StepValue > h.Kind.MaxTarget():
+		return stepTooLarge(h.Kind)
 	}
 	// Only KindCount has a user-defined unit.
-	if u := h.Kind.Unit(); u != "" || h.Kind == KindCheck {
-		h.Unit = u
+	if h.Kind != KindCount {
+		h.Unit = h.Kind.Unit()
 	}
 
-	if h.Since.IsZero() {
-		h.Since = DateFromTime(h.CreatedAt)
+	if len(h.Schedules) == 0 {
+		return Invalid("schedules_empty", "at least one schedule is required")
 	}
-	for i := range h.Previous {
-		if err := h.Previous[i].normalise(h.Kind); err != nil {
+	for i := range h.Schedules {
+		if err := h.Schedules[i].normalise(h.Kind); err != nil {
 			return err
 		}
-		if i > 0 && !h.Previous[i-1].From.Before(h.Previous[i].From) {
+		if i > 0 && !h.Schedules[i-1].From.Before(h.Schedules[i].From) {
 			return Invalid("schedules_unordered", "schedules must start on different days, oldest first")
 		}
 	}
-	if n := len(h.Previous); n > 0 && !h.Previous[n-1].From.Before(h.Since) {
-		return Invalid("schedules_unordered", "schedules must start on different days, oldest first")
-	}
-	current := h.Current()
-	if err := current.normalise(h.Kind); err != nil {
-		return err
-	}
-	h.TargetValue, h.Frequency = current.TargetValue, current.Frequency
 	return nil
 }
 
-// Current returns the current schedule.
-func (h Habit) Current() Schedule {
-	since := h.Since
-	if since.IsZero() {
-		since = DateFromTime(h.CreatedAt)
-	}
-	return Schedule{From: since, TargetValue: h.TargetValue, Frequency: h.Frequency}
-}
+// Current returns the current schedule, the last one.
+func (h Habit) Current() Schedule { return h.Schedules[len(h.Schedules)-1] }
 
-// Schedules returns all schedules of the habit, oldest first. The last one is
-// the current schedule.
-func (h Habit) Schedules() []Schedule {
-	return append(slices.Clone(h.Previous), h.Current())
-}
-
-// SetSchedules replaces the schedule history. The last schedule becomes the
-// current one. An empty list changes nothing.
-func (h *Habit) SetSchedules(all []Schedule) {
-	if len(all) == 0 {
-		return
-	}
-	last := all[len(all)-1]
-	h.Previous = slices.Clone(all[:len(all)-1])
-	h.Since, h.TargetValue, h.Frequency = last.From, last.TargetValue, last.Frequency
-}
-
-// Reschedule is called after the caller has set a new TargetValue or
-// Frequency; prev is the schedule before that change. The new schedule applies
-// from day on and earlier days keep prev. With retroactive, the new schedule
-// replaces the whole history instead. Otherwise nothing changes if the
-// new schedule equals prev.
-func (h *Habit) Reschedule(prev Schedule, day Date, retroactive bool) error {
-	next := Schedule{From: day, TargetValue: h.TargetValue, Frequency: h.Frequency}
+// Reschedule makes target and frequency the habit's schedule from day on;
+// earlier days keep the schedule they had. With retroactive, the new schedule
+// replaces the whole history instead.
+//
+// Several changes on one day leave one schedule for that day, and changing
+// back to the previous schedule merges both.
+func (h *Habit) Reschedule(target int, frequency Frequency, day Date, retroactive bool) error {
+	next := Schedule{From: day, TargetValue: target, Frequency: frequency}
 	if err := next.normalise(h.Kind); err != nil {
 		return err
 	}
+	// A copy, so that other copies of the habit keep their history.
+	schedules := slices.Clone(h.Schedules)
+	current := schedules[len(schedules)-1]
+
 	switch {
 	case retroactive:
-		next.From = prev.From
-		if len(h.Previous) > 0 {
-			next.From = h.Previous[0].From
-		}
-		h.Previous = nil
-	case next.sameRules(prev):
-		next = prev
-	case !day.After(prev.From):
-		// The current schedule starts today or later: replace it.
-		next.From = prev.From
+		next.From = schedules[0].From
+		schedules = []Schedule{next}
+	case next.sameRules(current):
+		// Nothing changes.
+	case !day.After(current.From):
+		// The current schedule starts on day or later: replace it.
+		next.From = current.From
+		schedules[len(schedules)-1] = next
 	default:
-		h.Previous = append(h.Previous, prev)
+		schedules = append(schedules, next)
 	}
-	// Changing back to the previous schedule merges both.
-	if n := len(h.Previous); n > 0 && h.Previous[n-1].sameRules(next) {
-		next = h.Previous[n-1]
-		h.Previous = h.Previous[:n-1]
+
+	if n := len(schedules); n >= 2 && schedules[n-2].sameRules(schedules[n-1]) {
+		schedules = schedules[:n-1]
 	}
-	h.Since, h.TargetValue, h.Frequency = next.From, next.TargetValue, next.Frequency
+	h.Schedules = schedules
 	return nil
 }
 
 // ScheduleOn returns the schedule that applies on d.
 func (h Habit) ScheduleOn(d Date) Schedule {
-	current := h.Current()
-	if len(h.Previous) == 0 || !d.Before(current.From) {
-		return current
-	}
-	for i := len(h.Previous) - 1; i > 0; i-- {
-		if !d.Before(h.Previous[i].From) {
-			return h.Previous[i]
+	for i := len(h.Schedules) - 1; i > 0; i-- {
+		if !d.Before(h.Schedules[i].From) {
+			return h.Schedules[i]
 		}
 	}
-	return h.Previous[0]
+	return h.Schedules[0]
 }
 
 // ValidateEntryValue checks that a day's value lies between 0 and the kind's
@@ -390,7 +345,7 @@ func ValidateEntryValue(k Kind, value int) error {
 		return Invalid("value_negative", "value must not be negative")
 	}
 	if value > k.MaxTarget() {
-		return tooLarge("value", k)
+		return valueTooLarge(k)
 	}
 	return nil
 }
@@ -409,9 +364,6 @@ func (h Habit) IsComplete(d Date, value int) bool { return value >= h.Target(d) 
 // IsScheduled reports whether the habit is due on d, by the schedule that
 // applies on d. Values can only be recorded on scheduled days.
 func (h Habit) IsScheduled(d Date) bool { return h.ScheduleOn(d).IsScheduled(d) }
-
-// IsArchived reports whether the habit is archived.
-func (h Habit) IsArchived() bool { return h.ArchivedAt != nil }
 
 // Colors is the colour palette offered in the editor. Colours are stored as
 // these names; the client maps each to a CSS custom property (--c-red, …),

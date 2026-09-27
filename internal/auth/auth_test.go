@@ -41,7 +41,7 @@ func run(cfg config.Config, prepare func(*http.Request)) (*httptest.ResponseReco
 	var reached bool
 	h := Middleware(cfg, slog.New(slog.NewTextHandler(io.Discard, nil)))(
 		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			seen, _ = FromContext(r.Context())
+			seen = MustUser(r.Context())
 			reached = true
 		}))
 

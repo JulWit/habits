@@ -54,10 +54,3 @@ func decodeSettings(patch []byte, dst *store.Settings) error {
 	dec.DisallowUnknownFields()
 	return dec.Decode(dst)
 }
-
-// setIf sets *dst to *src unless src is nil.
-func setIf[T any](dst *T, src *T) {
-	if src != nil {
-		*dst = *src
-	}
-}

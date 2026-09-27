@@ -14,7 +14,7 @@ const habitColumns = `id, name, color, icon, kind, step_value, unit,
 	position, archived_at, created_at, updated_at, category_id`
 
 // scanHabit scans a row selected with habitColumns.
-func scanHabit(rows interface{ Scan(...any) error }) (domain.Habit, error) {
+func scanHabit(row interface{ Scan(...any) error }) (domain.Habit, error) {
 	var (
 		h          domain.Habit
 		archivedAt sql.NullString
@@ -22,7 +22,7 @@ func scanHabit(rows interface{ Scan(...any) error }) (domain.Habit, error) {
 		created    string
 		updated    string
 	)
-	err := rows.Scan(
+	err := row.Scan(
 		&h.ID, &h.Name, &h.Color, &h.Icon, &h.Kind, &h.StepValue, &h.Unit,
 		&h.Position, &archivedAt, &created, &updated, &categoryID,
 	)
@@ -36,8 +36,12 @@ func scanHabit(rows interface{ Scan(...any) error }) (domain.Habit, error) {
 	if h.UpdatedAt, err = parseTime(updated); err != nil {
 		return domain.Habit{}, fmt.Errorf("habit %s: updated_at: %w", h.ID, err)
 	}
-	if h.ArchivedAt, err = nullableTime(archivedAt); err != nil {
-		return domain.Habit{}, fmt.Errorf("habit %s: archived_at: %w", h.ID, err)
+	if archivedAt.Valid {
+		t, err := parseTime(archivedAt.String)
+		if err != nil {
+			return domain.Habit{}, fmt.Errorf("habit %s: archived_at: %w", h.ID, err)
+		}
+		h.ArchivedAt = &t
 	}
 	return h, nil
 }
@@ -72,7 +76,10 @@ func (s *Store) ListHabits(ctx context.Context, userID string, includeArchived b
 		if err != nil {
 			return nil, err
 		}
-		h.SetSchedules(schedules[h.ID])
+		h.Schedules = schedules[h.ID]
+		if len(h.Schedules) == 0 {
+			return nil, fmt.Errorf("habit %s has no schedule", h.ID)
+		}
 		habits = append(habits, h)
 	}
 	return habits, rows.Err()
@@ -90,11 +97,12 @@ func (s *Store) GetHabit(ctx context.Context, userID, id string) (domain.Habit, 
 	if err != nil {
 		return domain.Habit{}, fmt.Errorf("loading habit: %w", err)
 	}
-	schedules, err := s.schedulesOfHabit(ctx, h.ID)
-	if err != nil {
+	if h.Schedules, err = s.schedulesOfHabit(ctx, h.ID); err != nil {
 		return domain.Habit{}, err
 	}
-	h.SetSchedules(schedules)
+	if len(h.Schedules) == 0 {
+		return domain.Habit{}, fmt.Errorf("habit %s has no schedule", h.ID)
+	}
 	return h, nil
 }
 
@@ -108,59 +116,90 @@ func (s *Store) CreateHabit(ctx context.Context, userID string, h *domain.Habit)
 		return err
 	}
 
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return fmt.Errorf("starting transaction: %w", err)
-	}
-	defer tx.Rollback()
+	return s.inTx(ctx, "creating habit", func(tx *sql.Tx) error {
+		var last sql.NullInt64
+		if err := tx.QueryRowContext(ctx,
+			`SELECT MAX(position) FROM habits WHERE user_id = ? AND deleted_at IS NULL`, userID,
+		).Scan(&last); err != nil {
+			return err
+		}
+		h.Position = int(last.Int64) + 1
 
-	var next sql.NullInt64
-	if err := tx.QueryRowContext(ctx,
-		`SELECT MAX(position) FROM habits WHERE user_id = ? AND deleted_at IS NULL`, userID,
-	).Scan(&next); err != nil {
-		return fmt.Errorf("determining position: %w", err)
-	}
-	h.Position = int(next.Int64) + 1
+		if err := ensureUser(ctx, tx, userID); err != nil {
+			return err
+		}
+		if err := requireOwnCategory(ctx, tx, userID, h.CategoryID); err != nil {
+			return err
+		}
+		if _, err := tx.ExecContext(ctx, `
+			INSERT INTO habits (id, user_id, name, color, icon, kind, step_value, unit,
+				position, created_at, updated_at, category_id)
+			VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
+			h.ID, userID, h.Name, h.Color, h.Icon, h.Kind, h.StepValue, h.Unit,
+			h.Position, formatTime(h.CreatedAt), formatTime(h.UpdatedAt), nullableID(h.CategoryID),
+		); err != nil {
+			return err
+		}
+		return saveSchedules(ctx, tx, h)
+	})
+}
 
-	if err := ensureUser(ctx, tx, userID); err != nil {
+// UpdateHabit updates all fields except the position (see ReorderHabits).
+// Unless entries is nil, it also replaces all entries of the habit with
+// entries, e.g. with the history converted to a new kind (see
+// domain.ConvertKind).
+func (s *Store) UpdateHabit(ctx context.Context, userID string, h *domain.Habit, entries map[domain.Date]int) error {
+	h.UpdatedAt = time.Now().UTC()
+	if err := h.Validate(); err != nil {
 		return err
 	}
-	if err := s.requireOwnCategory(ctx, tx, userID, h.CategoryID); err != nil {
-		return err
+	var archivedAt any
+	if h.ArchivedAt != nil {
+		archivedAt = formatTime(*h.ArchivedAt)
 	}
 
-	_, err = tx.ExecContext(ctx, `
-		INSERT INTO habits (id, user_id, name, color, icon, kind, step_value, unit,
-			position, created_at, updated_at, category_id)
-		VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
-		h.ID, userID, h.Name, h.Color, h.Icon, h.Kind, h.StepValue, h.Unit,
-		h.Position, formatTime(h.CreatedAt), formatTime(h.UpdatedAt), nullableID(h.CategoryID))
-	if err != nil {
-		return fmt.Errorf("creating habit: %w", err)
-	}
-	if err := saveSchedules(ctx, tx, h); err != nil {
-		return err
-	}
-	return tx.Commit()
+	return s.inTx(ctx, "updating habit", func(tx *sql.Tx) error {
+		if err := requireOwnCategory(ctx, tx, userID, h.CategoryID); err != nil {
+			return err
+		}
+		res, err := tx.ExecContext(ctx, `
+			UPDATE habits SET
+				name = ?, color = ?, icon = ?, kind = ?, step_value = ?, unit = ?,
+				archived_at = ?, updated_at = ?, category_id = ?
+			WHERE id = ? AND user_id = ? AND deleted_at IS NULL`,
+			h.Name, h.Color, h.Icon, h.Kind, h.StepValue, h.Unit,
+			archivedAt, formatTime(h.UpdatedAt), nullableID(h.CategoryID),
+			h.ID, userID)
+		if err != nil {
+			return err
+		}
+		if err := expectOneRow(res); err != nil {
+			return err
+		}
+		if err := saveSchedules(ctx, tx, h); err != nil {
+			return err
+		}
+		if entries == nil {
+			return nil
+		}
+		return replaceEntries(ctx, tx, h, entries)
+	})
 }
 
 // requireOwnCategory returns a validation error if categoryID is not "" and
 // not a category of the user.
-func (s *Store) requireOwnCategory(ctx context.Context, q queryer, userID, categoryID string) error {
+func requireOwnCategory(ctx context.Context, tx *sql.Tx, userID, categoryID string) error {
 	if categoryID == "" {
 		return nil
 	}
 	var found string
-	err := q.QueryRowContext(ctx,
+	err := tx.QueryRowContext(ctx,
 		`SELECT id FROM categories WHERE id = ? AND user_id = ? AND deleted_at IS NULL`,
 		categoryID, userID).Scan(&found)
 	if errors.Is(err, sql.ErrNoRows) {
 		return domain.Invalid("unknown_category", "unknown category")
 	}
-	if err != nil {
-		return fmt.Errorf("checking category: %w", err)
-	}
-	return nil
+	return err
 }
 
 // nullableID maps "" to NULL.
@@ -171,73 +210,10 @@ func nullableID(id string) any {
 	return id
 }
 
-// UpdateHabit updates all fields except the position (see ReorderHabits). A
-// change of kind is refused once there are entries; see ChangeKind.
-func (s *Store) UpdateHabit(ctx context.Context, userID string, h *domain.Habit) error {
-	return s.updateHabit(ctx, userID, h, nil)
-}
-
-// ChangeKind is UpdateHabit for a change of kind: it also replaces all entries
-// of the habit with entries, the history converted to the new kind (see
-// domain.ConvertKind).
-func (s *Store) ChangeKind(ctx context.Context, userID string, h *domain.Habit, entries map[domain.Date]int) error {
-	return s.updateHabit(ctx, userID, h, entries)
-}
-
-func (s *Store) updateHabit(ctx context.Context, userID string, h *domain.Habit, entries map[domain.Date]int) error {
-	h.UpdatedAt = time.Now().UTC()
-	if err := h.Validate(); err != nil {
-		return err
-	}
-	var archived any
-	if h.ArchivedAt != nil {
-		archived = formatTime(*h.ArchivedAt)
-	}
-
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return fmt.Errorf("starting transaction: %w", err)
-	}
-	defer tx.Rollback()
-
-	if err := s.requireOwnCategory(ctx, tx, userID, h.CategoryID); err != nil {
-		return err
-	}
-	if entries == nil {
-		if err := s.requireKindKeepsHistoryMeaningful(ctx, tx, userID, h); err != nil {
-			return err
-		}
-	}
-
-	res, err := tx.ExecContext(ctx, `
-		UPDATE habits SET
-			name = ?, color = ?, icon = ?, kind = ?, step_value = ?, unit = ?,
-			archived_at = ?, updated_at = ?, category_id = ?
-		WHERE id = ? AND user_id = ? AND deleted_at IS NULL`,
-		h.Name, h.Color, h.Icon, h.Kind, h.StepValue, h.Unit,
-		archived, formatTime(h.UpdatedAt), nullableID(h.CategoryID),
-		h.ID, userID)
-	if err != nil {
-		return fmt.Errorf("updating habit: %w", err)
-	}
-	if err := expectOneRow(res); err != nil {
-		return err
-	}
-	if err := saveSchedules(ctx, tx, h); err != nil {
-		return err
-	}
-	if entries != nil {
-		if err := replaceEntries(ctx, tx, h, entries); err != nil {
-			return err
-		}
-	}
-	return tx.Commit()
-}
-
 // replaceEntries replaces all entries of the habit.
-func replaceEntries(ctx context.Context, q execer, h *domain.Habit, entries map[domain.Date]int) error {
-	if _, err := q.ExecContext(ctx, `DELETE FROM entries WHERE habit_id = ?`, h.ID); err != nil {
-		return fmt.Errorf("replacing entries: %w", err)
+func replaceEntries(ctx context.Context, tx *sql.Tx, h *domain.Habit, entries map[domain.Date]int) error {
+	if _, err := tx.ExecContext(ctx, `DELETE FROM entries WHERE habit_id = ?`, h.ID); err != nil {
+		return err
 	}
 	now := formatTime(time.Now())
 	for d, v := range entries {
@@ -247,47 +223,11 @@ func replaceEntries(ctx context.Context, q execer, h *domain.Habit, entries map[
 		if v == 0 {
 			continue
 		}
-		if _, err := q.ExecContext(ctx,
+		if _, err := tx.ExecContext(ctx,
 			`INSERT INTO entries (habit_id, date, value, updated_at) VALUES (?,?,?,?)`,
 			h.ID, d.String(), v, now); err != nil {
-			return fmt.Errorf("saving entry: %w", err)
+			return err
 		}
-	}
-	return nil
-}
-
-// requireKindKeepsHistoryMeaningful) returns a validation error if the kind of a
-// habit with entries is changed, since stored values depend on the kind.
-func (s *Store) requireKindKeepsHistoryMeaningful(ctx context.Context, q queryer, userID string, h *domain.Habit) error {
-	var current domain.Kind
-	err := q.QueryRowContext(ctx,
-		`SELECT kind FROM habits WHERE id = ? AND user_id = ? AND deleted_at IS NULL`,
-		h.ID, userID).Scan(&current)
-	if errors.Is(err, sql.ErrNoRows) {
-		return ErrNotFound
-	}
-	if err != nil {
-		return fmt.Errorf("reading current kind: %w", err)
-	}
-	if current == h.Kind {
-		return nil
-	}
-
-	var entries int
-	if err := q.QueryRowContext(ctx,
-		`SELECT COUNT(*) FROM entries WHERE habit_id = ?`, h.ID).Scan(&entries); err != nil {
-		return fmt.Errorf("counting entries: %w", err)
-	}
-	if entries > 0 {
-		// Separate templates for singular and plural.
-		if entries == 1 {
-			return domain.Invalid("kind_locked_one", `The kind can no longer be changed: 1 day is already recorded, `+
-				`and its value would mean something else as "{kind}". Create a new habit instead.`,
-				"kind", h.Kind.Label())
-		}
-		return domain.Invalid("kind_locked", `The kind can no longer be changed: {count} days are already recorded, `+
-			`and their values would mean something else as "{kind}". Create a new habit instead.`,
-			"count", entries, "kind", h.Kind.Label())
 	}
 	return nil
 }
@@ -316,10 +256,9 @@ func (s *Store) RestoreHabit(ctx context.Context, userID, id string) error {
 	return expectOneRow(res)
 }
 
-// ReorderHabits sets the display order of the user's habits (see reorder). It
-// does not change updated_at.
+// ReorderHabits sets the display order of the user's habits (see reorder).
 func (s *Store) ReorderHabits(ctx context.Context, userID string, ids []string) error {
-	return s.reorder(ctx, "habits", userID, ids, false)
+	return s.reorder(ctx, "habits", userID, ids)
 }
 
 // PurgeDeleted permanently removes habits deleted more than olderThan ago,

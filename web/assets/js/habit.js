@@ -11,7 +11,6 @@ import { t, locale } from "./i18n.js";
  */
 export function scheduleOn(habit, iso) {
   const all = habit.schedules;
-  if (!all?.length) return { targetValue: habit.targetValue, frequency: habit.frequency };
   for (let i = all.length - 1; i > 0; i--) {
     // ISO dates compare correctly as strings.
     if (iso >= all[i].from) return all[i];
@@ -19,11 +18,16 @@ export function scheduleOn(habit, iso) {
   return all[0];
 }
 
+/** Returns the current schedule, the last one. */
+export function currentSchedule(habit) {
+  return habit.schedules.at(-1);
+}
+
 /**
- * Reports whether the habit is due on `iso`. The server computes the due days
- * (`due`, one character per day from `dueFrom`), so the frequency rules exist
- * only in domain.Schedule.IsScheduled. Days outside the sent range count as
- * not due.
+ * Reports whether the habit is due on `iso`. Values can only be recorded on
+ * due days. The server computes the due days (`due`, one character per day
+ * from `dueFrom`), so the frequency rules exist only in
+ * domain.Schedule.IsScheduled. Days outside the sent range count as not due.
  */
 export function isScheduled(habit, iso) {
   if (!habit.due || !habit.dueFrom) return false;
@@ -31,48 +35,28 @@ export function isScheduled(habit, iso) {
   return i >= 0 && i < habit.due.length && habit.due[i] === "1";
 }
 
-/** Reports whether a value may be recorded on `iso`: only on due days. */
-export function acceptsEntry(habit, iso) {
-  return isScheduled(habit, iso);
-}
-
-/**
- * Kind descriptors used until the server's (state.kinds) are loaded. See
- * domain.KindInfo.
- */
-const FALLBACK = {
-  check: { scale: 1, step: 1, max: 1, unit: "" },
-  count: { scale: 10, step: 10, max: 10000, unit: "" },
-  time: { scale: 10, step: 50, max: 14400, unit: "min" },
-  distance: { scale: 1000, step: 500, max: 200000, unit: "m" },
-};
-
+/** Returns the server's description of a kind (domain.KindInfo). */
 export function kindInfo(kind) {
-  return state.kinds?.[kind] ?? FALLBACK[kind] ?? FALLBACK.check;
+  return state.kinds[kind];
 }
 
 /**
- * Returns the number of stored units per displayed unit: 10 for counts and
- * minutes, 1000 for distances (metres), 1 otherwise.
+ * Returns the number of stored units per displayed unit of a kind: 10 for
+ * counts and minutes, 1000 for distances (metres), 1 otherwise.
  */
-export function scale(habit) {
-  return scaleOf(habit.kind);
-}
-
-/** Like scale, for a kind. */
-export function scaleOf(kind) {
+export function scale(kind) {
   return kindInfo(kind).scale;
 }
 
 /** Formats a stored value in displayed units, with at most one decimal. */
 function written(habit, value) {
-  return (value / scale(habit)).toLocaleString(locale, { maximumFractionDigits: 1 });
+  return (value / scale(habit.kind)).toLocaleString(locale, { maximumFractionDigits: 1 });
 }
 
 /** Returns the target that applies on `iso`, in stored units. */
 export function target(habit, iso) {
   if (habit.kind === "check") return 1;
-  return Math.max(1, scheduleOn(habit, iso).targetValue || 1);
+  return Math.max(1, scheduleOn(habit, iso).targetValue);
 }
 
 /** Reports whether `value` reaches the target that applies on `iso`. */
@@ -118,7 +102,7 @@ export function formatDistance(metres) {
  * thousands ("1,5k"). The cell's label keeps the exact value.
  */
 export function cellValue(habit, value) {
-  const n = habit.kind === "distance" ? value / 1000 : value / scale(habit);
+  const n = habit.kind === "distance" ? value / 1000 : value / scale(habit.kind);
   // Without grouping, so "1.000" is not counted as a short value.
   const short = (x) => x.toLocaleString(locale, { maximumFractionDigits: 1, useGrouping: false });
   const text = short(Math.round(n * 10) / 10);
@@ -144,7 +128,7 @@ export function formatValue(habit, value) {
 
 /** Formats a total with its unit. Times of an hour or more include hours: "3 h 45 min". */
 export function formatTotal(habit, total) {
-  const minutes = total / scale(habit);
+  const minutes = total / scale(habit.kind);
   if (habit.kind !== "time" || minutes < 60) return formatValue(habit, total);
   const rest = (minutes % 60).toLocaleString(locale, { maximumFractionDigits: 1 });
   return `${Math.floor(minutes / 60)} h ${rest} min`;
@@ -206,13 +190,16 @@ function monthsBetween(from, to) {
     Number(to.slice(5, 7)) - Number(from.slice(5, 7));
 }
 
-/** Formats the daily target with its unit; "" for check habits. */
-export function describeTarget(habit) {
-  return habit.kind === "check" ? "" : formatValue(habit, habit.targetValue);
+/**
+ * Formats a daily target with its unit, by default the current one; "" for
+ * check habits.
+ */
+export function describeTarget(habit, targetValue = currentSchedule(habit).targetValue) {
+  return habit.kind === "check" ? "" : formatValue(habit, targetValue);
 }
 
-export function describeFrequency(habit) {
-  const f = habit.frequency;
+/** Describes a frequency, e.g. "daily" or "Mon, Wed". */
+export function describeFrequency(f) {
   switch (f.kind) {
     case "daily":
       return t("daily");

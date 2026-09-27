@@ -18,7 +18,7 @@ let onSave = null;
 let currentStep = 1;
 let maxInBox = 1;
 
-/** Stored units per unit in the input box (see scaleOf in habit.js). */
+/** Stored units per unit in the input box (see scale in habit.js). */
 let scale = 1;
 
 /**
@@ -85,7 +85,7 @@ function paintQuick(habit) {
 
 export function openValueDialog(habit, iso, handler) {
   onSave = handler;
-  scale = H.scale(habit);
+  scale = H.scale(habit.kind);
   currentStep = H.step(habit) / scale;
   // Maximum in input units.
   maxInBox = H.maxValue(habit) / scale;

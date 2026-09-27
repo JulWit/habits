@@ -73,15 +73,14 @@ func collectSchedules(rows *sql.Rows) (map[string][]domain.Schedule, error) {
 	return out, rows.Err()
 }
 
-// saveSchedules replaces the stored schedules of the habit with its current
-// ones.
-func saveSchedules(ctx context.Context, q execer, h *domain.Habit) error {
-	if _, err := q.ExecContext(ctx, `DELETE FROM habit_schedules WHERE habit_id = ?`, h.ID); err != nil {
+// saveSchedules replaces the stored schedules of the habit with h.Schedules.
+func saveSchedules(ctx context.Context, tx *sql.Tx, h *domain.Habit) error {
+	if _, err := tx.ExecContext(ctx, `DELETE FROM habit_schedules WHERE habit_id = ?`, h.ID); err != nil {
 		return fmt.Errorf("replacing schedules: %w", err)
 	}
-	for _, sc := range h.Schedules() {
+	for _, sc := range h.Schedules {
 		f := sc.Frequency
-		if _, err := q.ExecContext(ctx, `
+		if _, err := tx.ExecContext(ctx, `
 			INSERT INTO habit_schedules (habit_id, valid_from, target_value,
 				freq_kind, freq_times_per_week, freq_weekdays, freq_interval_days,
 				freq_week_interval, freq_week_of_month, freq_anchor_date)

@@ -25,10 +25,15 @@ function dueDays(isDue = () => true) {
 
 /** Returns sample habits, one per kind and state. */
 function samples() {
-  const freq = (over) => ({
-    kind: "daily", timesPerWeek: 0, weekdays: 0, intervalDays: 0,
-    weekInterval: 0, weekOfMonth: 0, anchorDate: "", ...over,
-  });
+  // A single schedule since the first sample day.
+  const schedules = (targetValue, frequency) => [{
+    from: day(400),
+    targetValue,
+    frequency: {
+      kind: "daily", timesPerWeek: 0, weekdays: 0, intervalDays: 0,
+      weekInterval: 0, weekOfMonth: 0, anchorDate: "", ...frequency,
+    },
+  }];
   const base = {
     unit: "", archivedAt: null, categoryId: "",
     ...dueDays(),
@@ -37,36 +42,36 @@ function samples() {
   return {
     check: {
       ...base, id: "sg-check", name: "Meditate", color: "blue", kind: "check",
-      targetValue: 1, frequency: freq(),
+      schedules: schedules(1),
       stats: { ...base.stats, currentStreak: 6, streakUnit: "days" },
       entries: { [day(1)]: 1, [day(2)]: 1, [day(0)]: 1 },
     },
     count: {
       ...base, id: "sg-count", name: "Drink water", color: "teal", kind: "count",
-      targetValue: 80, unit: "glasses", frequency: freq(),
+      unit: "glasses", schedules: schedules(80),
       entries: { [day(0)]: 80, [day(1)]: 30, [day(2)]: 65 },
     },
     time: {
       ...base, id: "sg-time", name: "Reading", color: "violet", kind: "time",
-      targetValue: 200, frequency: freq({ kind: "times_per_week", timesPerWeek: 4 }),
+      schedules: schedules(200, { kind: "times_per_week", timesPerWeek: 4 }),
       stats: { ...base.stats, currentStreak: 1, streakUnit: "weeks" },
       entries: { [day(0)]: 200, [day(1)]: 125, [day(2)]: 250 },
     },
     distance: {
       ...base, id: "sg-distance", name: "Running", color: "orange", kind: "distance",
-      targetValue: 5000, frequency: freq({ kind: "custom_interval", intervalDays: 3, anchorDate: day(0) }),
+      schedules: schedules(5000, { kind: "custom_interval", intervalDays: 3, anchorDate: day(0) }),
       ...dueDays((iso) => { const n = daysBetween(day(0), iso); return n >= 0 && n % 3 === 0; }),
       entries: { [day(0)]: 5200, [day(1)]: 2400, [day(2)]: 5000 },
     },
     // Scheduled on Mondays only.
     sparse: {
       ...base, id: "sg-sparse", name: "Laundry", color: "slate", kind: "check",
-      targetValue: 1, frequency: freq({ kind: "weekdays", weekdays: 1 }), entries: {},
+      schedules: schedules(1, { kind: "weekdays", weekdays: 1 }), entries: {},
       ...dueDays((iso) => weekdayIndex(iso) === 0),
     },
     archived: {
       ...base, id: "sg-archived", name: "Old habit", color: "pink", kind: "check",
-      targetValue: 1, frequency: freq(), entries: {}, archivedAt: day(30),
+      schedules: schedules(1), entries: {}, archivedAt: day(30),
     },
   };
 }

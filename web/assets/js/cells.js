@@ -96,7 +96,7 @@ export function dayEntry(habit, iso, active = state.today) {
   // and pattern alone (e.g. hatched: planned ahead).
   btn.title = label;
   // Unscheduled days are disabled unless they have a value to clear.
-  if (!H.acceptsEntry(habit, iso) && value === 0) btn.disabled = true;
+  if (!scheduled && value === 0) btn.disabled = true;
 
   const mark = document.createElement("span");
   mark.className = "mark";

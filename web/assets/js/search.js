@@ -17,10 +17,11 @@ let clear;
 let results = [];
 let active = 0;
 
-let deps = { openHabit: () => {}, openCategory: () => {} };
+/** Callbacks set by app.js. */
+let deps;
 
 export function initSearch(handlers) {
-  deps = { ...deps, ...handlers };
+  deps = handlers;
   dialog = document.getElementById("search-dialog");
   input = document.getElementById("search-input");
   list = document.getElementById("search-results");

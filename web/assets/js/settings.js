@@ -36,13 +36,13 @@ let timeZoneHint;
 let timeZoneDevice;
 
 /** Returns the number of day columns actually shown. Set by app.js. */
-let effectiveDays = () => 0;
+let effectiveDays;
 /** Reloads the state from the server. Set by app.js. */
-let reload = async () => {};
+let reload;
 
-export function initSettings(handlers = {}) {
-  if (handlers.effectiveDays) effectiveDays = handlers.effectiveDays;
-  if (handlers.reload) reload = handlers.reload;
+export function initSettings(handlers) {
+  effectiveDays = handlers.effectiveDays;
+  reload = handlers.reload;
 
   dialog = document.getElementById("settings-dialog");
   themeInputs = [...document.querySelectorAll('input[name="settings-theme"]')];
@@ -131,10 +131,10 @@ function paint() {
   patternSelect.value = settings.pattern;
   paintBandChoices(settings.bandColor);
   bandOpacity.value = String(settings.bandOpacity);
-  showKnob(bandOpacityOut, bandOpacity.value, "%");
+  showPercent(bandOpacityOut, bandOpacity.value);
   showBandInput.checked = settings.showBand;
   bandFillOpacity.value = String(settings.bandFillOpacity);
-  showKnob(bandFillOpacityOut, bandFillOpacity.value, "%");
+  showPercent(bandFillOpacityOut, bandFillOpacity.value);
   // The slider is only shown while the band is on.
   bandFillOpacity.closest(".slider").hidden = !settings.showBand;
   for (const input of reorderInputs) input.checked = input.value === settings.reorderMode;
@@ -385,8 +385,9 @@ async function saveSetting(patch) {
   }
 }
 
-function showKnob(out, value, unit) {
-  out.textContent = `${value}${unit}`;
+/** Shows a slider's value, in percent, next to it. */
+function showPercent(out, value) {
+  out.textContent = `${value}%`;
 }
 
 /**
@@ -396,7 +397,7 @@ function showKnob(out, value, unit) {
  */
 function bindSlider(slider, out, key, cssVar) {
   slider.addEventListener("input", () => {
-    showKnob(out, slider.value, "%");
+    showPercent(out, slider.value);
     document.documentElement.style.setProperty(cssVar, `${slider.value}%`);
   });
   slider.addEventListener("change", () => saveSetting({ [key]: Number(slider.value) }));

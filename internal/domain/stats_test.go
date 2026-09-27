@@ -14,17 +14,22 @@ var (
 	rateDays = DefaultRateWindowDays
 )
 
+// since returns a single schedule from the day of created on.
+func since(created time.Time, target int, f Frequency) []Schedule {
+	return []Schedule{{From: DateFromTime(created), TargetValue: target, Frequency: f}}
+}
+
 func weeklyHabit(timesPerWeek int) Habit {
 	return Habit{
-		Kind: KindCheck, TargetValue: 1, CreatedAt: longAgo,
-		Frequency: Frequency{Kind: FreqTimesPerWeek, TimesPerWeek: timesPerWeek},
+		Kind: KindCheck, CreatedAt: longAgo,
+		Schedules: since(longAgo, 1, Frequency{Kind: FreqTimesPerWeek, TimesPerWeek: timesPerWeek}),
 	}
 }
 
 func dailyHabit() Habit {
 	return Habit{
-		Kind: KindCheck, TargetValue: 1, CreatedAt: longAgo,
-		Frequency: Frequency{Kind: FreqDaily},
+		Kind: KindCheck, CreatedAt: longAgo,
+		Schedules: since(longAgo, 1, Frequency{Kind: FreqDaily}),
 	}
 }
 
@@ -180,8 +185,8 @@ func TestDailyStreakTreatsTodayAsOpen(t *testing.T) {
 // Only scheduled days count.
 func TestWeekdayHabitOnlyCountsItsOwnDays(t *testing.T) {
 	h := Habit{
-		Kind: KindCheck, TargetValue: 1, CreatedAt: longAgo,
-		Frequency: Frequency{Kind: FreqWeekdays, Weekdays: 0b0011111}, // Mo–Fr
+		Kind: KindCheck, CreatedAt: longAgo,
+		Schedules: since(longAgo, 1, Frequency{Kind: FreqWeekdays, Weekdays: 0b0011111}), // Mo–Fr
 	}
 	entries := map[Date]int{}
 	for d := friday.AddDays(-60); !d.After(friday); d = d.AddDays(1) {
@@ -202,8 +207,8 @@ func TestWeekdayHabitOnlyCountsItsOwnDays(t *testing.T) {
 // Future entries are not included in the total.
 func TestTotalExcludesTheFuture(t *testing.T) {
 	h := Habit{
-		Kind: KindDistance, TargetValue: 5000, CreatedAt: longAgo,
-		Frequency: Frequency{Kind: FreqDaily},
+		Kind: KindDistance, CreatedAt: longAgo,
+		Schedules: since(longAgo, 5000, Frequency{Kind: FreqDaily}),
 	}
 	entries := map[Date]int{
 		friday:              5000,
@@ -232,9 +237,8 @@ func TestEmptyHistory(t *testing.T) {
 func TestHabitYoungerThanTheWindow(t *testing.T) {
 	created := friday.AddDays(-4)
 	h := Habit{
-		Kind: KindCheck, TargetValue: 1,
-		CreatedAt: created.Time(),
-		Frequency: Frequency{Kind: FreqDaily},
+		Kind: KindCheck, CreatedAt: created.Time(),
+		Schedules: since(created.Time(), 1, Frequency{Kind: FreqDaily}),
 	}
 	entries := map[Date]int{}
 	for d := created; !d.After(friday); d = d.AddDays(1) {

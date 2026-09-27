@@ -18,10 +18,11 @@ let errorBox;
 let settle = null;
 let current = NONE;
 
-let deps = { createCategory: async () => null };
+/** Callbacks set by app.js. */
+let deps;
 
 export function initCategoryPicker(handlers) {
-  deps = { ...deps, ...handlers };
+  deps = handlers;
   dialog = document.getElementById("category-dialog");
   list = document.getElementById("category-list");
   createForm = document.getElementById("category-create");

@@ -5,9 +5,7 @@ import "testing"
 // Converting to check keeps the days that reached their target of the day.
 func TestConvertToCheckKeepsCompletedDays(t *testing.T) {
 	h := countHabit() // target 6
-	prev := h.Current()
-	h.TargetValue = 80
-	if err := h.Reschedule(prev, friday, false); err != nil {
+	if err := h.Reschedule(80, h.Current().Frequency, friday, false); err != nil {
 		t.Fatal(err)
 	}
 	entries := map[Date]int{

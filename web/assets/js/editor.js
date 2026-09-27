@@ -18,6 +18,7 @@ let errorBox;
 let submitButton;
 let titleEl;
 let categoryButton;
+let retroactiveBox;
 let selectedColor = null;
 let selectedIcon = "";
 let selectedCategory = "";
@@ -36,23 +37,12 @@ export function initEditor() {
   submitButton = document.getElementById("editor-submit");
   titleEl = document.getElementById("editor-title");
   categoryButton = document.getElementById("category-picker");
+  retroactiveBox = document.getElementById("editor-retroactive");
 
   buildWeekdayButtons();
   form.addEventListener("change", syncVisibility);
-  // The weekday buttons change the schedule without an input event.
-  form.addEventListener("input", syncRetroactive);
-  form.addEventListener("change", syncRetroactive);
-  form.addEventListener("click", (event) => {
-    if (event.target.closest(".weekday")) syncRetroactive();
-  });
-  // Clear the error message on any input. The weekday buttons change the
-  // input without an input event.
-  const hideError = () => { errorBox.hidden = true; };
-  form.addEventListener("input", hideError);
-  form.addEventListener("change", hideError);
-  form.addEventListener("click", (event) => {
-    if (event.target.closest(".weekday")) hideError();
-  });
+  form.addEventListener("input", onEdit);
+  form.addEventListener("change", onEdit);
   form.addEventListener("submit", handleSubmit);
   guardPage(dialog, () => JSON.stringify(collect()) !== initial);
 
@@ -64,6 +54,15 @@ export function initEditor() {
       paintCategory();
     }
   });
+}
+
+/**
+ * Handles any change of the input: hides the error message and offers to
+ * apply a changed schedule retroactively.
+ */
+function onEdit() {
+  errorBox.hidden = true;
+  syncRetroactive();
 }
 
 /** Shows the selected category on its button. */
@@ -98,6 +97,8 @@ function buildWeekdayButtons() {
       b.setAttribute("aria-label", WEEKDAY_LONG[i]);
       b.addEventListener("click", () => {
         b.setAttribute("aria-pressed", b.getAttribute("aria-pressed") === "true" ? "false" : "true");
+        // The buttons change the input without an input event.
+        onEdit();
       });
       return b;
     }),
@@ -186,6 +187,7 @@ export function openEditor(habit, handler) {
   selectedCategory = habit?.categoryId ?? "";
   paintCategory();
 
+  const schedule = habit ? H.currentSchedule(habit) : null;
   const f = form.elements;
   titleEl.textContent = habit ? t("Edit habit") : t("New habit");
   submitButton.textContent = habit ? t("Save") : t("Create");
@@ -196,13 +198,13 @@ export function openEditor(habit, handler) {
     f[fields.target].value = fields.defaultTarget;
     f[fields.step].value = "";
     if (habit?.kind === kind) {
-      f[fields.target].value = habit.targetValue / H.scaleOf(kind);
-      if (habit.stepValue) f[fields.step].value = habit.stepValue / H.scaleOf(kind);
+      f[fields.target].value = schedule.targetValue / H.scale(kind);
+      if (habit.stepValue) f[fields.step].value = habit.stepValue / H.scale(kind);
     }
   }
   f.unit.value = habit?.kind === "count" ? habit.unit : "";
 
-  const freq = habit?.frequency ?? { kind: "daily" };
+  const freq = schedule?.frequency ?? { kind: "daily" };
   f.freq.value = freq.kind;
   f.timesPerWeek.value = freq.timesPerWeek || 3;
   f.intervalDays.value = freq.intervalDays || 3;
@@ -257,7 +259,7 @@ function collect() {
   };
 
   // Only sent when the switch is offered, i.e. when editing a schedule.
-  if (!document.getElementById("editor-retroactive").hidden) {
+  if (!retroactiveBox.hidden) {
     input.retroactive = f.retroactive.checked;
   }
 
@@ -265,8 +267,8 @@ function collect() {
   // i.e. the kind's default step.
   const fields = KIND_FIELDS[kind];
   if (fields) {
-    input.targetValue = Math.round(Number(f[fields.target].value) * H.scaleOf(kind));
-    input.stepValue = Math.round(Number(f[fields.step].value) * H.scaleOf(kind));
+    input.targetValue = Math.round(Number(f[fields.target].value) * H.scale(kind));
+    input.stepValue = Math.round(Number(f[fields.step].value) * H.scale(kind));
   }
 
   switch (input.frequency.kind) {
@@ -328,16 +330,15 @@ function scheduleKey(input) {
 
 /**
  * Offers to apply a changed target or frequency to past days as well. Only
- * when editing, and not when the kind changes, which resets the history
+ * when editing, and not when the kind changes, which converts the history
  * anyway.
  */
 function syncRetroactive() {
-  const box = document.getElementById("editor-retroactive");
   const input = collect();
   syncKindHint(input.kind);
   const changed = editing !== null && input.kind === editing.kind &&
     scheduleKey(input) !== initialSchedule;
-  box.hidden = !changed;
+  retroactiveBox.hidden = !changed;
   if (!changed) form.elements.retroactive.checked = false;
 }
 

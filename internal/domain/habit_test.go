@@ -9,12 +9,13 @@ import (
 
 func baseHabit() Habit {
 	return Habit{
-		Name:        "Reading",
-		Color:       "green",
-		Kind:        KindCheck,
-		TargetValue: 1,
-		CreatedAt:   time.Date(2026, 9, 14, 8, 0, 0, 0, time.UTC), // a Monday
-		Frequency:   Frequency{Kind: FreqDaily},
+		Name:      "Reading",
+		Color:     "green",
+		Kind:      KindCheck,
+		CreatedAt: time.Date(2026, 9, 14, 8, 0, 0, 0, time.UTC), // a Monday
+		Schedules: []Schedule{
+			{From: Date{2026, time.September, 14}, TargetValue: 1, Frequency: Frequency{Kind: FreqDaily}},
+		},
 	}
 }
 
@@ -37,8 +38,8 @@ func TestValidateNormalises(t *testing.T) {
 	if h.Unit != "" {
 		t.Errorf("unit = %q, want empty for a check", h.Unit)
 	}
-	if h.StepValue != 1 || h.TargetValue != 1 {
-		t.Errorf("step/target = %d/%d, want 1/1", h.StepValue, h.TargetValue)
+	if h.StepValue != 1 || h.Current().TargetValue != 1 {
+		t.Errorf("step/target = %d/%d, want 1/1", h.StepValue, h.Current().TargetValue)
 	}
 }
 
@@ -51,34 +52,34 @@ func TestValidateRejects(t *testing.T) {
 		{"name too long", func(h *Habit) { h.Name = strings.Repeat("a", MaxNameLen+1) }},
 		{"unit too long", func(h *Habit) {
 			h.Kind = KindCount
-			h.TargetValue = 10
+			h.Schedules[0].TargetValue = 10
 			h.Unit = strings.Repeat("a", MaxUnitLen+1)
 		}},
 		{"broken colour", func(h *Habit) { h.Color = "not-a-colour" }},
 		{"unknown kind", func(h *Habit) { h.Kind = Kind("gewicht") }},
-		{"unknown frequency", func(h *Habit) { h.Frequency.Kind = FrequencyKind("monatlich") }},
+		{"unknown frequency", func(h *Habit) { h.Schedules[0].Frequency.Kind = FrequencyKind("monatlich") }},
 		{"target above the maximum", func(h *Habit) {
 			h.Kind = KindTime
-			h.TargetValue = KindTime.MaxTarget() + 1
+			h.Schedules[0].TargetValue = KindTime.MaxTarget() + 1
 		}},
-		{"target below 1", func(h *Habit) { h.Kind = KindCount; h.TargetValue = 0 }},
+		{"target below 1", func(h *Habit) { h.Kind = KindCount; h.Schedules[0].TargetValue = 0 }},
 		{"no weekday selected", func(h *Habit) {
-			h.Frequency = Frequency{Kind: FreqWeekdays, Weekdays: 0}
+			h.Schedules[0].Frequency = Frequency{Kind: FreqWeekdays, Weekdays: 0}
 		}},
 		{"weekday mask too large", func(h *Habit) {
-			h.Frequency = Frequency{Kind: FreqWeekdays, Weekdays: 0b10000000}
+			h.Schedules[0].Frequency = Frequency{Kind: FreqWeekdays, Weekdays: 0b10000000}
 		}},
 		{"interval 0", func(h *Habit) {
-			h.Frequency = Frequency{Kind: FreqCustomInterval, IntervalDays: 0}
+			h.Schedules[0].Frequency = Frequency{Kind: FreqCustomInterval, IntervalDays: 0}
 		}},
 		{"interval over a year", func(h *Habit) {
-			h.Frequency = Frequency{Kind: FreqCustomInterval, IntervalDays: 366}
+			h.Schedules[0].Frequency = Frequency{Kind: FreqCustomInterval, IntervalDays: 366}
 		}},
 		{"times per week 0", func(h *Habit) {
-			h.Frequency = Frequency{Kind: FreqTimesPerWeek, TimesPerWeek: 0}
+			h.Schedules[0].Frequency = Frequency{Kind: FreqTimesPerWeek, TimesPerWeek: 0}
 		}},
 		{"times per week 8", func(h *Habit) {
-			h.Frequency = Frequency{Kind: FreqTimesPerWeek, TimesPerWeek: 8}
+			h.Schedules[0].Frequency = Frequency{Kind: FreqTimesPerWeek, TimesPerWeek: 8}
 		}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -98,27 +99,27 @@ func TestValidateRejects(t *testing.T) {
 // Validate resets fields not used by the frequency kind.
 func TestValidateClearsForeignFrequencyFields(t *testing.T) {
 	h := baseHabit()
-	h.Frequency = Frequency{
+	h.Schedules[0].Frequency = Frequency{
 		Kind: FreqDaily, TimesPerWeek: 3, Weekdays: 0b0000101,
 		IntervalDays: 9, AnchorDate: Date{2026, time.January, 1},
 	}
 	if err := h.Validate(); err != nil {
 		t.Fatalf("Validate: %v", err)
 	}
-	if h.Frequency != (Frequency{Kind: FreqDaily}) {
-		t.Errorf("frequency = %+v, want only the kind", h.Frequency)
+	if h.Current().Frequency != (Frequency{Kind: FreqDaily}) {
+		t.Errorf("frequency = %+v, want only the kind", h.Current().Frequency)
 	}
 }
 
-// A custom interval without an anchor is anchored at the creation day.
+// A custom interval without an anchor is anchored at the schedule's first day.
 func TestValidateAnchorsCustomInterval(t *testing.T) {
 	h := baseHabit()
-	h.Frequency = Frequency{Kind: FreqCustomInterval, IntervalDays: 3}
+	h.Schedules[0].Frequency = Frequency{Kind: FreqCustomInterval, IntervalDays: 3}
 	if err := h.Validate(); err != nil {
 		t.Fatalf("Validate: %v", err)
 	}
-	if want := DateFromTime(h.CreatedAt); h.Frequency.AnchorDate != want {
-		t.Errorf("anchor = %v, want %v", h.Frequency.AnchorDate, want)
+	if want := h.Current().From; h.Current().Frequency.AnchorDate != want {
+		t.Errorf("anchor = %v, want %v", h.Current().Frequency.AnchorDate, want)
 	}
 }
 
@@ -127,7 +128,7 @@ func TestValidateAnchorsCustomInterval(t *testing.T) {
 func TestValidateStepValue(t *testing.T) {
 	h := baseHabit()
 	h.Kind = KindTime
-	h.TargetValue = 200
+	h.Schedules[0].TargetValue = 200
 	h.StepValue = 0
 	if err := h.Validate(); err != nil {
 		t.Fatalf("Validate: %v", err)
@@ -162,7 +163,7 @@ func TestIsScheduled(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			h := baseHabit()
-			h.Frequency = tc.freq
+			h.Schedules[0].Frequency = tc.freq
 			for offset, want := range tc.want {
 				d := mon.AddDays(offset)
 				if got := h.IsScheduled(d); got != want {
@@ -198,7 +199,7 @@ func TestIsScheduledNarrowedWeekdays(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			h := baseHabit()
-			h.Frequency = tc.freq
+			h.Schedules[0].Frequency = tc.freq
 			for day, want := range tc.want {
 				if got := h.IsScheduled(day); got != want {
 					t.Errorf("%v (%v): scheduled = %v, want %v", day, day.Weekday(), got, want)
@@ -221,7 +222,7 @@ func TestValidateNarrowedWeekdays(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			h := baseHabit()
-			h.Frequency = tc.freq
+			h.Schedules[0].Frequency = tc.freq
 			if err := h.Validate(); (err != nil) != tc.wantErr {
 				t.Errorf("Validate = %v, want error %v", err, tc.wantErr)
 			}
@@ -230,22 +231,22 @@ func TestValidateNarrowedWeekdays(t *testing.T) {
 
 	// Week interval 0 means every week, without an anchor.
 	h := baseHabit()
-	h.Frequency = Frequency{Kind: FreqWeekdays, Weekdays: 1, AnchorDate: Date{2026, time.January, 1}}
+	h.Schedules[0].Frequency = Frequency{Kind: FreqWeekdays, Weekdays: 1, AnchorDate: Date{2026, time.January, 1}}
 	if err := h.Validate(); err != nil {
 		t.Fatalf("Validate: %v", err)
 	}
-	if h.Frequency.WeekInterval != 1 || !h.Frequency.AnchorDate.IsZero() {
-		t.Errorf("frequency = %+v, want interval 1 and no anchor", h.Frequency)
+	if h.Current().Frequency.WeekInterval != 1 || !h.Current().Frequency.AnchorDate.IsZero() {
+		t.Errorf("frequency = %+v, want interval 1 and no anchor", h.Current().Frequency)
 	}
 
-	// Without an anchor, the week interval starts at the creation week.
+	// Without an anchor, the week interval starts at the schedule's first week.
 	h = baseHabit()
-	h.Frequency = Frequency{Kind: FreqWeekdays, Weekdays: 1, WeekInterval: 4}
+	h.Schedules[0].Frequency = Frequency{Kind: FreqWeekdays, Weekdays: 1, WeekInterval: 4}
 	if err := h.Validate(); err != nil {
 		t.Fatalf("Validate: %v", err)
 	}
-	if want := DateFromTime(h.CreatedAt); h.Frequency.AnchorDate != want {
-		t.Errorf("anchor = %v, want %v", h.Frequency.AnchorDate, want)
+	if want := h.Current().From; h.Current().Frequency.AnchorDate != want {
+		t.Errorf("anchor = %v, want %v", h.Current().Frequency.AnchorDate, want)
 	}
 }
 
@@ -253,7 +254,7 @@ func TestValidateNarrowedWeekdays(t *testing.T) {
 func TestCustomIntervalIsNotDueBeforeItsAnchor(t *testing.T) {
 	anchor := Date{2026, time.September, 14}
 	h := baseHabit()
-	h.Frequency = Frequency{Kind: FreqCustomInterval, IntervalDays: 3, AnchorDate: anchor}
+	h.Schedules[0].Frequency = Frequency{Kind: FreqCustomInterval, IntervalDays: 3, AnchorDate: anchor}
 	if h.IsScheduled(anchor.AddDays(-3)) {
 		t.Error("a day before the anchor must not be due")
 	}

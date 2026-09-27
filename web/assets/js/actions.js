@@ -17,10 +17,10 @@ import {
 import { t } from "./i18n.js";
 
 /** Callbacks set by app.js. */
-let deps = { refresh: async () => {}, currentHabitId: () => null, goHome: () => {} };
+let deps;
 
-export function configureActions(next) {
-  deps = { ...deps, ...next };
+export function configureActions(callbacks) {
+  deps = callbacks;
 }
 
 /**
@@ -43,7 +43,7 @@ function announce(text) {
 export function tapEntry(habitId, iso) {
   const habit = habitById(habitId);
   if (!habit) return;
-  if (!H.acceptsEntry(habit, iso)) {
+  if (!H.isScheduled(habit, iso)) {
     clearClosedDay(habit, iso);
     return;
   }
@@ -58,7 +58,7 @@ export function tapEntry(habitId, iso) {
 export function editEntry(habitId, iso) {
   const habit = habitById(habitId);
   if (!habit) return;
-  if (!H.acceptsEntry(habit, iso)) {
+  if (!H.isScheduled(habit, iso)) {
     clearClosedDay(habit, iso);
     return;
   }
@@ -123,7 +123,7 @@ async function writeEntry(habit, iso, value) {
     : `${habit.name}, ${when}: ${H.formatValue(habit, value)}`);
   // Clearing an unscheduled day cannot be undone, as the server would reject
   // the old value.
-  if (!H.acceptsEntry(habit, iso)) {
+  if (!H.isScheduled(habit, iso)) {
     toast(t("Entry cleared: {name}, {when}", { name: habit.name, when }));
     return;
   }
@@ -440,9 +440,11 @@ export async function deleteCategory(id) {
   }
   removeCategory(id);
 
-  let label = t("Category \"{name}\" deleted — {n} habits kept", { name: category.name, n: affected });
-  if (affected === 0) label = t("Category \"{name}\" deleted", { name: category.name });
-  if (affected === 1) label = t("Category \"{name}\" deleted — 1 habit kept", { name: category.name });
+  const name = category.name;
+  let label;
+  if (affected === 0) label = t("Category \"{name}\" deleted", { name });
+  else if (affected === 1) label = t("Category \"{name}\" deleted — 1 habit kept", { name });
+  else label = t("Category \"{name}\" deleted — {n} habits kept", { name, n: affected });
 
   record({
     label,

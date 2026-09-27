@@ -18,9 +18,6 @@ const (
 	// reverse proxy after its authentication, e.g. with Authelia, Authentik or
 	// oauth2-proxy.
 	AuthModeTrustedHeader AuthMode = "trusted-header"
-	// authModeAuthelia is the former name of AuthModeTrustedHeader, still
-	// accepted.
-	authModeAuthelia AuthMode = "authelia"
 	// AuthModeSingleUser assigns every request to DefaultUser, without
 	// authentication.
 	AuthModeSingleUser AuthMode = "single-user"
@@ -48,9 +45,6 @@ type Config struct {
 	// DeletedRetention is how long deleted habits and categories can be
 	// restored.
 	DeletedRetention time.Duration
-
-	// Warnings about deprecated settings, logged on startup.
-	Warnings []string
 }
 
 // env returns the trimmed value of key, or fallback if it is unset or blank.
@@ -80,12 +74,6 @@ func Load() (Config, error) {
 		return Config{}, fmt.Errorf("HABITS_TZ: %w", err)
 	}
 	cfg.Location = loc
-
-	if cfg.AuthMode == authModeAuthelia {
-		cfg.AuthMode = AuthModeTrustedHeader
-		cfg.Warnings = append(cfg.Warnings,
-			"HABITS_AUTH_MODE=authelia is deprecated, use trusted-header (it works with any proxy that sets identity headers)")
-	}
 
 	switch cfg.AuthMode {
 	case AuthModeSingleUser:

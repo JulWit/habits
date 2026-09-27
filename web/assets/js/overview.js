@@ -644,14 +644,13 @@ function nameCell(habit) {
 }
 
 function renderBlock({ category, habits, visible }, dates, labelled, active) {
-  const rows = visible ?? habits;
   const section = document.createElement("section");
   section.className = "block";
   if (category) section.dataset.category = category.id;
   // The heading counts all habits of the category, the rows show the filtered.
   if (labelled) section.append(blockHead(category, habits, active));
 
-  if (rows.length === 0) {
+  if (visible.length === 0) {
     const empty = document.createElement("p");
     empty.className = "block-empty";
     empty.textContent = t("No habit in this category yet.");
@@ -661,7 +660,7 @@ function renderBlock({ category, habits, visible }, dates, labelled, active) {
 
   const list = document.createElement("div");
   list.className = "block-rows";
-  for (const habit of rows) {
+  for (const habit of visible) {
     const row = document.createElement("div");
     row.className = "habit-row";
     row.dataset.habit = habit.id;
@@ -740,7 +739,7 @@ function blockProgress(habits, day) {
 }
 
 
-function blockHead(category, habits = [], day = state.today) {
+function blockHead(category, habits, day) {
   const head = document.createElement("header");
   head.className = "block-head";
 

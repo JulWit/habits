@@ -12,8 +12,7 @@ import { t } from "./i18n.js";
  * Builds the title bar.
  * @param {object} bar
  * @param {string} bar.title  the name of the habit or category
- * @param {string|string[]} [bar.sub]  details shown after the title, e.g.
- *   frequency and target, each set off by a dot
+ * @param {string} [bar.sub]  a detail shown after the title, set off by a dot
  * @param {Node|null} [bar.badge]  shown before the title
  * @param {boolean} [bar.edit]  whether the bar has an edit button
  * @param {Array} bar.menu  the overflow menu's items, see overflowMenu; an
@@ -36,17 +35,13 @@ export function appBar({ title, sub = "", badge = null, edit = true, menu }) {
   else bar.querySelector('[data-action="edit"]').remove();
   bar.querySelector(".name").textContent = title;
   if (badge) bar.querySelector("h2").prepend(badge);
-  // One element per detail, so the dots between them are drawn by the
-  // stylesheet with even spacing.
+  // In a span of its own, as the stylesheet draws the dot before it.
   const subLine = bar.querySelector(".sub");
-  const parts = [sub].flat().filter(Boolean);
-  if (parts.length > 0) {
-    subLine.append(...parts.map((text) => {
-      const part = document.createElement("span");
-      part.className = "sub-part";
-      part.textContent = text;
-      return part;
-    }));
+  if (sub) {
+    const part = document.createElement("span");
+    part.className = "sub-part";
+    part.textContent = sub;
+    subLine.append(part);
   } else {
     subLine.remove();
   }

@@ -93,6 +93,7 @@ function initServiceWorker() {
 }
 
 async function main() {
+  actions.configureActions({ refresh, currentHabitId, goHome });
   // Translate first, so views read translated texts from the markup.
   translateDocument();
   // Insert the icons before the views are initialised.
@@ -118,7 +119,6 @@ async function main() {
 
   document.getElementById("add-habit").addEventListener("click", actions.createHabit);
 
-  actions.configureActions({ refresh, currentHabitId, goHome });
   setChangeHandler(refresh);
   subscribe(syncRoute);
   window.addEventListener("hashchange", syncRoute);
@@ -281,79 +281,71 @@ function goHome() {
   syncRoute();
 }
 
+/**
+ * Shows `view` and hides the others. The route classes on <html> hide the
+ * app's title bar on the views that have their own (see components.css).
+ */
+function showView(view) {
+  for (const other of [overviewView, detailView, categoryView, daysView, styleguideView]) {
+    other.hidden = other !== view;
+  }
+  const root = document.documentElement;
+  root.classList.toggle("route-styleguide", view === styleguideView);
+  root.classList.toggle("route-detail", view === detailView || view === categoryView || view === daysView);
+}
+
+/** Returns to the overview without a history entry, e.g. for a removed habit. */
+function replaceWithOverview() {
+  history.replaceState(null, "", location.pathname + location.search);
+}
+
 function syncRoute() {
   // The style guide needs no data.
   if (location.hash === "#/styleguide") {
-    document.documentElement.classList.remove("route-detail");
-    document.documentElement.classList.add("route-styleguide");
-    overviewView.hidden = true;
-    detailView.hidden = true;
-    categoryView.hidden = true;
-    daysView.hidden = true;
-    styleguideView.hidden = false;
+    showView(styleguideView);
     showStyleguide();
     return;
   }
-  styleguideView.hidden = true;
-  document.documentElement.classList.remove("route-styleguide");
 
-  // Day statistics.
   if (location.hash === "#/days") {
-    document.documentElement.classList.add("route-detail");
-    overviewView.hidden = true;
-    detailView.hidden = true;
-    categoryView.hidden = true;
-    daysView.hidden = false;
+    showView(daysView);
     renderDays();
     // The statistics cover the whole year.
     if (state.today) extendHistory(`${state.today.slice(0, 4)}-01-01`);
     return;
   }
-  daysView.hidden = true;
 
-  // Category detail view.
   const categoryId = currentCategoryId();
-  const category = categoryId
-    ? state.categories.find((c) => c.id === categoryId)
-    : null;
-  if (categoryId && !category) {
-    // The category no longer exists: back to the overview.
-    history.replaceState(null, "", location.pathname + location.search);
-  }
-  if (category) {
-    document.documentElement.classList.add("route-detail");
-    overviewView.hidden = true;
-    detailView.hidden = true;
-    categoryView.hidden = false;
-    renderCategory(category);
-    // Perfect days are counted over the whole year.
-    extendHistory(`${state.today.slice(0, 4)}-01-01`);
-    return;
-  }
-  categoryView.hidden = true;
-
-  const id = currentHabitId();
-  const habit = id ? habitById(id) : null;
-
-  if (!habit) {
-    // The habit no longer exists: back to the overview.
-    if (id && state.habits.length > 0) {
-      history.replaceState(null, "", location.pathname + location.search);
+  if (categoryId) {
+    const category = state.categories.find((c) => c.id === categoryId);
+    if (category) {
+      showView(categoryView);
+      renderCategory(category);
+      // Perfect days are counted over the whole year.
+      extendHistory(`${state.today.slice(0, 4)}-01-01`);
+      return;
     }
-    document.documentElement.classList.remove("route-detail");
-    overviewView.hidden = false;
-    detailView.hidden = true;
-    // Re-render, as the board could not be measured while hidden.
-    renderOverview();
-    return;
+    // The category no longer exists.
+    replaceWithOverview();
   }
-  // The detail view has no day columns.
-  document.documentElement.classList.add("route-detail");
-  overviewView.hidden = true;
-  detailView.hidden = false;
-  renderDetail(habit);
-  // Render from the loaded entries, then again once the full history arrives.
-  ensureFullHistory(habit.id);
+
+  const habitId = currentHabitId();
+  if (habitId) {
+    const habit = habitById(habitId);
+    if (habit) {
+      showView(detailView);
+      renderDetail(habit);
+      // Render from the loaded entries, then again once the full history arrives.
+      ensureFullHistory(habit.id);
+      return;
+    }
+    // The habit no longer exists; before the state is loaded, it may yet.
+    if (state.habits.length > 0) replaceWithOverview();
+  }
+
+  showView(overviewView);
+  // Re-render, as the board could not be measured while hidden.
+  renderOverview();
 }
 
 // ---------- theme ----------

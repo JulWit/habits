@@ -21,7 +21,7 @@ func TestHabitsAreScopedToTheirUser(t *testing.T) {
 	if err := st.SoftDeleteHabit(ctx, "someone-else", mine.ID); !errors.Is(err, ErrNotFound) {
 		t.Errorf("SoftDelete foreign: %v, want ErrNotFound", err)
 	}
-	if _, err := st.SetEntry(ctx, "someone-else", mine.ID, day(2026, time.September, 18), 1); !errors.Is(err, ErrNotFound) {
+	if _, err := st.SetEntry(ctx, "someone-else", mine.ID, day(2026, time.September, 18), 1, nil); !errors.Is(err, ErrNotFound) {
 		t.Errorf("SetEntry foreign: %v, want ErrNotFound", err)
 	}
 	habits, err := st.ListHabits(ctx, "someone-else", true)
@@ -33,56 +33,47 @@ func TestHabitsAreScopedToTheirUser(t *testing.T) {
 	}
 }
 
-// The kind of a habit with entries cannot be changed.
-func TestKindCannotChangeOnceThereIsAHistory(t *testing.T) {
+// UpdateHabit with entries replaces the history of the habit, as after a
+// change of kind.
+func TestUpdateHabitReplacesTheEntries(t *testing.T) {
 	ctx := context.Background()
 	st := openTestStore(t)
 	h := mustCreateHabit(t, st, "alice", countHabit(domain.KindDistance, 5000))
-
-	// Without entries, the kind can be changed.
-	changed := h
-	changed.Kind = domain.KindCount
-	changed.TargetValue = 80
-	if err := st.UpdateHabit(ctx, "alice", &changed); err != nil {
-		t.Fatalf("kind change without history must be allowed: %v", err)
+	friday, saturday := day(2026, time.September, 18), day(2026, time.September, 19)
+	for _, d := range []domain.Date{friday, saturday} {
+		if _, err := st.SetEntry(ctx, "alice", h.ID, d, 5200, nil); err != nil {
+			t.Fatalf("SetEntry: %v", err)
+		}
 	}
 
-	// With an entry, the change is rejected.
-	if _, err := st.SetEntry(ctx, "alice", h.ID, day(2026, time.September, 18), 50); err != nil {
-		t.Fatalf("SetEntry: %v", err)
+	h.Kind = domain.KindCheck
+	if err := st.UpdateHabit(ctx, "alice", &h, map[domain.Date]int{friday: 1}); err != nil {
+		t.Fatalf("UpdateHabit: %v", err)
 	}
-	again := changed
-	again.Kind = domain.KindTime
-	err := st.UpdateHabit(ctx, "alice", &again)
-	if !errors.Is(err, domain.ErrValidation) {
-		t.Errorf("kind change with history: %v, want ErrValidation", err)
-	}
-
-	// The habit is unchanged.
-	after, err := st.GetHabit(ctx, "alice", h.ID)
+	entries, err := st.EntriesForHabit(ctx, "alice", h.ID)
 	if err != nil {
-		t.Fatalf("GetHabit: %v", err)
+		t.Fatalf("EntriesForHabit: %v", err)
 	}
-	if after.Kind != domain.KindCount {
-		t.Errorf("kind = %q, want count — the failure must not have written anything", after.Kind)
+	if len(entries) != 1 || entries[friday] != 1 {
+		t.Errorf("entries = %v, want only Friday, ticked", entries)
 	}
 }
 
-// All fields except the kind remain editable when a habit has entries.
-func TestEverythingButTheKindStaysEditable(t *testing.T) {
+// UpdateHabit without entries keeps the history and stores every other field.
+func TestUpdateHabitKeepsTheEntries(t *testing.T) {
 	ctx := context.Background()
 	st := openTestStore(t)
 	h := mustCreateHabit(t, st, "alice", countHabit(domain.KindCount, 80))
-	if _, err := st.SetEntry(ctx, "alice", h.ID, day(2026, time.September, 18), 50); err != nil {
+	if _, err := st.SetEntry(ctx, "alice", h.ID, day(2026, time.September, 18), 50, nil); err != nil {
 		t.Fatalf("SetEntry: %v", err)
 	}
 
 	h.Name = "Wasser trinken"
 	h.Color = "sky"
-	h.TargetValue = 100
 	h.StepValue = 20
-	h.Frequency = domain.Frequency{Kind: domain.FreqTimesPerWeek, TimesPerWeek: 4}
-	if err := st.UpdateHabit(ctx, "alice", &h); err != nil {
+	h.Schedules[0].TargetValue = 100
+	h.Schedules[0].Frequency = domain.Frequency{Kind: domain.FreqTimesPerWeek, TimesPerWeek: 4}
+	if err := st.UpdateHabit(ctx, "alice", &h, nil); err != nil {
 		t.Fatalf("UpdateHabit: %v", err)
 	}
 
@@ -90,11 +81,14 @@ func TestEverythingButTheKindStaysEditable(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetHabit: %v", err)
 	}
-	if after.Name != "Wasser trinken" || after.TargetValue != 100 || after.StepValue != 20 {
+	if after.Name != "Wasser trinken" || after.Current().TargetValue != 100 || after.StepValue != 20 {
 		t.Errorf("changes did not arrive: %+v", after)
 	}
-	if after.Frequency.Kind != domain.FreqTimesPerWeek || after.Frequency.TimesPerWeek != 4 {
-		t.Errorf("frequency did not arrive: %+v", after.Frequency)
+	if f := after.Current().Frequency; f.Kind != domain.FreqTimesPerWeek || f.TimesPerWeek != 4 {
+		t.Errorf("frequency did not arrive: %+v", f)
+	}
+	if entries, _ := st.EntriesForHabit(ctx, "alice", h.ID); len(entries) != 1 {
+		t.Errorf("entries = %v, want the one kept", entries)
 	}
 }
 
@@ -107,14 +101,14 @@ func TestNarrowedWeekdaysRoundTrip(t *testing.T) {
 		{Kind: domain.FreqWeekdays, Weekdays: 1, WeekInterval: 1, WeekOfMonth: domain.LastWeekOfMonth},
 	} {
 		h := countHabit(domain.KindCheck, 1)
-		h.Frequency = freq
+		h.Schedules[0].Frequency = freq
 		h = mustCreateHabit(t, st, "alice", h)
 		after, err := st.GetHabit(ctx, "alice", h.ID)
 		if err != nil {
 			t.Fatalf("GetHabit: %v", err)
 		}
-		if after.Frequency != freq {
-			t.Errorf("frequency = %+v, want %+v", after.Frequency, freq)
+		if got := after.Current().Frequency; got != freq {
+			t.Errorf("frequency = %+v, want %+v", got, freq)
 		}
 	}
 }
@@ -147,7 +141,7 @@ func TestSoftDeleteKeepsTheHistory(t *testing.T) {
 	st := openTestStore(t)
 	h := mustCreateHabit(t, st, "alice", countHabit(domain.KindCheck, 1))
 	day := day(2026, time.September, 18)
-	if _, err := st.SetEntry(ctx, "alice", h.ID, day, 1); err != nil {
+	if _, err := st.SetEntry(ctx, "alice", h.ID, day, 1, nil); err != nil {
 		t.Fatalf("SetEntry: %v", err)
 	}
 

@@ -28,12 +28,7 @@ func TestEveryProblemCodeIsTranslated(t *testing.T) {
 
 	// Codes written as literals: domain.Invalid, writeError and auth.
 	literal := regexp.MustCompile(`Invalid\("(\w+)"|writeError\(w, [^,]+, "(\w+)"|Code:\s+"(\w+)"`)
-	// tooLarge builds its codes from the value's name and the kind's unit.
-	codes := map[string]bool{
-		"target_too_large": true, "time_too_large_minutes": true, "distance_too_large_km": true,
-		"step_too_large": true, "step_too_large_minutes": true, "step_too_large_km": true,
-		"value_too_large": true, "value_too_large_minutes": true, "value_too_large_km": true,
-	}
+	codes := map[string]bool{}
 	root := filepath.Join("..", "..", "internal")
 	err = filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil || d.IsDir() || !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {

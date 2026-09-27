@@ -47,7 +47,7 @@ func TestProblemIsAValidationError(t *testing.T) {
 }
 
 // Errors for too large values name the unit of the kind.
-func TestTooLargeNamesTheUnit(t *testing.T) {
+func TestValueTooLargeNamesTheUnit(t *testing.T) {
 	for _, tc := range []struct {
 		kind     Kind
 		code     string
@@ -58,7 +58,7 @@ func TestTooLargeNamesTheUnit(t *testing.T) {
 		{KindTime, "value_too_large_minutes", "value may be at most {max} minutes", "value may be at most 1440 minutes"},
 		{KindDistance, "value_too_large_km", "value may be at most {max} kilometres", "value may be at most 200 kilometres"},
 	} {
-		p := tooLarge("value", tc.kind).(*Problem)
+		p := valueTooLarge(tc.kind).(*Problem)
 		if p.Code != tc.code {
 			t.Errorf("%s: Code = %q, want %q", tc.kind, p.Code, tc.code)
 		}

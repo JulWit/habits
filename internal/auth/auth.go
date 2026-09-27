@@ -1,5 +1,5 @@
 // Package auth determines the user of a request, either a fixed user or from
-// the identity headers set by Authelia.
+// the identity headers set by a trusted reverse proxy.
 package auth
 
 import (
@@ -24,15 +24,10 @@ type User struct {
 
 type ctxKey struct{}
 
-// FromContext returns the user stored by Middleware.
-func FromContext(ctx context.Context) (User, bool) {
-	u, ok := ctx.Value(ctxKey{}).(User)
-	return u, ok
-}
-
-// MustUser is like FromContext but panics if there is no user.
+// MustUser returns the user stored by Middleware. It panics if there is none,
+// as then the handler is registered without Middleware.
 func MustUser(ctx context.Context) User {
-	u, ok := FromContext(ctx)
+	u, ok := ctx.Value(ctxKey{}).(User)
 	if !ok {
 		panic("auth: handler registered without auth.Middleware")
 	}

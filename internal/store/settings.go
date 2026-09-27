@@ -7,9 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"reflect"
 	"slices"
-	"strconv"
 	"strings"
 	"time"
 
@@ -18,11 +16,7 @@ import (
 
 // Settings are the preferences of a user. They are stored as one JSON
 // document, so a new setting needs no migration: add a field here with its
-// default in DefaultSettings, and its rule (see Validate).
-//
-// Rules are declared, not coded per field: a string field whose JSON name is
-// a key of Options must be one of those options, an int field with a range tag
-// must lie in that range, and checks holds the few rules that need code.
+// default in DefaultSettings, and its rule in Validate and resetInvalid.
 type Settings struct {
 	Theme string `json:"theme"`
 	// OverviewDays is the number of day columns on the overview; 0 shows as
@@ -41,10 +35,10 @@ type Settings struct {
 	BandColor string `json:"bandColor"`
 	// BandOpacity is the opacity of the today highlight in the header, in
 	// percent.
-	BandOpacity int `json:"bandOpacity" range:"0,100"`
+	BandOpacity int `json:"bandOpacity"`
 	// BandFillOpacity is the opacity of the today band in the cards, in
 	// percent.
-	BandFillOpacity int `json:"bandFillOpacity" range:"0,100"`
+	BandFillOpacity int `json:"bandFillOpacity"`
 	// ShowBand shows the today band in the cards.
 	ShowBand bool   `json:"showBand"`
 	Language string `json:"language"`
@@ -116,93 +110,118 @@ const NeutralBand = "neutral"
 // MaxOverviewDays is the upper bound of OverviewDays.
 const MaxOverviewDays = 90
 
-// checks are the rules that options and ranges cannot express, keyed by the
-// JSON name of their setting.
-var checks = map[string]func(Settings) error{
-	"overviewDays": func(s Settings) error {
-		if n := s.OverviewDays; n != 0 && (n < 3 || n > MaxOverviewDays) {
-			return domain.Invalid("overview_days_range", "overviewDays must be 0 (automatic) or between 3 and {max}", "max", MaxOverviewDays)
-		}
-		return nil
-	},
-	"bandColor": func(s Settings) error {
-		if s.BandColor != NeutralBand && !domain.ValidColor(s.BandColor) {
-			return domain.Invalid("band_color_invalid", "band colour must be neutral or one of the habit colours")
-		}
-		return nil
-	},
-	// A known IANA name or "" for the server's zone; "Local" is not accepted.
-	"timeZone": func(s Settings) error {
-		if s.TimeZone == "" {
-			return nil
-		}
-		if _, err := time.LoadLocation(s.TimeZone); err != nil || s.TimeZone == "Local" {
-			return domain.Invalid("unknown_time_zone", `unknown time zone "{zone}"`, "zone", s.TimeZone)
-		}
-		return nil
-	},
-}
-
-var settingsType = reflect.TypeFor[Settings]()
-
 // Validate returns a validation error for the first invalid setting.
 func (s Settings) Validate() error {
-	for i := range settingsType.NumField() {
-		if err := s.fieldError(i); err != nil {
+	for _, err := range []error{
+		checkOption("theme", s.Theme),
+		checkOption("font", s.Font),
+		checkOption("density", s.Density),
+		checkOption("reorderMode", s.ReorderMode),
+		checkOption("pattern", s.Pattern),
+		checkOption("language", s.Language),
+		checkOverviewDays(s.OverviewDays),
+		checkBandColor(s.BandColor),
+		checkPercent("bandOpacity", s.BandOpacity),
+		checkPercent("bandFillOpacity", s.BandFillOpacity),
+		checkTimeZone(s.TimeZone),
+	} {
+		if err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-// fieldError returns a validation error if the i-th field breaks its rule.
-func (s Settings) fieldError(i int) error {
-	field := settingsType.Field(i)
-	key, _, _ := strings.Cut(field.Tag.Get("json"), ",")
-	value := reflect.ValueOf(s).Field(i)
+// resetInvalid replaces invalid values, e.g. of options removed since they
+// were saved, by their defaults.
+func (s *Settings) resetInvalid() {
+	d := DefaultSettings()
+	if checkOption("theme", s.Theme) != nil {
+		s.Theme = d.Theme
+	}
+	if checkOption("font", s.Font) != nil {
+		s.Font = d.Font
+	}
+	if checkOption("density", s.Density) != nil {
+		s.Density = d.Density
+	}
+	if checkOption("reorderMode", s.ReorderMode) != nil {
+		s.ReorderMode = d.ReorderMode
+	}
+	if checkOption("pattern", s.Pattern) != nil {
+		s.Pattern = d.Pattern
+	}
+	if checkOption("language", s.Language) != nil {
+		s.Language = d.Language
+	}
+	if checkOverviewDays(s.OverviewDays) != nil {
+		s.OverviewDays = d.OverviewDays
+	}
+	if checkBandColor(s.BandColor) != nil {
+		s.BandColor = d.BandColor
+	}
+	if checkPercent("bandOpacity", s.BandOpacity) != nil {
+		s.BandOpacity = d.BandOpacity
+	}
+	if checkPercent("bandFillOpacity", s.BandFillOpacity) != nil {
+		s.BandFillOpacity = d.BandFillOpacity
+	}
+	if checkTimeZone(s.TimeZone) != nil {
+		s.TimeZone = d.TimeZone
+	}
+}
 
-	if options, ok := Options[key]; ok && !IsOption(key, value.String()) {
-		values := make([]string, len(options))
-		for i, o := range options {
-			values[i] = o.Value
-		}
-		return domain.Invalid("setting_not_option", "{setting} must be one of: {options}",
-			"setting", key, "options", strings.Join(values, ", "))
+// checkOption returns an error unless value is one of the options of the
+// setting named key.
+func checkOption(key, value string) error {
+	if IsOption(key, value) {
+		return nil
 	}
-	if r := field.Tag.Get("range"); r != "" {
-		lo, hi := parseRange(r)
-		if n := int(value.Int()); n < lo || n > hi {
-			return domain.Invalid("setting_out_of_range", "{setting} must be between {min} and {max}",
-				"setting", key, "min", lo, "max", hi)
-		}
+	var values []string
+	for _, o := range Options[key] {
+		values = append(values, o.Value)
 	}
-	if check := checks[key]; check != nil {
-		return check(s)
+	return domain.Invalid("setting_not_option", "{setting} must be one of: {options}",
+		"setting", key, "options", strings.Join(values, ", "))
+}
+
+// checkPercent returns an error unless value lies between 0 and 100.
+func checkPercent(key string, value int) error {
+	if value < 0 || value > 100 {
+		return domain.Invalid("setting_out_of_range", "{setting} must be between {min} and {max}",
+			"setting", key, "min", 0, "max", 100)
 	}
 	return nil
 }
 
-// parseRange parses a range tag "lo,hi". A malformed tag is a programming
-// error.
-func parseRange(tag string) (lo, hi int) {
-	a, b, _ := strings.Cut(tag, ",")
-	lo, err1 := strconv.Atoi(a)
-	hi, err2 := strconv.Atoi(b)
-	if err1 != nil || err2 != nil {
-		panic("store: malformed range tag " + strconv.Quote(tag))
+// checkOverviewDays returns an error unless n is 0 (automatic) or between 3
+// and MaxOverviewDays.
+func checkOverviewDays(n int) error {
+	if n != 0 && (n < 3 || n > MaxOverviewDays) {
+		return domain.Invalid("overview_days_range", "overviewDays must be 0 (automatic) or between 3 and {max}", "max", MaxOverviewDays)
 	}
-	return lo, hi
+	return nil
 }
 
-// resetInvalid replaces invalid values, e.g. of options removed since they
-// were saved, by their defaults.
-func (s *Settings) resetInvalid() {
-	defaults := reflect.ValueOf(DefaultSettings())
-	for i := range settingsType.NumField() {
-		if s.fieldError(i) != nil {
-			reflect.ValueOf(s).Elem().Field(i).Set(defaults.Field(i))
-		}
+// checkBandColor returns an error unless color is NeutralBand or one of
+// domain.Colors.
+func checkBandColor(color string) error {
+	if color != NeutralBand && !domain.ValidColor(color) {
+		return domain.Invalid("band_color_invalid", "band colour must be neutral or one of the habit colours")
 	}
+	return nil
+}
+
+// checkTimeZone returns an error unless zone is "" (the server's zone) or a
+// known IANA name. "Local" is not accepted.
+func checkTimeZone(zone string) error {
+	if zone == "" {
+		return nil
+	}
+	if _, err := time.LoadLocation(zone); err != nil || zone == "Local" {
+		return domain.Invalid("unknown_time_zone", `unknown time zone "{zone}"`, "zone", zone)
+	}
+	return nil
 }
 
 // DefaultSettings returns the settings of a user who has not saved any.
@@ -224,45 +243,57 @@ func DefaultSettings() Settings {
 // GetSettings returns the settings of the user, or DefaultSettings if none are
 // stored.
 func (s *Store) GetSettings(ctx context.Context, userID string) (Settings, error) {
-	return s.getSettings(ctx, s.db, userID)
+	return readSettings(s.db.QueryRowContext(ctx, selectSettings, userID), userID)
 }
 
-// UpdateSettings loads the settings, modifies them with apply and saves them,
-// all in one transaction.
+// UpdateSettings loads the settings, modifies them with apply, validates and
+// saves them, all in one transaction.
 func (s *Store) UpdateSettings(ctx context.Context, userID string, apply func(*Settings) error) (Settings, error) {
-	tx, err := s.db.BeginTx(ctx, nil)
+	var settings Settings
+	err := s.inTx(ctx, "saving settings", func(tx *sql.Tx) error {
+		var err error
+		settings, err = readSettings(tx.QueryRowContext(ctx, selectSettings, userID), userID)
+		if err != nil {
+			return err
+		}
+		if err := apply(&settings); err != nil {
+			return err
+		}
+		if err := settings.Validate(); err != nil {
+			return err
+		}
+		if err := ensureUser(ctx, tx, userID); err != nil {
+			return err
+		}
+		data, err := json.Marshal(settings)
+		if err != nil {
+			return err
+		}
+		_, err = tx.ExecContext(ctx, `
+			INSERT INTO user_settings (user_id, data, updated_at) VALUES (?,?,?)
+			ON CONFLICT(user_id) DO UPDATE SET data = excluded.data, updated_at = excluded.updated_at`,
+			userID, string(data), formatTime(time.Now()))
+		return err
+	})
 	if err != nil {
-		return Settings{}, fmt.Errorf("starting transaction: %w", err)
-	}
-	defer tx.Rollback()
-
-	settings, err := s.getSettings(ctx, tx, userID)
-	if err != nil {
 		return Settings{}, err
-	}
-	if err := apply(&settings); err != nil {
-		return Settings{}, err
-	}
-	if err := s.saveSettings(ctx, tx, userID, settings); err != nil {
-		return Settings{}, err
-	}
-	if err := tx.Commit(); err != nil {
-		return Settings{}, fmt.Errorf("committing settings: %w", err)
 	}
 	return settings, nil
 }
 
-// getSettings loads the settings of the user. Settings missing from the
-// stored document get their defaults, and invalid values are replaced by
-// them.
-func (s *Store) getSettings(ctx context.Context, q queryer, userID string) (Settings, error) {
+const selectSettings = `SELECT data FROM user_settings WHERE user_id = ?`
+
+// readSettings reads the settings document selected with selectSettings.
+// Settings missing from it get their defaults, and invalid values are
+// replaced by them.
+func readSettings(row *sql.Row, userID string) (Settings, error) {
 	var data string
-	err := q.QueryRowContext(ctx, `SELECT data FROM user_settings WHERE user_id = ?`, userID).Scan(&data)
+	err := row.Scan(&data)
 	if errors.Is(err, sql.ErrNoRows) {
 		return DefaultSettings(), nil
 	}
 	if err != nil {
-		return DefaultSettings(), fmt.Errorf("loading settings: %w", err)
+		return Settings{}, fmt.Errorf("loading settings: %w", err)
 	}
 	out := DefaultSettings()
 	if err := json.Unmarshal([]byte(data), &out); err != nil {
@@ -271,31 +302,4 @@ func (s *Store) getSettings(ctx context.Context, q queryer, userID string) (Sett
 	}
 	out.resetInvalid()
 	return out, nil
-}
-
-// SaveSettings validates and stores the settings of the user.
-func (s *Store) SaveSettings(ctx context.Context, userID string, in Settings) error {
-	return s.saveSettings(ctx, s.db, userID, in)
-}
-
-// saveSettings validates and stores the settings of the user.
-func (s *Store) saveSettings(ctx context.Context, q execer, userID string, in Settings) error {
-	if err := in.Validate(); err != nil {
-		return err
-	}
-	if err := ensureUser(ctx, q, userID); err != nil {
-		return err
-	}
-	data, err := json.Marshal(in)
-	if err != nil {
-		return fmt.Errorf("encoding settings: %w", err)
-	}
-	_, err = q.ExecContext(ctx, `
-		INSERT INTO user_settings (user_id, data, updated_at) VALUES (?,?,?)
-		ON CONFLICT(user_id) DO UPDATE SET data = excluded.data, updated_at = excluded.updated_at`,
-		userID, string(data), formatTime(time.Now()))
-	if err != nil {
-		return fmt.Errorf("saving settings: %w", err)
-	}
-	return nil
 }

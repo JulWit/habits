@@ -81,30 +81,24 @@ func (s *Store) CreateCategory(ctx context.Context, userID string, c *domain.Cat
 		return err
 	}
 
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return fmt.Errorf("starting transaction: %w", err)
-	}
-	defer tx.Rollback()
+	return s.inTx(ctx, "creating category", func(tx *sql.Tx) error {
+		var last sql.NullInt64
+		if err := tx.QueryRowContext(ctx,
+			`SELECT MAX(position) FROM categories WHERE user_id = ? AND deleted_at IS NULL`, userID,
+		).Scan(&last); err != nil {
+			return err
+		}
+		c.Position = int(last.Int64) + 1
 
-	var next sql.NullInt64
-	if err := tx.QueryRowContext(ctx,
-		`SELECT MAX(position) FROM categories WHERE user_id = ? AND deleted_at IS NULL`, userID,
-	).Scan(&next); err != nil {
-		return fmt.Errorf("determining position: %w", err)
-	}
-	c.Position = int(next.Int64) + 1
-
-	if err := ensureUser(ctx, tx, userID); err != nil {
-		return err
-	}
-	if _, err := tx.ExecContext(ctx,
-		`INSERT INTO categories (id, user_id, name, icon, color, show_progress, position, created_at, updated_at)
+		if err := ensureUser(ctx, tx, userID); err != nil {
+			return err
+		}
+		_, err := tx.ExecContext(ctx,
+			`INSERT INTO categories (id, user_id, name, icon, color, show_progress, position, created_at, updated_at)
 		 VALUES (?,?,?,?,?,?,?,?,?)`,
-		c.ID, userID, c.Name, c.Icon, c.Color, c.ShowProgress, c.Position, formatTime(c.CreatedAt), formatTime(c.UpdatedAt)); err != nil {
-		return fmt.Errorf("creating category: %w", err)
-	}
-	return tx.Commit()
+			c.ID, userID, c.Name, c.Icon, c.Color, c.ShowProgress, c.Position, formatTime(c.CreatedAt), formatTime(c.UpdatedAt))
+		return err
+	})
 }
 
 // UpdateCategory updates all fields except the position.
@@ -151,7 +145,7 @@ func (s *Store) RestoreCategory(ctx context.Context, userID, id string) error {
 // ReorderCategories sets the display order of the user's categories (see
 // reorder).
 func (s *Store) ReorderCategories(ctx context.Context, userID string, ids []string) error {
-	return s.reorder(ctx, "categories", userID, ids, true)
+	return s.reorder(ctx, "categories", userID, ids)
 }
 
 // PurgeDeletedCategories permanently removes categories deleted more than

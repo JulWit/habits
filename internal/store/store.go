@@ -21,15 +21,6 @@ var (
 	ErrConflict = errors.New("conflict")
 )
 
-// execer and queryer are implemented by *sql.DB and *sql.Tx.
-type execer interface {
-	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
-}
-
-type queryer interface {
-	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
-}
-
 // Store provides access to the database.
 type Store struct {
 	db *sql.DB
@@ -73,9 +64,7 @@ func (s *Store) Close() error { return s.db.Close() }
 // NewID returns a random 128-bit ID in hex.
 func NewID() string {
 	var b [16]byte
-	if _, err := rand.Read(b[:]); err != nil {
-		panic("store: no entropy available: " + err.Error())
-	}
+	rand.Read(b[:]) // never fails since Go 1.24
 	return hex.EncodeToString(b[:])
 }
 
@@ -86,18 +75,5 @@ const storedTimeLayout = "2006-01-02T15:04:05.000000000Z07:00"
 // formatTime formats t in UTC for storage.
 func formatTime(t time.Time) string { return t.UTC().Format(storedTimeLayout) }
 
-// parseTime parses a stored timestamp, with or without fixed-width
-// nanoseconds.
+// parseTime parses a stored timestamp.
 func parseTime(s string) (time.Time, error) { return time.Parse(time.RFC3339Nano, s) }
-
-// nullableTime parses a nullable stored timestamp; NULL and "" yield nil.
-func nullableTime(s sql.NullString) (*time.Time, error) {
-	if !s.Valid || s.String == "" {
-		return nil, nil
-	}
-	t, err := parseTime(s.String)
-	if err != nil {
-		return nil, err
-	}
-	return &t, nil
-}

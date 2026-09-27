@@ -77,6 +77,13 @@ export function rememberedState() {
   return read(stateKey(), null);
 }
 
+/** Drops the last state and the waiting writes, e.g. once the data is deleted. */
+export function forget() {
+  write(stateKey(), null);
+  write(outboxKey(), null);
+  onStatus();
+}
+
 // ---------- the outbox ----------
 
 /** Returns the waiting writes: [{habitId, date, value}], oldest first. */

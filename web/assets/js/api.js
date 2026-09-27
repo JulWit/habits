@@ -80,6 +80,8 @@ export const api = {
   // The habits and categories with their settings, without entries.
   exportHabits: () => request("GET", "/api/export"),
   importHabits: (file) => request("POST", "/api/import", file),
+  // Everything: habits, entries, categories and settings.
+  deleteAllData: () => request("DELETE", "/api/data"),
 
   createCategory: (input) => request("POST", "/api/categories", input),
   updateCategory: (id, input) => request("PATCH", `/api/categories/${encodeURIComponent(id)}`, input),

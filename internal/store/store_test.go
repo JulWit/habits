@@ -100,3 +100,61 @@ func TestStoredTimestampsSortChronologically(t *testing.T) {
 		}
 	}
 }
+
+// Deleting a user removes all their data, and only theirs.
+func TestDeleteUserRemovesAllTheirData(t *testing.T) {
+	st := openTestStore(t)
+	ctx := context.Background()
+	cat := domain.Category{Name: "Health"}
+	if err := st.CreateCategory(ctx, "alice", &cat); err != nil {
+		t.Fatalf("CreateCategory: %v", err)
+	}
+	h := countHabit(domain.KindCount, 10)
+	h.CategoryID = cat.ID
+	h = mustCreateHabit(t, st, "alice", h)
+	if _, err := st.SetEntry(ctx, "alice", h.ID, day(2026, time.January, 5), 20, nil); err != nil {
+		t.Fatalf("SetEntry: %v", err)
+	}
+	if _, err := st.UpdateSettings(ctx, "alice", func(s *Settings) error { s.Theme = "dark"; return nil }); err != nil {
+		t.Fatalf("UpdateSettings: %v", err)
+	}
+	mustCreateHabit(t, st, "bob", countHabit(domain.KindCheck, 1))
+
+	if err := st.DeleteUser(ctx, "alice"); err != nil {
+		t.Fatalf("DeleteUser: %v", err)
+	}
+
+	for _, table := range []string{"users", "user_settings", "categories", "habits", "habit_schedules", "entries"} {
+		var n int
+		if err := st.db.QueryRowContext(ctx, `SELECT count(*) FROM `+table+` WHERE `+ownerColumn(table)+` = 'alice'`).Scan(&n); err != nil {
+			t.Fatalf("counting %s: %v", table, err)
+		}
+		if n != 0 {
+			t.Errorf("%s: %d rows of alice left", table, n)
+		}
+	}
+	got, err := st.GetSettings(ctx, "alice")
+	if err != nil || got != DefaultSettings() {
+		t.Errorf("settings = %+v, %v; want the defaults", got, err)
+	}
+	bobs, err := st.ListHabits(ctx, "bob", true)
+	if err != nil || len(bobs) != 1 {
+		t.Errorf("bob's habits = %d, %v; want 1", len(bobs), err)
+	}
+	// Once more, without data.
+	if err := st.DeleteUser(ctx, "alice"); err != nil {
+		t.Errorf("DeleteUser without data: %v", err)
+	}
+}
+
+// ownerColumn returns an expression for the user a row of table belongs to.
+func ownerColumn(table string) string {
+	switch table {
+	case "users":
+		return "id"
+	case "habit_schedules", "entries":
+		return "(SELECT user_id FROM habits WHERE habits.id = habit_id)"
+	default:
+		return "user_id"
+	}
+}

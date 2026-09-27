@@ -294,7 +294,7 @@
       </button>
       <button type="button" class="menu-item" data-open-page="settings-data">
         <span class="menu-icon" data-icon="transfer" aria-hidden="true"></span>
-        <span class="menu-text"><span class="menu-title">Import &amp; export</span><span class="menu-hint">Habits as a file</span></span>
+        <span class="menu-text"><span class="menu-title">Data</span><span class="menu-hint">Import, export and delete</span></span>
         <span class="menu-caret" data-icon="chevronRight" aria-hidden="true"></span>
       </button>
     </nav>
@@ -476,7 +476,7 @@
 <dialog id="settings-data" class="dialog page" aria-labelledby="settings-data-title">
   <header class="page-head">
     <button type="button" class="icon-button" data-page-back data-icon="arrowLeft" title="Back" aria-label="Back"></button>
-    <h2 id="settings-data-title">Import &amp; export</h2>
+    <h2 id="settings-data-title">Data</h2>
   </header>
   <div class="page-body">
     <div class="field">
@@ -492,7 +492,24 @@
       <button type="button" class="button" id="settings-import" data-icon="upload">Import habits</button>
       <p class="field-hint" id="settings-import-result" role="status" hidden></p>
     </div>
+
+    <div class="field">
+      <span class="field-label">Delete</span>
+      <p class="field-hint">Deletes all your habits with their recorded days, your categories and your settings. This cannot be undone; export your habits first to keep them.</p>
+      <button type="button" class="button danger" id="settings-delete-all" data-icon="trash">Delete all data</button>
+    </div>
   </div>
+</dialog>
+
+<dialog id="delete-all-dialog" class="dialog compact" aria-labelledby="delete-all-title" aria-describedby="delete-all-text">
+  <form method="dialog">
+    <h2 id="delete-all-title" class="dialog-head">Delete all data?</h2>
+    <p id="delete-all-text" class="dialog-text">All habits, recorded days, categories and settings will be deleted for good.</p>
+    <footer class="dialog-foot">
+      <button type="submit" class="button ghost" value="cancel">Cancel</button>
+      <button type="submit" class="button danger" value="delete">Delete</button>
+    </footer>
+  </form>
 </dialog>
 
 <!-- Settings errors; settings.js moves it into the open settings page. -->

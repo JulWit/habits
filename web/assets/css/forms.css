@@ -19,6 +19,12 @@
   font-weight: var(--weight-bold);
 }
 
+.dialog-text {
+  margin: 0;
+  padding: calc(.35 * var(--space)) calc(1.15 * var(--space)) 0;
+  color: var(--text-muted);
+}
+
 .dialog-foot {
   display: flex;
   justify-content: flex-end;

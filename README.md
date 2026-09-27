@@ -174,6 +174,7 @@ HABITS_DB=/data/habits.db
 | Assign or create a category | "Category" field in the habit editor |
 | Edit or delete a category | Click the category heading, then "Edit" or "Delete" |
 | Close the detail view | `Esc` |
+| Import, export or delete all data | Settings → "Data" |
 
 **Active day**: The board has one active day, today by default. The day
 marker in the header, the band in the cards, the day summary, the categories'
@@ -257,6 +258,7 @@ All endpoints are under `/api` and return JSON.
 | `GET`/`PATCH` | `/api/settings` | Settings, see below |
 | `GET` | `/api/export` | Habits (archived ones included) and categories with their settings and current schedule, as a file; no entries or statistics |
 | `POST` | `/api/import` | Add the habits and categories of an export (up to 1 MB); habits whose name exists are skipped, categories are matched by name, schedules start today; all or nothing |
+| `DELETE` | `/api/data` | Delete all of the user's data (habits, entries, categories, settings); cannot be undone |
 
 Writing endpoints require `Content-Type: application/json`. This forces a CORS
 preflight and protects against CSRF.

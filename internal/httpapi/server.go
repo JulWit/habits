@@ -75,6 +75,7 @@ func New(cfg config.Config, st *store.Store, log *slog.Logger, webFS fs.FS) (htt
 	mux.HandleFunc("PATCH /api/settings", s.handleUpdateSettings)
 	mux.HandleFunc("GET /api/export", s.handleExport)
 	mux.HandleFunc("POST /api/import", s.handleImport)
+	mux.HandleFunc("DELETE /api/data", s.handleDeleteData)
 	mux.HandleFunc("/api/", notFoundJSON)
 
 	mux.HandleFunc("GET /{$}", s.handleIndex)

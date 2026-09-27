@@ -197,8 +197,8 @@ const de = {
   "Use this device's time zone ({zone})": "Zeitzone dieses Geräts verwenden ({zone})",
   "Decides when a new day begins on the board.": "Bestimmt, wann auf der Übersicht ein neuer Tag beginnt.",
   "It is {time} there now.": "Dort ist es jetzt {time} Uhr.",
-  "Import & export": "Import & Export",
-  "Habits as a file": "Gewohnheiten als Datei",
+  "Data": "Daten",
+  "Import, export and delete": "Importieren, exportieren und löschen",
   "Export": "Export",
   "Import": "Import",
   "Saves your habits and categories with their settings as a file. Recorded days and statistics are not included.":
@@ -215,6 +215,12 @@ const de = {
   "1 habit already existed and was skipped.": "1 Gewohnheit gab es schon; sie wurde übersprungen.",
   "{n} habits already existed and were skipped.": "{n} Gewohnheiten gab es schon; sie wurden übersprungen.",
   "\"{name}\": {message}": "„{name}“: {message}",
+  "Deletes all your habits with their recorded days, your categories and your settings. This cannot be undone; export your habits first to keep them.":
+    "Löscht alle deine Gewohnheiten mit ihren erfassten Tagen, deine Kategorien und deine Einstellungen. Das lässt sich nicht rückgängig machen; exportiere deine Gewohnheiten vorher, um sie zu behalten.",
+  "Delete all data": "Alle Daten löschen",
+  "Delete all data?": "Alle Daten löschen?",
+  "All habits, recorded days, categories and settings will be deleted for good.":
+    "Alle Gewohnheiten, erfassten Tage, Kategorien und Einstellungen werden endgültig gelöscht.",
 
   // ---------- category dialogs and screen ----------
   "Choose category": "Kategorie wählen",

@@ -8,6 +8,7 @@ import { errorText, toast } from "./undo.js";
 import { t, locale, userTimeZone } from "./i18n.js";
 import { openPage, topPage } from "./pages.js";
 import { factItem } from "./panels.js";
+import { forget } from "./outbox.js";
 
 let dialog;
 let themeInputs;
@@ -117,6 +118,7 @@ export function initSettings(handlers) {
   });
 
   initTransfer();
+  initDeleteAll();
 
   // Update the hint with the number of columns actually shown.
   subscribe(paint);
@@ -308,6 +310,32 @@ function importSummary({ habits, categories, skipped }) {
       : t("{n} habits already existed and were skipped.", { n: skipped }));
   }
   return parts.join(" ");
+}
+
+/** Wires the button that deletes all data, after asking. */
+function initDeleteAll() {
+  const button = document.getElementById("settings-delete-all");
+  const confirm = document.getElementById("delete-all-dialog");
+
+  button.addEventListener("click", () => {
+    // Escape leaves the value empty, i.e. cancels.
+    confirm.returnValue = "";
+    confirm.showModal();
+  });
+  confirm.addEventListener("close", async () => {
+    if (confirm.returnValue !== "delete") return;
+    button.disabled = true;
+    try {
+      await api.deleteAllData();
+      // Nothing remembered may bring the data back, and the page starts over
+      // with the default settings and without undo steps.
+      forget();
+      location.reload();
+    } catch (err) {
+      report(errorText(err));
+      button.disabled = false;
+    }
+  });
 }
 
 /** Offers `text` as a JSON file to save. */

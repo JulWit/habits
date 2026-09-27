@@ -77,3 +77,13 @@ func formatTime(t time.Time) string { return t.UTC().Format(storedTimeLayout) }
 
 // parseTime parses a stored timestamp.
 func parseTime(s string) (time.Time, error) { return time.Parse(time.RFC3339Nano, s) }
+
+// DeleteUser removes the user and, through ON DELETE CASCADE, all their data:
+// settings, categories, habits, schedules and entries. The user is recorded
+// again on their next write. Deleting a user without data is not an error.
+func (s *Store) DeleteUser(ctx context.Context, userID string) error {
+	return s.inTx(ctx, "deleting user data", func(tx *sql.Tx) error {
+		_, err := tx.ExecContext(ctx, `DELETE FROM users WHERE id = ?`, userID)
+		return err
+	})
+}

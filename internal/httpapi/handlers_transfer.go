@@ -221,6 +221,20 @@ func (s *Server) handleImport(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, result)
 }
 
+// handleDeleteData removes all of the user's data: habits with their entries,
+// categories and settings. It cannot be undone. DELETE is not a simple
+// method, so a cross-site request needs a CORS preflight, which fails.
+func (s *Server) handleDeleteData(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	user := auth.MustUser(ctx)
+	if err := s.store.DeleteUser(ctx, user.ID); err != nil {
+		s.writeStoreError(w, err, "deleting data")
+		return
+	}
+	s.log.Info("deleted all data", "user", user.ID)
+	w.WriteHeader(http.StatusNoContent)
+}
+
 // nameKey normalises a name for matching: trimmed and case-insensitive.
 func nameKey(name string) string { return strings.ToLower(strings.TrimSpace(name)) }
 

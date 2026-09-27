@@ -164,3 +164,28 @@ func TestImportReusesCategoriesByName(t *testing.T) {
 		t.Errorf("habits = %+v, want category %s", state.Habits, cat.ID)
 	}
 }
+
+// Deleting the data leaves an empty board with the default settings.
+func TestDeleteDataEmptiesTheBoard(t *testing.T) {
+	h := newTestServer(t)
+	mustDo(t, h, "POST", "/api/categories", `{"name":"Sport"}`, http.StatusCreated)
+	mustDo(t, h, "POST", "/api/habits",
+		`{"name":"Run","kind":"check","frequency":{"kind":"daily"}}`, http.StatusCreated)
+	mustDo(t, h, "PATCH", "/api/settings", `{"theme":"dark"}`, http.StatusOK)
+
+	mustDo(t, h, "DELETE", "/api/data", "", http.StatusNoContent)
+
+	var state struct {
+		Categories []any
+		Habits     []any
+		Settings   struct{ Theme string }
+	}
+	json.Unmarshal(mustDo(t, h, "GET", "/api/state?archived=1", "", http.StatusOK), &state)
+	if len(state.Categories) != 0 || len(state.Habits) != 0 || state.Settings.Theme != "system" {
+		t.Errorf("after deleting: %d categories, %d habits, theme %q",
+			len(state.Categories), len(state.Habits), state.Settings.Theme)
+	}
+	// The app keeps working afterwards.
+	mustDo(t, h, "POST", "/api/habits",
+		`{"name":"Run","kind":"check","frequency":{"kind":"daily"}}`, http.StatusCreated)
+}

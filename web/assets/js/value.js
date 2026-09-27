@@ -97,15 +97,15 @@ export function openValueDialog(habit, iso, handler) {
   paintQuick(habit);
 
   titleEl.textContent = `${habit.name} — ${formatRelative(iso, state.today)}`;
-  hintEl.textContent = hintFor(habit);
+  hintEl.textContent = hintFor(habit, iso);
 
   dialog.showModal();
   input.select();
 }
 
-/** Returns the hint below the stepper: the target, and the step if not 1. */
-function hintFor(habit) {
-  const goal = t("Daily target: {target}", { target: H.formatValue(habit, H.target(habit)) });
+/** Returns the hint below the stepper: the target on `iso`, and the step if not 1. */
+function hintFor(habit, iso) {
+  const goal = t("Daily target: {target}", { target: H.formatValue(habit, H.target(habit, iso)) });
   // A step of 1 is not shown for counts.
   if (habit.kind === "count" && currentStep === 1) return goal;
 

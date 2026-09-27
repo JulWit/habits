@@ -2,10 +2,13 @@ package httpapi
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/JulWit/habits/internal/domain"
 	"github.com/JulWit/habits/internal/store"
 )
 
@@ -102,5 +105,78 @@ func TestKindChangeWithHistoryIsRefusedReadably(t *testing.T) {
 	}
 	if !strings.Contains(body.Error, "2 days are already recorded") {
 		t.Errorf("message %q does not use the plural form", body.Error)
+	}
+}
+
+// Entries are judged by the schedule of their day: after a change of
+// frequency, an old day stays writable if it was due back then.
+func TestEntriesFollowTheScheduleOfTheirDay(t *testing.T) {
+	h := newTestServer(t)
+	today := domain.Today(time.UTC)
+	iso := func(d domain.Date) string { return d.String() }
+	todayOnly := 1 << ((int(today.Weekday()) + 6) % 7)
+
+	w := do(t, h, "POST", "/api/habits",
+		`{"name":"Reading","kind":"check","frequency":{"kind":"daily"}}`, "application/json")
+	var created struct {
+		ID string `json:"id"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &created); err != nil {
+		t.Fatalf("reading response: %v (%s)", err, w.Body)
+	}
+	path := "/api/habits/" + created.ID
+
+	// Daily until yesterday, only on today's weekday from today on.
+	history := fmt.Sprintf(`{"schedules":[
+		{"from":%q,"targetValue":1,"frequency":{"kind":"daily"}},
+		{"from":%q,"targetValue":1,"frequency":{"kind":"weekdays","weekdays":%d}}]}`,
+		iso(today.AddDays(-30)), iso(today), todayOnly)
+	if w := do(t, h, "PATCH", path, history, "application/json"); w.Code != http.StatusOK {
+		t.Fatalf("setting schedules: %d (%s)", w.Code, w.Body)
+	}
+
+	yesterday := path + "/entries/" + iso(today.AddDays(-1))
+	if w := do(t, h, "PUT", yesterday, `{"value":1}`, "application/json"); w.Code != http.StatusOK {
+		t.Errorf("yesterday was due daily: status %d (%s)", w.Code, w.Body)
+	}
+	tomorrow := path + "/entries/" + iso(today.AddDays(1))
+	if w := do(t, h, "PUT", tomorrow, `{"value":1}`, "application/json"); w.Code != http.StatusUnprocessableEntity {
+		t.Errorf("tomorrow is not due: status %d, want 422", w.Code)
+	}
+
+	// Applied retroactively, the weekday schedule covers yesterday as well.
+	body := fmt.Sprintf(`{"frequency":{"kind":"weekdays","weekdays":%d},"retroactive":true}`, todayOnly)
+	w = do(t, h, "PATCH", path, body, "application/json")
+	if w.Code != http.StatusOK {
+		t.Fatalf("retroactive change: %d (%s)", w.Code, w.Body)
+	}
+	var view struct {
+		Schedules []domain.Schedule `json:"schedules"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &view); err != nil {
+		t.Fatalf("reading response: %v", err)
+	}
+	if len(view.Schedules) != 1 || view.Schedules[0].From != today.AddDays(-30) {
+		t.Errorf("schedules = %+v, want one from the first day", view.Schedules)
+	}
+	if w := do(t, h, "PUT", yesterday, `{"value":1}`, "application/json"); w.Code != http.StatusUnprocessableEntity {
+		t.Errorf("yesterday is no longer due: status %d, want 422", w.Code)
+	}
+}
+
+// Schedules cannot be combined with a target or frequency.
+func TestSchedulesExcludeTargetAndFrequency(t *testing.T) {
+	h := newTestServer(t)
+	w := do(t, h, "POST", "/api/habits",
+		`{"name":"Reading","kind":"check","frequency":{"kind":"daily"}}`, "application/json")
+	var created struct {
+		ID string `json:"id"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &created); err != nil {
+		t.Fatalf("reading response: %v", err)
+	}
+	body := `{"targetValue":1,"schedules":[{"from":"2026-01-01","targetValue":1,"frequency":{"kind":"daily"}}]}`
+	if w := do(t, h, "PATCH", "/api/habits/"+created.ID, body, "application/json"); w.Code != http.StatusUnprocessableEntity {
+		t.Errorf("status %d, want 422 (%s)", w.Code, w.Body)
 	}
 }

@@ -171,10 +171,11 @@ function writableFields(habit) {
     icon: habit.icon ?? "",
     kind: habit.kind,
     categoryId: habit.categoryId,
-    targetValue: habit.targetValue,
     stepValue: habit.stepValue,
     unit: habit.unit,
-    frequency: { ...habit.frequency },
+    // The whole schedule history, so that undo also restores a retroactive
+    // change of target or frequency.
+    schedules: habit.schedules.map((s) => ({ ...s, frequency: { ...s.frequency } })),
   };
 }
 

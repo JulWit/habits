@@ -10,38 +10,26 @@ import (
 	"github.com/JulWit/habits/internal/domain"
 )
 
-const habitColumns = `id, name, color, icon, kind, target_value, step_value, unit,
-	freq_kind, freq_times_per_week, freq_weekdays, freq_interval_days, freq_anchor_date,
-	freq_week_interval, freq_week_of_month,
+const habitColumns = `id, name, color, icon, kind, step_value, unit,
 	position, archived_at, created_at, updated_at, category_id`
 
 // scanHabit scans a row selected with habitColumns.
 func scanHabit(rows interface{ Scan(...any) error }) (domain.Habit, error) {
 	var (
 		h          domain.Habit
-		anchor     string
 		archivedAt sql.NullString
 		categoryID sql.NullString
 		created    string
 		updated    string
-		weekdays   int64
 	)
 	err := rows.Scan(
-		&h.ID, &h.Name, &h.Color, &h.Icon, &h.Kind, &h.TargetValue, &h.StepValue, &h.Unit,
-		&h.Frequency.Kind, &h.Frequency.TimesPerWeek, &weekdays, &h.Frequency.IntervalDays, &anchor,
-		&h.Frequency.WeekInterval, &h.Frequency.WeekOfMonth,
+		&h.ID, &h.Name, &h.Color, &h.Icon, &h.Kind, &h.StepValue, &h.Unit,
 		&h.Position, &archivedAt, &created, &updated, &categoryID,
 	)
 	if err != nil {
 		return domain.Habit{}, err
 	}
-	h.Frequency.Weekdays = domain.Weekdays(weekdays)
 	h.CategoryID = categoryID.String
-	if anchor != "" {
-		if h.Frequency.AnchorDate, err = domain.ParseDate(anchor); err != nil {
-			return domain.Habit{}, fmt.Errorf("habit %s: anchor date: %w", h.ID, err)
-		}
-	}
 	if h.CreatedAt, err = parseTime(created); err != nil {
 		return domain.Habit{}, fmt.Errorf("habit %s: created_at: %w", h.ID, err)
 	}
@@ -65,6 +53,13 @@ func (s *Store) ListHabits(ctx context.Context, userID string, includeArchived b
 	}
 	query += ` ORDER BY position, created_at`
 
+	// Loaded first: the pool has a single connection, so the habit rows must be
+	// closed before the next query.
+	schedules, err := s.schedulesOfUser(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
 	rows, err := s.db.QueryContext(ctx, query, userID)
 	if err != nil {
 		return nil, fmt.Errorf("loading habits: %w", err)
@@ -77,6 +72,7 @@ func (s *Store) ListHabits(ctx context.Context, userID string, includeArchived b
 		if err != nil {
 			return nil, err
 		}
+		h.SetSchedules(schedules[h.ID])
 		habits = append(habits, h)
 	}
 	return habits, rows.Err()
@@ -94,6 +90,11 @@ func (s *Store) GetHabit(ctx context.Context, userID, id string) (domain.Habit, 
 	if err != nil {
 		return domain.Habit{}, fmt.Errorf("loading habit: %w", err)
 	}
+	schedules, err := s.schedulesOfHabit(ctx, h.ID)
+	if err != nil {
+		return domain.Habit{}, err
+	}
+	h.SetSchedules(schedules)
 	return h, nil
 }
 
@@ -126,18 +127,16 @@ func (s *Store) CreateHabit(ctx context.Context, userID string, h *domain.Habit)
 	}
 
 	_, err = tx.ExecContext(ctx, `
-		INSERT INTO habits (id, user_id, name, color, icon, kind, target_value, step_value, unit,
-			freq_kind, freq_times_per_week, freq_weekdays, freq_interval_days, freq_anchor_date,
-			freq_week_interval, freq_week_of_month,
+		INSERT INTO habits (id, user_id, name, color, icon, kind, step_value, unit,
 			position, created_at, updated_at, category_id)
-		VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-		h.ID, userID, h.Name, h.Color, h.Icon, h.Kind, h.TargetValue, h.StepValue, h.Unit,
-		h.Frequency.Kind, h.Frequency.TimesPerWeek, int64(h.Frequency.Weekdays),
-		h.Frequency.IntervalDays, h.Frequency.AnchorDate.String(),
-		h.Frequency.WeekInterval, h.Frequency.WeekOfMonth,
+		VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
+		h.ID, userID, h.Name, h.Color, h.Icon, h.Kind, h.StepValue, h.Unit,
 		h.Position, formatTime(h.CreatedAt), formatTime(h.UpdatedAt), nullableID(h.CategoryID))
 	if err != nil {
 		return fmt.Errorf("creating habit: %w", err)
+	}
+	if err := saveSchedules(ctx, tx, h); err != nil {
+		return err
 	}
 	return tx.Commit()
 }
@@ -195,22 +194,19 @@ func (s *Store) UpdateHabit(ctx context.Context, userID string, h *domain.Habit)
 
 	res, err := tx.ExecContext(ctx, `
 		UPDATE habits SET
-			name = ?, color = ?, icon = ?, kind = ?, target_value = ?, step_value = ?, unit = ?,
-			freq_kind = ?, freq_times_per_week = ?, freq_weekdays = ?,
-			freq_interval_days = ?, freq_anchor_date = ?,
-			freq_week_interval = ?, freq_week_of_month = ?,
+			name = ?, color = ?, icon = ?, kind = ?, step_value = ?, unit = ?,
 			archived_at = ?, updated_at = ?, category_id = ?
 		WHERE id = ? AND user_id = ? AND deleted_at IS NULL`,
-		h.Name, h.Color, h.Icon, h.Kind, h.TargetValue, h.StepValue, h.Unit,
-		h.Frequency.Kind, h.Frequency.TimesPerWeek, int64(h.Frequency.Weekdays),
-		h.Frequency.IntervalDays, h.Frequency.AnchorDate.String(),
-		h.Frequency.WeekInterval, h.Frequency.WeekOfMonth,
+		h.Name, h.Color, h.Icon, h.Kind, h.StepValue, h.Unit,
 		archived, formatTime(h.UpdatedAt), nullableID(h.CategoryID),
 		h.ID, userID)
 	if err != nil {
 		return fmt.Errorf("updating habit: %w", err)
 	}
 	if err := expectOneRow(res); err != nil {
+		return err
+	}
+	if err := saveSchedules(ctx, tx, h); err != nil {
 		return err
 	}
 	return tx.Commit()

@@ -70,7 +70,7 @@ func dailyStats(h Habit, entries map[Date]int, today Date, windowDays int) Stats
 			continue
 		}
 		switch {
-		case h.IsComplete(entries[d]):
+		case h.IsComplete(d, entries[d]):
 			run++
 			if run > st.BestStreak {
 				st.BestStreak = run
@@ -92,7 +92,7 @@ func dailyStats(h Habit, entries map[Date]int, today Date, windowDays int) Stats
 			continue
 		}
 		st.Expected++
-		if h.IsComplete(entries[d]) {
+		if h.IsComplete(d, entries[d]) {
 			st.Achieved++
 		}
 	}
@@ -103,11 +103,10 @@ func dailyStats(h Habit, entries map[Date]int, today Date, windowDays int) Stats
 }
 
 // weeklyStats computes the statistics of a times-per-week habit. A week counts
-// as met once the target number of days is completed. The rate window is
+// as met once its target is reached (see tallyWeek). The rate window is
 // rounded up to whole weeks.
 func weeklyStats(h Habit, entries map[Date]int, today Date, windowDays int) Stats {
 	st := Stats{StreakUnit: "weeks", Total: totalValue(entries, today)}
-	target := max(h.Frequency.TimesPerWeek, 1)
 	start := historyStart(h, entries)
 	if start.IsZero() || start.After(today) {
 		return st
@@ -120,9 +119,12 @@ func weeklyStats(h Habit, entries map[Date]int, today Date, windowDays int) Stat
 
 	run := 0
 	for week := firstWeek; !week.After(currentWeek); week = week.AddDays(7) {
-		done, open := weekCompletions(h, entries, week, start, today)
+		w := tallyWeek(h, entries, week, start, today)
 		switch {
-		case done >= target:
+		case w.target == 0:
+			// Nothing was due: the week neither extends nor breaks the streak.
+			continue
+		case w.done >= w.target:
 			run++
 			if run > st.BestStreak {
 				st.BestStreak = run
@@ -136,13 +138,8 @@ func weeklyStats(h Habit, entries map[Date]int, today Date, windowDays int) Stat
 		if week.Before(windowFirstWeek) {
 			continue
 		}
-		// Partial weeks expect a proportional share of the target, rounded up.
-		expected := target
-		if open < 7 {
-			expected = (target*open + 6) / 7
-		}
-		st.Expected += expected
-		st.Achieved += min(done, expected)
+		st.Expected += w.expected
+		st.Achieved += min(w.done, w.expected)
 	}
 	st.CurrentStreak = run
 	if st.Expected > 0 {
@@ -151,19 +148,52 @@ func weeklyStats(h Habit, entries map[Date]int, today Date, windowDays int) Stat
 	return st
 }
 
-// weekCompletions returns the number of completed days in the week starting
-// on week, and the number of its days that lie within the habit's history,
-// i.e. between start and today.
-func weekCompletions(h Habit, entries map[Date]int, week, start, today Date) (done, open int) {
+// weekTally is the outcome of one week of a times-per-week habit.
+type weekTally struct {
+	// done is the number of completed days, target the number the week needs.
+	done, target int
+	// expected is the target's share for the days of the week that lie in the
+	// habit's history, rounded up.
+	expected int
+}
+
+// tallyWeek counts the week starting on week, from start to today. The week
+// is judged by the schedule of its first day in the history. Under a
+// times-per-week schedule it needs that many completed days; under any other
+// schedule (from before a change of frequency) it needs every due day.
+func tallyWeek(h Habit, entries map[Date]int, week, start, today Date) weekTally {
+	first := week
+	if first.Before(start) {
+		first = start
+	}
+	schedule := h.ScheduleOn(first)
+	weekly := schedule.Frequency.Kind == FreqTimesPerWeek
+
+	var w weekTally
+	open := 0
 	for i := range 7 {
 		d := week.AddDays(i)
 		if d.Before(start) || d.After(today) {
 			continue
 		}
 		open++
-		if h.IsComplete(entries[d]) {
-			done++
+		due := weekly || schedule.IsScheduled(d)
+		if due && !weekly {
+			w.target++
+		}
+		if due && h.IsComplete(d, entries[d]) {
+			w.done++
 		}
 	}
-	return done, open
+	if !weekly {
+		w.expected = w.target
+		return w
+	}
+	w.target = max(schedule.Frequency.TimesPerWeek, 1)
+	w.expected = w.target
+	if open < 7 {
+		// Partial weeks expect a proportional share of the target.
+		w.expected = (w.target*open + 6) / 7
+	}
+	return w
 }

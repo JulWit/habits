@@ -285,7 +285,7 @@ function matches(habit) {
   if (!onlyOpen) return true;
   const day = activeDay();
   return !habit.archivedAt && H.isScheduled(habit, day) &&
-    !H.isComplete(habit, habit.entries[day] ?? 0);
+    !H.isComplete(habit, day, habit.entries[day] ?? 0);
 }
 
 /**
@@ -561,7 +561,7 @@ function habitTools(habit, siblings) {
 /** Counts the habits due on `day` and how many of them are complete. */
 function dayProgress(habits, day) {
   const due = habits.filter((h) => !h.archivedAt && H.isScheduled(h, day));
-  const done = due.filter((h) => H.isComplete(h, h.entries[day] ?? 0));
+  const done = due.filter((h) => H.isComplete(h, day, h.entries[day] ?? 0));
   return { due: due.length, done: done.length };
 }
 
@@ -774,7 +774,7 @@ const ORBS_PER_HABIT = 6;
 function newlyDone(habits) {
   const day = activeDay();
   const due = habits.filter((h) => !h.archivedAt && H.isScheduled(h, day));
-  const done = new Set(due.filter((h) => H.isComplete(h, h.entries[day] ?? 0)).map((h) => h.id));
+  const done = new Set(due.filter((h) => H.isComplete(h, day, h.entries[day] ?? 0)).map((h) => h.id));
   const before = lastDoneDay === day ? lastDone : null;
   lastDone = done;
   lastDoneDay = day;

@@ -97,6 +97,9 @@ const de = {
   "First and Monday means the first Monday of every month.":
     "Erster und Montag heißt: der erste Montag jedes Monats.",
   "Every … days": "Alle … Tage",
+  "Apply to past days as well": "Auch für vergangene Tage übernehmen",
+  "Off, the new target and frequency apply from today on. Past days keep the ones they had.":
+    "Aus: Ziel und Häufigkeit gelten ab heute. Vergangene Tage behalten die bisherigen.",
   "Cancel": "Abbrechen",
   "Create": "Anlegen",
   "Save": "Speichern",
@@ -318,6 +321,8 @@ const de = {
   "Last done": "Zuletzt erledigt",
   "Not yet": "Noch nie",
   "Last changed": "Zuletzt geändert",
+  "since {date}": "seit {date}",
+  "Until {date}": "Bis {date}",
   "Year {year}": "Jahr {year}",
   "still ahead": "liegt noch vor dir",
   "nothing recorded": "nichts eingetragen",
@@ -400,6 +405,12 @@ const de = {
   "value may be at most {max} kilometres": "Der Wert darf höchstens {max} Kilometer betragen.",
   "times per week must be between 1 and 7": "„Mal pro Woche“ muss zwischen 1 und 7 liegen.",
   "at least one weekday must be selected": "Bitte wähle mindestens einen Wochentag.",
+  "schedules must start on different days, oldest first":
+    "Die Zeitpläne müssen an verschiedenen Tagen beginnen, der älteste zuerst.",
+  "schedules cannot be combined with targetValue or frequency":
+    "Zeitpläne können nicht zusammen mit Ziel oder Häufigkeit gesetzt werden.",
+  "at least one schedule is required": "Mindestens ein Zeitplan ist nötig.",
+  "a schedule needs a start day": "Ein Zeitplan braucht einen ersten Tag.",
   "invalid weekday selection": "Ungültige Auswahl der Wochentage.",
   "week interval must be between 1 and 52 weeks":
     "Der Wochenabstand muss zwischen 1 und 52 Wochen liegen.",

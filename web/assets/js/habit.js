@@ -7,11 +7,26 @@ import { state } from "./state.js";
 import { t, locale } from "./i18n.js";
 
 /**
- * Reports whether the habit is due on `iso`. Mirrors domain.Habit.IsScheduled
- * on the server.
+ * Returns the schedule ({from, targetValue, frequency}) that applies on `iso`.
+ * Mirrors domain.Habit.ScheduleOn: the first schedule also covers the days
+ * before it.
+ */
+export function scheduleOn(habit, iso) {
+  const all = habit.schedules;
+  if (!all?.length) return { targetValue: habit.targetValue, frequency: habit.frequency };
+  for (let i = all.length - 1; i > 0; i--) {
+    // ISO dates compare correctly as strings.
+    if (iso >= all[i].from) return all[i];
+  }
+  return all[0];
+}
+
+/**
+ * Reports whether the habit is due on `iso`, by the schedule of that day.
+ * Mirrors domain.Schedule.IsScheduled on the server.
  */
 export function isScheduled(habit, iso) {
-  const f = habit.frequency;
+  const f = scheduleOn(habit, iso).frequency;
   switch (f.kind) {
     case "daily":
     case "times_per_week":
@@ -43,14 +58,9 @@ function inScheduledWeek(f, iso) {
   return true;
 }
 
-/**
- * Reports whether a value may be recorded on `iso`. Mirrors
- * domain.Habit.AcceptsEntry.
- */
+/** Reports whether a value may be recorded on `iso`: only on due days. */
 export function acceptsEntry(habit, iso) {
-  const kind = habit.frequency.kind;
-  if (kind === "weekdays" || kind === "custom_interval") return isScheduled(habit, iso);
-  return true;
+  return isScheduled(habit, iso);
 }
 
 /**
@@ -86,17 +96,20 @@ function written(habit, value) {
   return (value / scale(habit)).toLocaleString(locale, { maximumFractionDigits: 1 });
 }
 
-export function target(habit) {
-  return habit.kind === "check" ? 1 : Math.max(1, habit.targetValue || 1);
+/** Returns the target that applies on `iso`, in stored units. */
+export function target(habit, iso) {
+  if (habit.kind === "check") return 1;
+  return Math.max(1, scheduleOn(habit, iso).targetValue || 1);
 }
 
-export function isComplete(habit, value) {
-  return (value || 0) >= target(habit);
+/** Reports whether `value` reaches the target that applies on `iso`. */
+export function isComplete(habit, iso, value) {
+  return (value || 0) >= target(habit, iso);
 }
 
-/** Returns the progress towards the target, 0…1. */
-export function progress(habit, value) {
-  return Math.max(0, Math.min(1, (value || 0) / target(habit)));
+/** Returns the progress towards the target of `iso`, 0…1. */
+export function progress(habit, iso, value) {
+  return Math.max(0, Math.min(1, (value || 0) / target(habit, iso)));
 }
 
 /** Returns the increment per tap, in stored units. */
@@ -298,9 +311,9 @@ export function streakDaysOn(habit, iso) {
 }
 
 /** Returns the heat level 0…4 for the calendar heatmap. */
-export function heatLevel(habit, value) {
+export function heatLevel(habit, iso, value) {
   if (!value) return 0;
-  const p = progress(habit, value);
+  const p = progress(habit, iso, value);
   if (p >= 1) return 4;
   if (p >= 0.66) return 3;
   if (p >= 0.33) return 2;

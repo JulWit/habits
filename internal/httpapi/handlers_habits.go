@@ -18,6 +18,9 @@ type habitView struct {
 	// StreakRuns are the streak runs that reach into the sent entries, oldest
 	// first.
 	StreakRuns []domain.StreakRun `json:"streakRuns"`
+	// Schedules are all versions of target and frequency, oldest first; the last
+	// one is the current TargetValue and Frequency.
+	Schedules []domain.Schedule `json:"schedules"`
 }
 
 // stateResponse is the response of GET /api/state.
@@ -157,6 +160,7 @@ func (s *Server) viewFor(h domain.Habit, all store.EntryMap, today, from domain.
 		Stats:      domain.ComputeStats(h, all, today, domain.DefaultRateWindowDays),
 		Entries:    windowed,
 		StreakRuns: visible,
+		Schedules:  h.Schedules(),
 	}
 }
 
@@ -199,6 +203,12 @@ type habitInput struct {
 	Unit        *string           `json:"unit"`
 	Frequency   *domain.Frequency `json:"frequency"`
 	Archived    *bool             `json:"archived"`
+	// Retroactive applies a new target or frequency to the past days as well,
+	// instead of from today on.
+	Retroactive bool `json:"retroactive"`
+	// Schedules replaces the whole schedule history, e.g. to undo an edit. It
+	// cannot be combined with TargetValue and Frequency.
+	Schedules []domain.Schedule `json:"schedules"`
 }
 
 // applyTo copies the set fields of in to h.
@@ -235,14 +245,21 @@ func (s *Server) handleCreateHabit(w http.ResponseWriter, r *http.Request) {
 	}
 
 	user := auth.MustUser(r.Context())
-	h := domain.Habit{Kind: domain.KindCheck, TargetValue: 1, Color: domain.DefaultColors[0]}
+	today := s.todayFor(r.Context(), user.ID)
+	// The first schedule starts on the user's today, which may differ from the
+	// UTC day of the creation time.
+	h := domain.Habit{Kind: domain.KindCheck, TargetValue: 1, Color: domain.DefaultColors[0], Since: today}
 	in.applyTo(&h)
+	if len(in.Schedules) > 0 {
+		writeError(w, http.StatusBadRequest, "schedules cannot be set on a new habit")
+		return
+	}
 
 	if err := s.store.CreateHabit(r.Context(), user.ID, &h); err != nil {
 		s.writeStoreError(w, err, "creating habit")
 		return
 	}
-	writeJSON(w, http.StatusCreated, s.viewFor(h, nil, s.todayFor(r.Context(), user.ID), domain.Date{}))
+	writeJSON(w, http.StatusCreated, s.viewFor(h, nil, today, domain.Date{}))
 }
 
 // handleUpdateHabit updates the fields of a habit given in the request body.
@@ -258,7 +275,10 @@ func (s *Server) handleUpdateHabit(w http.ResponseWriter, r *http.Request) {
 		s.writeStoreError(w, err, "loading habit")
 		return
 	}
-	in.applyTo(&h)
+	if err := s.applyUpdate(r, user.ID, in, &h); err != nil {
+		s.writeStoreError(w, err, "updating habit")
+		return
+	}
 	if err := s.store.UpdateHabit(r.Context(), user.ID, &h); err != nil {
 		s.writeStoreError(w, err, "updating habit")
 		return
@@ -312,4 +332,29 @@ func (s *Server) handleReorderHabits(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusNoContent, nil)
+}
+
+// applyUpdate copies the set fields of in to h. A new target or frequency
+// starts a new schedule version from today on, unless in.Retroactive is set.
+// A change of kind resets the history, as it is only allowed before the first
+// entry.
+func (s *Server) applyUpdate(r *http.Request, userID string, in habitInput, h *domain.Habit) error {
+	prev, kind := h.Current(), h.Kind
+	in.applyTo(h)
+
+	switch {
+	case in.Schedules != nil:
+		if in.TargetValue != nil || in.Frequency != nil {
+			return domain.Invalid("schedules cannot be combined with targetValue or frequency")
+		}
+		if len(in.Schedules) == 0 {
+			return domain.Invalid("at least one schedule is required")
+		}
+		h.SetSchedules(in.Schedules)
+		return nil
+	case in.TargetValue != nil || in.Frequency != nil || h.Kind != kind:
+		today := s.todayFor(r.Context(), userID)
+		return h.Reschedule(prev, today, in.Retroactive || h.Kind != kind)
+	}
+	return nil
 }

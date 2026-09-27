@@ -101,13 +101,13 @@ export function dayEntry(habit, iso, active = state.today) {
   const mark = document.createElement("span");
   mark.className = "mark";
   mark.style.setProperty("--habit-color", habit.color);
-  mark.style.setProperty("--p", String(H.progress(habit, value)));
+  mark.style.setProperty("--p", String(H.progress(habit, iso, value)));
 
   // Unscheduled days without a value are drawn as off.
   if (!scheduled && value === 0) mark.classList.add("is-off");
   // Future days are dimmed.
   if (future) mark.classList.add("is-future");
-  if (H.isComplete(habit, value)) {
+  if (H.isComplete(habit, iso, value)) {
     mark.classList.add("is-complete");
     // Longer runs are drawn with a stronger streak colour. Level 0 changes
     // nothing.
@@ -139,7 +139,7 @@ function cellLabel(habit, iso, value, scheduled, streakDays = 0) {
   const when = formatRelative(iso, state.today);
   const status = cellStatus(habit, iso, value, scheduled);
   // Announce the streak length on days that are part of a run.
-  const done = H.isComplete(habit, value) && iso <= state.today;
+  const done = H.isComplete(habit, iso, value) && iso <= state.today;
   const run = done && streakDays > 0 ? t(", day {n} of a streak", { n: streakDays }) : "";
   return `${habit.name}, ${when}: ${status}${run}`;
 }
@@ -147,9 +147,9 @@ function cellLabel(habit, iso, value, scheduled, streakDays = 0) {
 /** Describes a day's value. Future days are announced as planned. */
 function cellStatus(habit, iso, value, scheduled) {
   const ahead = iso > state.today;
-  const vars = { value: H.formatValue(habit, value), target: H.formatValue(habit, H.target(habit)) };
+  const vars = { value: H.formatValue(habit, value), target: H.formatValue(habit, H.target(habit, iso)) };
 
-  if (H.isComplete(habit, value)) {
+  if (H.isComplete(habit, iso, value)) {
     if (!ahead) return t("done");
     return habit.kind === "check" ? t("planned") : t("{value} planned", vars);
   }

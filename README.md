@@ -199,6 +199,19 @@ their category ID and appear under "No category" until it is restored.
   month
 - `custom_interval`: every n days from an anchor date
 
+**Schedules**: Target and frequency are versioned in `habit_schedules`. A
+change in the editor starts a new version from today on; past days keep the
+target and frequency they had, so their completion and streaks do not change.
+Several changes on one day replace that day's version, and changing back
+merges it with the previous one. "Apply to past days as well" replaces the
+whole history with the new schedule. The first version also covers days before
+it (entries recorded before the habit was created). A change of kind resets the
+history, as it is only possible before the first entry.
+
+For a times-per-week habit, weeks from before a switch to times-per-week are
+met when every day due in them was completed; weeks without a due day neither
+extend nor break the streak.
+
 **Kinds**
 
 - `check`: done or not
@@ -228,7 +241,7 @@ All endpoints are under `/api` and return JSON.
 | `GET` | `/api/state` | Complete state for the client; `?archived=0`/`1` overrides the `showArchived` setting, `?from=YYYY-MM-DD` loads entries further back |
 | `POST` | `/api/habits` | Create a habit |
 | `GET` | `/api/habits/{id}` | A habit with its full history |
-| `PATCH` | `/api/habits/{id}` | Update the given fields |
+| `PATCH` | `/api/habits/{id}` | Update the given fields; `retroactive: true` applies a new target or frequency to past days, `schedules` replaces the schedule history (used by undo) |
 | `DELETE` | `/api/habits/{id}` | Soft delete |
 | `POST` | `/api/habits/{id}/restore` | Restore |
 | `POST` | `/api/habits/reorder` | Set the order; missing habits keep their relative order after the given ones, duplicate IDs are rejected |
@@ -268,6 +281,10 @@ need an entry in `i18n.js`.
 
 `PUT …/entries/{date}` returns the replaced value as `previous`. Undo writes it
 back.
+
+Every habit carries `schedules` (`[{from, targetValue, frequency}]`, oldest
+first); `targetValue` and `frequency` are the current ones. The client uses
+them to judge each day by the schedule that applied on it.
 
 ## Structure
 
@@ -322,7 +339,8 @@ user_version` stores the schema version.
 
 **New habit field**:
 
-1. Field and validation in `domain.Habit`
+1. Field and validation in `domain.Habit` (or in `domain.Schedule` if the
+   field should be versioned, like the target)
 2. Column via migration
 3. Read and write in `internal/store/habits.go`
 4. Pointer field in `habitInput` (`internal/httpapi/handlers_habits.go`)

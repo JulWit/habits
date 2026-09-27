@@ -103,13 +103,27 @@ function stats(habit) {
  * habits), category and, if archived, its status.
  */
 function details(habit) {
-  const items = [factItem(t("Frequency"), H.describeFrequency(habit))];
+  const all = habit.schedules ?? [];
+  // With earlier schedules, the current one is dated.
+  const since = all.length > 1 ? t("since {date}", { date: formatLong(all.at(-1).from) }) : "";
+  const items = [factItem(t("Frequency"), H.describeFrequency(habit), since)];
   const target = H.describeTarget(habit);
-  if (target) items.push(factItem(t("Daily target"), target));
+  if (target) items.push(factItem(t("Daily target"), target, since));
+  // Earlier schedules, newest first.
+  for (let i = all.length - 2; i >= 0; i--) {
+    const until = formatLong(addDays(all[i + 1].from, -1));
+    items.push(factItem(t("Until {date}", { date: until }), describeSchedule(habit, all[i])));
+  }
   const category = state.categories.find((c) => c.id === habit.categoryId);
   items.push(factItem(t("Category"), category?.name ?? t("No category")));
   if (habit.archivedAt) items.push(factItem(t("Status"), t("Archived")));
   return factsPanel(t("Details"), items);
+}
+
+/** Describes a schedule of the habit: its frequency and, if any, its target. */
+function describeSchedule(habit, schedule) {
+  const past = { ...habit, frequency: schedule.frequency, targetValue: schedule.targetValue };
+  return [H.describeFrequency(past), H.describeTarget(past)].filter(Boolean).join(" · ");
 }
 
 /**
@@ -129,7 +143,7 @@ function lastDone(habit) {
   let newest = null;
   for (const [iso, value] of Object.entries(habit.entries)) {
     // Skip future days and incomplete days.
-    if (iso > state.today || !H.isComplete(habit, value)) continue;
+    if (iso > state.today || !H.isComplete(habit, iso, value)) continue;
     if (newest === null || iso > newest) newest = iso;
   }
   return newest;
@@ -237,7 +251,7 @@ function heatCell(habit, iso, yearStart, yearEnd) {
   const off = !H.isScheduled(habit, iso) && value === 0;
   if (ahead) el.classList.add("is-future");
   if (off) el.classList.add("is-off");
-  else if (!ahead) el.dataset.level = String(H.heatLevel(habit, value));
+  else if (!ahead) el.dataset.level = String(H.heatLevel(habit, iso, value));
 
   el.dataset.date = iso;
   el.dataset.status = heatStatus(habit, iso, value);
@@ -251,7 +265,7 @@ function heatCell(habit, iso, yearStart, yearEnd) {
 
 /** Describes a day of the heatmap. Future days only show planned values. */
 function heatStatus(habit, iso, value) {
-  const vars = { value: H.formatValue(habit, value), target: H.formatValue(habit, H.target(habit)) };
+  const vars = { value: H.formatValue(habit, value), target: H.formatValue(habit, H.target(habit, iso)) };
   if (iso > state.today) {
     if (value > 0) return t("{value} planned", vars);
     return H.isScheduled(habit, iso) ? t("still ahead") : t("not scheduled");

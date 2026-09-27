@@ -66,7 +66,7 @@ func (s *Server) handleSetEntry(w http.ResponseWriter, r *http.Request) {
 			s.writeStoreError(w, err, "loading habit")
 			return
 		}
-		if !habit.AcceptsEntry(date) {
+		if !habit.IsScheduled(date) {
 			writeError(w, http.StatusUnprocessableEntity, "The habit is not scheduled on this day")
 			return
 		}

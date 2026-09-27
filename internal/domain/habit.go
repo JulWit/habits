@@ -163,6 +163,10 @@ type Frequency struct {
 const LastWeekOfMonth = -1
 
 // Habit is a tracked habit of a single user.
+//
+// TargetValue and Frequency are the current schedule, which applies from
+// Since on. Earlier days are judged by the schedule they had then (see
+// Previous and ScheduleOn), so changing the target does not rewrite the past.
 type Habit struct {
 	ID    string `json:"id"`
 	Name  string `json:"name"`
@@ -176,9 +180,16 @@ type Habit struct {
 	TargetValue int    `json:"targetValue"`
 	// StepValue is the increment per tap, in stored units. Always 1 for
 	// KindCheck.
-	StepValue  int        `json:"stepValue"`
-	Unit       string     `json:"unit"`
-	Frequency  Frequency  `json:"frequency"`
+	StepValue int       `json:"stepValue"`
+	Unit      string    `json:"unit"`
+	Frequency Frequency `json:"frequency"`
+	// Since is the first day of the current schedule. Zero means the creation
+	// day.
+	Since Date `json:"-"`
+	// Previous are the earlier schedules, oldest first. Each applies from its
+	// From until the next one starts; the first one also covers the days
+	// before its From.
+	Previous   []Schedule `json:"-"`
 	Position   int        `json:"position"`
 	ArchivedAt *time.Time `json:"archivedAt"`
 	CreatedAt  time.Time  `json:"createdAt"`
@@ -262,14 +273,6 @@ func (h *Habit) Validate() error {
 	if !h.Kind.Valid() {
 		return Invalid(`unknown habit kind "{kind}"`, "kind", h.Kind)
 	}
-	if h.Kind == KindCheck {
-		h.TargetValue = 1
-	} else if h.TargetValue < 1 {
-		return targetTooSmall(h.Kind)
-	}
-	if h.TargetValue > h.Kind.MaxTarget() {
-		return targetTooLarge(h.Kind)
-	}
 	// The step defaults to the kind's step and is fixed at 1 for KindCheck.
 	if h.Kind == KindCheck {
 		h.StepValue = 1
@@ -283,78 +286,100 @@ func (h *Habit) Validate() error {
 		h.Unit = u
 	}
 
-	return h.normaliseFrequency()
-}
-
-// normaliseFrequency validates h.Frequency and keeps only the fields its kind
-// uses.
-func (h *Habit) normaliseFrequency() error {
-	f := h.Frequency
-	switch f.Kind {
-	case FreqDaily:
-		h.Frequency = Frequency{Kind: FreqDaily}
-
-	case FreqTimesPerWeek:
-		if f.TimesPerWeek < 1 || f.TimesPerWeek > 7 {
-			return Invalid("times per week must be between 1 and 7")
-		}
-		h.Frequency = Frequency{Kind: FreqTimesPerWeek, TimesPerWeek: f.TimesPerWeek}
-
-	case FreqWeekdays:
-		if f.Weekdays == 0 {
-			return Invalid("at least one weekday must be selected")
-		}
-		if f.Weekdays > 0b1111111 {
-			return Invalid("invalid weekday selection")
-		}
-		// 0 means every week, for clients that do not send a week interval.
-		if f.WeekInterval == 0 {
-			f.WeekInterval = 1
-		}
-		if f.WeekInterval < 1 || f.WeekInterval > 52 {
-			return Invalid("week interval must be between 1 and 52 weeks")
-		}
-		if f.WeekOfMonth != LastWeekOfMonth && (f.WeekOfMonth < 0 || f.WeekOfMonth > 4) {
-			return Invalid("week of the month must be 1 to 4 or the last")
-		}
-		if f.WeekInterval > 1 && f.WeekOfMonth != 0 {
-			return Invalid("a week interval and a week of the month cannot be combined")
-		}
-		// Only a week interval greater than 1 needs an anchor.
-		anchor := Date{}
-		if f.WeekInterval > 1 {
-			anchor = h.anchorOr(f.AnchorDate)
-		}
-		h.Frequency = Frequency{
-			Kind:         FreqWeekdays,
-			Weekdays:     f.Weekdays,
-			WeekInterval: f.WeekInterval,
-			WeekOfMonth:  f.WeekOfMonth,
-			AnchorDate:   anchor,
-		}
-
-	case FreqCustomInterval:
-		if f.IntervalDays < 1 || f.IntervalDays > 365 {
-			return Invalid("interval must be between 1 and 365 days")
-		}
-		h.Frequency = Frequency{
-			Kind:         FreqCustomInterval,
-			IntervalDays: f.IntervalDays,
-			AnchorDate:   h.anchorOr(f.AnchorDate),
-		}
-
-	default:
-		return Invalid(`unknown frequency "{frequency}"`, "frequency", f.Kind)
+	if h.Since.IsZero() {
+		h.Since = DateFromTime(h.CreatedAt)
 	}
+	for i := range h.Previous {
+		if err := h.Previous[i].normalise(h.Kind); err != nil {
+			return err
+		}
+		if i > 0 && !h.Previous[i-1].From.Before(h.Previous[i].From) {
+			return Invalid("schedules must start on different days, oldest first")
+		}
+	}
+	if n := len(h.Previous); n > 0 && !h.Previous[n-1].From.Before(h.Since) {
+		return Invalid("schedules must start on different days, oldest first")
+	}
+	current := h.Current()
+	if err := current.normalise(h.Kind); err != nil {
+		return err
+	}
+	h.TargetValue, h.Frequency = current.TargetValue, current.Frequency
 	return nil
 }
 
-// anchorOr returns anchor, or the habit's creation day if anchor is zero.
-func (h Habit) anchorOr(anchor Date) Date {
-	if anchor.IsZero() {
-		return DateFromTime(h.CreatedAt)
+// Current returns the current schedule.
+func (h Habit) Current() Schedule {
+	since := h.Since
+	if since.IsZero() {
+		since = DateFromTime(h.CreatedAt)
 	}
-	return anchor
+	return Schedule{From: since, TargetValue: h.TargetValue, Frequency: h.Frequency}
+}
+
+// Schedules returns all schedules of the habit, oldest first. The last one is
+// the current schedule.
+func (h Habit) Schedules() []Schedule {
+	return append(slices.Clone(h.Previous), h.Current())
+}
+
+// SetSchedules replaces the schedule history. The last schedule becomes the
+// current one. An empty list changes nothing.
+func (h *Habit) SetSchedules(all []Schedule) {
+	if len(all) == 0 {
+		return
+	}
+	last := all[len(all)-1]
+	h.Previous = slices.Clone(all[:len(all)-1])
+	h.Since, h.TargetValue, h.Frequency = last.From, last.TargetValue, last.Frequency
+}
+
+// Reschedule is called after the caller has set a new TargetValue or
+// Frequency; prev is the schedule before that change. The new schedule applies
+// from day on and earlier days keep prev. With retroactive, the new schedule
+// replaces the whole history instead. Otherwise nothing changes if the
+// new schedule equals prev.
+func (h *Habit) Reschedule(prev Schedule, day Date, retroactive bool) error {
+	next := Schedule{From: day, TargetValue: h.TargetValue, Frequency: h.Frequency}
+	if err := next.normalise(h.Kind); err != nil {
+		return err
+	}
+	switch {
+	case retroactive:
+		next.From = prev.From
+		if len(h.Previous) > 0 {
+			next.From = h.Previous[0].From
+		}
+		h.Previous = nil
+	case next.sameRules(prev):
+		next = prev
+	case !day.After(prev.From):
+		// The current schedule starts today or later: replace it.
+		next.From = prev.From
+	default:
+		h.Previous = append(h.Previous, prev)
+	}
+	// Changing back to the previous schedule merges both.
+	if n := len(h.Previous); n > 0 && h.Previous[n-1].sameRules(next) {
+		next = h.Previous[n-1]
+		h.Previous = h.Previous[:n-1]
+	}
+	h.Since, h.TargetValue, h.Frequency = next.From, next.TargetValue, next.Frequency
+	return nil
+}
+
+// ScheduleOn returns the schedule that applies on d.
+func (h Habit) ScheduleOn(d Date) Schedule {
+	current := h.Current()
+	if len(h.Previous) == 0 || !d.Before(current.From) {
+		return current
+	}
+	for i := len(h.Previous) - 1; i > 0; i-- {
+		if !d.Before(h.Previous[i].From) {
+			return h.Previous[i]
+		}
+	}
+	return h.Previous[0]
 }
 
 // ValidateEntryValue checks that a day's value lies between 0 and the kind's
@@ -372,66 +397,20 @@ func ValidateEntryValue(k Kind, value int) error {
 	return nil
 }
 
-// Target returns the value at which a day counts as completed.
-func (h Habit) Target() int {
+// Target returns the value at which d counts as completed.
+func (h Habit) Target(d Date) int {
 	if h.Kind == KindCheck {
 		return 1
 	}
-	return max(h.TargetValue, 1)
+	return max(h.ScheduleOn(d).TargetValue, 1)
 }
 
-// IsComplete reports whether a day's value reaches the habit's target.
-func (h Habit) IsComplete(value int) bool { return value >= h.Target() }
+// IsComplete reports whether value reaches the target that applies on d.
+func (h Habit) IsComplete(d Date, value int) bool { return value >= h.Target(d) }
 
-// IsScheduled reports whether the habit is due on d. FreqDaily and
-// FreqTimesPerWeek are due every day.
-func (h Habit) IsScheduled(d Date) bool {
-	switch h.Frequency.Kind {
-	case FreqDaily, FreqTimesPerWeek:
-		return true
-	case FreqWeekdays:
-		return h.Frequency.Weekdays.Has(d.Weekday()) && h.inScheduledWeek(d)
-	case FreqCustomInterval:
-		n := h.Frequency.IntervalDays
-		if n < 1 {
-			return false
-		}
-		diff := d.DaysSince(h.anchorOr(h.Frequency.AnchorDate))
-		return diff >= 0 && diff%n == 0
-	}
-	return false
-}
-
-// inScheduledWeek reports whether d lies in a week selected by WeekInterval or
-// WeekOfMonth.
-func (h Habit) inScheduledWeek(d Date) bool {
-	f := h.Frequency
-	if f.WeekOfMonth == LastWeekOfMonth {
-		return d.AddDays(7).Month != d.Month
-	}
-	if f.WeekOfMonth > 0 {
-		return (d.Day-1)/7+1 == f.WeekOfMonth
-	}
-	if f.WeekInterval > 1 {
-		anchor := h.anchorOr(f.AnchorDate)
-		if d.Before(anchor) {
-			return false
-		}
-		weeks := d.StartOfWeek().DaysSince(anchor.StartOfWeek()) / 7
-		return weeks%f.WeekInterval == 0
-	}
-	return true
-}
-
-// AcceptsEntry reports whether a value may be recorded on d. Schedules with
-// fixed days accept entries only on those days.
-func (h Habit) AcceptsEntry(d Date) bool {
-	switch h.Frequency.Kind {
-	case FreqWeekdays, FreqCustomInterval:
-		return h.IsScheduled(d)
-	}
-	return true
-}
+// IsScheduled reports whether the habit is due on d, by the schedule that
+// applies on d. Values can only be recorded on scheduled days.
+func (h Habit) IsScheduled(d Date) bool { return h.ScheduleOn(d).IsScheduled(d) }
 
 // IsArchived reports whether the habit is archived.
 func (h Habit) IsArchived() bool { return h.ArchivedAt != nil }

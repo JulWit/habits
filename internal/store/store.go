@@ -369,6 +369,36 @@ var migrations = []string{
 	// Language ("system": browser language) and time zone ("": HABITS_TZ).
 	`ALTER TABLE user_settings ADD COLUMN language TEXT NOT NULL DEFAULT 'system';
 	 ALTER TABLE user_settings ADD COLUMN time_zone TEXT NOT NULL DEFAULT '';`,
+
+	// Versioned schedules: target and frequency move into their own table, one
+	// row per version. Every habit starts with its current schedule from its
+	// creation day on.
+	`CREATE TABLE habit_schedules (
+		habit_id            TEXT    NOT NULL REFERENCES habits(id) ON DELETE CASCADE,
+		valid_from          TEXT    NOT NULL,
+		target_value        INTEGER NOT NULL,
+		freq_kind           TEXT    NOT NULL,
+		freq_times_per_week INTEGER NOT NULL DEFAULT 0,
+		freq_weekdays       INTEGER NOT NULL DEFAULT 0,
+		freq_interval_days  INTEGER NOT NULL DEFAULT 0,
+		freq_week_interval  INTEGER NOT NULL DEFAULT 0,
+		freq_week_of_month  INTEGER NOT NULL DEFAULT 0,
+		freq_anchor_date    TEXT    NOT NULL DEFAULT '',
+		PRIMARY KEY (habit_id, valid_from)
+	) WITHOUT ROWID;
+	INSERT INTO habit_schedules
+		SELECT id, substr(created_at, 1, 10), target_value,
+		       freq_kind, freq_times_per_week, freq_weekdays, freq_interval_days,
+		       freq_week_interval, freq_week_of_month, freq_anchor_date
+		FROM habits;
+	ALTER TABLE habits DROP COLUMN target_value;
+	ALTER TABLE habits DROP COLUMN freq_kind;
+	ALTER TABLE habits DROP COLUMN freq_times_per_week;
+	ALTER TABLE habits DROP COLUMN freq_weekdays;
+	ALTER TABLE habits DROP COLUMN freq_interval_days;
+	ALTER TABLE habits DROP COLUMN freq_anchor_date;
+	ALTER TABLE habits DROP COLUMN freq_week_interval;
+	ALTER TABLE habits DROP COLUMN freq_week_of_month;`,
 }
 
 // migrate applies all migrations newer than the schema version, each in its

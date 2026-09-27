@@ -77,7 +77,7 @@ function perfectDays(habits, from, to) {
     );
     if (scheduled.length === 0) continue;
     due++;
-    if (scheduled.every((h) => H.isComplete(h, h.entries[day] ?? 0))) {
+    if (scheduled.every((h) => H.isComplete(h, day, h.entries[day] ?? 0))) {
       perfect++;
       run++;
     } else if (day !== state.today) {

@@ -30,8 +30,9 @@ RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH \
       -X github.com/JulWit/habits/internal/httpapi.BuildTime=$BUILD_TIME" .
 
 # The data directory is created here because scratch has no mkdir and
-# store.Open does not create the path itself.
-RUN install -d /data
+# store.Open does not create the path itself. It belongs to the unprivileged
+# user the server runs as (see USER below).
+RUN install -d -o 65534 -g 65534 /data
 
 # No base image. The binary is statically linked, the timezone database is
 # compiled in via time/tzdata, and the application opens no outbound TLS
@@ -40,7 +41,9 @@ RUN install -d /data
 FROM scratch
 
 COPY --from=build /out/habits /habits
-COPY --from=build /data /data
+# COPY would hand the directory to root; --chown keeps it writable for the
+# server.
+COPY --from=build --chown=65534:65534 /data /data
 
 # The default in config.go is a relative path; inside the container it has to
 # point at the volume, or the database lands in the read-only top layer.
@@ -49,5 +52,14 @@ ENV HABITS_ADDR=:8080 \
 
 EXPOSE 8080
 VOLUME ["/data"]
+
+# The server needs no privileges: the port is above 1024 and it only writes
+# to /data. 65534 is "nobody"; scratch has no /etc/passwd, so it is numeric.
+USER 65534:65534
+
+# There is no shell or curl in the image, so the binary asks its own /healthz
+# (see healthcheck in main.go).
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD ["/habits", "healthcheck"]
 
 ENTRYPOINT ["/habits"]

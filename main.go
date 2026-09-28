@@ -6,8 +6,10 @@ import (
 	"context"
 	"embed"
 	"errors"
+	"fmt"
 	"io/fs"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -27,6 +29,14 @@ import (
 var webFiles embed.FS
 
 func main() {
+	if len(os.Args) == 2 && os.Args[1] == "healthcheck" {
+		if err := healthcheck(); err != nil {
+			fmt.Fprintln(os.Stderr, "unhealthy:", err)
+			os.Exit(1)
+		}
+		return
+	}
+
 	log := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo}))
 	// Used by helpers that have no logger of their own.
 	slog.SetDefault(log)
@@ -133,4 +143,44 @@ func purgeDeleted(ctx context.Context, st *store.Store, retention time.Duration,
 	} else if n > 0 {
 		log.Info("permanently deleted categories removed", "count", n)
 	}
+}
+
+// healthcheck asks the server running with the same configuration for
+// /healthz. It is the container's HEALTHCHECK, as the image has no shell and
+// no curl.
+func healthcheck() error {
+	cfg, err := config.Load()
+	if err != nil {
+		return err
+	}
+	url, err := healthcheckURL(cfg.Addr)
+	if err != nil {
+		return err
+	}
+	client := &http.Client{Timeout: 5 * time.Second}
+	res, err := client.Get(url)
+	if err != nil {
+		return err
+	}
+	res.Body.Close()
+	if res.StatusCode != http.StatusOK {
+		return fmt.Errorf("%s answered %s", url, res.Status)
+	}
+	return nil
+}
+
+// healthcheckURL returns the URL of /healthz for a server listening on addr.
+// A server listening on all interfaces is asked on the loopback interface.
+func healthcheckURL(addr string) (string, error) {
+	host, port, err := net.SplitHostPort(addr)
+	if err != nil {
+		return "", fmt.Errorf("HABITS_ADDR: %w", err)
+	}
+	switch host {
+	case "", "0.0.0.0":
+		host = "127.0.0.1"
+	case "::":
+		host = "::1"
+	}
+	return "http://" + net.JoinHostPort(host, port) + "/healthz", nil
 }

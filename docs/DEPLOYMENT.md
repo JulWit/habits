@@ -36,10 +36,14 @@ The package has the repository's visibility; for a private repository, pulling
 requires a token with `read:packages`.
 
 The image is `FROM scratch` and contains only the binary and an empty `/data`
-directory. There is no shell, so there is no `HEALTHCHECK`; use `/healthz` from
-outside instead.
+directory. There is no shell and no curl, so its `HEALTHCHECK` runs
+`/habits healthcheck`: the binary asks its own `/healthz` on the loopback
+interface and exits with 1 if the answer is not 200.
 
-The image sets no `USER` and runs as root. To run as another user, set `user:`
+The image runs as UID and GID 65534 (`nobody`), not as root. A named volume
+takes over the ownership of the image's `/data`. A bind mount must be
+writable for that UID (`chown 65534:65534 /path/to/data`), and so must the
+data of an older image that ran as root. To run as another user, set `user:`
 in the compose file (or `--user`) and make `/data` writable for that UID.
 
 ```yaml

@@ -20,7 +20,10 @@ func TestParseDateRoundTrip(t *testing.T) {
 }
 
 func TestParseDateRejects(t *testing.T) {
-	for _, s := range []string{"", "2026-13-01", "2026-02-30", "18.09.2026", "2026-9-8", "heute"} {
+	for _, s := range []string{
+		"", "2026-13-01", "2026-00-10", "2026-02-30", "2026-02-29", "1900-02-29", "2026-04-31",
+		"18.09.2026", "2026-9-8", "2026-09-8x", "+026-09-08", "heute",
+	} {
 		if _, err := ParseDate(s); err == nil {
 			t.Errorf("ParseDate(%q) was accepted", s)
 		}
@@ -176,5 +179,34 @@ func TestUntilTomorrow(t *testing.T) {
 		if got := UntilTomorrow(tc.now, berlin); got != tc.want {
 			t.Errorf("%s: UntilTomorrow = %v, want %v", tc.name, got, tc.want)
 		}
+	}
+}
+
+// AddDays crosses month and year ends, including leap days.
+func TestAddDaysAcrossMonths(t *testing.T) {
+	for _, tc := range []struct {
+		from Date
+		n    int
+		want Date
+	}{
+		{Date{2026, time.January, 31}, 1, Date{2026, time.February, 1}},
+		{Date{2024, time.February, 28}, 1, Date{2024, time.February, 29}},
+		{Date{2026, time.February, 28}, 1, Date{2026, time.March, 1}},
+		{Date{2026, time.December, 31}, 1, Date{2027, time.January, 1}},
+		{Date{2026, time.March, 1}, -1, Date{2026, time.February, 28}},
+		{Date{2026, time.September, 18}, 10, Date{2026, time.September, 28}},
+		{Date{2026, time.September, 18}, -400, Date{2025, time.August, 14}},
+	} {
+		if got := tc.from.AddDays(tc.n); got != tc.want {
+			t.Errorf("%v + %d = %v, want %v", tc.from, tc.n, got, tc.want)
+		}
+	}
+}
+
+// Dates compare by year, month and day.
+func TestCompare(t *testing.T) {
+	a, b := Date{2025, time.December, 31}, Date{2026, time.January, 1}
+	if a.Compare(b) != -1 || b.Compare(a) != 1 || a.Compare(a) != 0 || !a.Before(b) || !b.After(a) {
+		t.Errorf("comparing %v and %v", a, b)
 	}
 }

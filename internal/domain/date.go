@@ -1,8 +1,10 @@
 package domain
 
 import (
+	"cmp"
 	"errors"
 	"fmt"
+	"strconv"
 	"time"
 )
 
@@ -43,11 +45,44 @@ func UntilTomorrow(now time.Time, loc *time.Location) time.Duration {
 
 // ParseDate parses a date in DateLayout format.
 func ParseDate(s string) (Date, error) {
-	t, err := time.ParseInLocation(DateLayout, s, time.UTC)
-	if err != nil {
-		return Date{}, fmt.Errorf("%w: %q", ErrInvalidDate, s)
+	invalid := fmt.Errorf("%w: %q", ErrInvalidDate, s)
+	if len(s) != len(DateLayout) || s[4] != '-' || s[7] != '-' {
+		return Date{}, invalid
 	}
-	return DateFromTime(t), nil
+	year, okY := digits(s[0:4])
+	month, okM := digits(s[5:7])
+	day, okD := digits(s[8:10])
+	if !okY || !okM || !okD || month < 1 || month > 12 || day < 1 || day > daysIn(year, time.Month(month)) {
+		return Date{}, invalid
+	}
+	return Date{Year: year, Month: time.Month(month), Day: day}, nil
+}
+
+// digits returns the number written by the decimal digits of s, and false if
+// s holds anything else.
+func digits(s string) (int, bool) {
+	n := 0
+	for _, c := range []byte(s) {
+		if c < '0' || c > '9' {
+			return 0, false
+		}
+		n = n*10 + int(c-'0')
+	}
+	return n, true
+}
+
+// daysIn returns the number of days of month m in year.
+func daysIn(year int, m time.Month) int {
+	switch m {
+	case time.February:
+		if year%4 == 0 && (year%100 != 0 || year%400 == 0) {
+			return 29
+		}
+		return 28
+	case time.April, time.June, time.September, time.November:
+		return 30
+	}
+	return 31
 }
 
 // IsZero reports whether d is the zero Date.
@@ -58,7 +93,22 @@ func (d Date) String() string {
 	if d.IsZero() {
 		return ""
 	}
-	return fmt.Sprintf("%04d-%02d-%02d", d.Year, int(d.Month), d.Day)
+	b := make([]byte, 0, len(DateLayout))
+	b = appendPadded(b, d.Year, 4)
+	b = append(b, '-')
+	b = appendPadded(b, int(d.Month), 2)
+	b = append(b, '-')
+	b = appendPadded(b, d.Day, 2)
+	return string(b)
+}
+
+// appendPadded appends n to b with at least width digits, padded with zeros.
+func appendPadded(b []byte, n, width int) []byte {
+	s := strconv.Itoa(n)
+	for range width - len(s) {
+		b = append(b, '0')
+	}
+	return append(b, s...)
 }
 
 // Time returns d at midnight UTC.
@@ -66,8 +116,14 @@ func (d Date) Time() time.Time {
 	return time.Date(d.Year, d.Month, d.Day, 0, 0, 0, 0, time.UTC)
 }
 
-// AddDays returns d shifted by n days.
-func (d Date) AddDays(n int) Date { return DateFromTime(d.Time().AddDate(0, 0, n)) }
+// AddDays returns d shifted by n days. A step within the month, the common
+// case of the day-by-day loops of the statistics, is computed directly.
+func (d Date) AddDays(n int) Date {
+	if day := d.Day + n; !d.IsZero() && day >= 1 && day <= daysIn(d.Year, d.Month) {
+		return Date{Year: d.Year, Month: d.Month, Day: day}
+	}
+	return DateFromTime(d.Time().AddDate(0, 0, n))
+}
 
 // Weekday returns the day of the week of d.
 func (d Date) Weekday() time.Weekday { return d.Time().Weekday() }
@@ -78,11 +134,23 @@ func (d Date) DaysSince(other Date) int {
 	return int(d.Time().Sub(other.Time()) / (24 * time.Hour))
 }
 
+// Compare returns -1 if d is earlier than o, 1 if it is later, and 0 if they
+// are the same day.
+func (d Date) Compare(o Date) int {
+	if c := cmp.Compare(d.Year, o.Year); c != 0 {
+		return c
+	}
+	if c := cmp.Compare(d.Month, o.Month); c != 0 {
+		return c
+	}
+	return cmp.Compare(d.Day, o.Day)
+}
+
 // Before reports whether d is earlier than o.
-func (d Date) Before(o Date) bool { return d.Time().Before(o.Time()) }
+func (d Date) Before(o Date) bool { return d.Compare(o) < 0 }
 
 // After reports whether d is later than o.
-func (d Date) After(o Date) bool { return d.Time().After(o.Time()) }
+func (d Date) After(o Date) bool { return d.Compare(o) > 0 }
 
 // Min returns the earlier of d and o.
 func (d Date) Min(o Date) Date {

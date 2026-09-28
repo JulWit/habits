@@ -76,8 +76,8 @@ limits and the history's start exist only in `internal/domain`, so a new rule
 needs no client change beyond the editor.
 
 The views that summarise many days load what they show from the server when
-they open: the day statistics (`/api/days`), a category's statistics
-(`/api/categories/{id}/stats`) and a habit's totals per day, week or month
+they open: the day statistics (`/api/days`), also of a category's habits
+(`/api/days?category=`), and a habit's totals per day, week or month
 (`/api/habits/{id}/totals`). `remote-stats.js` keeps the last answer and loads
 it again once the state has changed.
 

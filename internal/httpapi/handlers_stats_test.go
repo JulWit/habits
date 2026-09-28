@@ -29,16 +29,16 @@ func TestDaysCountTheHabitsOfEachDay(t *testing.T) {
 	if day := got.Totals[today.DaysSince(first)]; day.Due != 2 || day.Done != 1 {
 		t.Errorf("today = %+v, want 1 of 2 done", day)
 	}
-	if got.Stats.Completed != 1 || got.Stats.Counted != 1 {
-		t.Errorf("stats = %+v", got.Stats)
+	if got.Stats.Completed != 1 || got.Stats.Counted != 1 || got.Habits != 2 {
+		t.Errorf("habits %d, stats = %+v", got.Habits, got.Stats)
 	}
 	if w := do(t, h, "GET", "/api/days?year=1999", "", ""); w.Code != http.StatusUnprocessableEntity {
 		t.Errorf("year before the earliest entry: status %d, want 422", w.Code)
 	}
 }
 
-// A category's statistics cover its habits only.
-func TestCategoryStatsCoverItsHabits(t *testing.T) {
+// The day statistics of a category cover its habits only.
+func TestDaysOfACategoryCoverItsHabits(t *testing.T) {
 	h := newTestServer(t)
 	var c struct {
 		ID string `json:"id"`
@@ -51,17 +51,17 @@ func TestCategoryStatsCoverItsHabits(t *testing.T) {
 	today := domain.Today(time.UTC)
 	mustDo(t, h, "PUT", "/api/habits/"+run+"/entries/"+today.String(), `{"value":1}`, http.StatusOK)
 
-	var got categoryStats
-	if err := json.Unmarshal(mustDo(t, h, "GET", "/api/categories/"+c.ID+"/stats", "", http.StatusOK), &got); err != nil {
+	var got daysResponse
+	if err := json.Unmarshal(mustDo(t, h, "GET", "/api/days?category="+c.ID, "", http.StatusOK), &got); err != nil {
 		t.Fatal(err)
 	}
-	if got.Habits != 1 || got.DueDays != 1 || got.Perfect != 1 || got.CurrentStreak != 1 {
-		t.Errorf("stats = %+v", got)
+	if got.Habits != 1 || got.Stats.Counted != 1 || got.Stats.Perfect != 1 || got.Stats.CurrentStreak != 1 {
+		t.Errorf("habits %d, stats = %+v", got.Habits, got.Stats)
 	}
 	if got.Expected != 1 || got.Achieved != 1 {
 		t.Errorf("rate counts = %d of %d, want 1 of 1", got.Achieved, got.Expected)
 	}
-	mustDo(t, h, "GET", "/api/categories/unknown/stats", "", http.StatusNotFound)
+	mustDo(t, h, "GET", "/api/days?category=unknown", "", http.StatusNotFound)
 }
 
 // A habit's totals are summed per period of the year up to today.

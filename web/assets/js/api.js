@@ -92,9 +92,10 @@ export const api = {
   // A habit's values of `year` summed per `grain` (day, week or month).
   habitTotals: (id, year, grain) =>
     request("GET", `/api/habits/${encodeURIComponent(id)}/totals?year=${year}&grain=${grain}`),
-  // The day statistics of `year`.
-  days: (year) => request("GET", `/api/days?year=${year}`),
-  categoryStats: (id) => request("GET", `/api/categories/${encodeURIComponent(id)}/stats`),
+  // The day statistics of `year`, of the habits of `categoryId` if given.
+  days: (year, categoryId) => request("GET", categoryId
+    ? `/api/days?year=${year}&category=${encodeURIComponent(categoryId)}`
+    : `/api/days?year=${year}`),
   createHabit: (input) => request("POST", "/api/habits", input),
   // Saves what the editor shows; a new target or frequency starts today
   // unless `retroactive` is set, a new kind converts the history.

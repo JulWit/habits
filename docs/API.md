@@ -9,7 +9,7 @@ only `/healthz` outside `/api` does not.
 | Method | Path | Purpose |
 |---|---|---|
 | `GET` | `/api/state` | Complete state for the client; `?archived=0`/`1` overrides the `showArchived` setting, `?from=YYYY-MM-DD` loads entries further back |
-| `GET` | `/api/days` | Day statistics of `?year=` (default: this year) over the habits that are not archived, see [Statistics](#statistics) |
+| `GET` | `/api/days` | Day statistics of `?year=` (default: this year) over the habits that are not archived, or those of `?category=`, see [Statistics](#statistics) |
 | `POST` | `/api/habits` | Create a habit |
 | `GET` | `/api/habits/{id}` | A habit with its full history |
 | `PATCH` | `/api/habits/{id}` | Save what the editor shows: name, colour, icon, kind, category, step, unit, target, target type and frequency; `retroactive: true` applies a new target or frequency to past days, a new kind converts the history |
@@ -22,7 +22,6 @@ only `/healthz` outside `/api` does not.
 | `POST` | `/api/categories` | Create a category |
 | `PATCH` | `/api/categories/{id}` | Update name, icon, colour or progress display |
 | `DELETE` | `/api/categories/{id}` | Delete a category; its habits stay, without one (undo puts them back) |
-| `GET` | `/api/categories/{id}/stats` | Statistics of the category's habits, see [Statistics](#statistics) |
 | `POST` | `/api/categories/reorder` | Set the order (same rules as for habits) |
 | `POST` | `/api/undo` | Undo the step `id`, or the latest; see [Undo](#undo) |
 | `POST` | `/api/redo` | Redo the step `id`, or the one undone last |
@@ -139,12 +138,10 @@ today: perfect days (`perfect` of `counted`), the current and best run of
 them, the average share per day, completed habits, days without progress,
 a group per weekday (Monday first) and per month from `firstMonth` on
 (`{rate, perfect}`, `rate` null without due habits), and the best weekday
-(0 = Monday, -1 for none) and month (1 = January, 0 for none).
-
-`GET /api/categories/{id}/stats` answers with the perfect days since 1 January
-(`perfect` of `dueDays`, from `from`), their current run, the number of
-habits, and `expected` and `achieved`, which add up those of the habits'
-completion rates.
+(0 = Monday, -1 for none) and month (1 = January, 0 for none). It also
+counts the `habits` and adds up the `expected` and `achieved` of their
+completion rates. `?category={id}` limits all of it to the habits of that
+category; the category view shows this year's.
 
 `GET /api/habits/{id}/totals?year=2026&grain=week` answers with `buckets`
 (`{start, sum, cumulative}`) from 1 January up to today, the `total`, the

@@ -64,26 +64,28 @@ function header(category) {
 }
 
 /**
- * Builds the stat tiles from the server's statistics of the category (GET
- * /api/categories/{id}/stats); dashes until they have arrived.
+ * Builds the stat tiles from the server's day statistics of the category's
+ * habits this year (GET /api/days?category=); dashes until they have arrived.
  */
 function stats(category) {
-  const s = remote(`category|${category.id}`, () => api.categoryStats(category.id), () => {
+  const year = currentYear();
+  const s = remote(`category|${category.id}|${year}`, () => api.days(year, category.id), () => {
     if (!root.hidden && root.dataset.category === category.id) renderCategory(categoryById(category.id));
   });
   if (!s) {
     return statRow([
       [t("Current streak"), "–", "streak"],
-      [t("Perfect days {since}", { since: sinceLabel(`${currentYear()}-01-01`) }), "–", "calendarCheck"],
+      [t("Perfect days {since}", { since: sinceLabel(`${year}-01-01`) }), "–", "calendarCheck"],
       [rateLabel(), "–", "percent"],
       [t("Habits"), "–", "list"],
     ]);
   }
   const rate = s.expected > 0 ? Math.round((s.achieved / s.expected) * 100) : 0;
+  const { currentStreak, perfect, counted } = s.stats;
   return statRow([
-    [t("Current streak"), s.currentStreak === 1 ? t("1 day") : t("{n} days", { n: s.currentStreak }), "streak"],
-    [t("Perfect days {since}", { since: sinceLabel(s.from) }),
-      t("{n} of {total}", { n: s.perfect, total: s.dueDays }), "calendarCheck"],
+    [t("Current streak"), currentStreak === 1 ? t("1 day") : t("{n} days", { n: currentStreak }), "streak"],
+    [t("Perfect days {since}", { since: sinceLabel(`${s.year}-01-01`) }),
+      t("{n} of {total}", { n: perfect, total: counted }), "calendarCheck"],
     [rateLabel(), `${rate} %`, "percent"],
     [t("Habits"), String(s.habits), "list"],
   ]);

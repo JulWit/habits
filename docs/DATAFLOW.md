@@ -91,8 +91,8 @@ A tap or the day dialog is handled in `actions.js`:
    each other, so they reach the server in order.
 2. `api.js` sends `PUT /api/habits/{id}/entries/{date}` with the changed
    parts only.
-3. The answer brings the day's status, the statistics and the streak runs
-   (`applyEntryAnswer`).
+3. The answer is the habit with its full history: the statuses of all days,
+   the statistics and the streak runs (`applyEntryAnswer`).
 
 If the server rejects a write, the client drops the pending value, shows the
 error and reloads the state.

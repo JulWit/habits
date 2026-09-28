@@ -98,9 +98,9 @@ the `rateWindow` setting, the total and `lastDone`, the latest complete day.
 {"skipped": true}
 ```
 
-The answer carries the entry after the change (`value`, `skipped`), the
-replaced one as `previous`, the day's `status`, and the habit's `stats`,
-`streakRuns` and `historyStart`, which an entry before it moves.
+The answer is the habit with its full history, as `GET /api/habits/{id}`
+sends it: an entry before the history's start moves it, which can change the
+status of other days too.
 
 ## Skipping days
 

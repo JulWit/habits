@@ -183,8 +183,21 @@ func TestEntryAnswersWithUpdatedAt(t *testing.T) {
 	}
 }
 
+// entryAnswer is the part of a habit view the entry tests read.
+type entryAnswer struct {
+	DaysFrom domain.Date    `json:"daysFrom"`
+	Days     string         `json:"days"`
+	Entries  map[string]int `json:"entries"`
+	Stats    domain.Stats   `json:"stats"`
+}
+
+// statusOn returns the status of d in the answer.
+func (a entryAnswer) statusOn(d domain.Date) domain.DayStatus {
+	return domain.DayStatus(a.Days[d.DaysSince(a.DaysFrom)])
+}
+
 // A skip is sent with the habit and keeps the streak, and a value ends it.
-// The answer carries the entry before and after.
+// The answer is the habit with the day's new status.
 func TestSkipReachesTheState(t *testing.T) {
 	h := newTestServer(t)
 	w := do(t, h, "POST", "/api/habits",
@@ -199,19 +212,14 @@ func TestSkipReachesTheState(t *testing.T) {
 	path := func(daysAgo int) string {
 		return "/api/habits/" + created.ID + "/entries/" + today.AddDate(0, 0, -daysAgo).Format("2006-01-02")
 	}
+	yesterday := domain.DateFromTime(today.AddDate(0, 0, -1))
 	mustDo(t, h, "PUT", path(2), `{"value":1}`, http.StatusOK)
-	answer := mustDo(t, h, "PUT", path(1), `{"skipped":true}`, http.StatusOK)
-	var skipped struct {
-		Value    int          `json:"value"`
-		Skipped  bool         `json:"skipped"`
-		Previous domain.Entry `json:"previous"`
-		Stats    domain.Stats `json:"stats"`
-	}
-	if err := json.Unmarshal(answer, &skipped); err != nil {
+	var answer entryAnswer
+	if err := json.Unmarshal(mustDo(t, h, "PUT", path(1), `{"skipped":true}`, http.StatusOK), &answer); err != nil {
 		t.Fatal(err)
 	}
-	if !skipped.Skipped || skipped.Value != 0 || !skipped.Previous.IsZero() {
-		t.Errorf("answer = %+v", skipped)
+	if answer.statusOn(yesterday) != domain.StatusSkipped || answer.Entries[yesterday.String()] != 0 {
+		t.Errorf("after the skip: status %c, value %d", answer.statusOn(yesterday), answer.Entries[yesterday.String()])
 	}
 	mustDo(t, h, "PUT", path(0), `{"value":1}`, http.StatusOK)
 
@@ -226,7 +234,6 @@ func TestSkipReachesTheState(t *testing.T) {
 		t.Fatal(err)
 	}
 	got := state.Habits[0]
-	yesterday := domain.DateFromTime(today.AddDate(0, 0, -1))
 	if i := yesterday.DaysSince(got.DaysFrom); got.Days[i] != byte(domain.StatusSkipped) {
 		t.Errorf("status of yesterday = %c, want skipped", got.Days[i])
 	}
@@ -235,17 +242,39 @@ func TestSkipReachesTheState(t *testing.T) {
 	}
 
 	// A value ends the skip.
-	answer = mustDo(t, h, "PUT", path(1), `{"value":1}`, http.StatusOK)
-	if err := json.Unmarshal(answer, &skipped); err != nil {
+	answer = entryAnswer{}
+	if err := json.Unmarshal(mustDo(t, h, "PUT", path(1), `{"value":1}`, http.StatusOK), &answer); err != nil {
 		t.Fatal(err)
 	}
-	if skipped.Skipped || skipped.Value != 1 {
-		t.Errorf("after a value: %+v", skipped)
+	if answer.statusOn(yesterday) != domain.StatusDone || answer.Entries[yesterday.String()] != 1 {
+		t.Errorf("after a value: status %c, value %d", answer.statusOn(yesterday), answer.Entries[yesterday.String()])
+	}
+	if answer.Stats.CurrentStreak != 3 {
+		t.Errorf("streak = %d, want 3", answer.Stats.CurrentStreak)
 	}
 
 	// Notes are gone: the field is unknown.
 	if w := do(t, h, "PUT", path(1), `{"note":"ill"}`, "application/json"); w.Code != http.StatusBadRequest {
 		t.Errorf("a note: status %d, want 400", w.Code)
+	}
+}
+
+// An entry before the history's start moves it, and the answer brings the
+// statuses of the days it changes: a limit is kept by the empty days from
+// the new start on.
+func TestEntryAnswerCoversTheMovedHistoryStart(t *testing.T) {
+	h := newTestServer(t)
+	id := createHabit(t, h, `{"name":"Sweets","kind":"count","targetValue":20,"targetType":"at_most","frequency":{"kind":"daily"}}`)
+	today := domain.Today(time.UTC)
+	between := today.AddDays(-2)
+
+	var answer entryAnswer
+	body := mustDo(t, h, "PUT", "/api/habits/"+id+"/entries/"+today.AddDays(-3).String(), `{"value":10}`, http.StatusOK)
+	if err := json.Unmarshal(body, &answer); err != nil {
+		t.Fatal(err)
+	}
+	if got := answer.statusOn(between); got != domain.StatusDone {
+		t.Errorf("status of an empty day after the new start = %c, want %c", got, domain.StatusDone)
 	}
 }
 

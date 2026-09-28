@@ -1,8 +1,6 @@
 // Client-side copy of the server state. Every change goes to the server first;
 // its response replaces the local state.
 
-import { daysBetween } from "./dates.js";
-
 export const state = {
   user: null,
   // Complete once the state is loaded.
@@ -117,21 +115,14 @@ export function dropPending(habitId, date) {
 }
 
 /**
- * Takes over the server's answer to a write of a day's entry: the stored
- * value, the day's status, and the statistics and streak runs.
+ * Takes over the server's answer to a write of a day's entry: the habit with
+ * its full history. The write of `date` is no longer pending; those of other
+ * days still are.
  */
-export function applyEntryAnswer(habitId, date, answer) {
-  changeHabit(habitId, (habit) => {
+export function applyEntryAnswer(date, view) {
+  changeHabit(view.id, (habit) => {
+    Object.assign(habit, view);
     habit.pending = withoutKey(habit.pending, date);
-    habit.entries = answer.value > 0
-      ? { ...habit.entries, [date]: answer.value }
-      : withoutKey(habit.entries, date);
-    habit.days = withStatus(habit, date, answer.status);
-    habit.stats = answer.stats;
-    habit.streakRuns = answer.streakRuns ?? [];
-    habit.historyStart = answer.historyStart;
-    // The server updates the habit's timestamp on every write.
-    if (answer.updatedAt) habit.updatedAt = answer.updatedAt;
   });
 }
 
@@ -139,17 +130,6 @@ export function applyEntryAnswer(habitId, date, answer) {
 function withoutKey(map, key) {
   const { [key]: _, ...rest } = map ?? {};
   return rest;
-}
-
-/**
- * Returns the habit's statuses with that of `date` set to `status`, if they
- * cover the day.
- */
-function withStatus(habit, date, status) {
-  if (!habit.days || !habit.daysFrom || !status) return habit.days;
-  const i = daysBetween(habit.daysFrom, date);
-  if (i < 0 || i >= habit.days.length) return habit.days;
-  return habit.days.slice(0, i) + status + habit.days.slice(i + 1);
 }
 
 export function categoryById(id) {

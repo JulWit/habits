@@ -104,7 +104,7 @@ export const api = {
     request("PUT", `/api/habits/${encodeURIComponent(id)}/archived`, { archived }),
   deleteHabit: (id) => request("DELETE", `/api/habits/${encodeURIComponent(id)}`),
   reorderHabits: (ids) => request("POST", "/api/habits/reorder", { ids }),
-  // `change` sets value, skipped or both.
+  // `change` sets value, skipped or both; answers with the habit's full view.
   setEntry: (habitId, date, change) =>
     request("PUT", `/api/habits/${encodeURIComponent(habitId)}/entries/${encodeURIComponent(date)}`, change),
   // Skips the due days without a value from `from` to `to` of the habits

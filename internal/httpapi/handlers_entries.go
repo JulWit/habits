@@ -3,37 +3,18 @@ package httpapi
 import (
 	"net/http"
 	"strconv"
-	"time"
 
 	"github.com/JulWit/habits/internal/auth"
 	"github.com/JulWit/habits/internal/domain"
 	"github.com/JulWit/habits/internal/store"
 )
 
-// setEntryResponse is the response of PUT /api/habits/{id}/entries/{date}.
-type setEntryResponse struct {
-	HabitID string      `json:"habitId"`
-	Date    domain.Date `json:"date"`
-	// The entry after the change: value and skipped.
-	domain.Entry
-	// Previous is the replaced entry.
-	Previous   domain.Entry       `json:"previous"`
-	Stats      domain.Stats       `json:"stats"`
-	StreakRuns []domain.StreakRun `json:"streakRuns"`
-	// Status is the day's status after the change (domain.DayStatus).
-	Status string `json:"status"`
-	// HistoryStart is the first day of the habit's history after the change;
-	// an entry before it moves it.
-	HistoryStart domain.Date `json:"historyStart"`
-	// UpdatedAt is the habit's updated_at after the change.
-	UpdatedAt time.Time `json:"updatedAt"`
-}
-
 // handleSetEntry changes the entry of a habit on a date: its value and
 // whether the day is skipped; a field left out stays as it is. A change that
 // records something (a value or a skip) is only accepted on due days between
 // domain.EarliestEntry and domain.EntryHorizonDays after today; removing is
-// allowed on any day.
+// allowed on any day. The answer is the habit with its full history, as an
+// entry can change the status of other days too (see domain.HistoryStart).
 func (s *Server) handleSetEntry(w http.ResponseWriter, r *http.Request) {
 	var change domain.EntryChange
 	if !decodeJSON(w, r, &change) {
@@ -46,7 +27,7 @@ func (s *Server) handleSetEntry(w http.ResponseWriter, r *http.Request) {
 	}
 	user := auth.MustUser(r.Context())
 
-	var out setEntryResponse
+	var view habitView
 	changeID, err := s.store.Update(r.Context(), user.ID, func(tx *store.Tx) error {
 		b, err := s.basis(tx)
 		if err != nil {
@@ -63,41 +44,19 @@ func (s *Server) handleSetEntry(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return err
 		}
-		next := change.Apply(previous)
-		if err := tx.SetEntries(h, map[domain.Date]domain.Entry{date: next}); err != nil {
-			return err
-		}
-		entries, err := tx.HabitEntries(h.ID)
-		if err != nil {
+		if err := tx.SetEntries(h, map[domain.Date]domain.Entry{date: change.Apply(previous)}); err != nil {
 			return err
 		}
 		tx.Record("{name} — {date}", "name", h.Name, "date", date.String())
-
-		start := domain.HistoryStart(h, entries)
-		runs := domain.StreakRuns(h, entries, b.today)
-		if runs == nil {
-			// Sent as [], as in the habit view.
-			runs = []domain.StreakRun{}
-		}
-		out = setEntryResponse{
-			HabitID:      h.ID,
-			Date:         date,
-			Entry:        next,
-			Previous:     previous,
-			Stats:        domain.ComputeStats(h, entries, b.today, b.windowDays),
-			StreakRuns:   runs,
-			Status:       string(h.Status(date, next, start, b.today)),
-			HistoryStart: start,
-			UpdatedAt:    tx.Now(),
-		}
-		return nil
+		view, err = s.fullView(tx, h.ID)
+		return err
 	})
 	if err != nil {
 		s.writeStoreError(w, err, "saving entry")
 		return
 	}
 	writeChange(w, changeID)
-	writeJSON(w, http.StatusOK, out)
+	writeJSON(w, http.StatusOK, view)
 }
 
 // checkEntryDay returns an error unless the entry of h on date may be

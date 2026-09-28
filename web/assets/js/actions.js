@@ -119,27 +119,23 @@ function isValueOnly(change) {
  * the server's answer brings the day's status. A change of the value only
  * waits in the outbox if it cannot be sent now (see canSendLater); a skip
  * needs the server. If the server rejects the change, it is taken back and
- * the state reloaded. Clearing or skipping a day offers to undo it.
+ * the state reloaded. Clearing or skipping a day offers to undo it; the
+ * server records an undo step only if the change changed something.
  */
 async function writeEntry(habit, iso, change) {
   const before = H.entryOn(habit, iso);
   let after = applied(before, change);
   showPending(habit.id, iso, after);
-  const historyStart = habit.historyStart;
 
-  let previous = before;
   let changeId = null;
   try {
-    const result = await serialize(`${habit.id}|${iso}`, () => api.setEntry(habit.id, iso, change));
+    const { changeId: id, ...view } =
+      await serialize(`${habit.id}|${iso}`, () => api.setEntry(habit.id, iso, change));
     sent(habit.id, iso);
+    changeId = id;
+    applyEntryAnswer(iso, view);
     // The entry as stored.
-    after = { value: result.value, skipped: result.skipped };
-    previous = result.previous;
-    changeId = result.changeId;
-    applyEntryAnswer(habit.id, iso, result);
-    // An entry before the history's start moves it, which changes the status
-    // of other days of a limit.
-    if (result.historyStart !== historyStart) await deps.refresh();
+    after = H.entryOn(habitById(habit.id), iso);
   } catch (err) {
     if (!canSendLater(err) || !isValueOnly(change)) {
       dropPending(habit.id, iso);
@@ -154,9 +150,9 @@ async function writeEntry(habit, iso, change) {
   // Taps show no toast, so announce them.
   announce(describeWrite(habit, when, after));
   const name = habit.name;
-  if (after.skipped && !previous.skipped) {
+  if (after.skipped && !before.skipped) {
     offerUndo(changeId, t("Day skipped: {name}, {when}", { name, when }));
-  } else if (after.value === 0 && !after.skipped && previous.value > 0) {
+  } else if (after.value === 0 && !after.skipped && before.value > 0) {
     offerUndo(changeId, t("Entry cleared: {name}, {when}", { name, when }));
   }
 }

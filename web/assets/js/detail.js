@@ -9,7 +9,7 @@ import { state } from "./state.js";
 import * as H from "./habit.js";
 import { habitIconBadge, colorValue } from "./icons.js";
 import { appBar } from "./appbar.js";
-import { statRow, factsPanel, factItem } from "./panels.js";
+import { statRow, factsPanel, factItem, rateLabel } from "./panels.js";
 import { hideTooltip } from "./tooltip.js";
 import { currentYear, yearGrid, centreToday, initChartTooltips } from "./year.js";
 
@@ -90,7 +90,7 @@ function stats(habit) {
   return statRow([
     [t("Current streak"), streakText(s.currentStreak, s.streakUnit)],
     [t("Best streak"), streakText(s.bestStreak, s.streakUnit)],
-    [t("Rate (30 days)"), `${Math.round(s.completionRate * 100)} %`],
+    [rateLabel(), `${Math.round(s.completionRate * 100)} %`],
     [t("Total"), H.formatTotal(habit, s.total)],
   ]);
 }

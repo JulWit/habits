@@ -64,7 +64,7 @@ func (s *Server) handleSetEntry(w http.ResponseWriter, r *http.Request) {
 		s.writeStoreError(w, err, "loading habit")
 		return
 	}
-	today := s.todayFor(r.Context(), user.ID)
+	today, windowDays := s.statsBasis(r.Context(), user.ID)
 	if !checkEntryDay(w, habit, date, today, records) {
 		return
 	}
@@ -99,7 +99,7 @@ func (s *Server) handleSetEntry(w http.ResponseWriter, r *http.Request) {
 		Date:       date,
 		Entry:      next,
 		Previous:   previous,
-		Stats:      domain.ComputeStats(habit, entries, today, domain.DefaultRateWindowDays),
+		Stats:      domain.ComputeStats(habit, entries, today, windowDays),
 		StreakRuns: runs,
 		UpdatedAt:  updatedAt,
 	})

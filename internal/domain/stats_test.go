@@ -253,3 +253,19 @@ func TestHabitYoungerThanTheWindow(t *testing.T) {
 		t.Errorf("rate = %.3f, want 1.000", st.CompletionRate)
 	}
 }
+
+// A window of 0 covers the whole history, a shorter one only its last days.
+func TestRateWindow(t *testing.T) {
+	h := dailyHabit()
+	h.CreatedAt = friday.AddDays(-9).Time() // ten days of history
+	entries := map[Date]int{}
+	for i := range 5 {
+		entries[friday.AddDays(-i)] = 1 // the last five days done
+	}
+	for window, want := range map[int][2]int{0: {5, 10}, 5: {5, 5}, 30: {5, 10}} {
+		st := ComputeStats(h, valued(entries), friday, window)
+		if st.Achieved != want[0] || st.Expected != want[1] {
+			t.Errorf("window %d: %d of %d, want %d of %d", window, st.Achieved, st.Expected, want[0], want[1])
+		}
+	}
+}

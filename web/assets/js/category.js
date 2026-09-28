@@ -8,7 +8,7 @@ import * as H from "./habit.js";
 import { habitIconBadge, categoryIconBadge, colorValue } from "./icons.js";
 import { appBar } from "./appbar.js";
 import { openCategoryEditor } from "./categoryeditor.js";
-import { statRow, factsPanel, factItem } from "./panels.js";
+import { statRow, factsPanel, factItem, rateLabel } from "./panels.js";
 import { rangeStart, sinceLabel, dayRecords, isPerfect, perfectStreaks } from "./year.js";
 
 let root;
@@ -75,7 +75,7 @@ function stats(habits) {
   return statRow([
     [t("Current streak"), streak === 1 ? t("1 day") : t("{n} days", { n: streak })],
     [t("Perfect days {since}", { since: sinceLabel(from) }), t("{n} of {total}", { n: perfect, total: due })],
-    [t("Rate (30 days)"), `${rate} %`],
+    [rateLabel(), `${rate} %`],
     [t("Habits"), String(habits.length)],
   ]);
 }

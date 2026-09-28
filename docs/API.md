@@ -78,6 +78,9 @@ Each habit also carries its due days as `due`, one character per day from
 `streakRuns`. What is recorded comes in three maps keyed by date: `entries`
 (the values), `skipped` (`true` for skipped days) and `notes`.
 
+Each habit's `stats` hold its streaks and the completion rate over the days of
+the `rateWindow` setting.
+
 ## Entries
 
 `PUT …/entries/{date}` changes a day's entry. The body sets any of `value`,

@@ -72,6 +72,7 @@ immediately. Missing or invalid values fall back to their defaults.
 | `showBand` | bool | Show the band in the cards |
 | `language` | `system`, `en`, `de` | UI language; `system` uses the browser's `Accept-Language`, falling back to English |
 | `timeZone` | `""` or an IANA name | Time zone for "today"; `""` uses `HABITS_TZ` |
+| `rateWindow` | `7`, `30`, `90`, `365`, `all` | Days the completion rate covers ("Completion rate over" in the overview settings); `all` covers the whole history |
 
 **Day columns**: "Automatic" shows as many days as fit. A fixed number is an
 upper limit; the dialog shows how many are actually displayed. At least seven

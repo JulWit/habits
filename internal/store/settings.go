@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log/slog"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -44,6 +45,9 @@ type Settings struct {
 	Language string `json:"language"`
 	// TimeZone is an IANA time zone name, or "" for the server's HABITS_TZ.
 	TimeZone string `json:"timeZone"`
+	// RateWindow is the number of days the completion rate covers, or "all"
+	// for the whole history; see RateWindowDays.
+	RateWindow string `json:"rateWindow"`
 }
 
 // Option is an allowed value of an enumerated setting. Label is the English
@@ -92,6 +96,13 @@ var Options = map[string][]Option{
 		{Value: "icons", Label: "Icons"},
 		{Value: "halftone", Label: "Halftone dots"},
 	},
+	"rateWindow": {
+		{Value: "7", Label: "7 days"},
+		{Value: "30", Label: "30 days"},
+		{Value: "90", Label: "90 days"},
+		{Value: "365", Label: "365 days"},
+		{Value: "all", Label: "All time"},
+	},
 	// Each language is named in its own language.
 	"language": {
 		{Value: "system", Label: "Browser language"},
@@ -121,6 +132,7 @@ func (s Settings) Validate() error {
 		checkOption("reorderMode", s.ReorderMode),
 		checkOption("pattern", s.Pattern),
 		checkOption("language", s.Language),
+		checkOption("rateWindow", s.RateWindow),
 		checkOverviewDays(s.OverviewDays),
 		checkBandColor(s.BandColor),
 		checkPercent("bandOpacity", s.BandOpacity),
@@ -155,6 +167,9 @@ func (s *Settings) resetInvalid() {
 	}
 	if checkOption("language", s.Language) != nil {
 		s.Language = d.Language
+	}
+	if checkOption("rateWindow", s.RateWindow) != nil {
+		s.RateWindow = d.RateWindow
 	}
 	if checkOverviewDays(s.OverviewDays) != nil {
 		s.OverviewDays = d.OverviewDays
@@ -239,7 +254,21 @@ func DefaultSettings() Settings {
 		BandFillOpacity: 30,
 		ShowBand:        true,
 		Language:        "system",
+		RateWindow:      "30",
 	}
+}
+
+// RateWindowDays returns the days the completion rate covers, 0 for the whole
+// history (see domain.ComputeStats).
+func (s Settings) RateWindowDays() int {
+	if s.RateWindow == "all" {
+		return 0
+	}
+	days, err := strconv.Atoi(s.RateWindow)
+	if err != nil {
+		return domain.DefaultRateWindowDays
+	}
+	return days
 }
 
 // GetSettings returns the settings of the user, or DefaultSettings if none are

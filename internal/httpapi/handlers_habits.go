@@ -116,7 +116,7 @@ func (s *Server) handleState(w http.ResponseWriter, r *http.Request) {
 	}
 	views := make([]habitView, 0, len(habits))
 	for _, h := range habits {
-		views = append(views, s.viewFor(h, entries[h.ID], today, from))
+		views = append(views, s.viewFor(h, entries[h.ID], today, from, settings.RateWindowDays()))
 	}
 
 	writeJSON(w, http.StatusOK, stateResponse{
@@ -138,12 +138,13 @@ func (s *Server) handleState(w http.ResponseWriter, r *http.Request) {
 }
 
 // viewFor returns the view of a habit. Statistics are computed from all
-// entries, but only entries and streak runs from from onwards are included. A
-// zero from includes everything.
-func (s *Server) viewFor(h domain.Habit, all map[domain.Date]domain.Entry, today, from domain.Date) habitView {
+// entries, with the completion rate over windowDays (see domain.ComputeStats),
+// but only entries and streak runs from from onwards are included. A zero
+// from includes everything.
+func (s *Server) viewFor(h domain.Habit, all map[domain.Date]domain.Entry, today, from domain.Date, windowDays int) habitView {
 	view := habitView{
 		Habit:   h,
-		Stats:   domain.ComputeStats(h, all, today, domain.DefaultRateWindowDays),
+		Stats:   domain.ComputeStats(h, all, today, windowDays),
 		Entries: map[string]int{},
 		Skipped: map[string]bool{},
 		Notes:   map[string]string{},
@@ -192,7 +193,8 @@ func (s *Server) loadView(r *http.Request, userID, habitID string) (habitView, e
 	if err != nil {
 		return habitView{}, err
 	}
-	return s.viewFor(h, entries, s.todayFor(r.Context(), userID), domain.Date{}), nil
+	today, windowDays := s.statsBasis(r.Context(), userID)
+	return s.viewFor(h, entries, today, domain.Date{}, windowDays), nil
 }
 
 // handleGetHabit returns a single habit.
@@ -273,7 +275,7 @@ func (s *Server) handleCreateHabit(w http.ResponseWriter, r *http.Request) {
 	}
 
 	user := auth.MustUser(r.Context())
-	today := s.todayFor(r.Context(), user.ID)
+	today, windowDays := s.statsBasis(r.Context(), user.ID)
 	var h domain.Habit
 	in.applyTo(&h)
 	first := domain.Schedule{From: today, TargetValue: 1, Frequency: *in.Frequency}
@@ -287,7 +289,7 @@ func (s *Server) handleCreateHabit(w http.ResponseWriter, r *http.Request) {
 		s.writeStoreError(w, err, "creating habit")
 		return
 	}
-	writeJSON(w, http.StatusCreated, s.viewFor(h, nil, today, domain.Date{}))
+	writeJSON(w, http.StatusCreated, s.viewFor(h, nil, today, domain.Date{}, windowDays))
 }
 
 // handleUpdateHabit updates the fields of a habit given in the request body.

@@ -447,6 +447,15 @@
       </label>
       <p class="field-hint" id="settings-align-hint"></p>
     </fieldset>
+
+    <label class="field">
+      <span class="field-label">Completion rate over</span>
+      <select id="settings-rate-window" class="select" autocomplete="off">
+        {{range index .Options "rateWindow"}}<option value="{{.Value}}">{{.Label}}</option>
+        {{end}}
+      </select>
+      <span class="field-hint">The rate in a habit's statistics: the share of its due days completed in this time, skipped days left out.</span>
+    </label>
   </div>
 </dialog>
 

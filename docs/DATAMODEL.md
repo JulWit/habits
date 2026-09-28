@@ -86,6 +86,12 @@ An open today does not break a streak, and skipped days neither extend nor
 break it. For `times_per_week`, the streak counts weeks; for
 `times_per_month`, months. Both are counted by `domain.period`.
 
+**Completion rate**: the share of the due days completed in the days of the
+`rateWindow` setting (30 by default, or the whole history), from the habit's
+first day on; skipped days are left out. For times-per-week and
+times-per-month habits, the window is extended to whole periods and counts
+completions (`domain.ComputeStats`).
+
 **Streak colours**: A completed day is coloured by how long its run had lasted
 on that day: one week, two weeks, a month, three months, six months, a year.
 The longer the run, the more of a gradient around the habit colour shows. Run

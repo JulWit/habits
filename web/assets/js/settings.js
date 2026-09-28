@@ -15,6 +15,7 @@ let themeInputs;
 let fontSelect;
 let densityInputs;
 let patternSelect;
+let rateWindowSelect;
 let bandChoices;
 let bandOpacity;
 let bandOpacityOut;
@@ -52,6 +53,7 @@ export function initSettings(handlers) {
   fontSelect = document.getElementById("settings-font");
   densityInputs = [...document.querySelectorAll('input[name="settings-density"]')];
   patternSelect = document.getElementById("settings-pattern");
+  rateWindowSelect = document.getElementById("settings-rate-window");
   bandChoices = document.getElementById("band-choices");
   bandOpacity = document.getElementById("band-opacity");
   bandOpacityOut = document.getElementById("band-opacity-out");
@@ -113,6 +115,11 @@ export function initSettings(handlers) {
   timeZoneSelect.addEventListener("change", () => saveTimeZone(timeZoneSelect.value));
   timeZoneDevice.addEventListener("click", () => saveTimeZone(deviceTimeZone()));
 
+  rateWindowSelect.addEventListener("change", async () => {
+    // The server computes the rate, so the statistics are reloaded.
+    if (await saveSetting({ rateWindow: rateWindowSelect.value })) await reload();
+  });
+
   archivedInput.addEventListener("change", async () => {
     await saveSetting({ showArchived: archivedInput.checked });
     // This setting changes which habits the server sends.
@@ -135,6 +142,7 @@ function paint() {
   fontSelect.value = settings.font;
   for (const input of densityInputs) input.checked = input.value === settings.density;
   patternSelect.value = settings.pattern;
+  rateWindowSelect.value = settings.rateWindow;
   paintBandChoices(settings.bandColor);
   bandOpacity.value = String(settings.bandOpacity);
   showPercent(bandOpacityOut, bandOpacity.value);

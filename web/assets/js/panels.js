@@ -1,5 +1,17 @@
-// Building blocks shared by the habit and category views: a row of stat tiles
-// and a panel listing labelled facts.
+// Building blocks shared by the habit and category views: a row of stat tiles,
+// the label of the completion rate and a panel listing labelled facts.
+
+import { state } from "./state.js";
+import { t } from "./i18n.js";
+
+/**
+ * Labels the completion rate with the window it covers, which the server
+ * takes from the rateWindow setting.
+ */
+export function rateLabel() {
+  const days = state.settings.rateWindow;
+  return days === "all" ? t("Rate (all time)") : t("Rate ({n} days)", { n: days });
+}
 
 /** Builds a row of stat tiles from [label, value] pairs. */
 export function statRow(stats) {

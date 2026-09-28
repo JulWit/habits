@@ -162,12 +162,21 @@ func (s *Server) location(settings store.Settings) *time.Location {
 // todayFor returns the current date in the user's time zone. If the settings
 // cannot be loaded, the server's time zone is used.
 func (s *Server) todayFor(ctx context.Context, userID string) domain.Date {
+	today, _ := s.statsBasis(ctx, userID)
+	return today
+}
+
+// statsBasis returns what the statistics of the user depend on besides their
+// entries: the current date in their time zone and the days their completion
+// rate covers. If the settings cannot be loaded, the server's time zone and
+// the default window are used.
+func (s *Server) statsBasis(ctx context.Context, userID string) (today domain.Date, windowDays int) {
 	settings, err := s.store.GetSettings(ctx, userID)
 	if err != nil {
 		s.log.Error("loading settings failed", "error", err, "user", userID)
-		return domain.Today(s.cfg.Location)
+		return domain.Today(s.cfg.Location), domain.DefaultRateWindowDays
 	}
-	return domain.Today(s.location(settings))
+	return domain.Today(s.location(settings)), settings.RateWindowDays()
 }
 
 // resolveLanguage returns the UI language. For "system" it returns the first

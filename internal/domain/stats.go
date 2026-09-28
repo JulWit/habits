@@ -20,12 +20,10 @@ type Stats struct {
 const DefaultRateWindowDays = 30
 
 // ComputeStats computes the statistics of a habit from all its entries. The
-// completion rate covers the last windowDays days. An open today does not
-// break a streak, and skipped days count as not due.
+// completion rate covers the last windowDays days, or the whole history for
+// 0. An open today does not break a streak, and skipped days count as not
+// due.
 func ComputeStats(h Habit, entries map[Date]Entry, today Date, windowDays int) Stats {
-	if windowDays < 1 {
-		windowDays = DefaultRateWindowDays
-	}
 	if p, ok := periodOf(h.Current().Frequency.Kind); ok {
 		return periodicStats(h, entries, today, windowDays, p)
 	}
@@ -42,6 +40,20 @@ func HistoryStart(h Habit, entries map[Date]Entry) Date {
 		}
 	}
 	return start
+}
+
+// rateStart returns the first day the completion rate covers: windowDays days
+// back from today, but not before the habit's first day start. A window of
+// 0 covers the whole history.
+func rateStart(today, start Date, windowDays int) Date {
+	if windowDays < 1 {
+		return start
+	}
+	from := today.AddDays(-(windowDays - 1))
+	if from.Before(start) {
+		return start
+	}
+	return from
 }
 
 // isDue reports whether d is a due day of the habit: scheduled and not
@@ -89,10 +101,7 @@ func dailyStats(h Habit, entries map[Date]Entry, today Date, windowDays int) Sta
 	}
 	st.CurrentStreak = run
 
-	from := today.AddDays(-(windowDays - 1))
-	if from.Before(start) {
-		from = start
-	}
+	from := rateStart(today, start, windowDays)
 	for d := from; !d.After(today); d = d.AddDays(1) {
 		if !isDue(h, entries, d) {
 			continue
@@ -119,7 +128,7 @@ func periodicStats(h Habit, entries map[Date]Entry, today Date, windowDays int, 
 	}
 
 	current := p.startOf(today)
-	windowFirst := p.startOf(today.AddDays(-(windowDays - 1)))
+	windowFirst := p.startOf(rateStart(today, start, windowDays))
 
 	run := 0
 	for first := p.startOf(start); !first.After(current); first = p.next(first) {

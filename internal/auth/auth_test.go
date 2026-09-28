@@ -1,8 +1,6 @@
 package auth
 
 import (
-	"io"
-	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"net/netip"
@@ -35,21 +33,16 @@ func trustedHeaderConfig(t *testing.T, trusted ...string) config.Config {
 	return cfg
 }
 
-// run sends one request through the middleware and reports what the handler saw.
-func run(cfg config.Config, prepare func(*http.Request)) (*httptest.ResponseRecorder, User, bool) {
-	var seen User
-	var reached bool
-	h := Middleware(cfg, slog.New(slog.NewTextHandler(io.Discard, nil)))(
-		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			seen = MustUser(r.Context())
-			reached = true
-		}))
-
+// run resolves the user of one request and reports the status of a rejected
+// one, or the user and true.
+func run(cfg config.Config, prepare func(*http.Request)) (status int, user User, reached bool) {
 	r := httptest.NewRequest("GET", "/api/state", nil)
 	prepare(r)
-	w := httptest.NewRecorder()
-	h.ServeHTTP(w, r)
-	return w, seen, reached
+	user, err := Resolve(cfg, r)
+	if err != nil {
+		return err.Status, User{}, false
+	}
+	return http.StatusOK, user, true
 }
 
 func TestSingleUserIgnoresHeaders(t *testing.T) {
@@ -74,7 +67,7 @@ func TestSingleUserIgnoresHeaders(t *testing.T) {
 func TestUntrustedPeerIsRefused(t *testing.T) {
 	cfg := trustedHeaderConfig(t, "172.18.0.0/16")
 	for _, peer := range []string{"10.0.0.5:5000", "203.0.113.9:443", "[2001:db8::1]:443"} {
-		w, _, reached := run(cfg, func(r *http.Request) {
+		status, _, reached := run(cfg, func(r *http.Request) {
 			r.RemoteAddr = peer
 			r.Header.Set("Remote-User", "admin")
 		})
@@ -82,8 +75,8 @@ func TestUntrustedPeerIsRefused(t *testing.T) {
 			t.Errorf("%s: the handler was reached anyway", peer)
 		}
 		// 403, not 401: the peer is not allowed at all.
-		if w.Code != http.StatusForbidden {
-			t.Errorf("%s: status %d, want 403", peer, w.Code)
+		if status != http.StatusForbidden {
+			t.Errorf("%s: status %d, want 403", peer, status)
 		}
 	}
 }
@@ -91,12 +84,12 @@ func TestUntrustedPeerIsRefused(t *testing.T) {
 func TestTrustedPeerIsBelieved(t *testing.T) {
 	cfg := trustedHeaderConfig(t, "172.18.0.0/16", "127.0.0.1/32")
 	for _, peer := range []string{"172.18.0.7:40000", "127.0.0.1:40000"} {
-		w, user, reached := run(cfg, func(r *http.Request) {
+		status, user, reached := run(cfg, func(r *http.Request) {
 			r.RemoteAddr = peer
 			r.Header.Set("Remote-User", "Alice")
 		})
 		if !reached {
-			t.Errorf("%s: rejected with %d", peer, w.Code)
+			t.Errorf("%s: rejected with %d", peer, status)
 			continue
 		}
 		// User IDs are lower-cased.
@@ -122,7 +115,7 @@ func TestIPv4MappedPeerMatchesItsIPv4Prefix(t *testing.T) {
 func TestTrustedPeerWithoutIdentityIs401(t *testing.T) {
 	cfg := trustedHeaderConfig(t, "127.0.0.1/32")
 	for _, header := range []string{"", "   "} {
-		w, _, reached := run(cfg, func(r *http.Request) {
+		status, _, reached := run(cfg, func(r *http.Request) {
 			r.RemoteAddr = "127.0.0.1:40000"
 			if header != "" {
 				r.Header.Set("Remote-User", header)
@@ -131,8 +124,8 @@ func TestTrustedPeerWithoutIdentityIs401(t *testing.T) {
 		if reached {
 			t.Errorf("header %q: the handler was reached", header)
 		}
-		if w.Code != http.StatusUnauthorized {
-			t.Errorf("Header %q: status %d, want 401", header, w.Code)
+		if status != http.StatusUnauthorized {
+			t.Errorf("Header %q: status %d, want 401", header, status)
 		}
 	}
 }
@@ -169,8 +162,8 @@ func TestNameFallsBackToTheIdentifier(t *testing.T) {
 	}
 }
 
-// MustUser panics outside Middleware.
-func TestMustUserPanicsWithoutMiddleware(t *testing.T) {
+// MustUser panics without a user in the context.
+func TestMustUserPanicsWithoutAUser(t *testing.T) {
 	defer func() {
 		if recover() == nil {
 			t.Error("MustUser did not panic without the middleware")

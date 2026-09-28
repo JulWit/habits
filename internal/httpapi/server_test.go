@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"net/netip"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -239,5 +240,39 @@ func TestManifestFollowsTheColorSchemeCookie(t *testing.T) {
 		if m["theme_color"] != want {
 			t.Errorf("cookie %s: theme_color = %v, want %s", cookie, m["theme_color"], want)
 		}
+	}
+}
+
+// A request authentication refuses is answered with a problem details object
+// like any other error, and never reaches the handlers.
+func TestRefusedAuthenticationIsAProblem(t *testing.T) {
+	st, err := store.Open(context.Background(), filepath.Join(t.TempDir(), "test.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { st.Close() })
+	cfg := config.Config{
+		AuthMode:   config.AuthModeTrustedHeader,
+		UserHeader: "Remote-User",
+		// httptest requests come from 192.0.2.1.
+		TrustedProxies: []netip.Prefix{netip.MustParsePrefix("127.0.0.1/32")},
+		Location:       time.UTC,
+	}
+	h, err := New(cfg, st, slog.New(slog.NewTextHandler(io.Discard, nil)), testWeb)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	w := do(t, h, "GET", "/api/state", "", "")
+	var body problemBody
+	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+		t.Fatalf("reading the answer: %v (%s)", err, w.Body)
+	}
+	if w.Code != http.StatusForbidden || body.Code != "untrusted_proxy" || body.Status != http.StatusForbidden ||
+		!strings.HasPrefix(w.Header().Get("Content-Type"), "application/problem+json") {
+		t.Errorf("status %d, Content-Type %q, body %+v", w.Code, w.Header().Get("Content-Type"), body)
+	}
+	if w.Header().Get("Content-Security-Policy") == "" {
+		t.Error("the refusal has no security headers")
 	}
 }

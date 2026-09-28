@@ -94,7 +94,7 @@ func New(cfg config.Config, st *store.Store, log *slog.Logger, webFS fs.FS) (htt
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		fmt.Fprintln(w, "ok")
 	})
-	root.Handle("/", auth.Middleware(cfg, log)(mux))
+	root.Handle("/", s.authenticate(mux))
 
 	return s.recoverPanics(s.logRequests(securityHeaders(root))), nil
 }
@@ -111,6 +111,23 @@ const contentSecurityPolicy = "default-src 'self'; " +
 	"frame-ancestors 'none'; " +
 	"base-uri 'none'; " +
 	"object-src 'none'"
+
+// authenticate stores the user of each request in its context (auth.Resolve)
+// and rejects requests without one.
+func (s *Server) authenticate(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		user, err := auth.Resolve(s.cfg, r)
+		if err != nil {
+			s.log.Warn("authentication refused",
+				"reason", err.Reason,
+				"peer", r.RemoteAddr,
+				"path", r.URL.Path)
+			writeError(w, err.Status, err.Code, err.Message)
+			return
+		}
+		next.ServeHTTP(w, r.WithContext(auth.WithUser(r.Context(), user)))
+	})
+}
 
 // securityHeaders sets security headers on every response.
 func securityHeaders(next http.Handler) http.Handler {

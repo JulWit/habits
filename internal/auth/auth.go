@@ -1,11 +1,10 @@
 // Package auth determines the user of a request, either a fixed user or from
-// the identity headers set by a trusted reverse proxy.
+// the identity headers set by a trusted reverse proxy. The HTTP server
+// answers a rejected request and stores the user in the request's context.
 package auth
 
 import (
 	"context"
-	"encoding/json"
-	"log/slog"
 	"net"
 	"net/http"
 	"net/netip"
@@ -24,67 +23,42 @@ type User struct {
 
 type ctxKey struct{}
 
-// MustUser returns the user stored by Middleware. It panics if there is none,
-// as then the handler is registered without Middleware.
+// WithUser returns ctx carrying the user of its request.
+func WithUser(ctx context.Context, u User) context.Context {
+	return context.WithValue(ctx, ctxKey{}, u)
+}
+
+// MustUser returns the user stored by WithUser. It panics if there is none,
+// as then the handler is registered without authentication.
 func MustUser(ctx context.Context) User {
 	u, ok := ctx.Value(ctxKey{}).(User)
 	if !ok {
-		panic("auth: handler registered without auth.Middleware")
+		panic("auth: handler registered without authentication")
 	}
 	return u
 }
 
-// Middleware stores the user of each request in its context and rejects
-// requests without one. In trusted-header mode, identity headers are accepted only
-// from trusted proxies.
-func Middleware(cfg config.Config, log *slog.Logger) func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			user, err := resolve(cfg, r)
-			if err != nil {
-				log.Warn("authentication refused",
-					"reason", err.Error(),
-					"peer", r.RemoteAddr,
-					"path", r.URL.Path)
-				writeProblem(w, err)
-				return
-			}
-			ctx := context.WithValue(r.Context(), ctxKey{}, user)
-			next.ServeHTTP(w, r.WithContext(ctx))
-		})
-	}
-}
-
-// authError is a rejected request: Status, Code and Message go to the client,
+// Error is a rejected request: Status, Code and Message go to the client,
 // Reason to the log.
-type authError struct {
+type Error struct {
 	Status  int
 	Code    string
 	Message string
 	Reason  string
 }
 
-// writeProblem answers a rejected request with a problem details object, in
-// the format of the API's other errors.
-func writeProblem(w http.ResponseWriter, e *authError) {
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.Header().Set("Cache-Control", "no-store")
-	w.WriteHeader(e.Status)
-	json.NewEncoder(w).Encode(map[string]any{
-		"title": http.StatusText(e.Status), "status": e.Status, "code": e.Code, "detail": e.Message,
-	})
-}
+func (e *Error) Error() string { return e.Reason }
 
-func (e *authError) Error() string { return e.Reason }
-
-// resolve determines the user of r according to cfg.AuthMode.
-func resolve(cfg config.Config, r *http.Request) (User, *authError) {
+// Resolve determines the user of r according to cfg.AuthMode. In
+// trusted-header mode, identity headers are accepted only from trusted
+// proxies.
+func Resolve(cfg config.Config, r *http.Request) (User, *Error) {
 	if cfg.AuthMode == config.AuthModeSingleUser {
 		return User{ID: cfg.DefaultUser, Name: cfg.DefaultUser}, nil
 	}
 
 	if !peerTrusted(cfg.TrustedProxies, r.RemoteAddr) {
-		return User{}, &authError{
+		return User{}, &Error{
 			Status:  http.StatusForbidden,
 			Code:    "untrusted_proxy",
 			Message: "access only through the configured reverse proxy",
@@ -94,7 +68,7 @@ func resolve(cfg config.Config, r *http.Request) (User, *authError) {
 
 	id := strings.TrimSpace(r.Header.Get(cfg.UserHeader))
 	if id == "" {
-		return User{}, &authError{
+		return User{}, &Error{
 			Status:  http.StatusUnauthorized,
 			Code:    "not_signed_in",
 			Message: "Not signed in",

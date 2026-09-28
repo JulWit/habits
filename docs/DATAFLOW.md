@@ -25,9 +25,10 @@ tap ─> actions.js ─> state.js (shown as pending)
 
 Every request passes through panic recovery, request logging and security
 headers (CSP, `nosniff`, `no-referrer`). `/healthz` is answered before
-authentication; everything else goes through `auth.Middleware`, which
-identifies the user (single-user or trusted headers) before routing to the
-handlers in `internal/httpapi`.
+authentication; everything else goes through `authenticate` in
+`internal/httpapi/server.go`, which identifies the user with `auth.Resolve`
+(single-user or trusted headers) before routing to the handlers, and answers
+a refused request like any other error.
 
 A handler works in one transaction of the user: `store.View` for reading,
 `store.Update` for changing. Within it, the handler loads the user's settings

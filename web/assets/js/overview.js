@@ -277,9 +277,29 @@ async function showWindow(next) {
   render();
 }
 
-/** Whether only habits due and still open on the active day are shown. Not
- *  persisted. */
-let onlyOpen = false;
+/** localStorage key of the filter toggle; kept per device. */
+const FILTER_KEY = "habits.filterOpen";
+
+/** Whether only habits due and still open on the active day are shown.
+ *  Persisted in localStorage, so it survives a reload. */
+let onlyOpen = loadFilter();
+
+// localStorage can be unavailable; the filter then starts off and is not kept.
+function loadFilter() {
+  try {
+    return localStorage.getItem(FILTER_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function saveFilter() {
+  try {
+    localStorage.setItem(FILTER_KEY, onlyOpen ? "1" : "0");
+  } catch {
+    // Not kept.
+  }
+}
 
 /**
  * Reports whether a habit passes the filter: with it, only habits due on the
@@ -302,10 +322,12 @@ let dragging = false;
 function initFilter() {
   const openOnly = document.getElementById("filter-open");
   openOnly.innerHTML = icons.filter;
+  openOnly.setAttribute("aria-pressed", String(onlyOpen));
 
   openOnly.addEventListener("click", () => {
     onlyOpen = !onlyOpen;
     openOnly.setAttribute("aria-pressed", String(onlyOpen));
+    saveFilter();
     render();
   });
 }

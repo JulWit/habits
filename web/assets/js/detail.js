@@ -127,10 +127,10 @@ function streakText(count, unit) {
 function stats(habit) {
   const s = habit.stats;
   return statRow([
-    [t("Current streak"), streakText(s.currentStreak, s.streakUnit)],
-    [t("Best streak"), streakText(s.bestStreak, s.streakUnit)],
-    [rateLabel(), `${Math.round(s.completionRate * 100)} %`],
-    [t("Total"), H.formatTotal(habit, s.total)],
+    [t("Current streak"), streakText(s.currentStreak, s.streakUnit), "streak"],
+    [t("Best streak"), streakText(s.bestStreak, s.streakUnit), "trophy"],
+    [rateLabel(), `${Math.round(s.completionRate * 100)} %`, "percent"],
+    [t("Total"), H.formatTotal(habit, s.total), "total"],
   ]);
 }
 

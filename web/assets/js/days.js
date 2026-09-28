@@ -41,10 +41,10 @@ export function renderDays() {
   root.replaceChildren(
     appBar({ title: t("Day statistics"), sub: year, edit: false, menu: [] }),
     stats(past),
-    heatmap(days, year),
+    highlights(past),
     weekdays(past),
     months(past),
-    highlights(past),
+    heatmap(days, year),
   );
   centreToday(root);
 }
@@ -67,10 +67,10 @@ function stats(days) {
   const { current, best } = perfectStreaks(days);
   return statRow([
     [t("Perfect days {since}", { since: sinceLabel(rangeStart()) }),
-      t("{n} of {total}", { n: perfect, total: counted.length })],
-    [t("Current streak"), dayCount(current)],
-    [t("Best streak"), dayCount(best)],
-    [t("Average per day"), percent(average(days))],
+      t("{n} of {total}", { n: perfect, total: counted.length }), "calendarCheck"],
+    [t("Current streak"), dayCount(current), "streak"],
+    [t("Best streak"), dayCount(best), "trophy"],
+    [t("Average per day"), percent(average(days)), "percent"],
   ]);
 }
 

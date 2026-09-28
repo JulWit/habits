@@ -5,6 +5,7 @@
 import { daysBetween, formatLong, localISO } from "./dates.js";
 import { state } from "./state.js";
 import { t, locale, userTimeZone } from "./i18n.js";
+import { icons } from "./icons.js";
 
 /**
  * Labels the completion rate with the window it covers, which the server
@@ -15,14 +16,20 @@ export function rateLabel() {
   return days === "all" ? t("Rate (all time)") : t("Rate ({n} days)", { n: days });
 }
 
-/** Builds a row of stat tiles from [label, value] pairs. */
+/**
+ * Builds a row of stat tiles from [label, value, icon] triples; icon names
+ * one of `icons`, shown in the tile's corner.
+ */
 export function statRow(stats) {
   const row = document.createElement("div");
   row.className = "stat-row";
-  for (const [label, value] of stats) {
+  for (const [label, value, icon] of stats) {
     const tile = document.createElement("div");
     tile.className = "stat";
-    tile.innerHTML = `<div class="value"></div><div class="label"></div>`;
+    // The icon's markup is constant (icons.js).
+    tile.innerHTML =
+      `<div class="value"></div><span class="stat-icon" aria-hidden="true">${icons[icon]}</span>` +
+      `<div class="label"></div>`;
     tile.querySelector(".value").textContent = value;
     tile.querySelector(".label").textContent = label;
     row.append(tile);

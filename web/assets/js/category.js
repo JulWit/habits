@@ -36,8 +36,8 @@ export function renderCategory(category) {
   const habits = habitsOf(category.id);
   root.replaceChildren(
     header(category),
-    stats(habits),
     details(category),
+    stats(habits),
     habitList(habits),
     activity(category),
   );
@@ -73,10 +73,10 @@ function stats(habits) {
   const rate = expected > 0 ? Math.round((achieved / expected) * 100) : 0;
 
   return statRow([
-    [t("Current streak"), streak === 1 ? t("1 day") : t("{n} days", { n: streak })],
-    [t("Perfect days {since}", { since: sinceLabel(from) }), t("{n} of {total}", { n: perfect, total: due })],
-    [rateLabel(), `${rate} %`],
-    [t("Habits"), String(habits.length)],
+    [t("Current streak"), streak === 1 ? t("1 day") : t("{n} days", { n: streak }), "streak"],
+    [t("Perfect days {since}", { since: sinceLabel(from) }), t("{n} of {total}", { n: perfect, total: due }), "calendarCheck"],
+    [rateLabel(), `${rate} %`, "percent"],
+    [t("Habits"), String(habits.length), "list"],
   ]);
 }
 

@@ -1283,20 +1283,41 @@ html.route-detail .view { padding-top: 0; }
 .overflow-item.is-danger,
 .overflow-item.is-danger svg { color: var(--danger-text); }
 
+/* The four stat tiles sit in one row while each gets at least 8rem, and two
+   by two otherwise, never three and one. The smallest column is a quarter of
+   the row while four fit (the product is negative, so clamp gives the
+   quarter) and a half otherwise (the product is huge, clamp gives the half). */
 .stat-row {
+  --four-fit: calc(4 * 8rem + 3 * var(--card-gap));
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(clamp(
+    25% - var(--card-gap),
+    (var(--four-fit) - 100%) * 999,
+    50% - var(--card-gap)), 1fr));
   gap: var(--card-gap);
   margin-bottom: var(--card-gap);
 }
 
+/* Value and label on the left, the icon in the top right corner. */
 .stat {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: calc(.5 * var(--space));
   background: var(--surface);
   border-radius: var(--radius);
   padding: calc(.8 * var(--space)) calc(.9 * var(--space));
 }
 
 .stat .value { font-size: var(--text-xl); font-weight: var(--weight-bold); letter-spacing: -.02em; }
+
+.stat .label { grid-column: 1 / -1; }
+
+.stat-icon {
+  color: var(--text-muted);
+  display: flex;
+}
+
+.stat-icon svg { width: 1.15rem; height: 1.15rem; }
 
 .stat .label,
 .activity-list dt { color: var(--text-faint); font-size: var(--text-xs); text-transform: uppercase; letter-spacing: var(--caps-spacing); }

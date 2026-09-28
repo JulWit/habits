@@ -80,6 +80,20 @@ export const icons = {
     ' 13.4 14.9 13.9 14.2 14.4 13.7 15.1 14.7 15.6 15.8 15.6 17 15.6 18.7 14 19.8 12 19.8Z"/>',
   ),
 
+  // Statistics tiles (panels.js): best streak, rate, total, perfect days and
+  // the habits of a category.
+  trophy: draw(
+    '<path d="M7 4h10v5a5 5 0 0 1-10 0z"/>' +
+    '<path d="M7 6H4v1a3 3 0 0 0 3 3M17 6h3v1a3 3 0 0 1-3 3M12 14v4M8 21h8M9.5 18h5v3h-5z"/>',
+  ),
+  percent: draw('<path d="M19 5 5 19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/>'),
+  // Rising bars: the total that has added up.
+  total: draw('<path d="M4 20h16M7 16v-3M12 16V9M17 16V5"/>'),
+  calendarCheck: draw(
+    '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M8 2v4M16 2v4M3 10h18M9 16l2 2 4-4"/>',
+  ),
+  list: draw('<path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01"/>'),
+
   // Gear with eight teeth, centred on the hub.
   gear: draw(
     '<circle cx="12" cy="12" r="3.2"/>' +
@@ -236,9 +250,7 @@ export const habitIcons = {
     'M7 2v4.2a2 2 0 0 0 .6 1.4L12 12l4.4-4.4a2 2 0 0 0 .6-1.4V2"/>',
   ),
   calendar: draw('<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M8 2v4M16 2v4M3 10h18"/>'),
-  calendarcheck: draw(
-    '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M8 2v4M16 2v4M3 10h18M9 16l2 2 4-4"/>',
-  ),
+  calendarcheck: icons.calendarCheck,
   check: icons.check,
 };
 

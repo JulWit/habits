@@ -39,18 +39,35 @@ func TestSettingsRoundTrip(t *testing.T) {
 	}
 }
 
-// A setting missing from the stored document gets its default, an invalid one
-// (such as a removed option) is reset to it, and a removed setting is ignored.
+// A setting missing from the stored document gets its default, and a removed
+// setting is ignored.
 func TestStoredSettingsFallBackToTheDefaults(t *testing.T) {
 	st := openTestStore(t)
 	if _, err := st.db.Exec(`INSERT INTO users (id, created_at) VALUES ('alice', '');
 		INSERT INTO user_settings (user_id, data, updated_at)
-		VALUES ('alice', '{"theme":"dark","font":"lato","pattern":"image","bandOpacity":500,"surfaceBlur":30}', '')`); err != nil {
+		VALUES ('alice', '{"theme":"dark","surfaceBlur":30}', '')`); err != nil {
 		t.Fatal(err)
 	}
 	want := settings.Default()
 	want.Theme = "dark"
 	if got := read(t, st, "alice", (*Tx).Settings); got != want {
 		t.Errorf("got  %+v\nwant %+v", got, want)
+	}
+}
+
+// Stored settings that cannot be read are an error, not silently replaced.
+func TestUnreadableSettingsAreAnError(t *testing.T) {
+	st := openTestStore(t)
+	if _, err := st.db.Exec(`INSERT INTO users (id, created_at) VALUES ('alice', '');
+		INSERT INTO user_settings (user_id, data, updated_at)
+		VALUES ('alice', '{"overviewDays":"many"}', '')`); err != nil {
+		t.Fatal(err)
+	}
+	err := st.View(context.Background(), "alice", func(tx *Tx) error {
+		_, err := tx.Settings()
+		return err
+	})
+	if err == nil {
+		t.Error("unreadable settings were read without an error")
 	}
 }

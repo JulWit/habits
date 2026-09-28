@@ -56,20 +56,6 @@ func TestValidateAcceptsValidValues(t *testing.T) {
 	}
 }
 
-// Repair resets invalid values to their defaults and keeps valid ones.
-func TestRepair(t *testing.T) {
-	s := Default()
-	s.Theme = "dark"
-	s.Font = "lato"
-	s.BandOpacity = 500
-	s.Repair()
-	want := Default()
-	want.Theme = "dark"
-	if s != want {
-		t.Errorf("got  %+v\nwant %+v", s, want)
-	}
-}
-
 // The rate window is a number of days, or 0 for the whole history.
 func TestRateWindowDays(t *testing.T) {
 	for window, want := range map[string]int{"7": 7, "365": 365, "all": 0, "": domain.DefaultRateWindowDays} {

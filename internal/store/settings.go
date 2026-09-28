@@ -5,14 +5,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log/slog"
 
 	"github.com/JulWit/habits/internal/settings"
 )
 
 // Settings returns the settings of the user, or settings.Default if none are
 // stored. Settings missing from the stored document get their defaults, and
-// invalid ones are repaired (settings.Settings.Repair).
+// removed ones are ignored. The stored settings were valid when they were
+// saved (SaveSettings), so removing an option needs a migration that
+// rewrites the stored values.
 func (t *Tx) Settings() (settings.Settings, error) {
 	var data string
 	err := t.queryRow(`SELECT data FROM user_settings WHERE user_id = ?`, t.userID).Scan(&data)
@@ -24,10 +25,8 @@ func (t *Tx) Settings() (settings.Settings, error) {
 	}
 	out := settings.Default()
 	if err := json.Unmarshal([]byte(data), &out); err != nil {
-		// A value of the wrong type keeps its default, like an invalid one.
-		slog.Warn("stored settings are partly unreadable", "user", t.userID, "error", err)
+		return settings.Settings{}, fmt.Errorf("reading settings: %w", err)
 	}
-	out.Repair()
 	return out, nil
 }
 

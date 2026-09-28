@@ -53,12 +53,16 @@ code has one.
 ## New setting
 
 A field in `settings.Settings` (`internal/settings`), its default in
-`Default` and, unless any value is fine, its rule in `rules`: `option(key)`
-with an entry in `Options` for a choice (the settings page renders its options
-from it), or a check function. Validation and the repair of stored values both
-follow that one list. Then its control in `index.html` and
-`settings-dialog.js`. No migration is needed; stored documents without the
-field get the default.
+`Default` and, unless any value is fine, its check in `Validate`:
+`checkOption(key, value)` with an entry in `Options` for a choice (the
+settings page renders its options from it), or a check function of its own.
+Then its control in `index.html` and `settings-dialog.js`. No migration is
+needed; stored documents without the field get the default.
+
+Removing an option, or narrowing what a check accepts, needs a migration that
+rewrites the stored values (e.g. with `json_set` on `user_settings.data`):
+stored settings are not repaired when they are read, and an invalid stored
+value would make every later save of the settings fail.
 
 ## Undo for a new action
 

@@ -1,7 +1,7 @@
 // Package settings defines the preferences of a user, their defaults and
 // their rules. The store keeps them as one JSON document, so a new setting
 // needs no migration: add a field to Settings, its default to Default and its
-// rule to rules.
+// check to Validate.
 package settings
 
 import (
@@ -63,57 +63,28 @@ func Default() Settings {
 	}
 }
 
-// rule checks one setting. Settings without a rule (the switches) accept any
-// value.
-type rule struct {
-	check func(Settings) error
-	// reset sets the setting to its value in defaults.
-	reset func(s *Settings, defaults Settings)
-}
-
-// field returns the rule of the setting get points to, which check checks.
-func field[T any](get func(*Settings) *T, check func(T) error) rule {
-	return rule{
-		check: func(s Settings) error { return check(*get(&s)) },
-		reset: func(s *Settings, defaults Settings) { *get(s) = *get(&defaults) },
-	}
-}
-
-// rules holds the rule of every setting that has one.
-var rules = []rule{
-	field(func(s *Settings) *string { return &s.Theme }, option("theme")),
-	field(func(s *Settings) *string { return &s.Font }, option("font")),
-	field(func(s *Settings) *string { return &s.Density }, option("density")),
-	field(func(s *Settings) *string { return &s.ReorderMode }, option("reorderMode")),
-	field(func(s *Settings) *string { return &s.Pattern }, option("pattern")),
-	field(func(s *Settings) *string { return &s.Language }, option("language")),
-	field(func(s *Settings) *string { return &s.RateWindow }, option("rateWindow")),
-	field(func(s *Settings) *int { return &s.OverviewDays }, checkOverviewDays),
-	field(func(s *Settings) *string { return &s.BandColor }, checkBandColor),
-	field(func(s *Settings) *int { return &s.BandOpacity }, percent("bandOpacity")),
-	field(func(s *Settings) *int { return &s.BandFillOpacity }, percent("bandFillOpacity")),
-	field(func(s *Settings) *string { return &s.TimeZone }, checkTimeZone),
-}
-
-// Validate returns a validation error for the first invalid setting.
+// Validate returns a validation error for the first invalid setting. The
+// switches accept any value.
 func (s Settings) Validate() error {
-	for _, r := range rules {
-		if err := r.check(s); err != nil {
+	for _, err := range []error{
+		checkOption("theme", s.Theme),
+		checkOption("font", s.Font),
+		checkOption("density", s.Density),
+		checkOption("reorderMode", s.ReorderMode),
+		checkOption("pattern", s.Pattern),
+		checkOption("language", s.Language),
+		checkOption("rateWindow", s.RateWindow),
+		checkOverviewDays(s.OverviewDays),
+		checkBandColor(s.BandColor),
+		checkPercent("bandOpacity", s.BandOpacity),
+		checkPercent("bandFillOpacity", s.BandFillOpacity),
+		checkTimeZone(s.TimeZone),
+	} {
+		if err != nil {
 			return err
 		}
 	}
 	return nil
-}
-
-// Repair replaces invalid values, e.g. of options removed since they were
-// saved, by their defaults.
-func (s *Settings) Repair() {
-	defaults := Default()
-	for _, r := range rules {
-		if r.check(*s) != nil {
-			r.reset(s, defaults)
-		}
-	}
 }
 
 // Option is an allowed value of an enumerated setting. Label is the English
@@ -183,32 +154,28 @@ func IsOption(key, value string) bool {
 	return slices.ContainsFunc(Options[key], func(o Option) bool { return o.Value == value })
 }
 
-// option returns the check that a value is one of the options of the setting
-// named key.
-func option(key string) func(string) error {
-	return func(value string) error {
-		if IsOption(key, value) {
-			return nil
-		}
-		var values []string
-		for _, o := range Options[key] {
-			values = append(values, o.Value)
-		}
-		return domain.Invalid("setting_not_option", "{setting} must be one of: {options}",
-			"setting", key, "options", strings.Join(values, ", "))
-	}
-}
-
-// percent returns the check that the setting named key lies between 0 and
-// 100.
-func percent(key string) func(int) error {
-	return func(value int) error {
-		if value < 0 || value > 100 {
-			return domain.Invalid("setting_out_of_range", "{setting} must be between {min} and {max}",
-				"setting", key, "min", 0, "max", 100)
-		}
+// checkOption returns an error unless value is one of the options of the
+// setting named key.
+func checkOption(key, value string) error {
+	if IsOption(key, value) {
 		return nil
 	}
+	var values []string
+	for _, o := range Options[key] {
+		values = append(values, o.Value)
+	}
+	return domain.Invalid("setting_not_option", "{setting} must be one of: {options}",
+		"setting", key, "options", strings.Join(values, ", "))
+}
+
+// checkPercent returns an error unless the setting named key lies between 0
+// and 100.
+func checkPercent(key string, value int) error {
+	if value < 0 || value > 100 {
+		return domain.Invalid("setting_out_of_range", "{setting} must be between {min} and {max}",
+			"setting", key, "min", 0, "max", 100)
+	}
+	return nil
 }
 
 // MaxOverviewDays is the upper bound of OverviewDays.

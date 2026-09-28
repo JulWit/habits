@@ -1,8 +1,10 @@
 // Building blocks shared by the habit and category views: a row of stat tiles,
-// the label of the completion rate and a panel listing labelled facts.
+// the label of the completion rate, a panel listing labelled facts, and the
+// facts of when something was created and changed.
 
+import { daysBetween, formatLong, localISO } from "./dates.js";
 import { state } from "./state.js";
-import { t } from "./i18n.js";
+import { t, locale, userTimeZone } from "./i18n.js";
 
 /**
  * Labels the completion rate with the window it covers, which the server
@@ -62,4 +64,40 @@ export function factItem(label, value, note = "") {
   }
   item.append(dt, dd);
   return item;
+}
+
+/** Builds the fact of when a habit or category was created (its createdAt). */
+export function createdItem(stamp) {
+  const day = localISO(stamp);
+  return factItem(t("Created"), formatLong(day), daysAgo(day));
+}
+
+/** Builds the fact of when a habit or category was last changed (its updatedAt). */
+export function changedItem(stamp) {
+  return factItem(t("Last changed"), formatStamp(stamp), timeAgo(stamp));
+}
+
+/** Formats the distance to today: "today", "yesterday", "5 days ago". */
+export function daysAgo(iso) {
+  const n = daysBetween(iso, state.today);
+  if (n === 0) return t("today");
+  if (n === 1) return t("yesterday");
+  return t("{n} days ago", { n });
+}
+
+/** Formats a timestamp as "Sat, 26 Sep 2026, 15:42" in the user's time zone. */
+function formatStamp(stamp) {
+  const at = new Date(stamp);
+  const time = at.toLocaleTimeString(locale,
+    { hour: "2-digit", minute: "2-digit", timeZone: userTimeZone() });
+  return `${formatLong(localISO(stamp))}, ${time}`;
+}
+
+/** Formats a timestamp as "just now", "12 min ago", "3 h ago" or in days. */
+function timeAgo(stamp) {
+  const minutes = Math.floor((Date.now() - new Date(stamp).getTime()) / 60000);
+  if (minutes < 1) return t("just now");
+  if (minutes < 60) return t("{n} min ago", { n: minutes });
+  if (minutes < 24 * 60) return t("{n} h ago", { n: Math.floor(minutes / 60) });
+  return daysAgo(localISO(stamp));
 }

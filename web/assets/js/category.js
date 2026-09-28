@@ -1,14 +1,13 @@
 // Category detail view: its habits and its perfect days, i.e. days on which
 // every scheduled habit of the category was completed.
 
-import { formatLong, localISO } from "./dates.js";
 import { t } from "./i18n.js";
 import { state } from "./state.js";
 import * as H from "./habit.js";
 import { habitIconBadge, categoryIconBadge, colorValue } from "./icons.js";
 import { appBar } from "./appbar.js";
 import { openCategoryEditor } from "./categoryeditor.js";
-import { statRow, factsPanel, factItem, rateLabel } from "./panels.js";
+import { statRow, factsPanel, factItem, rateLabel, createdItem, changedItem } from "./panels.js";
 import { rangeStart, sinceLabel, dayRecords, isPerfect, perfectStreaks } from "./year.js";
 
 let root;
@@ -40,6 +39,7 @@ export function renderCategory(category) {
     stats(habits),
     details(category),
     habitList(habits),
+    activity(category),
   );
 }
 
@@ -80,15 +80,18 @@ function stats(habits) {
   ]);
 }
 
-/**
- * Shows whether the category's progress is shown on the board and when it
- * was created.
- */
+/** Shows whether the category's progress is shown on the board. */
 function details(category) {
-  const items = [factItem(t("Progress"),
-    category.showProgress ? t("Shown on the board") : t("Not shown"))];
-  if (category.createdAt) items.push(factItem(t("Created"), formatLong(localISO(category.createdAt))));
-  return factsPanel(t("Details"), items);
+  return factsPanel(t("Details"), [factItem(t("Progress"),
+    category.showProgress ? t("Shown on the board") : t("Not shown"))]);
+}
+
+/** Shows when the category was created and last changed, as for a habit. */
+function activity(category) {
+  return factsPanel(t("Activity"), [
+    createdItem(category.createdAt),
+    changedItem(category.updatedAt),
+  ], "activity");
 }
 
 function habitList(habits) {

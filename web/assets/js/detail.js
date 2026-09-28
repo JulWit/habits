@@ -1,15 +1,16 @@
 // Habit detail view: statistics, activity chart and calendar heatmap.
 
 import {
-  addDays, daysBetween, MONTH_SHORT, MONTH_LONG, monthIndex, dayOfMonth, formatFull, formatLong,
-  formatDayMonth, localISO,
+  addDays, MONTH_SHORT, MONTH_LONG, monthIndex, dayOfMonth, formatFull, formatLong, formatDayMonth,
 } from "./dates.js";
-import { t, locale, userTimeZone } from "./i18n.js";
+import { t } from "./i18n.js";
 import { state, habitById } from "./state.js";
 import * as H from "./habit.js";
 import { habitIconBadge, colorValue, icons } from "./icons.js";
 import { appBar } from "./appbar.js";
-import { statRow, factsPanel, factItem, rateLabel } from "./panels.js";
+import {
+  statRow, factsPanel, factItem, rateLabel, createdItem, changedItem, daysAgo,
+} from "./panels.js";
 import { hideTooltip } from "./tooltip.js";
 import { currentYear, yearGrid, centreToday, initChartTooltips } from "./year.js";
 
@@ -161,14 +162,15 @@ function describeSchedule(habit, schedule) {
 }
 
 /**
- * Shows when the habit was last completed and when it was last changed
- * (the server's updatedAt).
+ * Shows when the habit was created, last completed and last changed (the
+ * server's updatedAt).
  */
 function activity(habit) {
   const done = lastDone(habit);
   return factsPanel(t("Activity"), [
+    createdItem(habit.createdAt),
     factItem(t("Last done"), done ? formatLong(done) : t("Not yet"), done ? daysAgo(done) : ""),
-    factItem(t("Last changed"), formatStamp(habit.updatedAt), timeAgo(habit.updatedAt)),
+    changedItem(habit.updatedAt),
   ], "activity");
 }
 
@@ -192,31 +194,6 @@ function lastDone(habit) {
     if (newest === null || iso > newest) newest = iso;
   }
   return newest;
-}
-
-/** Formats the distance to today: "today", "yesterday", "5 days ago". */
-function daysAgo(iso) {
-  const n = daysBetween(iso, state.today);
-  if (n === 0) return t("today");
-  if (n === 1) return t("yesterday");
-  return t("{n} days ago", { n });
-}
-
-/** Formats a timestamp as "Sat, 26 Sep 2026, 15:42" in the user's time zone. */
-function formatStamp(stamp) {
-  const at = new Date(stamp);
-  const time = at.toLocaleTimeString(locale,
-    { hour: "2-digit", minute: "2-digit", timeZone: userTimeZone() });
-  return `${formatLong(localISO(stamp))}, ${time}`;
-}
-
-/** Formats a timestamp as "just now", "12 min ago", "3 h ago" or in days. */
-function timeAgo(stamp) {
-  const minutes = Math.floor((Date.now() - new Date(stamp).getTime()) / 60000);
-  if (minutes < 1) return t("just now");
-  if (minutes < 60) return t("{n} min ago", { n: minutes });
-  if (minutes < 24 * 60) return t("{n} h ago", { n: Math.floor(minutes / 60) });
-  return daysAgo(localISO(stamp));
 }
 
 function heatmap(habit) {

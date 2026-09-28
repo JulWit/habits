@@ -34,6 +34,14 @@ export function isConnectionError(err) {
   return err?.code === "offline";
 }
 
+/**
+ * Reports whether `err` means the session at the reverse proxy has expired.
+ * Writes then wait as well, until the page is reloaded and signed in again.
+ */
+export function isSessionExpired(err) {
+  return err?.code === "session_expired";
+}
+
 // ---------- storage ----------
 
 // localStorage can be unavailable or full; offline support is then off, and
@@ -133,7 +141,8 @@ export function overlay(loaded) {
 
 /**
  * Sends the waiting writes in order with `send(habitId, date, value)`. Stops
- * at the first connection error and keeps the rest; a write the server
+ * at the first connection error or expired session and keeps the rest; a
+ * write the server
  * rejects is dropped and reported with `onRejected`. Resolves to the number
  * of writes sent.
  */
@@ -152,6 +161,8 @@ export function flush(send, onRejected) {
             setOffline(true);
             return sent;
           }
+          // Kept until the user has signed in again.
+          if (isSessionExpired(err)) return sent;
           onRejected(err, w);
         }
         discard(w.habitId, w.date, w.value);

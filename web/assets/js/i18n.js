@@ -364,6 +364,8 @@ const de = {
   "Offline": "Offline",
   "Offline — changes are kept on this device and sent later.":
     "Offline — Änderungen bleiben auf diesem Gerät und werden später gesendet.",
+  "Session expired — changes are kept on this device and sent after you reload the page.":
+    "Sitzung abgelaufen — Änderungen bleiben auf diesem Gerät und werden gesendet, sobald du die Seite neu lädst.",
   "Back online — 1 change sent": "Wieder online — 1 Änderung gesendet",
   "Back online — {n} changes sent": "Wieder online — {n} Änderungen gesendet",
   "Not sent: {error}": "Nicht gesendet: {error}",

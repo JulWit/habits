@@ -83,4 +83,11 @@ visible, and every 30 seconds. A write sets an absolute value, so for each day
 the last one wins. Writes the server rejects are dropped with a message. The
 header shows how many changes are waiting.
 
+The same happens when the session at the reverse proxy has expired: the proxy
+refuses the request (401, 403), redirects to its login page or serves it. The
+client does not follow redirects of API requests (`redirect: "manual"`), since
+a redirect to a login page on another origin would fail like a lost
+connection. The writes wait until the page is reloaded and the user has
+signed in again.
+
 Other changes (habits, categories, settings) still need a connection.

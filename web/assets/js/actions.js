@@ -12,7 +12,7 @@ import { openValueDialog } from "./value.js";
 import { formatRelative } from "./dates.js";
 import * as H from "./habit.js";
 import {
-  enqueue, discard, pending, flush, isConnectionError, isOffline, setOffline,
+  enqueue, discard, pending, flush, isConnectionError, isSessionExpired, isOffline, setOffline,
 } from "./outbox.js";
 import { t } from "./i18n.js";
 
@@ -90,10 +90,10 @@ function serialize(key, task) {
 
 /**
  * Writes a value and records the undo step. The value is shown immediately.
- * Without a connection the write waits in the outbox; if the server rejects
- * it, the state is reloaded. Undo writes back the previous value on the
- * condition that the day still holds this one, so it does not overwrite a
- * change made elsewhere in the meantime.
+ * If it cannot be sent now (see canSendLater), the write waits in the outbox;
+ * if the server rejects it, the state is reloaded. Undo writes back the
+ * previous value on the condition that the day still holds this one, so it
+ * does not overwrite a change made elsewhere in the meantime.
  */
 async function writeEntry(habit, iso, value) {
   const before = habit.entries[iso] ?? 0;
@@ -105,12 +105,12 @@ async function writeEntry(habit, iso, value) {
     sent(habit.id, iso);
     setEntryLocal(habit.id, iso, value, result);
   } catch (err) {
-    if (!isConnectionError(err)) {
+    if (!canSendLater(err)) {
       toast(errorText(err), { error: true });
       await deps.refresh();
       return;
     }
-    queue(habit.id, iso, value);
+    queue(habit.id, iso, value, err);
     // The server did not answer; the value before is known locally.
     result = { previous: before };
   }
@@ -139,7 +139,7 @@ async function writeEntry(habit, iso, value) {
 
 /**
  * Writes a value for undo or redo, on the condition that the day still holds
- * `expect`. Without a connection the write waits in the outbox, and then
+ * `expect`. If it cannot be sent now, the write waits in the outbox, and then
  * without the condition: for each day the last value wins.
  */
 async function putEntry(habitId, iso, value, expect) {
@@ -147,26 +147,63 @@ async function putEntry(habitId, iso, value, expect) {
     await api.setEntry(habitId, iso, value, expect);
     sent(habitId, iso);
   } catch (err) {
-    if (!isConnectionError(err)) throw err;
-    queue(habitId, iso, value);
+    if (!canSendLater(err)) throw err;
+    queue(habitId, iso, value, err);
   }
 }
+
+/**
+ * Reports whether a failed write can wait in the outbox: the server could not
+ * be reached, or the session at the reverse proxy has expired. Any other
+ * error is a rejection that sending again would not change.
+ */
+function canSendLater(err) {
+  return isConnectionError(err) || isSessionExpired(err);
+}
+
+/** Whether the notice about the expired session was shown since the last sent write. */
+let expiredNoticeShown = false;
 
 /** Handles a write that reached the server: a waiting older one is obsolete. */
 function sent(habitId, iso) {
   discard(habitId, iso);
   setOffline(false);
+  expiredNoticeShown = false;
 }
 
-/** Queues a write that could not be sent and says so on the first one. */
-function queue(habitId, iso, value) {
+/**
+ * Queues a write that could not be sent (see canSendLater) and says so on the
+ * first one.
+ */
+function queue(habitId, iso, value, err) {
+  if (isSessionExpired(err)) {
+    queueUntilSignedIn(habitId, iso, value, err);
+    return;
+  }
   const wasOffline = isOffline();
   setOffline(true);
   if (!enqueue(habitId, iso, value)) {
-    toast(errorText({ message: "No connection to the server", code: "offline" }), { error: true });
+    toast(errorText(err), { error: true });
     return;
   }
   if (!wasOffline) toast(t("Offline — changes are kept on this device and sent later."));
+}
+
+/**
+ * Queues a write refused for an expired session. It is sent once the page is
+ * reloaded and the user has signed in again at the reverse proxy.
+ */
+function queueUntilSignedIn(habitId, iso, value, err) {
+  if (!enqueue(habitId, iso, value)) {
+    toast(errorText(err), { error: true });
+    return;
+  }
+  if (expiredNoticeShown) return;
+  expiredNoticeShown = true;
+  toast(t("Session expired — changes are kept on this device and sent after you reload the page."), {
+    error: true,
+    timeout: 12000,
+  });
 }
 
 /**

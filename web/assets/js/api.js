@@ -16,6 +16,19 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * Reports whether the reverse proxy answered in place of the API because the
+ * session there has expired. It either refuses the request (401, 403),
+ * redirects to its login page, or serves that page directly. A followed
+ * redirect to a login page on another origin would fail like a lost
+ * connection, so redirects are not followed and show up as "opaqueredirect".
+ */
+function sessionExpired(res) {
+  if (res.status === 401 || res.status === 403) return true;
+  if (res.type === "opaqueredirect") return true;
+  return res.ok && (res.headers.get("Content-Type") ?? "").startsWith("text/html");
+}
+
 /** Sends a request, with `body` as JSON. */
 async function request(method, path, body) {
   let res;
@@ -25,13 +38,15 @@ async function request(method, path, body) {
       credentials: "same-origin",
       headers: body === undefined ? undefined : { "Content-Type": "application/json" },
       body: body === undefined ? undefined : JSON.stringify(body),
+      // The API never redirects; a redirect comes from the reverse proxy (see
+      // sessionExpired).
+      redirect: "manual",
     });
   } catch (cause) {
     throw new ApiError("No connection to the server", 0, { cause, code: "offline" });
   }
 
-  if (res.status === 401 || res.status === 403) {
-    // The session at the reverse proxy has expired.
+  if (sessionExpired(res)) {
     throw new ApiError("Session expired — please reload the page", res.status, {
       code: "session_expired",
     });

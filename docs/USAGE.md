@@ -28,7 +28,7 @@ it resets to today on reload and with "Back to today". Tapping a cell still
 writes to that cell's day, whichever day is active.
 
 Deleted habits and categories can be restored for 30 days. After that, they are
-removed permanently on the next start.
+removed permanently: on the next start, and otherwise within a day.
 
 ## Settings
 

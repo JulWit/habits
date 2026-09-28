@@ -59,18 +59,10 @@ func run(log *slog.Logger) error {
 	}
 	defer st.Close()
 
-	// Permanently remove habits and categories deleted before the retention
-	// period.
-	if n, err := st.PurgeDeleted(ctx, cfg.DeletedRetention); err != nil {
-		log.Warn("purging deleted habits failed", "error", err)
-	} else if n > 0 {
-		log.Info("permanently deleted habits removed", "count", n)
-	}
-	if n, err := st.PurgeDeletedCategories(ctx, cfg.DeletedRetention); err != nil {
-		log.Warn("purging deleted categories failed", "error", err)
-	} else if n > 0 {
-		log.Info("permanently deleted categories removed", "count", n)
-	}
+	// Deleted habits and categories are removed once their retention period
+	// is over: now, and daily for a server that runs for long.
+	purgeDeleted(ctx, st, cfg.DeletedRetention, log)
+	go purgeDaily(ctx, st, cfg.DeletedRetention, log)
 
 	handler, err := httpapi.New(cfg, st, log, webFS)
 	if err != nil {
@@ -108,4 +100,37 @@ func run(log *slog.Logger) error {
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 	return srv.Shutdown(shutdownCtx)
+}
+
+// purgeInterval is how often a running server removes expired deleted habits
+// and categories.
+const purgeInterval = 24 * time.Hour
+
+// purgeDaily calls purgeDeleted every purgeInterval until ctx is done.
+func purgeDaily(ctx context.Context, st *store.Store, retention time.Duration, log *slog.Logger) {
+	ticker := time.NewTicker(purgeInterval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			purgeDeleted(ctx, st, retention, log)
+		}
+	}
+}
+
+// purgeDeleted permanently removes habits and categories deleted longer than
+// retention ago. Failures are logged; the next run tries again.
+func purgeDeleted(ctx context.Context, st *store.Store, retention time.Duration, log *slog.Logger) {
+	if n, err := st.PurgeDeleted(ctx, retention); err != nil {
+		log.Warn("purging deleted habits failed", "error", err)
+	} else if n > 0 {
+		log.Info("permanently deleted habits removed", "count", n)
+	}
+	if n, err := st.PurgeDeletedCategories(ctx, retention); err != nil {
+		log.Warn("purging deleted categories failed", "error", err)
+	} else if n > 0 {
+		log.Info("permanently deleted categories removed", "count", n)
+	}
 }

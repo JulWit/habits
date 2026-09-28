@@ -78,8 +78,8 @@ CASCADE`; a user is recorded on their first write.
 migrations applied. See [EXTENDING.md](EXTENDING.md#new-migration) for adding a
 migration.
 
-Deleted habits and categories are soft-deleted and removed permanently on the
-first start after 30 days.
+Deleted habits and categories are soft-deleted and removed permanently after 30 days, checked on start
+and once a day.
 
 Settings are stored per user as one JSON document; see
 [USAGE.md](USAGE.md#settings).

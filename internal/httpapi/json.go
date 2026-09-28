@@ -103,14 +103,6 @@ func decodeJSONLimit(w http.ResponseWriter, r *http.Request, dst any, limit int6
 	return true
 }
 
-// setIf sets *dst to *src unless src is nil. Request bodies use nil for the
-// fields they leave unchanged.
-func setIf[T any](dst *T, src *T) {
-	if src != nil {
-		*dst = *src
-	}
-}
-
 // writeStoreError writes an error response for err: 404 for store.ErrNotFound,
 // 422 for validation errors and 500 otherwise.
 func (s *Server) writeStoreError(w http.ResponseWriter, err error, context string) {

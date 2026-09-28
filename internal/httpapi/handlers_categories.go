@@ -8,29 +8,9 @@ import (
 	"github.com/JulWit/habits/internal/store"
 )
 
-// categoryInput is the request body for creating and updating a category. Nil
-// fields are left unchanged.
-type categoryInput struct {
-	Name *string `json:"name"`
-	// Icon "" removes the icon.
-	Icon *string `json:"icon"`
-	// Color "" resets the icon colour to the default.
-	Color *string `json:"color"`
-	// ShowProgress defaults to false for new categories.
-	ShowProgress *bool `json:"showProgress"`
-}
-
-// applyTo copies the set fields of in to c.
-func (in categoryInput) applyTo(c *domain.Category) {
-	setIf(&c.Name, in.Name)
-	setIf(&c.Icon, in.Icon)
-	setIf(&c.Color, in.Color)
-	setIf(&c.ShowProgress, in.ShowProgress)
-}
-
 // handleCreateCategory creates a category. The name is required.
 func (s *Server) handleCreateCategory(w http.ResponseWriter, r *http.Request) {
-	var in categoryInput
+	var in domain.CategoryEdit
 	if !decodeJSON(w, r, &in) {
 		return
 	}
@@ -41,7 +21,7 @@ func (s *Server) handleCreateCategory(w http.ResponseWriter, r *http.Request) {
 	user := auth.MustUser(r.Context())
 
 	var c domain.Category
-	in.applyTo(&c)
+	in.Apply(&c)
 	changeID, err := s.store.Update(r.Context(), user.ID, func(tx *store.Tx) error {
 		if err := tx.CreateCategory(&c); err != nil {
 			return err
@@ -60,7 +40,7 @@ func (s *Server) handleCreateCategory(w http.ResponseWriter, r *http.Request) {
 // handleUpdateCategory updates the fields of a category given in the request
 // body.
 func (s *Server) handleUpdateCategory(w http.ResponseWriter, r *http.Request) {
-	var in categoryInput
+	var in domain.CategoryEdit
 	if !decodeJSON(w, r, &in) {
 		return
 	}
@@ -73,7 +53,7 @@ func (s *Server) handleUpdateCategory(w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 		tx.Record(`Category "{name}" edited`, "name", c.Name)
-		in.applyTo(&c)
+		in.Apply(&c)
 		return tx.SaveCategory(&c)
 	})
 	if err != nil {

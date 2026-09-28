@@ -222,42 +222,10 @@ func (s *Server) handleGetHabit(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, view)
 }
 
-// habitInput is the request body for creating and editing a habit: what the
-// editor shows. Nil fields are left unchanged.
-type habitInput struct {
-	Name  *string `json:"name"`
-	Color *string `json:"color"`
-	// Icon "" removes the icon.
-	Icon *string      `json:"icon"`
-	Kind *domain.Kind `json:"kind"`
-	// CategoryID "" removes the habit from its category.
-	CategoryID *string `json:"categoryId"`
-	StepValue  *int    `json:"stepValue"`
-	Unit       *string `json:"unit"`
-	// TargetValue, TargetType and Frequency change the current schedule, from
-	// today on.
-	TargetValue *int               `json:"targetValue"`
-	TargetType  *domain.TargetType `json:"targetType"`
-	Frequency   *domain.Frequency  `json:"frequency"`
-	// Retroactive applies a new target or frequency to the past days as well,
-	// instead of from today on.
-	Retroactive bool `json:"retroactive"`
-}
-
-// edit returns the input as a domain.HabitEdit.
-func (in habitInput) edit() domain.HabitEdit {
-	return domain.HabitEdit{
-		Name: in.Name, Color: in.Color, Icon: in.Icon, Kind: in.Kind, CategoryID: in.CategoryID,
-		StepValue: in.StepValue, Unit: in.Unit,
-		TargetValue: in.TargetValue, TargetType: in.TargetType, Frequency: in.Frequency,
-		Retroactive: in.Retroactive,
-	}
-}
-
 // handleCreateHabit creates a habit. Name, kind and frequency are required.
 // The first schedule starts on the user's today.
 func (s *Server) handleCreateHabit(w http.ResponseWriter, r *http.Request) {
-	var in habitInput
+	var in domain.HabitEdit
 	if !decodeJSON(w, r, &in) {
 		return
 	}
@@ -273,7 +241,7 @@ func (s *Server) handleCreateHabit(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return err
 		}
-		h := domain.NewHabit(in.edit(), b.today)
+		h := domain.NewHabit(in, b.today)
 		if err := tx.CreateHabit(&h); err != nil {
 			return err
 		}
@@ -294,7 +262,7 @@ func (s *Server) handleCreateHabit(w http.ResponseWriter, r *http.Request) {
 // starts a new schedule from today on unless it is retroactive, and a change
 // of kind converts the recorded history.
 func (s *Server) handleUpdateHabit(w http.ResponseWriter, r *http.Request) {
-	var in habitInput
+	var in domain.HabitEdit
 	if !decodeJSON(w, r, &in) {
 		return
 	}
@@ -316,7 +284,7 @@ func (s *Server) handleUpdateHabit(w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 		name := h.Name
-		converted, err := h.Apply(in.edit(), entries, b.today)
+		converted, err := h.Apply(in, entries, b.today)
 		if err != nil {
 			return err
 		}

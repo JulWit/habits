@@ -15,9 +15,9 @@ migrated database ends up with the schema of a new one.
    field should be versioned, like the target)
 2. Column via migration
 3. Read and write in `internal/store/habits.go`
-4. Pointer field in `habitInput` (`internal/httpapi/handlers_habits.go`)
-5. The same field in `domain.HabitEdit` and its `applyFields`
-6. Input in `web/assets/js/habit-editor.js`
+4. Pointer field with a JSON tag in `domain.HabitEdit` (the request body of
+   creating and editing) and its `applyFields`
+5. Input in `web/assets/js/habit-editor.js`
 
 Undo restores it without further work, as undo steps keep whole rows (see
 [DATAFLOW.md](DATAFLOW.md#undo)).

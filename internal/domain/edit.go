@@ -8,25 +8,25 @@ const EntryHorizonDays = 365
 // EarliestEntry is the earliest date an entry may have.
 var EarliestEntry = Date{Year: 2000, Month: time.January, Day: 1}
 
-// HabitEdit is a change of a habit as the editor saves it. Nil fields are
-// left unchanged.
+// HabitEdit is a change of a habit as the editor saves it, and the request
+// body of creating and editing one. Nil fields are left unchanged.
 type HabitEdit struct {
-	Name  *string
-	Color *string
+	Name  *string `json:"name"`
+	Color *string `json:"color"`
 	// Icon "" removes the icon.
-	Icon *string
-	Kind *Kind
+	Icon *string `json:"icon"`
+	Kind *Kind   `json:"kind"`
 	// CategoryID "" removes the habit from its category.
-	CategoryID *string
-	StepValue  *int
-	Unit       *string
+	CategoryID *string `json:"categoryId"`
+	StepValue  *int    `json:"stepValue"`
+	Unit       *string `json:"unit"`
 	// TargetValue, TargetType and Frequency change the current schedule.
-	TargetValue *int
-	TargetType  *TargetType
-	Frequency   *Frequency
+	TargetValue *int        `json:"targetValue"`
+	TargetType  *TargetType `json:"targetType"`
+	Frequency   *Frequency  `json:"frequency"`
 	// Retroactive applies a new target or frequency to the past days as well,
 	// instead of from today on.
-	Retroactive bool
+	Retroactive bool `json:"retroactive"`
 }
 
 // changesSchedule reports whether e changes the current schedule.

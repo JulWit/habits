@@ -20,6 +20,26 @@ type Category struct {
 	UpdatedAt    time.Time `json:"updatedAt"`
 }
 
+// CategoryEdit is a change of a category, and the request body of creating
+// and editing one. Nil fields are left unchanged.
+type CategoryEdit struct {
+	Name *string `json:"name"`
+	// Icon "" removes the icon.
+	Icon *string `json:"icon"`
+	// Color "" resets the icon colour to the default.
+	Color *string `json:"color"`
+	// ShowProgress defaults to false for new categories.
+	ShowProgress *bool `json:"showProgress"`
+}
+
+// Apply copies the set fields of e to c. c is validated when it is saved.
+func (e CategoryEdit) Apply(c *Category) {
+	setIf(&c.Name, e.Name)
+	setIf(&c.Icon, e.Icon)
+	setIf(&c.Color, e.Color)
+	setIf(&c.ShowProgress, e.ShowProgress)
+}
+
 // MaxCategoryNameLen is the maximum length of a category name, in characters.
 const MaxCategoryNameLen = 60
 

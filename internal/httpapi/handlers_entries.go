@@ -65,20 +65,20 @@ func (s *Server) handleSetEntry(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Loaded before the write, as a value needs a due day; the write does not
+	// change the habit's rules, so its statistics are computed from it after.
+	habit, err := s.store.GetHabit(r.Context(), user.ID, habitID)
+	if err != nil {
+		s.writeStoreError(w, err, "loading habit")
+		return
+	}
 	// Clearing an entry is allowed on any day.
-	if body.Value > 0 {
-		habit, err := s.store.GetHabit(r.Context(), user.ID, habitID)
-		if err != nil {
-			s.writeStoreError(w, err, "loading habit")
-			return
-		}
-		if !habit.IsScheduled(date) {
-			writeError(w, http.StatusUnprocessableEntity, "not_scheduled", "The habit is not scheduled on this day")
-			return
-		}
+	if body.Value > 0 && !habit.IsScheduled(date) {
+		writeError(w, http.StatusUnprocessableEntity, "not_scheduled", "The habit is not scheduled on this day")
+		return
 	}
 
-	previous, err := s.store.SetEntry(r.Context(), user.ID, habitID, date, body.Value, body.Expect)
+	previous, updatedAt, err := s.store.SetEntry(r.Context(), user.ID, habitID, date, body.Value, body.Expect)
 	if errors.Is(err, store.ErrConflict) {
 		writeProblemBody(w, problemBody{
 			Status: http.StatusConflict,
@@ -92,19 +92,24 @@ func (s *Server) handleSetEntry(w http.ResponseWriter, r *http.Request) {
 		s.writeStoreError(w, err, "saving entry")
 		return
 	}
-	view, err := s.loadView(r, user.ID, habitID)
+	entries, err := s.store.EntriesForHabit(r.Context(), user.ID, habitID)
 	if err != nil {
-		s.writeStoreError(w, err, "loading habit")
+		s.writeStoreError(w, err, "loading entries")
 		return
 	}
 
+	runs := domain.StreakRuns(habit, entries, today)
+	if runs == nil {
+		// Sent as [], as in the habit view.
+		runs = []domain.StreakRun{}
+	}
 	writeJSON(w, http.StatusOK, setEntryResponse{
 		HabitID:    habitID,
 		Date:       date,
 		Value:      body.Value,
 		Previous:   previous,
-		Stats:      view.Stats,
-		StreakRuns: view.StreakRuns,
-		UpdatedAt:  view.UpdatedAt,
+		Stats:      domain.ComputeStats(habit, entries, today, domain.DefaultRateWindowDays),
+		StreakRuns: runs,
+		UpdatedAt:  updatedAt,
 	})
 }

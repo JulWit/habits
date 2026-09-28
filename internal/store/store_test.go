@@ -112,7 +112,7 @@ func TestDeleteUserRemovesAllTheirData(t *testing.T) {
 	h := countHabit(domain.KindCount, 10)
 	h.CategoryID = cat.ID
 	h = mustCreateHabit(t, st, "alice", h)
-	if _, err := st.SetEntry(ctx, "alice", h.ID, day(2026, time.January, 5), 20, nil); err != nil {
+	if _, _, err := st.SetEntry(ctx, "alice", h.ID, day(2026, time.January, 5), 20, nil); err != nil {
 		t.Fatalf("SetEntry: %v", err)
 	}
 	if _, err := st.UpdateSettings(ctx, "alice", func(s *Settings) error { s.Theme = "dark"; return nil }); err != nil {

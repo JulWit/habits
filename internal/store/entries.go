@@ -76,17 +76,19 @@ func (s *Store) EntriesForHabit(ctx context.Context, userID, habitID string) (ma
 }
 
 // SetEntry sets the value of a habit on date and returns the previous value,
-// 0 without an entry. A value of 0 deletes the entry.
+// 0 without an entry, and the habit's new updated_at. A value of 0 deletes
+// the entry.
 //
 // With expect, the write is conditional: it only happens while the stored
 // value is still *expect. Otherwise nothing changes and SetEntry returns
 // ErrConflict with the stored value as previous. Undo uses it so that it does
 // not overwrite a change made elsewhere in the meantime.
-func (s *Store) SetEntry(ctx context.Context, userID, habitID string, date domain.Date, value int, expect *int) (previous int, err error) {
+func (s *Store) SetEntry(ctx context.Context, userID, habitID string, date domain.Date, value int, expect *int) (previous int, updatedAt time.Time, err error) {
 	if date.IsZero() {
-		return 0, domain.Invalid("date_missing", "date is missing")
+		return 0, time.Time{}, domain.Invalid("date_missing", "date is missing")
 	}
 
+	updatedAt = time.Now().UTC()
 	err = s.inTx(ctx, "saving entry", func(tx *sql.Tx) error {
 		// Check ownership and load the kind, which bounds the value.
 		var kind domain.Kind
@@ -112,7 +114,7 @@ func (s *Store) SetEntry(ctx context.Context, userID, habitID string, date domai
 			return ErrConflict
 		}
 
-		now := formatTime(time.Now())
+		now := formatTime(updatedAt)
 		if value == 0 {
 			// Days without a value have no row.
 			_, err = tx.ExecContext(ctx,
@@ -129,5 +131,9 @@ func (s *Store) SetEntry(ctx context.Context, userID, habitID string, date domai
 		_, err = tx.ExecContext(ctx, `UPDATE habits SET updated_at = ? WHERE id = ?`, now, habitID)
 		return err
 	})
-	return previous, err
+	if err != nil {
+		// previous holds the stored value on ErrConflict.
+		return previous, time.Time{}, err
+	}
+	return previous, updatedAt, nil
 }

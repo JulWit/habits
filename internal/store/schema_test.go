@@ -14,7 +14,7 @@ func TestSchemaConstraints(t *testing.T) {
 	ctx := context.Background()
 	st := openTestStore(t)
 	h := mustCreateHabit(t, st, "alice", countHabit(domain.KindCount, 10))
-	if _, err := st.SetEntry(ctx, "alice", h.ID, day(2026, time.March, 1), 10, nil); err != nil {
+	if _, _, err := st.SetEntry(ctx, "alice", h.ID, day(2026, time.March, 1), 10, nil); err != nil {
 		t.Fatal(err)
 	}
 

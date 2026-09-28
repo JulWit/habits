@@ -21,7 +21,7 @@ func TestHabitsAreScopedToTheirUser(t *testing.T) {
 	if err := st.SoftDeleteHabit(ctx, "someone-else", mine.ID); !errors.Is(err, ErrNotFound) {
 		t.Errorf("SoftDelete foreign: %v, want ErrNotFound", err)
 	}
-	if _, err := st.SetEntry(ctx, "someone-else", mine.ID, day(2026, time.September, 18), 1, nil); !errors.Is(err, ErrNotFound) {
+	if _, _, err := st.SetEntry(ctx, "someone-else", mine.ID, day(2026, time.September, 18), 1, nil); !errors.Is(err, ErrNotFound) {
 		t.Errorf("SetEntry foreign: %v, want ErrNotFound", err)
 	}
 	habits, err := st.ListHabits(ctx, "someone-else", true)
@@ -41,7 +41,7 @@ func TestUpdateHabitReplacesTheEntries(t *testing.T) {
 	h := mustCreateHabit(t, st, "alice", countHabit(domain.KindDistance, 5000))
 	friday, saturday := day(2026, time.September, 18), day(2026, time.September, 19)
 	for _, d := range []domain.Date{friday, saturday} {
-		if _, err := st.SetEntry(ctx, "alice", h.ID, d, 5200, nil); err != nil {
+		if _, _, err := st.SetEntry(ctx, "alice", h.ID, d, 5200, nil); err != nil {
 			t.Fatalf("SetEntry: %v", err)
 		}
 	}
@@ -64,7 +64,7 @@ func TestUpdateHabitKeepsTheEntries(t *testing.T) {
 	ctx := context.Background()
 	st := openTestStore(t)
 	h := mustCreateHabit(t, st, "alice", countHabit(domain.KindCount, 80))
-	if _, err := st.SetEntry(ctx, "alice", h.ID, day(2026, time.September, 18), 50, nil); err != nil {
+	if _, _, err := st.SetEntry(ctx, "alice", h.ID, day(2026, time.September, 18), 50, nil); err != nil {
 		t.Fatalf("SetEntry: %v", err)
 	}
 
@@ -141,7 +141,7 @@ func TestSoftDeleteKeepsTheHistory(t *testing.T) {
 	st := openTestStore(t)
 	h := mustCreateHabit(t, st, "alice", countHabit(domain.KindCheck, 1))
 	day := day(2026, time.September, 18)
-	if _, err := st.SetEntry(ctx, "alice", h.ID, day, 1, nil); err != nil {
+	if _, _, err := st.SetEntry(ctx, "alice", h.ID, day, 1, nil); err != nil {
 		t.Fatalf("SetEntry: %v", err)
 	}
 

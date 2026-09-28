@@ -75,9 +75,9 @@
 <!-- Style guide, only reachable at #/styleguide. -->
 <main id="view-styleguide" class="view" hidden></main>
 
-<!-- Pages: full-screen dialogs with a back button, stacked (see pages.js). -->
+<!-- Pages: full-screen dialogs with a back button, stacked (see page-stack.js). -->
 <!-- The two editors are full-screen dialogs: they slide up, close with ✕ and
-     ask before discarding changes (see pages.js). On wide screens they, and
+     ask before discarding changes (see page-stack.js). On wide screens they, and
      the category picker opened from them, float as dialogs (is-floating). -->
 <dialog id="editor" class="dialog page is-sheet is-floating" aria-labelledby="editor-title">
   <form id="editor-form" method="dialog">
@@ -120,7 +120,7 @@
           <label><input type="radio" name="kind" value="time"><span data-icon="clock">Time</span></label>
           <label><input type="radio" name="kind" value="distance"><span data-icon="navigation">Distance</span></label>
         </div>
-        <!-- Shown when the kind of a habit with entries changes; set by editor.js. -->
+        <!-- Shown when the kind of a habit with entries changes; set by habit-editor.js. -->
         <p class="field-hint" id="editor-kind-hint" hidden></p>
       </fieldset>
 
@@ -281,7 +281,7 @@
     <h2 id="settings-title">Settings</h2>
   </header>
   <div class="page-body">
-    <!-- The signed-in user, filled by settings.js. -->
+    <!-- The signed-in user, filled by settings-dialog.js. -->
     <section class="account" aria-label="Current user">
       <span class="account-avatar" id="account-avatar" aria-hidden="true"></span>
       <div class="account-text">
@@ -325,7 +325,7 @@
     <nav class="menu" aria-label="About the app">
       <button type="button" class="menu-item" data-open-page="settings-version">
         <span class="menu-icon" data-icon="info" aria-hidden="true"></span>
-        <!-- The hint shows the version (settings.js). -->
+        <!-- The hint shows the version (settings-dialog.js). -->
         <span class="menu-text"><span class="menu-title">Version</span><span class="menu-hint" id="settings-version-hint"></span></span>
         <span class="menu-caret" data-icon="chevronRight" aria-hidden="true"></span>
       </button>
@@ -339,7 +339,7 @@
     <h2 id="settings-version-title">Version</h2>
   </header>
   <div class="page-body">
-    <!-- Filled by settings.js. -->
+    <!-- Filled by settings-dialog.js. -->
     <dl class="facts" id="version-facts"></dl>
   </div>
 </dialog>
@@ -480,7 +480,7 @@
     <div class="field">
       <label>
         <span class="field-label">Time zone</span>
-        <!-- Filled by settings.js. -->
+        <!-- Filled by settings-dialog.js. -->
         <select id="settings-timezone" class="select" autocomplete="off"></select>
       </label>
       <p class="field-hint" id="settings-timezone-hint"></p>
@@ -545,7 +545,7 @@
   </form>
 </dialog>
 
-<!-- Settings errors; settings.js moves it into the open settings page. -->
+<!-- Settings errors; settings-dialog.js moves it into the open settings page. -->
 <p id="settings-error" class="error" hidden></p>
 
 <dialog id="category-dialog" class="dialog page is-floating" aria-labelledby="category-dialog-title">
@@ -564,7 +564,7 @@
   </div>
 </dialog>
 
-<!-- Category dialog, opened from the category view (see categoryeditor.js). -->
+<!-- Category dialog, opened from the category view (see category-editor.js). -->
 <dialog id="category-editor" class="dialog page is-sheet is-floating" aria-labelledby="category-editor-title">
   <form id="category-editor-form" method="dialog">
     <header class="page-head">
@@ -604,7 +604,7 @@
 </dialog>
 
 <!-- Skipping a range of days of one habit or of all, e.g. for a holiday (see
-     skip.js). -->
+     skip-editor.js). -->
 <dialog id="skip-dialog" class="dialog page is-sheet is-floating" aria-labelledby="skip-title">
   <form id="skip-form" method="dialog">
     <header class="page-head">
@@ -640,7 +640,7 @@
   </form>
 </dialog>
 
-<!-- Search dialog (see search.js). The input controls the list like a
+<!-- Search dialog (see search-dialog.js). The input controls the list like a
      combobox. -->
 <dialog id="search-dialog" class="dialog search-dialog" aria-label="Search">
   <div class="search-field">
@@ -657,7 +657,7 @@
 </dialog>
 
 <!-- Day dialog, opened by a long press or right-click on a day cell: the
-     value and whether the day is skipped (see value.js). -->
+     value and whether the day is skipped (see day-editor.js). -->
 <dialog id="value-popover" class="dialog compact" aria-labelledby="value-title">
   <form id="value-form" method="dialog">
     <h2 id="value-title" class="dialog-head">Enter value</h2>
@@ -692,7 +692,7 @@
   </form>
 </dialog>
 
-<!-- Asks before an editor with unsaved changes closes (see pages.js). The
+<!-- Asks before an editor with unsaved changes closes (see page-stack.js). The
      first button, keeping the changes, gets the focus. -->
 <dialog id="discard-dialog" class="dialog compact" aria-labelledby="discard-title">
   <form method="dialog">

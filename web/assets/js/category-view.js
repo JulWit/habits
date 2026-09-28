@@ -3,14 +3,14 @@
 
 import { t } from "./i18n.js";
 import { state, categoryById } from "./state.js";
-import * as H from "./habit.js";
+import * as H from "./habit-helpers.js";
 import { habitIconBadge, categoryIconBadge, colorValue } from "./icons.js";
-import { appBar } from "./appbar.js";
-import { openCategoryEditor } from "./categoryeditor.js";
-import { statRow, factsPanel, factItem, rateLabel, createdItem, changedItem } from "./panels.js";
-import { currentYear, sinceLabel } from "./year.js";
+import { appBar } from "./app-bar.js";
+import { openCategoryEditor } from "./category-editor.js";
+import { statRow, factsPanel, factItem, rateLabel, createdItem, changedItem } from "./stat-panels.js";
+import { currentYear, sinceLabel } from "./year-grid.js";
 import { api } from "./api.js";
-import { remote } from "./remote.js";
+import { remote } from "./remote-stats.js";
 import { el } from "./dom.js";
 
 let root;

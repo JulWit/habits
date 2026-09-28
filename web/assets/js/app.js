@@ -4,17 +4,17 @@
 import { api } from "./api.js";
 import { state, replaceState, habitById, upsertHabit, subscribe } from "./state.js";
 import { setChangeHandler, toast, errorText, undoLast, redoLast } from "./undo.js";
-import { initOverview, render as renderOverview, currentDays } from "./overview.js";
-import { initDetail, renderDetail } from "./detail.js";
-import { initCategory, renderCategory } from "./category.js";
-import { initDays, renderDays } from "./days.js";
-import { initEditor } from "./editor.js";
-import { initCategoryPicker } from "./categorypicker.js";
-import { initCategoryEditor } from "./categoryeditor.js";
-import { initSettings } from "./settings.js";
-import { initValueDialog } from "./value.js";
-import { initSkipDialog, openSkipDialog } from "./skip.js";
-import { initSearch, openSearch } from "./search.js";
+import { initOverview, render as renderOverview, currentDays } from "./board-view.js";
+import { initDetail, renderDetail } from "./habit-view.js";
+import { initCategory, renderCategory } from "./category-view.js";
+import { initDays, renderDays } from "./day-stats-view.js";
+import { initEditor } from "./habit-editor.js";
+import { initCategoryPicker } from "./category-picker.js";
+import { initCategoryEditor } from "./category-editor.js";
+import { initSettings } from "./settings-dialog.js";
+import { initValueDialog } from "./day-editor.js";
+import { initSkipDialog, openSkipDialog } from "./skip-editor.js";
+import { initSearch, openSearch } from "./search-dialog.js";
 import * as actions from "./actions.js";
 import { paintIcons } from "./icons.js";
 import { definePatterns } from "./patterns.js";
@@ -279,7 +279,7 @@ async function showStyleguide() {
   if (styleguideDrawn) return;
   styleguideDrawn = true;
   try {
-    const module = await import("./styleguide.js");
+    const module = await import("./style-guide-view.js");
     module.renderStyleguide(styleguideView);
   } catch (err) {
     styleguideDrawn = false;

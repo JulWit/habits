@@ -94,7 +94,7 @@ completions (`domain.ComputeStats`).
 on that day: one week, two weeks, a month, three months, six months, a year.
 The longer the run, the more of a gradient around the habit colour shows. Run
 lengths are in calendar days. The server sends the runs as `streakRuns`
-(`domain.StreakRuns`); the colouring is in `habit.js`.
+(`domain.StreakRuns`); the colouring is in `habit-helpers.js`.
 
 ## Colours
 

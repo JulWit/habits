@@ -5,7 +5,7 @@
 import { state } from "./state.js";
 import { addDays } from "./dates.js";
 import { errorText } from "./undo.js";
-import { openPage, closePage } from "./pages.js";
+import { openPage, closePage } from "./page-stack.js";
 
 let dialog;
 let form;

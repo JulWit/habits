@@ -9,11 +9,11 @@ import {
 import { t } from "./i18n.js";
 import { state } from "./state.js";
 import { api } from "./api.js";
-import { remote } from "./remote.js";
-import { appBar } from "./appbar.js";
-import { statRow, factsPanel, factItem } from "./panels.js";
+import { remote } from "./remote-stats.js";
+import { appBar } from "./app-bar.js";
+import { statRow, factsPanel, factItem } from "./stat-panels.js";
 import { hideTooltip } from "./tooltip.js";
-import { currentYear, sinceLabel, yearGrid, centreToday, initChartTooltips } from "./year.js";
+import { currentYear, sinceLabel, yearGrid, centreToday, initChartTooltips } from "./year-grid.js";
 import { el } from "./dom.js";
 
 let root;

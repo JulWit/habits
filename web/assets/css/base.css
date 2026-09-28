@@ -102,14 +102,15 @@
   /* Dimmed disabled controls. */
   --disabled-opacity: .45;
   /* Card padding. The side padding keeps the day columns and the today band
-     clear of the rounded corners. In px, as overview.js reads it as a number. */
+     clear of the rounded corners. In px, as board-view.js reads it as a
+     number. */
   --block-pad: calc(.35 * var(--space));
   --block-pad-x: 12px;
   /* Page gutter left and right of title bar and view. Does not scale with
      density. */
   --gutter: 1rem;
   /* Width of the reorder column: one drag handle (two arrows in button mode,
-     see below). In px, as overview.js reads it as a number. */
+     see below). In px, as board-view.js reads it as a number. */
   --tools-col: 32px;
   /* Insets for the reorder column in the block heading and the card surface.
      Reset to zero below when there are no handles. */
@@ -126,7 +127,7 @@
   /* Height of the sticky title bar including its border. */
   --topbar-row: calc(2.25rem + 1.25 * var(--space));
   --topbar-h: calc(var(--topbar-row) + 1px);
-  /* Width of the habit name column. Read by overview.js; every 42px here cost
+  /* Width of the habit name column. Read by board-view.js; every 42px here cost
      one day column. */
   --label-min: 176px;
   --label-col: minmax(var(--label-min), 1fr);
@@ -158,7 +159,7 @@ html[data-font="opensans"] { --font: "Open Sans", var(--font-system); }
 
    All spacing is a multiple of --space, so the density scales it globally.
    Compact lowers font weights by 50, comfortable raises them; regular text
-   stays at 400. --cell is written out in px, as overview.js reads it as a
+   stays at 400. --cell is written out in px, as board-view.js reads it as a
    number. The page gutter does not scale (see .view). */
 :root {
   /* Gap between cards: on the board, in the settings and the detail views. */
@@ -204,7 +205,7 @@ html[data-density="comfortable"] {
 
 /* ---------- a tight board ----------
 
-   If seven columns do not fit, overview.js sets data-tight on <html> and
+   If seven columns do not fit, board-view.js sets data-tight on <html> and
    smaller --cell and --label-min values inline. These are the lower bounds, in
    px. */
 :root {

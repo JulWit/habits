@@ -17,7 +17,7 @@ migrated database ends up with the schema of a new one.
 3. Read and write in `internal/store/habits.go`
 4. Pointer field in `habitInput` (`internal/httpapi/handlers_habits.go`)
 5. The same field in `domain.HabitEdit` and its `applyFields`
-6. Input in `web/assets/js/editor.js`
+6. Input in `web/assets/js/habit-editor.js`
 
 Undo restores it without further work, as undo steps keep whole rows (see
 [DATAFLOW.md](DATAFLOW.md#undo)).
@@ -56,8 +56,9 @@ A field in `settings.Settings` (`internal/settings`), its default in
 `Default` and, unless any value is fine, its rule in `rules`: `option(key)`
 with an entry in `Options` for a choice (the settings page renders its options
 from it), or a check function. Validation and the repair of stored values both
-follow that one list. Then its control in `index.html` and `settings.js`. No
-migration is needed; stored documents without the field get the default.
+follow that one list. Then its control in `index.html` and
+`settings-dialog.js`. No migration is needed; stored documents without the
+field get the default.
 
 ## Undo for a new action
 
@@ -73,8 +74,8 @@ undo should cover needs its primary key in `primaryKeys`.
 
 Compute it in `internal/domain` and send it from the server, in the habit view
 or an endpoint of its own (see `handlers_stats.go`); a view loads the latter
-with `remote()` (`web/assets/js/remote.js`). The client shows statistics, it
-does not compute them.
+with `remote()` (`web/assets/js/remote-stats.js`). The client shows
+statistics, it does not compute them.
 
 ## New tool
 

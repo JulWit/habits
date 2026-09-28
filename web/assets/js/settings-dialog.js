@@ -6,8 +6,8 @@ import { state, replaceState, subscribe } from "./state.js";
 import { icons, colorLabel, colorValue } from "./icons.js";
 import { errorText, toast } from "./undo.js";
 import { t, locale, userTimeZone } from "./i18n.js";
-import { openPage, topPage } from "./pages.js";
-import { factItem } from "./panels.js";
+import { openPage, topPage } from "./page-stack.js";
+import { factItem } from "./stat-panels.js";
 import { forget } from "./outbox.js";
 import { el } from "./dom.js";
 
@@ -46,7 +46,7 @@ let reload;
 export function initSettings(handlers) {
   effectiveDays = handlers.effectiveDays;
   reload = handlers.reload;
-  // Skipping days of all habits opens its own page (skip.js).
+  // Skipping days of all habits opens its own page (skip-editor.js).
   document.getElementById("settings-skip").addEventListener("click", () => handlers.skipDays(null));
 
   dialog = document.getElementById("settings-dialog");

@@ -103,6 +103,8 @@ server after changing files in `web/`).
 - Go: standard library first, `gofmt`, tests in `_test.go` files next to the
   code.
 - JS: ES modules, no framework, no classes unless the file already uses them.
+  File names in kebab-case, with a suffix for views (`-view`) and dialogs
+  (`-editor`, `-picker`, `-dialog`); see `docs/STRUCTURE.md`.
 - Prose in docs and comments uses British spelling ("colour"); identifiers use
   American spelling (`color`).
 

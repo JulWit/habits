@@ -2,10 +2,10 @@
 // the same render functions as the overview.
 
 import { state } from "./state.js";
-import { dayCell, habitLabel, dayEntry } from "./cells.js";
+import { dayCell, habitLabel, dayEntry } from "./board-cells.js";
 import { paintIcons, colorValue } from "./icons.js";
 import { addDays, daysBetween, weekdayIndex } from "./dates.js";
-import { STREAK_LEVELS } from "./habit.js";
+import { STREAK_LEVELS } from "./habit-helpers.js";
 
 /** Returns the date `back` days before today. */
 const day = (back) => addDays(state.today, -back);

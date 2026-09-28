@@ -67,7 +67,7 @@
   transition: var(--fill-fade);
 }
 
-/* Room for the scrollbar; set by search.js when the list overflows. */
+/* Room for the scrollbar; set by search-dialog.js when the list overflows. */
 .search-results.is-scrolling { padding-right: calc(.4 * var(--space)); }
 
 .search-option[aria-selected="true"] { background: var(--surface-2); }
@@ -578,8 +578,8 @@ html[data-scrolled="on"] .day-header-backdrop {
   }
 }
 
-/* While orbs are in flight, the fill follows their landings (overview.js) with
-   a short transition. */
+/* While orbs are in flight, the fill follows their landings
+   (board-view.js) with a short transition. */
 .day-summary-ring-fill.is-filling {
   animation: none;
   transition: stroke-dasharray .28s cubic-bezier(.3, .7, .2, 1), opacity .2s;
@@ -589,7 +589,7 @@ html[data-scrolled="on"] .day-header-backdrop {
   .day-summary-ring-fill { animation: none; }
 }
 
-/* Layer for the orbs, moved by overview.js. Ignores the pointer. */
+/* Layer for the orbs, moved by board-view.js. Ignores the pointer. */
 .orb-layer {
   position: fixed;
   inset: 0;
@@ -691,7 +691,7 @@ html[data-scrolled="on"] .day-header-backdrop {
 
 /* ---------- a tight board ----------
 
-   Set by overview.js (see base.css). Hides the habit icons, reduces the font
+   Set by board-view.js (see base.css). Hides the habit icons, reduces the font
    sizes and shrinks the paging buttons. */
 html[data-tight] .habit-main .habit-icon { display: none; }
 html[data-tight] .habit-name { font-size: var(--text-md); }
@@ -1168,7 +1168,7 @@ html[data-filtering="on"] {
 
 /* ---------- detail view ---------- */
 
-/* The habit and category views have their own title bar (appbar.js), as
+/* The habit and category views have their own title bar (app-bar.js), as
    Material's top app bar, instead of the app's. */
 html.route-detail .topbar { display: none; }
 html.route-detail .view { padding-top: 0; }
@@ -1233,7 +1233,7 @@ html.route-detail .view { padding-top: 0; }
 
 .app-bar-actions { display: flex; align-items: center; flex: none; }
 
-/* The overflow menu: a popover below its button, placed by appbar.js. Unlike
+/* The overflow menu: a popover below its button, placed by app-bar.js. Unlike
    the flat surfaces it floats over the view, so it casts a shadow. */
 .overflow-menu {
   position: fixed;

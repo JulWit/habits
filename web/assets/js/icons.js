@@ -81,8 +81,8 @@ export const icons = {
     ' 13.4 14.9 13.9 14.2 14.4 13.7 15.1 14.7 15.6 15.8 15.6 17 15.6 18.7 14 19.8 12 19.8Z"/>',
   ),
 
-  // Statistics tiles (panels.js): best streak, rate, total, perfect days and
-  // the habits of a category.
+  // Statistics tiles (stat-panels.js): best streak, rate, total, perfect days
+  // and the habits of a category.
   trophy: draw(
     '<path d="M7 4h10v5a5 5 0 0 1-10 0z"/>' +
     '<path d="M7 6H4v1a3 3 0 0 0 3 3M17 6h3v1a3 3 0 0 1-3 3M12 14v4M8 21h8M9.5 18h5v3h-5z"/>',

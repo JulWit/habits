@@ -265,7 +265,7 @@ export function describeHabit(habit) {
   // Mark archived habits explicitly.
   if (habit.archivedAt) parts.push(t("Archived"));
   // Only the daily target; empty for KindCheck. The streak is rendered
-  // separately (see habitLabel in cells.js).
+  // separately (see habitLabel in board-cells.js).
   const goal = describeTarget(habit);
   if (goal) parts.push(goal);
   return parts.join(" · ");

@@ -19,7 +19,7 @@ const listeners = new Set();
 
 /**
  * Counts the changes of the state, so that data loaded for a view (see
- * remote.js) can tell whether it may be outdated.
+ * remote-stats.js) can tell whether it may be outdated.
  */
 let revision = 0;
 
@@ -86,7 +86,7 @@ export function removeHabit(id) {
 /**
  * Replaces a habit by a copy that `change` modifies. Habits are never changed
  * in place, so that a view can tell a changed habit by its identity (see the
- * row cache in overview.js).
+ * row cache in board-view.js).
  */
 function changeHabit(id, change) {
   const i = state.habits.findIndex((h) => h.id === id);
@@ -100,7 +100,7 @@ function changeHabit(id, change) {
 /**
  * Shows a write of a day's entry ({value, skipped}) before the server has
  * answered. The day's status stays as it was until then (see isPending in
- * habit.js).
+ * habit-helpers.js).
  */
 export function showPending(habitId, date, entry) {
   changeHabit(habitId, (habit) => {

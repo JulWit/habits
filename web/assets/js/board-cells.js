@@ -3,7 +3,7 @@
 import { dayOfMonth, WEEKDAY_SHORT, weekdayIndex, formatRelative, formatLong } from "./dates.js";
 import { state } from "./state.js";
 import { habitIconBadge, icons, colorValue } from "./icons.js";
-import * as H from "./habit.js";
+import * as H from "./habit-helpers.js";
 import { t } from "./i18n.js";
 import { el, markup } from "./dom.js";
 
@@ -63,8 +63,8 @@ function streakBadge(count) {
 
 /**
  * Builds a day cell of a row; `active` is the day of the band. The cell shows
- * the server's status of the day (habit.js); a write still waiting for the
- * server is shown with its value only.
+ * the server's status of the day (habit-helpers.js); a write still waiting for
+ * the server is shown with its value only.
  */
 export function dayEntry(habit, iso, active = state.today) {
   const entry = H.entryOn(habit, iso);

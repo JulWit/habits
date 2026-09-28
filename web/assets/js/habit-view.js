@@ -5,16 +5,16 @@ import {
 } from "./dates.js";
 import { t } from "./i18n.js";
 import { state, habitById } from "./state.js";
-import * as H from "./habit.js";
+import * as H from "./habit-helpers.js";
 import { habitIconBadge, colorValue, icons } from "./icons.js";
-import { appBar } from "./appbar.js";
+import { appBar } from "./app-bar.js";
 import {
   statRow, factsPanel, factItem, rateLabel, createdItem, changedItem, daysAgo,
-} from "./panels.js";
+} from "./stat-panels.js";
 import { hideTooltip } from "./tooltip.js";
 import { api } from "./api.js";
-import { remote } from "./remote.js";
-import { currentYear, yearGrid, centreToday, initChartTooltips } from "./year.js";
+import { remote } from "./remote-stats.js";
+import { currentYear, yearGrid, centreToday, initChartTooltips } from "./year-grid.js";
 import { el, markup } from "./dom.js";
 
 let root;

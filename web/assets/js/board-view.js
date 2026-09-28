@@ -7,11 +7,11 @@ import {
   formatLong,
 } from "./dates.js";
 import { state, subscribe, groupedHabits } from "./state.js";
-import * as H from "./habit.js";
-import { dayCell, habitLabel, dayEntry } from "./cells.js";
+import * as H from "./habit-helpers.js";
+import { dayCell, habitLabel, dayEntry } from "./board-cells.js";
 import { icons, categoryIconBadge } from "./icons.js";
-import { enableDragReorder } from "./reorder.js";
-import { initSummary, dayProgress, daySummary, newlyDone, launchOrbs } from "./summary.js";
+import { enableDragReorder } from "./drag-reorder.js";
+import { initSummary, dayProgress, daySummary, newlyDone, launchOrbs } from "./day-summary.js";
 import { t } from "./i18n.js";
 import { el, markup } from "./dom.js";
 

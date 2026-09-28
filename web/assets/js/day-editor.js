@@ -4,10 +4,10 @@
 
 import { formatRelative } from "./dates.js";
 import { state } from "./state.js";
-import * as H from "./habit.js";
+import * as H from "./habit-helpers.js";
 import { errorText, toast } from "./undo.js";
 import { t, locale } from "./i18n.js";
-import { openPage, closePage } from "./pages.js";
+import { openPage, closePage } from "./page-stack.js";
 import { el } from "./dom.js";
 
 let dialog;
@@ -23,7 +23,7 @@ let maxInBox = 1;
 let habit = null;
 let before = null;
 
-/** Stored units per unit in the input box (see scale in habit.js). */
+/** Stored units per unit in the input box (see scale in habit-helpers.js). */
 let scale = 1;
 
 /**

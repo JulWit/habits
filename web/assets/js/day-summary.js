@@ -3,7 +3,7 @@
 
 import { daysBetween, yearOf, formatFull } from "./dates.js";
 import { state } from "./state.js";
-import * as H from "./habit.js";
+import * as H from "./habit-helpers.js";
 import { icons, colorValue } from "./icons.js";
 import { t } from "./i18n.js";
 import { el, markup } from "./dom.js";
@@ -37,7 +37,7 @@ export function daySummary(habits, day) {
 
   const summary = el("section", {
     class: ["day-summary", due > 0 && done === due && "is-complete"],
-    // Opens the day statistics (overview.js handles the click).
+    // Opens the day statistics (board-view.js handles the click).
     data: { role: "open-days" },
     role: "button",
     tabIndex: 0,

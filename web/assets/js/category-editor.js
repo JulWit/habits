@@ -4,7 +4,7 @@
 import { state, categoryById } from "./state.js";
 import { errorText } from "./undo.js";
 import { t } from "./i18n.js";
-import { openPage, closePage, guardPage } from "./pages.js";
+import { openPage, closePage, guardPage } from "./page-stack.js";
 import { buildIconChoices, markIconChoice, colorLabel, colorValue } from "./icons.js";
 import { el } from "./dom.js";
 

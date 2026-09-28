@@ -4,13 +4,13 @@
 import { WEEKDAY_SHORT, WEEKDAY_LONG } from "./dates.js";
 import { state, categoryById } from "./state.js";
 import { errorText } from "./undo.js";
-import { openCategoryPicker } from "./categorypicker.js";
+import { openCategoryPicker } from "./category-picker.js";
 import {
   icons, buildIconChoices, markIconChoice, categoryIconBadge, colorLabel, colorValue,
 } from "./icons.js";
-import * as H from "./habit.js";
+import * as H from "./habit-helpers.js";
 import { t } from "./i18n.js";
-import { openPage, closePage, guardPage } from "./pages.js";
+import { openPage, closePage, guardPage } from "./page-stack.js";
 import { el, markup } from "./dom.js";
 
 let dialog;

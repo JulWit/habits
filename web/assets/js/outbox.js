@@ -127,8 +127,8 @@ export function discard(habitId, date, value) {
 
 /**
  * Lays the waiting writes over a loaded state as pending writes (see
- * isPending in habit.js), so they stay visible until they are sent. Writes to
- * habits that no longer exist are left out.
+ * isPending in habit-helpers.js), so they stay visible until they are sent.
+ * Writes to habits that no longer exist are left out.
  */
 export function overlay(loaded) {
   for (const w of pending()) {

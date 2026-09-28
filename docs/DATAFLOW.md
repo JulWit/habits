@@ -12,7 +12,7 @@ app.js ── load ──> api.js ── GET /api/state ──> httpapi ── V
                      │                             │
 state.js <───────────┘                          domain (schedules, statuses,
   │                                              streaks, statistics)
-  └─> overview.js, cells.js, detail.js … render
+  └─> board-view.js, board-cells.js, habit-view.js … render
 
 tap ─> actions.js ─> state.js (shown as pending)
             │
@@ -72,16 +72,16 @@ from `daysFrom` up to one year ahead (`domain.DayStatus`):
 | `x` | due, up to today, over its limit |
 | `s` | skipped |
 
-The client reads them in `habit.js` (`statusOn`, `isDue`, `isDone`, …) and
-draws each day from its status and value. The frequency rules, targets,
+The client reads them in `habit-helpers.js` (`statusOn`, `isDue`, `isDone`,
+…) and draws each day from its status and value. The frequency rules, targets,
 limits and the history's start exist only in `internal/domain`, so a new rule
 needs no client change beyond the editor.
 
 The views that summarise many days load what they show from the server when
 they open: the day statistics (`/api/days`), a category's statistics
 (`/api/categories/{id}/stats`) and a habit's totals per day, week or month
-(`/api/habits/{id}/totals`). `remote.js` keeps the last answer and loads it
-again once the state has changed.
+(`/api/habits/{id}/totals`). `remote-stats.js` keeps the last answer and loads
+it again once the state has changed.
 
 ## Writing an entry
 

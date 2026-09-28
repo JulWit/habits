@@ -34,7 +34,7 @@
 
 /* ---------- pages ---------- */
 
-/* Full-screen dialogs, stacked like app screens (see pages.js). The dialog
+/* Full-screen dialogs, stacked like app screens (see page-stack.js). The dialog
    itself scrolls; the title bar stays at the top. Like the overview, flat
    cards lie on the page background, which the backdrop paints. */
 .dialog.page {
@@ -415,7 +415,7 @@ html:has(.dialog.page[open]) { overflow: hidden; }
 
 /* ---------- icon picker ---------- */
 
-/* Icons on the same tiles as on the board, in the colour set by editor.js
+/* Icons on the same tiles as on the board, in the colour set by habit-editor.js
    (--habit-color). */
 .icon-choices {
   display: grid;
@@ -638,7 +638,7 @@ html:has(.dialog.page[open]) { overflow: hidden; }
 
 @media (max-width: 40rem) {
   /* Narrower columns. The name column keeps at least 120px even on a tight
-     board; the day columns shrink first (see overview.js). */
+     board; the day columns shrink first (see board-view.js). */
   :root {
     --cell: 34px;
     --label-min: 120px;
@@ -823,7 +823,8 @@ html[data-today-band="off"] .cell.is-today:active:not(:disabled) { background: v
    Every control is at least 48px in both directions, the larger of Apple's
    44pt and Material's 48dp. The mouse keeps the compact sizes. Not enlarged:
    the day cells, whose width comes from the board layout (they span the full
-   column and row), and the reorder handles, whose column overview.js sizes. */
+   column and row), and the reorder handles, whose column board-view.js
+   sizes. */
 @media (pointer: coarse) {
   :root {
     --hit: 48px;

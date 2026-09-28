@@ -3,9 +3,9 @@
 
 import { subscribe, groupedHabits } from "./state.js";
 import { habitIconBadge, categoryIconBadge, colorValue } from "./icons.js";
-import * as H from "./habit.js";
+import * as H from "./habit-helpers.js";
 import { t } from "./i18n.js";
-import { openPage, closePage } from "./pages.js";
+import { openPage, closePage } from "./page-stack.js";
 import { el } from "./dom.js";
 
 let dialog;

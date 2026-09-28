@@ -15,34 +15,42 @@ web/                        Frontend (ES modules, no build step)
   assets/css/                 Design tokens, components, forms, fonts
   assets/fonts/               Embedded woff2 fonts and their licences
   assets/images/              App icon (SVG and PNG)
-  assets/js/app.js            Entry point, routing, appearance, shortcuts
-  assets/js/state.js          Client-side state
-  assets/js/api.js            API client
-  assets/js/actions.js        All data changes
-  assets/js/undo.js           Undo/redo through the server, and toasts
-  assets/js/outbox.js         Offline: remembered state and waiting entry writes
-  assets/js/overview.js       Board with category blocks, day header and active day
-  assets/js/summary.js        Day summary with progress ring and the orbs flying into it
-  assets/js/cells.js          Habit row and day cell
-  assets/js/dom.js            DOM helpers: el() builds elements, markup() parses trusted SVG
-  assets/js/habit.js          Reads the day statuses; value, schedule and streak helpers
-  assets/js/detail.js         Habit detail view
-  assets/js/category.js       Category detail view
-  assets/js/days.js           Day statistics
-  assets/js/year.js           Year label and heatmap grid of the statistics views
-  assets/js/remote.js         Statistics a view loads from the server
-  assets/js/editor.js         Habit dialog
-  assets/js/categoryeditor.js Category dialog
-  assets/js/categorypicker.js Category picker
-  assets/js/value.js          Day dialog: value and skip
-  assets/js/skip.js           Page for skipping a range of days
-  assets/js/search.js         Search dialog
-  assets/js/settings.js       Settings dialog
-  assets/js/i18n.js           Translations and time zone
-  assets/js/dates.js          Date helpers
-  assets/js/icons.js          Inline SVG icons
-  assets/js/reorder.js        Drag and drop reordering
-  assets/js/styleguide.js     Style guide at #/styleguide
+  assets/js/                  One module per file, named in kebab-case:
+                              *-view for a view, *-editor, *-picker or *-dialog
+                              for a dialog
+    app.js                      Entry point, routing, appearance, shortcuts
+    state.js                    Client-side state
+    api.js                      API client
+    actions.js                  All data changes
+    undo.js                     Undo/redo through the server, and toasts
+    outbox.js                   Offline: remembered state and waiting entry writes
+    remote-stats.js             Statistics a view loads from the server
+    habit-helpers.js            Reads the day statuses; value, schedule and streak helpers
+    board-view.js               Board with category blocks, day header and active day
+    board-cells.js              Habit row and day cell of the board
+    day-summary.js              Day summary with progress ring and the orbs flying into it
+    drag-reorder.js             Drag and drop reordering
+    habit-view.js               Habit detail view
+    category-view.js            Category detail view
+    day-stats-view.js           Day statistics view
+    style-guide-view.js         Style guide at #/styleguide
+    app-bar.js                  Title bar of the habit and category views
+    stat-panels.js              Stat tiles and fact panels of the statistics views
+    year-grid.js                Year label and heatmap grid of the statistics views
+    habit-editor.js             Habit dialog
+    category-editor.js          Category dialog
+    category-picker.js          Category picker
+    day-editor.js               Day dialog: value and skip
+    skip-editor.js              Page for skipping a range of days
+    search-dialog.js            Search dialog
+    settings-dialog.js          Settings dialog
+    page-stack.js               Full-screen pages and dialogs, stacked with history entries
+    tooltip.js                  Tooltips
+    dom.js                      DOM helpers: el() builds elements, markup() parses trusted SVG
+    i18n.js                     Translations and time zone
+    dates.js                    Date helpers
+    icons.js                    Inline SVG icons
+    patterns.js                 Background patterns drawn as SVG tiles
 ```
 
 `internal/domain` depends neither on the database nor on HTTP and is tested

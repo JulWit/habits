@@ -9,10 +9,10 @@ import {
   reorderHabitsLocal, groupedHabits,
 } from "./state.js";
 import { offerUndo, toast, errorText } from "./undo.js";
-import { openEditor } from "./editor.js";
-import { openDayDialog } from "./value.js";
+import { openEditor } from "./habit-editor.js";
+import { openDayDialog } from "./day-editor.js";
 import { formatRelative } from "./dates.js";
-import * as H from "./habit.js";
+import * as H from "./habit-helpers.js";
 import {
   enqueue, discard, pending, flush, isConnectionError, isSessionExpired, isOffline, setOffline,
 } from "./outbox.js";

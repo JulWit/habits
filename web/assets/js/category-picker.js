@@ -4,7 +4,7 @@ import { state } from "./state.js";
 import { categoryIconBadge } from "./icons.js";
 import { errorText } from "./undo.js";
 import { t } from "./i18n.js";
-import { openPage, closePage } from "./pages.js";
+import { openPage, closePage } from "./page-stack.js";
 import { el } from "./dom.js";
 
 const NONE = "";

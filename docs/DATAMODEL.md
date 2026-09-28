@@ -4,8 +4,8 @@
 
 Categories group habits into blocks on the overview. Habits without a
 category are shown in a "No category" block; without any categories, the board
-is a single block without headings. When a category is deleted, its habits keep
-their category ID and appear under "No category" until it is restored.
+is a single block without headings. When a category is deleted, its habits
+stay without one; undoing the deletion puts them back.
 
 ## Kinds
 
@@ -60,7 +60,8 @@ completed days would always be met. Check habits always have the target 1.
 - `custom_interval`: every n days from an anchor date
 
 The frequency rules exist only on the server (`domain.Schedule.IsScheduled`);
-see [DATAFLOW.md](DATAFLOW.md#due-days) for how the client learns the due days.
+see [DATAFLOW.md](DATAFLOW.md#day-statuses) for how the client learns the
+status of each day.
 
 ## Schedules
 
@@ -108,12 +109,17 @@ The tables are `STRICT`, with `CHECK` constraints for kinds, frequencies,
 dates and values. Every user-owned row refers to `users` with `ON DELETE
 CASCADE`; a user is recorded on their first write.
 
-`PRAGMA user_version` stores the schema version: 1 plus the number of
-migrations applied. See [EXTENDING.md](EXTENDING.md#new-migration) for adding a
-migration.
+`PRAGMA user_version` stores the schema version. See
+[EXTENDING.md](EXTENDING.md#new-migration) for adding a migration.
 
-Deleted habits and categories are soft-deleted and removed permanently after 30 days, checked on start
-and once a day.
+Deleting a habit or a category removes its rows. The table `changes` keeps
+the undo steps: the rows a change replaced and wrote, as JSON (see
+[DATAFLOW.md](DATAFLOW.md#undo)). The latest 100 steps per user are kept;
+steps older than 30 days are removed on start and once a day.
+
+Every habit has a `revision`, which triggers count up on every change of its
+schedules and entries. Statistics computed at one revision stay valid until
+the next, which the server uses to cache them.
 
 Settings are stored per user as one JSON document; see
 [USAGE.md](USAGE.md#settings).

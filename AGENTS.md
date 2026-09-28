@@ -63,19 +63,26 @@ server after changing files in `web/`).
 
 ## Rules
 
-- **The server owns the rules.** Frequencies, due days, streaks and statistics
-  are computed only in `internal/domain`. The client reads `due`, `schedules`
-  and `streakRuns` from the API and never evaluates a frequency itself.
+- **The server owns the rules.** Frequencies, the status of each day, streaks,
+  statistics and totals are computed only in `internal/domain`. The client
+  reads `days` (the day statuses), `stats` and `streakRuns` from the API, or
+  loads a view's statistics with `remote()`; it never judges a day or counts
+  anything itself.
 - **`internal/domain` has no I/O.** It must not import the store or HTTP
   packages and is tested without them.
-- **Migrations are append-only.** Add a new string to `migrations` in
-  `internal/store/schema.go` and make the same change to `schema`. Never edit a
-  released migration.
+- **Migrations are append-only.** Add the next one to `migrations` in
+  `internal/store/schema.go`, raise `latestVersion` and make the same change to
+  `schema`. Never edit a released migration.
+- **One transaction per request.** Handlers read, check and write in one
+  `store.View` or `store.Update`; they never call the store outside of it.
 - **Every user-owned query is scoped to the user.** Rows refer to `users` with
   `ON DELETE CASCADE`.
-- **Every data change in the frontend goes through `web/assets/js/actions.js`**
-  and records an undo step with `record({label, undo, redo})`. New habit fields
-  must be added to `writableFields()`, otherwise undo drops them.
+- **Undo lives on the server.** A change that can be undone calls
+  `tx.Record(label, params...)` in its `store.Update` and answers with
+  `writeChange`; every store write method registers its rows with `watch`
+  before changing them (`internal/store/changes.go`). In the frontend, every
+  data change goes through `web/assets/js/actions.js`, which offers the undo
+  with `offerUndo(changeId, text)`.
 - **Errors** are created with `domain.Invalid(code, template, params...)`. Each
   new `code` needs a German entry in `deErrors` in `web/assets/js/i18n.js`;
   `TestEveryProblemCodeIsTranslated` enforces this.

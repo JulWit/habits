@@ -4,9 +4,10 @@
 main.go                     Startup, signal handling, embedded frontend
 internal/config             Configuration from environment variables
 internal/auth               User identification (single-user or trusted headers)
-internal/domain             Habits, schedules, streaks, statistics (no I/O)
-internal/store              SQLite: schema, migrations, queries
-internal/httpapi            Routing, JSON API, frontend delivery
+internal/domain             Habits, schedules, day statuses, streaks, statistics (no I/O)
+internal/settings           User settings: defaults, options and rules
+internal/store              SQLite: transactions, schema, migrations, undo steps
+internal/httpapi            Routing, JSON API, statistics cache, frontend delivery
 scripts/genicons.go         Generates the PNG app icons
 web/                        Frontend (ES modules, no build step)
   index.html                  App shell, rendered as a Go template
@@ -17,17 +18,18 @@ web/                        Frontend (ES modules, no build step)
   assets/js/app.js            Entry point, routing, appearance, shortcuts
   assets/js/state.js          Client-side state
   assets/js/api.js            API client
-  assets/js/actions.js        All data changes with their undo steps
-  assets/js/undo.js           Undo/redo and toasts
+  assets/js/actions.js        All data changes
+  assets/js/undo.js           Undo/redo through the server, and toasts
   assets/js/outbox.js         Offline: remembered state and waiting entry writes
   assets/js/overview.js       Board with category blocks, day header and active day
   assets/js/summary.js        Day summary with progress ring and the orbs flying into it
   assets/js/cells.js          Habit row and day cell
-  assets/js/habit.js          Schedule, value and streak helpers
+  assets/js/habit.js          Reads the day statuses; value, schedule and streak helpers
   assets/js/detail.js         Habit detail view
   assets/js/category.js       Category detail view
   assets/js/days.js           Day statistics
-  assets/js/year.js           Year range, perfect days and heatmap grid of the statistics views
+  assets/js/year.js           Year label and heatmap grid of the statistics views
+  assets/js/remote.js         Statistics a view loads from the server
   assets/js/editor.js         Habit dialog
   assets/js/categoryeditor.js Category dialog
   assets/js/categorypicker.js Category picker

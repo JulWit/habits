@@ -9,24 +9,27 @@ only `/healthz` outside `/api` does not.
 | Method | Path | Purpose |
 |---|---|---|
 | `GET` | `/api/state` | Complete state for the client; `?archived=0`/`1` overrides the `showArchived` setting, `?from=YYYY-MM-DD` loads entries further back |
+| `GET` | `/api/days` | Day statistics of `?year=` (default: this year) over the habits that are not archived, see [Statistics](#statistics) |
 | `POST` | `/api/habits` | Create a habit |
 | `GET` | `/api/habits/{id}` | A habit with its full history |
-| `PATCH` | `/api/habits/{id}` | Update the given fields; `retroactive: true` applies a new target or frequency to past days, `schedules` replaces the schedule history (used by undo) |
-| `DELETE` | `/api/habits/{id}` | Soft delete |
-| `POST` | `/api/habits/{id}/restore` | Restore |
+| `PATCH` | `/api/habits/{id}` | Save what the editor shows: name, colour, icon, kind, category, step, unit, target, target type and frequency; `retroactive: true` applies a new target or frequency to past days, a new kind converts the history |
+| `PUT` | `/api/habits/{id}/archived` | Archive (`{"archived": true}`) or reactivate a habit |
+| `DELETE` | `/api/habits/{id}` | Delete a habit with its history (undo brings it back) |
+| `GET` | `/api/habits/{id}/totals` | The habit's values of `?year=` summed per `?grain=` (`day`, `week`, `month`), see [Statistics](#statistics) |
 | `POST` | `/api/habits/reorder` | Set the order; missing habits keep their relative order after the given ones, duplicate IDs are rejected |
-| `PUT` | `/api/habits/{id}/entries/{date}` | Change a day's value or skip (from 2000-01-01 to one year ahead; recording needs a due day, removing works on any day); with `expect`, only while the day still holds that entry (409 `entry_changed` otherwise) |
+| `PUT` | `/api/habits/{id}/entries/{date}` | Change a day's value or skip (from 2000-01-01 to one year ahead; recording needs a due day, removing works on any day) |
 | `POST` | `/api/skips` | Skip the days `from` to `to` (up to 366) of the habits `habitIds`, or of all that are not archived; see [Skipping days](#skipping-days) |
-| `POST` | `/api/entries` | Write whole entries of several days at once, each only while its day still holds `expect` (undo and redo of skipped days) |
 | `POST` | `/api/categories` | Create a category |
 | `PATCH` | `/api/categories/{id}` | Update name, icon, colour or progress display |
-| `DELETE` | `/api/categories/{id}` | Soft delete |
-| `POST` | `/api/categories/{id}/restore` | Restore |
+| `DELETE` | `/api/categories/{id}` | Delete a category; its habits stay, without one (undo puts them back) |
+| `GET` | `/api/categories/{id}/stats` | Statistics of the category's habits, see [Statistics](#statistics) |
 | `POST` | `/api/categories/reorder` | Set the order (same rules as for habits) |
+| `POST` | `/api/undo` | Undo the step `id`, or the latest; see [Undo](#undo) |
+| `POST` | `/api/redo` | Redo the step `id`, or the one undone last |
 | `GET`/`PATCH` | `/api/settings` | Settings, see [USAGE.md](USAGE.md#settings) |
-| `GET` | `/api/export` | Habits (archived ones included) and categories with their settings and current schedule, as a file; no entries or statistics |
-| `POST` | `/api/import` | Add the habits and categories of an export (up to 1 MB); habits whose name exists are skipped, categories are matched by name, schedules start today; all or nothing |
-| `DELETE` | `/api/data` | Delete all of the user's data (habits, entries, categories, settings); cannot be undone |
+| `GET` | `/api/export` | Habits (archived ones included) with their schedules and entries, and the categories, as a file |
+| `POST` | `/api/import` | Add the habits and categories of an export (up to 16 MB) with their history; habits whose name exists are skipped, categories are matched by name; all or nothing, one undo step |
+| `DELETE` | `/api/data` | Delete all of the user's data (habits, entries, categories, settings, undo steps); cannot be undone |
 
 Writing endpoints require `Content-Type: application/json`. This forces a CORS
 preflight and protects against CSRF.
@@ -64,24 +67,26 @@ Besides the habits, categories and settings, the state contains:
 Entries cover the last 200 days; the detail view loads the full history via
 `GET /api/habits/{id}`.
 
+
 ## Habits
 
 Every habit carries `schedules` (`[{from, targetValue, targetType,
 frequency}]`, oldest first); the last one is the current schedule.
 `targetType` is `at_least` or, for a limit, `at_most` (see
-[DATAMODEL.md](DATAMODEL.md#targets-and-limits)). The client takes each day's
-target from them. `PATCH /api/habits/{id}` accepts `targetValue`, `targetType`
-and `frequency` to change the current schedule.
+[DATAMODEL.md](DATAMODEL.md#targets-and-limits)). The client describes the
+target of a day from them. `PATCH /api/habits/{id}` accepts `targetValue`,
+`targetType` and `frequency` to change the current schedule.
 
-Each habit also carries its due days as `due`, one character per day from
-`dueFrom` (`1` due, `0` not), up to one year ahead, and its streak runs as
-`streakRuns`. What is recorded comes in two maps keyed by date: `entries`
-(the values) and `skipped` (`true` for skipped days). The full view of
-`GET /api/habits/{id}` has due days from 1 January of the history's first
-year, as the detail view shows whole years.
+Each habit also carries the status of each day as `days`, one character per
+day from `daysFrom` up to one year ahead (see
+[DATAFLOW.md](DATAFLOW.md#day-statuses)), the values of its days as `entries`
+(keyed by date), its streak runs as `streakRuns` and the first day of its
+history as `historyStart`. The full view of `GET /api/habits/{id}` covers
+every year of the history from its 1 January, as the detail view shows whole
+years.
 
-Each habit's `stats` hold its streaks and the completion rate over the days of
-the `rateWindow` setting.
+Each habit's `stats` hold its streaks, the completion rate over the days of
+the `rateWindow` setting, the total and `lastDone`, the latest complete day.
 
 ## Entries
 
@@ -94,10 +99,9 @@ the `rateWindow` setting.
 {"skipped": true}
 ```
 
-The answer carries the entry after the change (`value`, `skipped`) and
-the replaced one as `previous`. Undo writes the previous entry back with
-`expect` set to the entry it takes back, so it does not overwrite a change made
-on another device in the meantime; on 409 the undo step is dropped.
+The answer carries the entry after the change (`value`, `skipped`), the
+replaced one as `previous`, the day's `status`, and the habit's `stats`,
+`streakRuns` and `historyStart`, which an entry before it moves.
 
 ## Skipping days
 
@@ -109,9 +113,39 @@ on another device in the meantime; on 409 the undo step is dropped.
 
 Without `habitIds`, it covers all habits that are not archived. Only due days
 without a value and not yet skipped change (`domain.DaysToSkip`). The answer
-lists the changed days
-as `changes`, each with `habitId`, `date`, `previous` and `entry`.
+counts them as `skipped`; undo takes them back as one step.
 
-`POST /api/entries` undoes and redoes that: its `changes` hold `habitId`,
-`date`, `expect` and `entry`, and each is written only while the day still
-holds `expect`. The answer counts them as `applied` and `conflicts`.
+## Undo
+
+A write that can be undone names its undo step in the header `Change-Id`.
+`POST /api/undo` with `{"id": 12}` undoes that step, with `{}` the latest;
+`POST /api/redo` works alike. Both answer with the step:
+
+```json
+{"id": 12, "label": "\"{name}\" deleted", "params": {"name": "Read"}}
+```
+
+`label` is an English template the client translates like its own texts,
+`params` its values; a `date` is an ISO date. Nothing to undo is 404
+`nothing_to_undo`. A step whose data was changed since (e.g. on another
+device) is dropped: 409 `changed_since`. Reordering and settings are not undo
+steps. See [DATAFLOW.md](DATAFLOW.md#undo).
+
+## Statistics
+
+`GET /api/days?year=2026` answers with `totals`, the habits due and done on
+each day of the year (`{date, due, done}`), and `stats` over the days up to
+today: perfect days (`perfect` of `counted`), the current and best run of
+them, the average share per day, completed habits, days without progress,
+a group per weekday (Monday first) and per month from `firstMonth` on
+(`{rate, perfect}`, `rate` null without due habits), and the best weekday
+(0 = Monday, -1 for none) and month (1 = January, 0 for none).
+
+`GET /api/categories/{id}/stats` answers with the perfect days since 1 January
+(`perfect` of `dueDays`, from `from`), their current run, the number of
+habits, and `expected` and `achieved`, which add up those of the habits'
+completion rates.
+
+`GET /api/habits/{id}/totals?year=2026&grain=week` answers with `buckets`
+(`{start, sum, cumulative}`) from 1 January up to today, the `total`, the
+`best` day and the number of `activeDays`.

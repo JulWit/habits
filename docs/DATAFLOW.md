@@ -1,23 +1,24 @@
 # Data flow
 
-The server owns all rules; the client renders what it is sent and writes
-changes back. Statistics, streaks and due days are always computed by the
-server over the full history.
+The server owns all rules and computes everything derived from the data:
+the status of each day, statistics, streaks and totals. The client shows what
+it is sent and writes changes back; it never judges a day or counts anything
+beyond what it displays.
 
 ```
 browser                                      server
 ───────                                      ──────
-app.js ── load ──> api.js ── GET /api/state ──> httpapi ──> store (SQLite)
+app.js ── load ──> api.js ── GET /api/state ──> httpapi ── View ──> store (SQLite)
                      │                             │
-state.js <───────────┘                          domain (schedules,
-  │                                              streaks, stats)
+state.js <───────────┘                          domain (schedules, statuses,
+  │                                              streaks, statistics)
   └─> overview.js, cells.js, detail.js … render
 
-tap ─> actions.js ─> state.js (shown at once)
+tap ─> actions.js ─> state.js (shown as pending)
             │
-            ├─> api.js ── PUT …/entries/{date} ──> httpapi ──> store
-            │     └─ no connection ─> outbox.js (localStorage)
-            └─> undo.js (undo/redo steps)
+            └─> api.js ── PUT …/entries/{date} ──> httpapi ── Update ──> store
+                  │                                                   └─ undo step
+                  └─ no connection ─> outbox.js (localStorage)
 ```
 
 ## Request path on the server
@@ -26,8 +27,14 @@ Every request passes through panic recovery, request logging and security
 headers (CSP, `nosniff`, `no-referrer`). `/healthz` is answered before
 authentication; everything else goes through `auth.Middleware`, which
 identifies the user (single-user or trusted headers) before routing to the
-handlers in `internal/httpapi`. Handlers validate input with
-`internal/domain` and read and write through `internal/store`.
+handlers in `internal/httpapi`.
+
+A handler works in one transaction of the user: `store.View` for reading,
+`store.Update` for changing. Within it, the handler loads the user's settings
+once (`basis`: today in their time zone and the completion rate's window),
+reads what it needs, checks the change with `internal/domain` and writes it.
+Nothing another request changes in between can slip through between check and
+write.
 
 ## Loading the state
 
@@ -35,6 +42,13 @@ On start, the client requests `/api/state` with the last 200 days of entries
 and keeps it in `state.js`. The views subscribe to the state and re-render on
 changes. The detail view loads a habit's full history via
 `/api/habits/{id}`; `?from=` loads older entries for the board.
+
+Statistics cover a habit's whole history, but the state only loads the
+entries of the window it sends. The statistics come from a cache
+(`historyCache` in `internal/httpapi/history.go`) keyed by the habit's
+revision, which the database counts up on every change of its schedules and
+entries (triggers in `internal/store/schema.go`), and by today and the rate
+window. Nothing invalidates the cache by hand, so no write can leave it stale.
 
 The time zone is resolved on the server, which sends `today`, so all devices
 of a user agree on the current day. It also sends `nextDayIn`, the time
@@ -44,34 +58,69 @@ again, the client reloads the state if the day has changed or it was loaded
 more than 10 seconds before, e.g. to show changes made on another device.
 A device asleep at midnight delays the timer; that reload covers it.
 
-## Due days
+## Day statuses
 
-The frequency rules exist only on the server (`domain.Schedule.IsScheduled`).
-Each habit carries its due days as `due`, one character per day from `dueFrom`
-(`1` due, `0` not), up to one year ahead. The client reads them in
-`isScheduled` in `habit.js` and never evaluates a frequency itself, so a new
-frequency rule needs no client change beyond the editor.
+Each habit carries the status of every day as `days`, one character per day
+from `daysFrom` up to one year ahead (`domain.DayStatus`):
+
+| | |
+|---|---|
+| `-` | not due |
+| `+` | not due, but the value meets the target |
+| `o` | due and open (nothing yet, or below the target, or ahead) |
+| `c` | due and complete |
+| `x` | due, up to today, over its limit |
+| `s` | skipped |
+
+The client reads them in `habit.js` (`statusOn`, `isDue`, `isDone`, …) and
+draws each day from its status and value. The frequency rules, targets,
+limits and the history's start exist only in `internal/domain`, so a new rule
+needs no client change beyond the editor.
+
+The views that summarise many days load what they show from the server when
+they open: the day statistics (`/api/days`), a category's statistics
+(`/api/categories/{id}/stats`) and a habit's totals per day, week or month
+(`/api/habits/{id}/totals`). `remote.js` keeps the last answer and loads it
+again once the state has changed.
 
 ## Writing an entry
 
 A tap or the day dialog is handled in `actions.js`:
 
-1. The changed entry (value, skip) is set in `state.js` and shown
-   immediately.
+1. The new value (or skip) is shown at once as pending (`showPending` in
+   `state.js`): the cell shows the value with a dashed outline, as only the
+   server knows whether it completes the day. Writes to the same day wait for
+   each other, so they reach the server in order.
 2. `api.js` sends `PUT /api/habits/{id}/entries/{date}` with the changed
-   parts only. Writes to the same day wait for each other, so they reach the
-   server in order.
-3. The answer (with the replaced entry as `previous`) updates the state.
-4. An undo step is recorded in `undo.js`. Undo and redo write the whole entry
-   back with `expect`, so they do not overwrite a change made on another device
-   in the meantime; on 409 the undo step is dropped.
+   parts only.
+3. The answer brings the day's status, the statistics and the streak runs
+   (`applyEntryAnswer`).
 
-If the server rejects a write, the client takes it back, shows the error and
-reloads the state.
+If the server rejects a write, the client drops the pending value, shows the
+error and reloads the state.
 
-Other changes (habits, categories, order, settings) follow the same pattern:
-perform the change in `actions.js`, update the state and record the undo step
-with `record({label, undo, redo})`.
+The state replaces a habit object on every change instead of changing it in
+place, so the board can reuse the rows of the habits that did not change.
+
+## Undo
+
+The server keeps the undo steps (`internal/store/changes.go`). An `Update`
+that calls `tx.Record(label, params…)` stores the rows it replaced and wrote.
+The answer names the step in the `Change-Id` header; `api.js` adds it to the
+answer as `changeId`, and the toast offers to undo that step
+(`offerUndo` in `undo.js`). `Ctrl+Z` and `Ctrl+Y` undo the latest step and
+redo the one undone last.
+
+Undoing writes the replaced rows back, redoing the written ones, but only
+where the rows still hold what the step left there, column by column: a
+change made since, e.g. on another device, is never overwritten. Such a step
+is dropped (409 `changed_since`). Rows that go along with a removed one are
+kept as well: undoing the creation of a habit takes the entries recorded since
+with it, and redoing it brings them back. A new step drops the undone ones;
+the latest 100 steps per user are kept, for 30 days.
+
+Deleting a habit or a category removes it; undo brings it back with its
+history, or puts a category's habits back into it.
 
 ## Offline
 
@@ -79,11 +128,12 @@ The service worker (`sw.js`) caches the app shell, and the client keeps the
 last loaded state in `localStorage`, so the app starts without a connection.
 
 Writes of a value that cannot reach the server wait in an outbox
-(`outbox.js`); a skip needs a connection. They are laid over every loaded state, so they stay visible, and are sent
-once the connection is back: on the `online` event, when the page becomes
-visible, and every 30 seconds. A write sets an absolute value, so for each day
-the last one wins. Writes the server rejects are dropped with a message. The
-header shows how many changes are waiting.
+(`outbox.js`); a skip needs a connection. They are laid over every loaded
+state as pending writes, so they stay visible, and are sent once the
+connection is back: on the `online` event, when the page becomes visible, and
+every 30 seconds. A write sets an absolute value, so for each day the last
+one wins. Writes the server rejects are dropped with a message. The header
+shows how many changes are waiting. Undo needs a connection.
 
 The same happens when the session at the reverse proxy has expired: the proxy
 refuses the request (401, 403), redirects to its login page or serves it. The

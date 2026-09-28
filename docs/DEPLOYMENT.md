@@ -113,3 +113,14 @@ HABITS_DB=/data/habits.db
 ```
 
 `/healthz` requires no authentication.
+
+## Backups and upgrades
+
+The database is a single SQLite file (`HABITS_DB`, with its `-wal` and `-shm`
+files while the server runs). Each user can also export their habits with
+their whole history under Settings → "Data" and import the file into another
+server; see [USAGE.md](USAGE.md).
+
+A new release migrates the database on start. It migrates databases from
+schema version 3 on; an older database has to be opened once with a release
+from before the undo history (which migrates it to version 3) first.

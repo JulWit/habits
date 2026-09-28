@@ -71,14 +71,15 @@ export function removeHabit(id) {
 }
 
 /**
- * Sets a day's value locally. Stats and streak runs are taken from the server's
- * `answer` once it arrives.
+ * Sets a day's entry ({value, skipped, note}) locally. Stats and streak runs
+ * are taken from the server's `answer` once it arrives.
  */
-export function setEntryLocal(habitId, date, value, answer) {
+export function setEntryLocal(habitId, date, entry, answer) {
   const habit = habitById(habitId);
   if (!habit) return;
-  if (value > 0) habit.entries[date] = value;
-  else delete habit.entries[date];
+  setDay(habit, "entries", date, entry.value > 0 ? entry.value : null);
+  setDay(habit, "skipped", date, entry.skipped ? true : null);
+  setDay(habit, "notes", date, entry.note ? entry.note : null);
   if (answer) {
     habit.stats = answer.stats;
     habit.streakRuns = answer.streakRuns ?? [];
@@ -86,6 +87,13 @@ export function setEntryLocal(habitId, date, value, answer) {
     if (answer.updatedAt) habit.updatedAt = answer.updatedAt;
   }
   notify();
+}
+
+/** Sets or, for null, removes the day `date` in the map `key` of a habit. */
+function setDay(habit, key, date, value) {
+  habit[key] ??= {};
+  if (value === null) delete habit[key][date];
+  else habit[key][date] = value;
 }
 
 export function categoryById(id) {

@@ -36,18 +36,15 @@ export function sinceLabel(from) {
  * Returns one record per day from `from` to `to`: the habits due (`due`), how
  * many of them are complete (`done`) and the share (`rate`, 0…1, null if
  * nothing is due). Habits count from their creation day, or from their first
- * entry if that is earlier (imported history). Future days have nothing done.
+ * entry if that is earlier (imported history); skipped days are not due.
+ * Future days have nothing done.
  */
 export function dayRecords(habits, from, to) {
-  const firstDay = new Map(habits.map((h) => {
-    const created = h.createdAt.slice(0, 10);
-    const firstEntry = Object.keys(h.entries).sort()[0];
-    return [h.id, firstEntry && firstEntry < created ? firstEntry : created];
-  }));
+  const firstDay = new Map(habits.map((h) => [h.id, H.historyStart(h)]));
 
   const records = [];
   for (let iso = from; iso <= to; iso = addDays(iso, 1)) {
-    const due = habits.filter((h) => firstDay.get(h.id) <= iso && H.isScheduled(h, iso));
+    const due = habits.filter((h) => firstDay.get(h.id) <= iso && H.isDue(h, iso));
     const done = iso > state.today
       ? 0
       : due.filter((h) => H.isComplete(h, iso, h.entries[iso] ?? 0)).length;

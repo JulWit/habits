@@ -54,18 +54,20 @@ frequency rule needs no client change beyond the editor.
 
 ## Writing an entry
 
-A tap or long press is handled in `actions.js`:
+A tap or the day dialog is handled in `actions.js`:
 
-1. The new value is set in `state.js` and shown immediately.
-2. `api.js` sends `PUT /api/habits/{id}/entries/{date}`. Writes to the same
-   day wait for each other, so they reach the server in order.
-3. The answer (with the replaced value as `previous`) updates the state.
-4. An undo step is recorded in `undo.js`. Undo and redo write the value back
-   with `expect`, so they do not overwrite a change made on another device in
-   the meantime; on 409 the undo step is dropped.
+1. The changed entry (value, skip, note) is set in `state.js` and shown
+   immediately.
+2. `api.js` sends `PUT /api/habits/{id}/entries/{date}` with the changed
+   parts only. Writes to the same day wait for each other, so they reach the
+   server in order.
+3. The answer (with the replaced entry as `previous`) updates the state.
+4. An undo step is recorded in `undo.js`. Undo and redo write the whole entry
+   back with `expect`, so they do not overwrite a change made on another device
+   in the meantime; on 409 the undo step is dropped.
 
-If the server rejects a write, the client shows the error and reloads the
-state.
+If the server rejects a write, the client takes it back, shows the error and
+reloads the state.
 
 Other changes (habits, categories, order, settings) follow the same pattern:
 perform the change in `actions.js`, update the state and record the undo step
@@ -76,7 +78,8 @@ with `record({label, undo, redo})`.
 The service worker (`sw.js`) caches the app shell, and the client keeps the
 last loaded state in `localStorage`, so the app starts without a connection.
 
-Entry writes that cannot reach the server wait in an outbox (`outbox.js`).
+Writes of a value that cannot reach the server wait in an outbox
+(`outbox.js`). A skip or a note needs a connection.
 They are laid over every loaded state, so they stay visible, and are sent
 once the connection is back: on the `online` event, when the page becomes
 visible, and every 30 seconds. A write sets an absolute value, so for each day

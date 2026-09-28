@@ -5,7 +5,7 @@ import "testing"
 // Converting to check keeps the days that reached their target of the day.
 func TestConvertToCheckKeepsCompletedDays(t *testing.T) {
 	h := countHabit() // target 6
-	if err := h.Reschedule(80, h.Current().Frequency, friday, false); err != nil {
+	if err := h.Reschedule(Schedule{TargetValue: 80, Frequency: h.Current().Frequency}, friday, false); err != nil {
 		t.Fatal(err)
 	}
 	entries := map[Date]int{
@@ -14,8 +14,8 @@ func TestConvertToCheckKeepsCompletedDays(t *testing.T) {
 		friday:             70, // below the new target
 	}
 
-	schedules, got := ConvertKind(h, entries, KindCheck, 1)
-	if len(got) != 1 || got[friday.AddDays(-2)] != 1 {
+	schedules, got := ConvertKind(h, valued(entries), KindCheck, 1)
+	if len(got) != 1 || got[friday.AddDays(-2)].Value != 1 {
 		t.Errorf("entries = %v, want only the completed day, ticked", got)
 	}
 	for _, s := range schedules {
@@ -29,8 +29,8 @@ func TestConvertToCheckKeepsCompletedDays(t *testing.T) {
 func TestConvertFromCheckUsesTheTarget(t *testing.T) {
 	h := dailyHabit()
 	entries := map[Date]int{friday: 1, friday.AddDays(-1): 1}
-	schedules, got := ConvertKind(h, entries, KindTime, 200)
-	if got[friday] != 200 || got[friday.AddDays(-1)] != 200 {
+	schedules, got := ConvertKind(h, valued(entries), KindTime, 200)
+	if got[friday].Value != 200 || got[friday.AddDays(-1)].Value != 200 {
 		t.Errorf("entries = %v, want the target on both days", got)
 	}
 	if schedules[0].TargetValue != 200 {
@@ -43,9 +43,9 @@ func TestConvertFromCheckUsesTheTarget(t *testing.T) {
 func TestConvertBetweenMeasuredKindsKeepsTheNumbers(t *testing.T) {
 	h := countHabit() // 6 glasses, in tenths
 	entries := map[Date]int{friday: 60, friday.AddDays(-1): 35}
-	schedules, got := ConvertKind(h, entries, KindDistance, 0)
+	schedules, got := ConvertKind(h, valued(entries), KindDistance, 0)
 	// 6 glasses become 6 km, 3.5 become 3.5 km.
-	if got[friday] != 6000 || got[friday.AddDays(-1)] != 3500 {
+	if got[friday].Value != 6000 || got[friday.AddDays(-1)].Value != 3500 {
 		t.Errorf("entries = %v", got)
 	}
 	if schedules[0].TargetValue != 6000 {
@@ -54,8 +54,35 @@ func TestConvertBetweenMeasuredKindsKeepsTheNumbers(t *testing.T) {
 
 	// Values beyond the new kind's range are capped: 1000 glasses are more
 	// than the 200 km a distance may have.
-	_, capped := ConvertKind(h, map[Date]int{friday: KindCount.MaxTarget()}, KindDistance, 0)
-	if capped[friday] != KindDistance.MaxTarget() {
-		t.Errorf("value = %d, want the distance maximum %d", capped[friday], KindDistance.MaxTarget())
+	_, capped := ConvertKind(h, valued(map[Date]int{friday: KindCount.MaxTarget()}), KindDistance, 0)
+	if capped[friday].Value != KindDistance.MaxTarget() {
+		t.Errorf("value = %d, want the distance maximum %d", capped[friday].Value, KindDistance.MaxTarget())
+	}
+}
+
+// A change of kind keeps skipped days and notes, also on days whose value is
+// dropped.
+func TestConvertKeepsSkipsAndNotes(t *testing.T) {
+	h := countHabit() // target 6
+	entries := map[Date]Entry{
+		friday:             {Value: 30, Note: "half"}, // below the target
+		friday.AddDays(-1): {Skipped: true, Note: "ill"},
+	}
+	_, got := ConvertKind(h, entries, KindCheck, 1)
+	if want := (Entry{Note: "half"}); got[friday] != want {
+		t.Errorf("friday = %+v, want %+v", got[friday], want)
+	}
+	if want := (Entry{Skipped: true, Note: "ill"}); got[friday.AddDays(-1)] != want {
+		t.Errorf("thursday = %+v, want %+v", got[friday.AddDays(-1)], want)
+	}
+}
+
+// A limit becomes a plain target when the habit turns into a check habit.
+func TestConvertToCheckDropsTheLimit(t *testing.T) {
+	h := countHabit()
+	h.Schedules[0].TargetType = TargetAtMost
+	schedules, _ := ConvertKind(h, nil, KindCheck, 1)
+	if schedules[0].TargetType != TargetAtLeast {
+		t.Errorf("target type = %q, want at_least", schedules[0].TargetType)
 	}
 }

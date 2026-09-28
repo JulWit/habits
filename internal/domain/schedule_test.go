@@ -16,7 +16,7 @@ func countHabit() Habit {
 // retarget changes the target of h from day on.
 func retarget(t *testing.T, h *Habit, target int, day Date, retroactive bool) {
 	t.Helper()
-	if err := h.Reschedule(target, h.Current().Frequency, day, retroactive); err != nil {
+	if err := h.Reschedule(Schedule{TargetValue: target, Frequency: h.Current().Frequency}, day, retroactive); err != nil {
 		t.Fatalf("Reschedule: %v", err)
 	}
 }
@@ -37,7 +37,7 @@ func TestRaisingTheTargetKeepsThePast(t *testing.T) {
 	if got := h.Target(friday); got != 80 {
 		t.Errorf("target today = %d, want 80", got)
 	}
-	st := ComputeStats(h, entries, friday, rateDays)
+	st := ComputeStats(h, valued(entries), friday, rateDays)
 	if st.CurrentStreak != 10 {
 		t.Errorf("current streak = %d, want 10", st.CurrentStreak)
 	}
@@ -103,7 +103,7 @@ func TestRescheduleLeavesCopiesAlone(t *testing.T) {
 func TestFrequencyChangeKeepsThePastDueDays(t *testing.T) {
 	h := dailyHabit()
 	// Mondays only, from this Monday on.
-	if err := h.Reschedule(1, Frequency{Kind: FreqWeekdays, Weekdays: 1}, monday, false); err != nil {
+	if err := h.Reschedule(Schedule{TargetValue: 1, Frequency: Frequency{Kind: FreqWeekdays, Weekdays: 1}}, monday, false); err != nil {
 		t.Fatal(err)
 	}
 	if !h.IsScheduled(monday.AddDays(-2)) {
@@ -121,7 +121,7 @@ func TestFrequencyChangeKeepsThePastDueDays(t *testing.T) {
 // daily schedule: a week is met when every day was completed.
 func TestWeeklyHabitJudgesOlderWeeksByTheirSchedule(t *testing.T) {
 	h := dailyHabit()
-	if err := h.Reschedule(1, Frequency{Kind: FreqTimesPerWeek, TimesPerWeek: 2}, monday, false); err != nil {
+	if err := h.Reschedule(Schedule{TargetValue: 1, Frequency: Frequency{Kind: FreqTimesPerWeek, TimesPerWeek: 2}}, monday, false); err != nil {
 		t.Fatal(err)
 	}
 
@@ -137,7 +137,7 @@ func TestWeeklyHabitJudgesOlderWeeksByTheirSchedule(t *testing.T) {
 	entries[monday] = 1
 	entries[monday.AddDays(1)] = 1
 
-	st := ComputeStats(h, entries, friday, rateDays)
+	st := ComputeStats(h, valued(entries), friday, rateDays)
 	if st.StreakUnit != "weeks" || st.CurrentStreak != 2 {
 		t.Errorf("streak = %d %s, want 2 weeks", st.CurrentStreak, st.StreakUnit)
 	}
@@ -179,7 +179,7 @@ func TestLaterScheduleAnchorsAtItsStart(t *testing.T) {
 func TestDueDays(t *testing.T) {
 	h := dailyHabit()
 	// Mondays only, from this Monday on.
-	if err := h.Reschedule(1, Frequency{Kind: FreqWeekdays, Weekdays: 1}, monday, false); err != nil {
+	if err := h.Reschedule(Schedule{TargetValue: 1, Frequency: Frequency{Kind: FreqWeekdays, Weekdays: 1}}, monday, false); err != nil {
 		t.Fatal(err)
 	}
 	// Saturday and Sunday before, then Monday to Wednesday.

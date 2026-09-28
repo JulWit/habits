@@ -1,0 +1,11 @@
+package domain
+
+// valued returns entries holding the given values, for tests that record no
+// skips or notes.
+func valued(values map[Date]int) map[Date]Entry {
+	out := make(map[Date]Entry, len(values))
+	for d, v := range values {
+		out[d] = Entry{Value: v}
+	}
+	return out
+}

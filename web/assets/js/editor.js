@@ -154,16 +154,48 @@ const KIND_FIELDS = {
  */
 function syncVisibility() {
   const kind = form.elements.kind.value;
+  syncLimit(kind);
   const freq = form.elements.freq.value;
   const repeat = form.elements.weekRepeat.value;
   for (const el of form.querySelectorAll("[data-when-kind]")) {
-    setSectionActive(el, el.dataset.whenKind === kind);
+    // A section may name several kinds, separated by spaces.
+    setSectionActive(el, el.dataset.whenKind.split(" ").includes(kind));
   }
   // Sections that depend on the repeat mode.
   for (const el of form.querySelectorAll("[data-when-freq]")) {
     const repeatMatches = !el.dataset.whenRepeat || el.dataset.whenRepeat === repeat;
     setSectionActive(el, el.dataset.whenFreq === freq && repeatMatches);
   }
+}
+
+/** Labels of the target fields, as a target and as a limit. */
+const TARGET_LABELS = {
+  count: [t("Daily target"), t("Daily limit")],
+  time: [t("Daily target in minutes"), t("Daily limit in minutes")],
+  distance: [t("Daily target in km"), t("Daily limit in km")],
+};
+
+/**
+ * Adapts the form to a limit (at most) of a measured kind: the target fields
+ * are labelled as a limit and accept 0 ("none at all"), and the frequencies
+ * counting days per week or month are off, as a limit needs fixed days.
+ */
+function syncLimit(kind) {
+  const limit = kind !== "check" && form.elements.targetType.value === "at_most";
+  for (const el of form.querySelectorAll("[data-target-label]")) {
+    el.textContent = TARGET_LABELS[el.dataset.targetLabel][limit ? 1 : 0];
+  }
+  for (const fields of Object.values(KIND_FIELDS)) {
+    const input = form.elements[fields.target];
+    input.dataset.min ??= input.min;
+    input.min = limit ? "0" : input.dataset.min;
+  }
+  for (const radio of form.querySelectorAll('input[name="freq"]')) {
+    const periodic = radio.value === "times_per_week" || radio.value === "times_per_month";
+    radio.disabled = limit && periodic;
+    if (radio.disabled && radio.checked) form.elements.freq.value = "daily";
+  }
+  document.getElementById("editor-limit-hint").hidden = !limit;
 }
 
 function setSectionActive(section, active) {
@@ -194,6 +226,7 @@ export function openEditor(habit, handler) {
 
   f.name.value = habit?.name ?? "";
   f.kind.value = habit?.kind ?? "check";
+  f.targetType.value = schedule?.targetType === "at_most" ? "at_most" : "at_least";
   for (const [kind, fields] of Object.entries(KIND_FIELDS)) {
     f[fields.target].value = fields.defaultTarget;
     f[fields.step].value = "";
@@ -207,6 +240,7 @@ export function openEditor(habit, handler) {
   const freq = schedule?.frequency ?? { kind: "daily" };
   f.freq.value = freq.kind;
   f.timesPerWeek.value = freq.timesPerWeek || 3;
+  f.timesPerMonth.value = freq.timesPerMonth || 2;
   f.intervalDays.value = freq.intervalDays || 3;
   f.anchorDate.value = freq.anchorDate || state.today;
 
@@ -252,8 +286,9 @@ function collect() {
     categoryId: selectedCategory,
     unit: kind === "count" ? f.unit.value.trim() : "",
     targetValue: 1,
+    targetType: "at_least",
     frequency: {
-      kind: f.freq.value, timesPerWeek: 0, weekdays: 0, intervalDays: 0,
+      kind: f.freq.value, timesPerWeek: 0, timesPerMonth: 0, weekdays: 0, intervalDays: 0,
       weekInterval: 0, weekOfMonth: 0, anchorDate: "",
     },
   };
@@ -269,11 +304,15 @@ function collect() {
   if (fields) {
     input.targetValue = Math.round(Number(f[fields.target].value) * H.scale(kind));
     input.stepValue = Math.round(Number(f[fields.step].value) * H.scale(kind));
+    input.targetType = f.targetType.value;
   }
 
   switch (input.frequency.kind) {
     case "times_per_week":
       input.frequency.timesPerWeek = Number(f.timesPerWeek.value);
+      break;
+    case "times_per_month":
+      input.frequency.timesPerMonth = Number(f.timesPerMonth.value);
       break;
     case "weekdays": {
       let mask = 0;
@@ -325,7 +364,7 @@ function showError(message) {
 
 /** Returns the part of the input that makes up the schedule. */
 function scheduleKey(input) {
-  return JSON.stringify([input.kind, input.targetValue, input.frequency]);
+  return JSON.stringify([input.kind, input.targetValue, input.targetType, input.frequency]);
 }
 
 /**

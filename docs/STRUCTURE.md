@@ -31,7 +31,7 @@ web/                        Frontend (ES modules, no build step)
   assets/js/editor.js         Habit dialog
   assets/js/categoryeditor.js Category dialog
   assets/js/categorypicker.js Category picker
-  assets/js/value.js          Exact value dialog
+  assets/js/value.js          Day dialog: value, skip and note
   assets/js/search.js         Search dialog
   assets/js/settings.js       Settings dialog
   assets/js/i18n.js           Translations and time zone

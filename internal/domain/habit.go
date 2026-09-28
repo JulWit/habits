@@ -110,6 +110,22 @@ const (
 	FreqWeekdays FrequencyKind = "weekdays"
 	// FreqCustomInterval is due every n days.
 	FreqCustomInterval FrequencyKind = "custom_interval"
+	// FreqTimesPerMonth is due a number of times per calendar month, on any
+	// days.
+	FreqTimesPerMonth FrequencyKind = "times_per_month"
+)
+
+// TargetType says whether a day's value has to reach the target or stay
+// within it.
+type TargetType string
+
+const (
+	// TargetAtLeast completes a day once its value reaches the target.
+	TargetAtLeast TargetType = "at_least"
+	// TargetAtMost is a limit: a day is complete while its value stays at or
+	// below the target, a day without a value included. Only for measured
+	// kinds with fixed due days.
+	TargetAtMost TargetType = "at_most"
 )
 
 // Weekdays is a set of weekdays as a bitmask: bit 0 is Monday, bit 6 Sunday.
@@ -124,10 +140,11 @@ func (w Weekdays) Has(d time.Weekday) bool {
 // Frequency is the schedule of a habit. Only the fields used by Kind are set;
 // Validate resets the others to zero.
 type Frequency struct {
-	Kind         FrequencyKind `json:"kind"`
-	TimesPerWeek int           `json:"timesPerWeek"`
-	Weekdays     Weekdays      `json:"weekdays"`
-	IntervalDays int           `json:"intervalDays"`
+	Kind          FrequencyKind `json:"kind"`
+	TimesPerWeek  int           `json:"timesPerWeek"`
+	TimesPerMonth int           `json:"timesPerMonth"`
+	Weekdays      Weekdays      `json:"weekdays"`
+	IntervalDays  int           `json:"intervalDays"`
 	// WeekInterval limits FreqWeekdays to every n-th week, counted from the
 	// week of AnchorDate. 1 means every week.
 	WeekInterval int `json:"weekInterval"`
@@ -289,14 +306,16 @@ func (h *Habit) Validate() error {
 // Current returns the current schedule, the last one.
 func (h Habit) Current() Schedule { return h.Schedules[len(h.Schedules)-1] }
 
-// Reschedule makes target and frequency the habit's schedule from day on;
-// earlier days keep the schedule they had. With retroactive, the new schedule
-// replaces the whole history instead.
+// Reschedule makes the target, target type and frequency of rules the habit's
+// schedule from day on; rules.From is ignored. Earlier days keep the schedule
+// they had. With retroactive, the new schedule replaces the whole history
+// instead.
 //
 // Several changes on one day leave one schedule for that day, and changing
 // back to the previous schedule merges both.
-func (h *Habit) Reschedule(target int, frequency Frequency, day Date, retroactive bool) error {
-	next := Schedule{From: day, TargetValue: target, Frequency: frequency}
+func (h *Habit) Reschedule(rules Schedule, day Date, retroactive bool) error {
+	next := rules
+	next.From = day
 	if err := next.normalise(h.Kind); err != nil {
 		return err
 	}
@@ -350,16 +369,27 @@ func ValidateEntryValue(k Kind, value int) error {
 	return nil
 }
 
-// Target returns the value at which d counts as completed.
+// Target returns the target that applies on d: the value at which d counts
+// as completed, or for a limit the largest value that still does.
 func (h Habit) Target(d Date) int {
 	if h.Kind == KindCheck {
 		return 1
 	}
-	return max(h.ScheduleOn(d).TargetValue, 1)
+	s := h.ScheduleOn(d)
+	if s.isLimit() {
+		return s.TargetValue
+	}
+	return max(s.TargetValue, 1)
 }
 
-// IsComplete reports whether value reaches the target that applies on d.
-func (h Habit) IsComplete(d Date, value int) bool { return value >= h.Target(d) }
+// IsComplete reports whether value meets the target that applies on d:
+// reaches it, or for a limit stays within it.
+func (h Habit) IsComplete(d Date, value int) bool {
+	if h.ScheduleOn(d).isLimit() {
+		return value <= h.Target(d)
+	}
+	return value >= h.Target(d)
+}
 
 // IsScheduled reports whether the habit is due on d, by the schedule that
 // applies on d. Values can only be recorded on scheduled days.

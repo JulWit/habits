@@ -14,7 +14,7 @@ func TestSchemaConstraints(t *testing.T) {
 	ctx := context.Background()
 	st := openTestStore(t)
 	h := mustCreateHabit(t, st, "alice", countHabit(domain.KindCount, 10))
-	if _, _, err := st.SetEntry(ctx, "alice", h.ID, day(2026, time.March, 1), 10, nil); err != nil {
+	if _, _, _, err := st.SetEntry(ctx, "alice", h.ID, day(2026, time.March, 1), setValue(10), nil); err != nil {
 		t.Fatal(err)
 	}
 
@@ -27,6 +27,9 @@ func TestSchemaConstraints(t *testing.T) {
 		"invalid json":    `INSERT INTO user_settings VALUES ('alice', '{', '')`,
 		"unknown freq":    `UPDATE habit_schedules SET freq_kind = 'hourly'`,
 		"negative target": `UPDATE habit_schedules SET target_value = -1`,
+		"zero target":     `UPDATE habit_schedules SET target_value = 0`,
+		"unknown target":  `UPDATE habit_schedules SET target_type = 'about'`,
+		"skip with value": `UPDATE entries SET skipped = 1`,
 	} {
 		if _, err := st.db.Exec(stmt); err == nil {
 			t.Errorf("%s: accepted", name)

@@ -29,7 +29,7 @@ func TestDailyRunsSplitAtAGap(t *testing.T) {
 	}
 
 	// Today is still open, so the second run extends to it.
-	wantRuns(t, StreakRuns(h, entries, friday), [][2]int{{-10, -6}, {-4, 0}})
+	wantRuns(t, StreakRuns(h, valued(entries), friday), [][2]int{{-10, -6}, {-4, 0}})
 }
 
 func TestDailyRunReachesToday(t *testing.T) {
@@ -39,7 +39,7 @@ func TestDailyRunReachesToday(t *testing.T) {
 		entries[friday.AddDays(-back)] = 1
 	}
 
-	wantRuns(t, StreakRuns(h, entries, friday), [][2]int{{-3, 0}})
+	wantRuns(t, StreakRuns(h, valued(entries), friday), [][2]int{{-3, 0}})
 }
 
 // Runs of weekday habits are measured in calendar days.
@@ -55,7 +55,7 @@ func TestWeekdayRunIsMeasuredInCalendarDays(t *testing.T) {
 		}
 	}
 
-	runs := StreakRuns(h, entries, friday)
+	runs := StreakRuns(h, valued(entries), friday)
 	if len(runs) != 1 {
 		t.Fatalf("got %d runs %v, want 1", len(runs), runs)
 	}
@@ -63,7 +63,7 @@ func TestWeekdayRunIsMeasuredInCalendarDays(t *testing.T) {
 	if days := runs[0].To.DaysSince(runs[0].From) + 1; days != 19 {
 		t.Errorf("run length = %d days, want 19", days)
 	}
-	if st := ComputeStats(h, entries, friday, rateDays); st.CurrentStreak != 9 {
+	if st := ComputeStats(h, valued(entries), friday, rateDays); st.CurrentStreak != 9 {
 		t.Errorf("currentStreak = %d, want 9 — the counter still counts due days", st.CurrentStreak)
 	}
 }
@@ -80,7 +80,7 @@ func TestRunCoversAnExtraDayTheHabitIsNotDueOn(t *testing.T) {
 		entries[d] = 1
 	}
 
-	runs := StreakRuns(h, entries, saturday)
+	runs := StreakRuns(h, valued(entries), saturday)
 	if len(runs) != 1 {
 		t.Fatalf("got %d runs %v, want 1", len(runs), runs)
 	}
@@ -103,14 +103,14 @@ func TestWeekdayRunIgnoresDaysItIsNotDueOn(t *testing.T) {
 	}
 
 	// From Monday two weeks ago until today, including the weekend.
-	wantRuns(t, StreakRuns(h, entries, friday), [][2]int{{-11, 0}})
+	wantRuns(t, StreakRuns(h, valued(entries), friday), [][2]int{{-11, 0}})
 }
 
 func TestWeeklyRunsCoverWholeWeeks(t *testing.T) {
 	h := weeklyHabit(3)
 	entries := fillWeekly(friday.AddDays(-27), friday, 3)
 
-	runs := StreakRuns(h, entries, friday)
+	runs := StreakRuns(h, valued(entries), friday)
 	if len(runs) != 1 {
 		t.Fatalf("got %d runs %v, want 1", len(runs), runs)
 	}
@@ -134,7 +134,7 @@ func TestWeeklyRunSurvivesAnOpenCurrentWeek(t *testing.T) {
 		delete(entries, friday.StartOfWeek().AddDays(i))
 	}
 
-	runs := StreakRuns(h, entries, friday)
+	runs := StreakRuns(h, valued(entries), friday)
 	if len(runs) != 1 {
 		t.Fatalf("got %d runs %v, want 1", len(runs), runs)
 	}
@@ -151,7 +151,7 @@ func TestWeeklyRunEndsAtAMissedWeek(t *testing.T) {
 		delete(entries, lastWeek.AddDays(i))
 	}
 
-	runs := StreakRuns(h, entries, friday)
+	runs := StreakRuns(h, valued(entries), friday)
 	if len(runs) != 2 {
 		t.Fatalf("got %d runs %v, want 2", len(runs), runs)
 	}
@@ -173,7 +173,7 @@ func TestWeeklyRunStartsNoEarlierThanTheHabit(t *testing.T) {
 		entries[friday.AddDays(-back)] = 1
 	}
 
-	runs := StreakRuns(h, entries, friday)
+	runs := StreakRuns(h, valued(entries), friday)
 	if len(runs) != 1 {
 		t.Fatalf("got %d runs %v, want 1", len(runs), runs)
 	}
@@ -191,14 +191,14 @@ func TestRunsIgnoreThePlannedFuture(t *testing.T) {
 		friday.AddDays(2):  1,
 	}
 
-	wantRuns(t, StreakRuns(h, entries, friday), [][2]int{{-1, 0}})
+	wantRuns(t, StreakRuns(h, valued(entries), friday), [][2]int{{-1, 0}})
 }
 
 func TestNoRunsWithoutHistory(t *testing.T) {
-	if runs := StreakRuns(dailyHabit(), map[Date]int{}, friday); len(runs) != 0 {
+	if runs := StreakRuns(dailyHabit(), valued(map[Date]int{}), friday); len(runs) != 0 {
 		t.Errorf("got %v, want no runs", runs)
 	}
-	if runs := StreakRuns(weeklyHabit(3), map[Date]int{}, friday); len(runs) != 0 {
+	if runs := StreakRuns(weeklyHabit(3), valued(map[Date]int{}), friday); len(runs) != 0 {
 		t.Errorf("got %v, want no runs", runs)
 	}
 }

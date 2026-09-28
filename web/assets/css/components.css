@@ -1143,6 +1143,35 @@ html[data-filtering="on"] {
 
 .mark.is-future.is-complete .mark-value { text-shadow: 0 0 2px var(--mark-halo); }
 
+/* Skipped days show the skip sign instead of a ring: they are not due. */
+.mark.is-skipped {
+  background: none;
+  box-shadow: none;
+  color: var(--ring-ink);
+}
+
+.mark.is-skipped::after { display: none; }
+
+.mark.is-skipped svg { width: .95rem; height: .95rem; }
+
+/* A value over the limit: the full ring, with the value in the danger colour. */
+.mark.is-over .mark-value { color: var(--danger-text); }
+
+/* A dot at the top right of the mark tells a day with a note. It sits on the
+   mark, not the cell, which may be much wider than the mark. */
+.cell.has-note .mark::before {
+  content: "";
+  position: absolute;
+  z-index: 2;
+  top: -1px;
+  right: -1px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  box-shadow: 0 0 0 1.5px var(--surface);
+}
+
 /* ---------- detail view ---------- */
 
 /* The habit and category views have their own title bar (appbar.js), as
@@ -1348,6 +1377,11 @@ html.route-detail .view { padding-top: 0; }
 .heat[data-level="3"] { background: color-mix(in srgb, var(--habit-color) 78%, var(--surface-2)); }
 .heat[data-level="4"] { background: var(--habit-color); }
 .heat.is-off { background: transparent; box-shadow: inset 0 0 0 1px var(--border); }
+/* Skipped days are hatched: they are not due, and not missed either. */
+.heat.is-skipped {
+  background: repeating-linear-gradient(-45deg, var(--border-strong) 0 1px, transparent 1px 3.5px);
+  box-shadow: inset 0 0 0 1px var(--border);
+}
 /* Future days of the year, strongly dimmed. */
 .heat.is-future { background: var(--surface-2); opacity: .4; }
 /* Unscheduled future days keep their outline, dimmed about as much as the

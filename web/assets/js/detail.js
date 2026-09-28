@@ -42,6 +42,9 @@ export function renderDetail(habit) {
   // The cumulative chart is only shown for countable habits.
   const panels = [header(habit), stats(habit), details(habit), activity(habit), heatmap(habit)];
   if (H.isCountable(habit)) panels.push(cumulative(habit));
+  // The notes only with notes to show.
+  const notes = notesPanel(habit);
+  if (notes) panels.push(notes);
   root.replaceChildren(...panels);
   showNewest(root);
   centreToday(root);
@@ -73,8 +76,9 @@ function header(habit) {
   });
 }
 
-/** Formats a streak with its unit: "1 day", "6 days", "1 week". */
+/** Formats a streak with its unit: "1 day", "6 days", "1 week", "2 months". */
 function streakText(count, unit) {
+  if (unit === "months") return count === 1 ? t("1 month") : t("{n} months", { n: count });
   if (unit === "weeks") return count === 1 ? t("1 week") : t("{n} weeks", { n: count });
   return count === 1 ? t("1 day") : t("{n} days", { n: count });
 }
@@ -113,7 +117,7 @@ function details(habit) {
 
 /** Describes a schedule of the habit: its frequency and, if any, its target. */
 function describeSchedule(habit, schedule) {
-  return [H.describeFrequency(schedule.frequency), H.describeTarget(habit, schedule.targetValue)].filter(Boolean).join(" · ");
+  return [H.describeFrequency(schedule.frequency), H.describeTarget(habit, schedule)].filter(Boolean).join(" · ");
 }
 
 /**
@@ -128,8 +132,19 @@ function activity(habit) {
   ], "activity");
 }
 
-/** Returns the latest day up to today whose value reached the target, or null. */
+/**
+ * Returns the latest day up to today whose value met the target, or null. A
+ * limit is also met by days without a value, so its days are walked back from
+ * today.
+ */
 function lastDone(habit) {
+  if (H.isLimit(habit, state.today)) {
+    const first = H.historyStart(habit);
+    for (let iso = state.today; iso >= first; iso = addDays(iso, -1)) {
+      if (H.isDue(habit, iso) && H.isComplete(habit, iso, habit.entries[iso] ?? 0)) return iso;
+    }
+    return null;
+  }
   let newest = null;
   for (const [iso, value] of Object.entries(habit.entries)) {
     // Skip future days and incomplete days.
@@ -189,6 +204,7 @@ function heatCell(habit, iso) {
   const off = !H.isScheduled(habit, iso) && value === 0;
   if (ahead) el.classList.add("is-future");
   if (off) el.classList.add("is-off");
+  else if (H.isSkipped(habit, iso)) el.classList.add("is-skipped");
   else if (!ahead) el.dataset.level = String(H.heatLevel(habit, iso, value));
 
   el.dataset.date = iso;
@@ -201,12 +217,26 @@ function heatCell(habit, iso) {
   return el;
 }
 
-/** Describes a day of the heatmap. Future days only show planned values. */
+/**
+ * Describes a day of the heatmap, with its note. Future days only show planned
+ * values.
+ */
 function heatStatus(habit, iso, value) {
+  const note = habit.notes?.[iso];
+  const status = dayStatus(habit, iso, value);
+  return note ? `${status} · ${note}` : status;
+}
+
+function dayStatus(habit, iso, value) {
+  if (H.isSkipped(habit, iso)) return t("skipped");
   const vars = { value: H.formatValue(habit, value), target: H.formatValue(habit, H.target(habit, iso)) };
   if (iso > state.today) {
     if (value > 0) return t("{value} planned", vars);
     return H.isScheduled(habit, iso) ? t("still ahead") : t("not scheduled");
+  }
+  if (H.isLimit(habit, iso) && H.isScheduled(habit, iso)) {
+    if (value > 0) return t("{value} of at most {target}", vars);
+    return H.isComplete(habit, iso, value) ? t("nothing, within the limit") : t("nothing recorded");
   }
   if (value > 0) return t("{value} of {target}", vars);
   return H.isScheduled(habit, iso) ? t("nothing recorded") : t("not scheduled");
@@ -423,4 +453,25 @@ function bucketLabels(buckets) {
     row.append(span);
   });
   return row;
+}
+
+/** How many notes the detail view lists, newest first. */
+const NOTES_SHOWN = 30;
+
+/**
+ * Lists the habit's latest notes, each with its day and what was recorded
+ * then. Returns null without notes.
+ */
+function notesPanel(habit) {
+  const days = Object.keys(habit.notes ?? {}).sort().reverse();
+  if (days.length === 0) return null;
+  const items = days.slice(0, NOTES_SHOWN).map((iso) => {
+    const item = factItem(formatLong(iso), habit.notes[iso], dayStatus(habit, iso, habit.entries[iso] ?? 0));
+    item.className = "note-item";
+    return item;
+  });
+  const title = days.length > NOTES_SHOWN
+    ? t("Notes (latest {n} of {total})", { n: NOTES_SHOWN, total: days.length })
+    : t("Notes");
+  return factsPanel(title, items, "notes");
 }

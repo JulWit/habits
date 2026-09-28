@@ -35,6 +35,55 @@ export function isScheduled(habit, iso) {
   return i >= 0 && i < habit.due.length && habit.due[i] === "1";
 }
 
+/**
+ * Returns what is recorded on `iso` (domain.Entry): the value, whether the
+ * day is skipped, and the note.
+ */
+export function entryOn(habit, iso) {
+  return {
+    value: habit.entries?.[iso] ?? 0,
+    skipped: habit.skipped?.[iso] === true,
+    note: habit.notes?.[iso] ?? "",
+  };
+}
+
+/** Reports whether nothing is recorded in `entry`. */
+export function isEmpty(entry) {
+  return entry.value === 0 && !entry.skipped && entry.note === "";
+}
+
+export function isSkipped(habit, iso) {
+  return habit.skipped?.[iso] === true;
+}
+
+/**
+ * Reports whether the habit is due on `iso` and the day is not skipped. These
+ * are the days the day summary, the filter and the perfect days count, as
+ * the server's statistics do.
+ */
+export function isDue(habit, iso) {
+  return isScheduled(habit, iso) && !isSkipped(habit, iso);
+}
+
+/**
+ * Returns the first day of the habit's history: its creation day, or an
+ * earlier recorded day (domain.HistoryStart).
+ */
+export function historyStart(habit) {
+  let first = habit.createdAt?.slice(0, 10) ?? "";
+  for (const recorded of [habit.entries, habit.skipped, habit.notes]) {
+    for (const iso of Object.keys(recorded ?? {})) {
+      if (!first || iso < first) first = iso;
+    }
+  }
+  return first;
+}
+
+/** Reports whether the target on `iso` is a limit (at most). */
+export function isLimit(habit, iso) {
+  return habit.kind !== "check" && scheduleOn(habit, iso).targetType === "at_most";
+}
+
 /** Returns the server's description of a kind (domain.KindInfo). */
 export function kindInfo(kind) {
   return state.kinds[kind];
@@ -53,20 +102,39 @@ function written(habit, value) {
   return (value / scale(habit.kind)).toLocaleString(locale, { maximumFractionDigits: 1 });
 }
 
-/** Returns the target that applies on `iso`, in stored units. */
+/**
+ * Returns the target that applies on `iso`, in stored units: the value to
+ * reach, or for a limit the largest value that still meets it.
+ */
 export function target(habit, iso) {
   if (habit.kind === "check") return 1;
-  return Math.max(1, scheduleOn(habit, iso).targetValue);
+  const schedule = scheduleOn(habit, iso);
+  if (isLimit(habit, iso)) return schedule.targetValue;
+  return Math.max(1, schedule.targetValue);
 }
 
-/** Reports whether `value` reaches the target that applies on `iso`. */
+/**
+ * Reports whether `value` meets the target that applies on `iso`, as
+ * domain.Habit.IsComplete does. A skipped day is never complete. A limit is
+ * also met by a day without a value, once the day has come and from the
+ * habit's first day on.
+ */
 export function isComplete(habit, iso, value) {
+  if (isSkipped(habit, iso)) return false;
+  if (isLimit(habit, iso)) {
+    return iso <= state.today && iso >= historyStart(habit) && (value || 0) <= target(habit, iso);
+  }
   return (value || 0) >= target(habit, iso);
 }
 
-/** Returns the progress towards the target of `iso`, 0…1. */
+/**
+ * Returns the progress towards the target of `iso`, 0…1. For a limit it is
+ * the share of the limit used up.
+ */
 export function progress(habit, iso, value) {
-  return Math.max(0, Math.min(1, (value || 0) / target(habit, iso)));
+  const goal = target(habit, iso);
+  if (goal === 0) return value > 0 ? 1 : 0;
+  return Math.max(0, Math.min(1, (value || 0) / goal));
 }
 
 /** Returns the increment per tap, in stored units. */
@@ -191,11 +259,15 @@ function monthsBetween(from, to) {
 }
 
 /**
- * Formats a daily target with its unit, by default the current one; "" for
- * check habits.
+ * Formats the daily target of a schedule with its unit, by default of the
+ * current one: "8 glasses", or for a limit "at most 2 cups" and "none";
+ * "" for check habits.
  */
-export function describeTarget(habit, targetValue = currentSchedule(habit).targetValue) {
-  return habit.kind === "check" ? "" : formatValue(habit, targetValue);
+export function describeTarget(habit, schedule = currentSchedule(habit)) {
+  if (habit.kind === "check") return "";
+  if (schedule.targetType !== "at_most") return formatValue(habit, schedule.targetValue);
+  if (schedule.targetValue === 0) return t("none at all");
+  return t("at most {value}", { value: formatValue(habit, schedule.targetValue) });
 }
 
 /** Describes a frequency, e.g. "daily" or "Mon, Wed". */
@@ -205,6 +277,8 @@ export function describeFrequency(f) {
       return t("daily");
     case "times_per_week":
       return t("{n}× per week", { n: f.timesPerWeek });
+    case "times_per_month":
+      return t("{n}× per month", { n: f.timesPerMonth });
     case "weekdays": {
       // Short weekday names.
       const days = WEEKDAY_SHORT.filter((_, i) => f.weekdays & (1 << i));
@@ -246,9 +320,9 @@ export function describeHabit(habit) {
 export function describeStreak(habit) {
   const s = habit.stats;
   const n = s?.currentStreak ?? 0;
-  return s?.streakUnit === "weeks"
-    ? t("{n}-week streak", { n })
-    : t("{n}-day streak", { n });
+  if (s?.streakUnit === "months") return t("{n}-month streak", { n });
+  if (s?.streakUnit === "weeks") return t("{n}-week streak", { n });
+  return t("{n}-day streak", { n });
 }
 
 /**
@@ -279,8 +353,15 @@ export function streakDaysOn(habit, iso) {
   return 0;
 }
 
-/** Returns the heat level 0…4 for the calendar heatmap. */
+/**
+ * Returns the heat level 0…4 for the calendar heatmap. A limit shows 4 while
+ * it is kept and 1 once it is exceeded.
+ */
 export function heatLevel(habit, iso, value) {
+  if (isLimit(habit, iso)) {
+    if (isComplete(habit, iso, value)) return 4;
+    return value > 0 ? 1 : 0;
+  }
   if (!value) return 0;
   const p = progress(habit, iso, value);
   if (p >= 1) return 4;

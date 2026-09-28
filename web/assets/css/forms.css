@@ -375,6 +375,13 @@ html:has(.dialog.page[open]) { overflow: hidden; }
 
 .segmented input:focus-visible + span { outline: 2px solid var(--primary); outline-offset: 1px; }
 
+/* A choice that does not fit the others, e.g. a number per week for a limit. */
+.segmented input:disabled + span {
+  color: var(--text-faint);
+  opacity: .6;
+  cursor: not-allowed;
+}
+
 /* ---------- colour swatches ---------- */
 
 .swatches { display: flex; flex-wrap: wrap; gap: calc(.4 * var(--space)); }
@@ -604,6 +611,18 @@ html:has(.dialog.page[open]) { overflow: hidden; }
 }
 
 #value-hint { padding: 0 calc(1.15 * var(--space)); margin-top: calc(.4 * var(--space)); }
+
+/* ---------- day dialog ---------- */
+
+/* The value controls, dimmed while the day is skipped, which clears the value. */
+.day-value { border: none; margin: 0; padding: 0; min-width: 0; }
+.day-value:disabled { opacity: .45; }
+.day-value > .switch { padding: calc(.9 * var(--space)) calc(1.15 * var(--space)) 0; }
+
+.day-skip { padding: calc(.9 * var(--space)) calc(1.15 * var(--space)) 0; }
+.day-skip .field-hint { margin: calc(.3 * var(--space)) 0 0; }
+
+.day-note.field { margin: 0; padding: calc(.9 * var(--space)) calc(1.15 * var(--space)) 0; }
 
 /* ---------- narrow screens ---------- */
 

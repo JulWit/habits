@@ -124,9 +124,19 @@
         <p class="field-hint" id="editor-kind-hint" hidden></p>
       </fieldset>
 
+      <!-- A target to reach or a limit to stay within, for measured kinds. -->
+      <fieldset class="field" data-when-kind="count time distance" hidden>
+        <legend class="field-label">Goal</legend>
+        <div class="segmented" role="radiogroup" aria-label="Goal">
+          <label><input type="radio" name="targetType" value="at_least" checked><span>At least</span></label>
+          <label><input type="radio" name="targetType" value="at_most"><span>At most</span></label>
+        </div>
+        <p class="field-hint" id="editor-limit-hint" hidden>A limit is kept on every due day that stays within it, days without an entry included. It needs fixed days, not a number per week or month.</p>
+      </fieldset>
+
       <div class="field row" data-when-kind="count" hidden>
         <label class="grow">
-          <span class="field-label">Daily target</span>
+          <span class="field-label" data-target-label="count">Daily target</span>
           <input name="targetCount" type="number" min="0.1" max="1000" step="any" value="8" inputmode="decimal">
         </label>
         <label class="grow">
@@ -146,7 +156,7 @@
       <div class="field" data-when-kind="time" hidden>
         <div class="field-row">
           <label class="grow">
-            <span class="field-label">Daily target in minutes</span>
+            <span class="field-label" data-target-label="time">Daily target in minutes</span>
             <input name="targetTime" type="number" min="0.1" max="1440" step="any" value="20" inputmode="decimal">
           </label>
           <label class="grow">
@@ -161,7 +171,7 @@
         <!-- step="any" allows any decimal value. -->
         <div class="field-row">
           <label class="grow">
-            <span class="field-label">Daily target in km</span>
+            <span class="field-label" data-target-label="distance">Daily target in km</span>
             <input name="targetDistance" type="number" min="0.001" max="200" step="any" value="5" inputmode="decimal">
           </label>
           <label class="grow">
@@ -177,6 +187,7 @@
         <div class="segmented wrap" role="radiogroup" aria-label="Frequency">
           <label><input type="radio" name="freq" value="daily" checked><span>Daily</span></label>
           <label><input type="radio" name="freq" value="times_per_week"><span>Times per week</span></label>
+          <label><input type="radio" name="freq" value="times_per_month"><span>Times per month</span></label>
           <label><input type="radio" name="freq" value="weekdays"><span>Weekdays</span></label>
           <label><input type="radio" name="freq" value="custom_interval"><span>Custom interval</span></label>
         </div>
@@ -188,6 +199,14 @@
           <input name="timesPerWeek" type="number" min="1" max="7" step="1" value="3" inputmode="numeric">
         </label>
         <p class="field-hint">The week starts on Monday. Which days you pick is up to you.</p>
+      </div>
+
+      <div class="field" data-when-freq="times_per_month" hidden>
+        <label>
+          <span class="field-label">How many times per month</span>
+          <input name="timesPerMonth" type="number" min="1" max="28" step="1" value="2" inputmode="numeric">
+        </label>
+        <p class="field-hint">Counted per calendar month. Which days you pick is up to you.</p>
       </div>
 
       <div class="field" data-when-freq="weekdays" hidden>
@@ -586,17 +605,40 @@
   <p id="search-empty" class="search-empty" hidden>No habit or category matches.</p>
 </dialog>
 
-<dialog id="value-popover" class="dialog compact">
+<!-- Day dialog, opened by a long press or right-click on a day cell: the
+     value, whether the day is skipped, and a note (see value.js). -->
+<dialog id="value-popover" class="dialog compact" aria-labelledby="value-title">
   <form id="value-form" method="dialog">
     <h2 id="value-title" class="dialog-head">Enter value</h2>
-    <div class="stepper">
-      <button type="button" class="button round" data-step="-1" aria-label="Less">−</button>
-      <input name="value" type="number" min="0" max="1440" step="1" inputmode="numeric" aria-label="Value">
-      <button type="button" class="button round" data-step="1" aria-label="More">+</button>
+    <!-- Disabled while the day is skipped. -->
+    <fieldset class="day-value" id="value-controls">
+      <legend class="sr-only">Value</legend>
+      <div id="value-measured">
+        <div class="stepper">
+          <button type="button" class="button round" data-step="-1" aria-label="Less">−</button>
+          <input name="value" type="number" min="0" max="1440" step="1" inputmode="numeric" aria-label="Value">
+          <button type="button" class="button round" data-step="1" aria-label="More">+</button>
+        </div>
+        <!-- Quick value buttons, filled per habit kind. -->
+        <div class="quick-steps" id="value-quick" hidden></div>
+        <p id="value-hint" class="field-hint"></p>
+      </div>
+      <label class="switch" id="value-done" hidden>
+        <input type="checkbox" name="done" autocomplete="off">
+        <span>Completed</span>
+      </label>
+    </fieldset>
+    <div class="day-skip">
+      <label class="switch">
+        <input type="checkbox" name="skipped" autocomplete="off">
+        <span>Skip this day</span>
+      </label>
+      <p class="field-hint">A skipped day does not count: it neither breaks nor extends the streak.</p>
     </div>
-    <!-- Quick value buttons, filled per habit kind. -->
-    <div class="quick-steps" id="value-quick" hidden></div>
-    <p id="value-hint" class="field-hint"></p>
+    <label class="field day-note">
+      <span class="field-label">Note</span>
+      <textarea name="note" rows="2" maxlength="500" autocomplete="off"></textarea>
+    </label>
     <footer class="dialog-foot">
       <button type="button" class="button ghost" data-action="clear">Clear</button>
       <button type="submit" class="button primary">Save</button>

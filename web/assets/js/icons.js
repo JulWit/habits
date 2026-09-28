@@ -67,6 +67,9 @@ export const icons = {
 
   check: draw('<path d="M4.5 12.5 9.5 17.5 19.5 6.5"/>'),
 
+  // A skipped day: a step over the day, like skipping a track.
+  skip: draw('<path d="M5 6.5 12 12l-7 5.5zM13 6.5 20 12l-7 5.5z"/>'),
+
   // Current streak. Filled, to be distinguishable from the flame habit icon.
   streak: draw(
     '<path fill="currentColor" stroke="none" fill-rule="evenodd" d="' +

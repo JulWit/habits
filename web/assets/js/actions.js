@@ -8,7 +8,7 @@ import {
 } from "./state.js";
 import { record, toast, errorText } from "./undo.js";
 import { openEditor } from "./editor.js";
-import { openValueDialog } from "./value.js";
+import { openDayDialog } from "./value.js";
 import { formatRelative } from "./dates.js";
 import * as H from "./habit.js";
 import {
@@ -47,31 +47,28 @@ export function tapEntry(habitId, iso) {
     clearClosedDay(habit, iso);
     return;
   }
-  const current = habit.entries[iso] ?? 0;
-  const next = H.nextValue(habit, current);
-  // Nothing to do at the maximum.
-  if (next === current) return;
-  writeEntry(habit, iso, next);
+  const { value, skipped } = H.entryOn(habit, iso);
+  const next = H.nextValue(habit, value);
+  // Nothing to do at the maximum; a skipped day takes the first step.
+  if (next === value && !skipped) return;
+  writeEntry(habit, iso, { value: next });
 }
 
-/** Handles a long press or right-click: opens the value dialog or toggles. */
+/**
+ * Handles a long press or right-click: opens the day dialog with the value,
+ * the skip and the note. A day that is not due only opens with something to
+ * clear.
+ */
 export function editEntry(habitId, iso) {
   const habit = habitById(habitId);
   if (!habit) return;
-  if (!H.isScheduled(habit, iso)) {
-    clearClosedDay(habit, iso);
-    return;
-  }
-  if (habit.kind === "check") {
-    writeEntry(habit, iso, (habit.entries[iso] ?? 0) > 0 ? 0 : 1);
-    return;
-  }
-  openValueDialog(habit, iso, (value) => writeEntry(habit, iso, value));
+  if (!H.isScheduled(habit, iso) && H.isEmpty(H.entryOn(habit, iso))) return;
+  openDayDialog(habit, iso, (change) => writeEntry(habit, iso, change));
 }
 
 /** Clears the value of an unscheduled day. */
 function clearClosedDay(habit, iso) {
-  if ((habit.entries[iso] ?? 0) > 0) writeEntry(habit, iso, 0);
+  if (H.entryOn(habit, iso).value > 0) writeEntry(habit, iso, { value: 0 });
 }
 
 /**
@@ -89,66 +86,107 @@ function serialize(key, task) {
 }
 
 /**
- * Writes a value and records the undo step. The value is shown immediately.
- * If it cannot be sent now (see canSendLater), the write waits in the outbox;
- * if the server rejects it, the state is reloaded. Undo writes back the
- * previous value on the condition that the day still holds this one, so it
- * does not overwrite a change made elsewhere in the meantime.
+ * Returns `entry` with `change` ({value?, skipped?, note?}) applied, as
+ * domain.EntryChange.Apply does, to show it before the server answers.
  */
-async function writeEntry(habit, iso, value) {
-  const before = habit.entries[iso] ?? 0;
-  setEntryLocal(habit.id, iso, value);
+function applied(entry, change) {
+  const next = { ...entry };
+  if ("value" in change) {
+    next.value = change.value;
+    next.skipped = false;
+  }
+  if ("skipped" in change) {
+    next.skipped = change.skipped;
+    if (change.skipped) next.value = 0;
+  }
+  if ("note" in change) next.note = change.note.trim();
+  return next;
+}
 
-  let result;
+/** Reports whether `change` sets the value only, the one change the outbox keeps. */
+function isValueOnly(change) {
+  return Object.keys(change).length === 1 && "value" in change;
+}
+
+/**
+ * Writes a change of a day's entry and records the undo step. The change is
+ * shown immediately. A change of the value only waits in the outbox if it
+ * cannot be sent now (see canSendLater); a skip or a note needs the server.
+ * If the server rejects the change, it is taken back and the state reloaded.
+ * Undo writes back the previous entry on the condition that the day still
+ * holds this one, so it does not overwrite a change made elsewhere in the
+ * meantime.
+ */
+async function writeEntry(habit, iso, change) {
+  const before = H.entryOn(habit, iso);
+  let after = applied(before, change);
+  setEntryLocal(habit.id, iso, after);
+
+  let previous;
   try {
-    result = await serialize(`${habit.id}|${iso}`, () => api.setEntry(habit.id, iso, value));
+    const result = await serialize(`${habit.id}|${iso}`, () => api.setEntry(habit.id, iso, change));
     sent(habit.id, iso);
-    setEntryLocal(habit.id, iso, value, result);
+    // The entry as stored, e.g. with the note trimmed.
+    after = { value: result.value, skipped: result.skipped, note: result.note };
+    previous = result.previous;
+    setEntryLocal(habit.id, iso, after, result);
   } catch (err) {
-    if (!canSendLater(err)) {
+    if (!canSendLater(err) || !isValueOnly(change)) {
+      setEntryLocal(habit.id, iso, before);
       toast(errorText(err), { error: true });
       await deps.refresh();
       return;
     }
-    queue(habit.id, iso, value, err);
-    // The server did not answer; the value before is known locally.
-    result = { previous: before };
+    queue(habit.id, iso, after.value, err);
+    // The server did not answer; the entry before is known locally.
+    previous = before;
   }
 
   const when = formatRelative(iso, state.today);
-  const cleared = value === 0 && result.previous > 0;
   // Taps show no toast, so announce them.
-  announce(value === 0
-    ? t("{name}, {when}: cleared", { name: habit.name, when })
-    : `${habit.name}, ${when}: ${H.formatValue(habit, value)}`);
+  announce(describeWrite(habit, when, after));
   // Clearing an unscheduled day cannot be undone, as the server would reject
   // the old value.
   if (!H.isScheduled(habit, iso)) {
     toast(t("Entry cleared: {name}, {when}", { name: habit.name, when }));
     return;
   }
+  const cleared = after.value === 0 && !after.skipped && previous.value > 0;
+  const skipped = after.skipped && !previous.skipped;
   record({
     label: `${habit.name} — ${when}`,
-    // Only clearing a day shows a toast.
-    silent: !cleared,
-    toastLabel: t("Entry cleared: {name}, {when}", { name: habit.name, when }),
-    undo: () => putEntry(habit.id, iso, result.previous, value),
-    redo: () => putEntry(habit.id, iso, value, result.previous),
+    // Only clearing or skipping a day shows a toast.
+    silent: !cleared && !skipped,
+    toastLabel: skipped
+      ? t("Day skipped: {name}, {when}", { name: habit.name, when })
+      : t("Entry cleared: {name}, {when}", { name: habit.name, when }),
+    undo: () => putEntry(habit.id, iso, previous, after),
+    redo: () => putEntry(habit.id, iso, after, previous),
   });
 }
 
+/** Describes a written entry for the live region. */
+function describeWrite(habit, when, entry) {
+  const name = habit.name;
+  if (entry.skipped) return t("{name}, {when}: skipped", { name, when });
+  if (entry.value > 0) return `${name}, ${when}: ${H.formatValue(habit, entry.value)}`;
+  if (entry.note) return t("{name}, {when}: note saved", { name, when });
+  return t("{name}, {when}: cleared", { name, when });
+}
+
 /**
- * Writes a value for undo or redo, on the condition that the day still holds
- * `expect`. If it cannot be sent now, the write waits in the outbox, and then
- * without the condition: for each day the last value wins.
+ * Writes a whole entry for undo or redo, on the condition that the day still
+ * holds `expect`. If it cannot be sent now, a change of the value only waits
+ * in the outbox, and then without the condition: for each day the last value
+ * wins.
  */
-async function putEntry(habitId, iso, value, expect) {
+async function putEntry(habitId, iso, entry, expect) {
   try {
-    await api.setEntry(habitId, iso, value, expect);
+    await api.setEntry(habitId, iso, entry, expect);
     sent(habitId, iso);
   } catch (err) {
-    if (!canSendLater(err)) throw err;
-    queue(habitId, iso, value, err);
+    if (!canSendLater(err) || entry.skipped || entry.note !== expect.note) throw err;
+    queue(habitId, iso, entry.value, err);
   }
 }
 
@@ -214,7 +252,7 @@ export async function syncOutbox() {
   if (pending().length === 0) return;
   const n = await flush(
     // In order with other writes to the same day.
-    (habitId, iso, value) => serialize(`${habitId}|${iso}`, () => api.setEntry(habitId, iso, value)),
+    (habitId, iso, value) => serialize(`${habitId}|${iso}`, () => api.setEntry(habitId, iso, { value })),
     (err) => toast(t("Not sent: {error}", { error: errorText(err) }), { error: true }),
   );
   if (n === 0) return;

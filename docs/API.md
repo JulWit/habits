@@ -15,7 +15,7 @@ only `/healthz` outside `/api` does not.
 | `DELETE` | `/api/habits/{id}` | Soft delete |
 | `POST` | `/api/habits/{id}/restore` | Restore |
 | `POST` | `/api/habits/reorder` | Set the order; missing habits keep their relative order after the given ones, duplicate IDs are rejected |
-| `PUT` | `/api/habits/{id}/entries/{date}` | Set a day's value (from 2000-01-01 to one year ahead; 0 clears and works on any day); with `expect`, only while the day still holds that value (409 `entry_changed` otherwise) |
+| `PUT` | `/api/habits/{id}/entries/{date}` | Change a day's value, skip or note (from 2000-01-01 to one year ahead; recording needs a due day, removing works on any day); with `expect`, only while the day still holds that entry (409 `entry_changed` otherwise) |
 | `POST` | `/api/categories` | Create a category |
 | `PATCH` | `/api/categories/{id}` | Update name, icon, colour or progress display |
 | `DELETE` | `/api/categories/{id}` | Soft delete |
@@ -64,17 +64,30 @@ Entries cover the last 200 days; the detail view loads the full history via
 
 ## Habits
 
-Every habit carries `schedules` (`[{from, targetValue, frequency}]`, oldest
-first); the last one is the current schedule. The client takes each day's
-target from them. `PATCH /api/habits/{id}` accepts `targetValue` and
-`frequency` to change the current schedule.
+Every habit carries `schedules` (`[{from, targetValue, targetType,
+frequency}]`, oldest first); the last one is the current schedule.
+`targetType` is `at_least` or, for a limit, `at_most` (see
+[DATAMODEL.md](DATAMODEL.md#targets-and-limits)). The client takes each day's
+target from them. `PATCH /api/habits/{id}` accepts `targetValue`, `targetType`
+and `frequency` to change the current schedule.
 
 Each habit also carries its due days as `due`, one character per day from
 `dueFrom` (`1` due, `0` not), up to one year ahead, and its streak runs as
-`streakRuns`.
+`streakRuns`. What is recorded comes in three maps keyed by date: `entries`
+(the values), `skipped` (`true` for skipped days) and `notes`.
 
 ## Entries
 
-`PUT …/entries/{date}` returns the replaced value as `previous`. Undo writes it
-back with `expect` set to the value it takes back, so it does not overwrite a
-change made on another device in the meantime; on 409 the undo step is dropped.
+`PUT …/entries/{date}` changes a day's entry. The body sets any of `value`,
+`skipped` and `note`; the others stay as they are. A value ends a skip, and
+`skipped: true` clears the value:
+
+```json
+{"value": 30}
+{"skipped": true, "note": "ill"}
+```
+
+The answer carries the entry after the change (`value`, `skipped`, `note`) and
+the replaced one as `previous`. Undo writes the previous entry back with
+`expect` set to the entry it takes back, so it does not overwrite a change made
+on another device in the meantime; on 409 the undo step is dropped.

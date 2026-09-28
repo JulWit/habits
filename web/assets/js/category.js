@@ -127,10 +127,10 @@ function habitList(habits) {
     row.querySelector(".habit-name").textContent = habit.name;
     row.querySelector(".habit-meta").textContent = H.describeHabit(habit);
     const s = habit.stats;
-    // Singular/plural for days; "wk" needs no plural.
-    const unit = s.streakUnit === "weeks"
-      ? t("wk")
-      : s.currentStreak === 1 ? t("day") : t("days");
+    // Singular/plural for days; "wk" and "mo" need no plural.
+    let unit = s.currentStreak === 1 ? t("day") : t("days");
+    if (s.streakUnit === "weeks") unit = t("wk");
+    if (s.streakUnit === "months") unit = t("mo");
     row.querySelector(".cat-habit-streak").textContent = `${s.currentStreak} ${unit}`;
     list.append(row);
   }

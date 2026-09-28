@@ -1,5 +1,6 @@
-// Dialog for entering an exact value, opened by a long press or right-click on
-// a day cell.
+// Day dialog, opened by a long press or right-click on a day cell: the value
+// (or for a check habit whether it is done), whether the day is skipped, and a
+// note. It passes only what changed to its caller.
 
 import { formatRelative } from "./dates.js";
 import { state } from "./state.js";
@@ -17,6 +18,9 @@ let quickEl;
 let onSave = null;
 let currentStep = 1;
 let maxInBox = 1;
+/** The habit and its entry as the dialog opened. */
+let habit = null;
+let before = null;
 
 /** Stored units per unit in the input box (see scale in habit.js). */
 let scale = 1;
@@ -46,7 +50,10 @@ export function initValueDialog() {
       setValue(Math.round(next / currentStep) * currentStep);
     });
   }
-  form.querySelector('[data-action="clear"]').addEventListener("click", () => submit(0));
+  form.elements.skipped.addEventListener("change", syncSkip);
+  form.querySelector('[data-action="clear"]').addEventListener("click", () => {
+    submit({ value: 0, skipped: false, note: "" });
+  });
   // A tap on the backdrop cancels, as in the search: without a keyboard there
   // is no Escape.
   dialog.addEventListener("click", (event) => {
@@ -54,7 +61,7 @@ export function initValueDialog() {
   });
   form.addEventListener("submit", (event) => {
     event.preventDefault();
-    submit(Math.max(0, Math.round((Number(input.value) || 0) * scale)));
+    submit(collect());
   });
 }
 
@@ -67,7 +74,7 @@ function setValue(next) {
 }
 
 /** Builds the quick buttons. They add their exact value, without rounding. */
-function paintQuick(habit) {
+function paintQuick() {
   const jumps = QUICK_JUMPS[habit.kind];
   quickEl.hidden = !jumps;
   if (!jumps) return;
@@ -83,35 +90,71 @@ function paintQuick(habit) {
   }));
 }
 
-export function openValueDialog(habit, iso, handler) {
+/** A skipped day has no value, so the value controls are off while skipping. */
+function syncSkip() {
+  document.getElementById("value-controls").disabled = form.elements.skipped.checked;
+}
+
+/**
+ * Opens the day dialog. `handler` receives the change ({value?, skipped?,
+ * note?}) with the parts that differ from the entry as it was.
+ */
+export function openDayDialog(target, iso, handler) {
   onSave = handler;
+  habit = target;
+  before = H.entryOn(habit, iso);
+  const check = habit.kind === "check";
   scale = H.scale(habit.kind);
   currentStep = H.step(habit) / scale;
   // Maximum in input units.
   maxInBox = H.maxValue(habit) / scale;
 
-  const value = habit.entries[iso] ?? 0;
-  input.value = String(value / scale);
+  document.getElementById("value-measured").hidden = check;
+  document.getElementById("value-done").hidden = check === false;
+  input.disabled = check;
+  form.elements.done.checked = before.value > 0;
+
+  input.value = String(before.value / scale);
   input.max = String(maxInBox);
   // Allow any value, not only multiples of the step.
   input.step = scale === 1 ? "1" : "any";
   input.inputMode = scale === 1 ? "numeric" : "decimal";
   input.setAttribute("aria-label", H.unitLabel(habit)
-    ? t("Value in {unit}", { unit: unitName(habit) })
+    ? t("Value in {unit}", { unit: unitName() })
     : t("Value"));
+  paintQuick();
 
-  paintQuick(habit);
+  form.elements.skipped.checked = before.skipped;
+  form.elements.note.value = before.note;
+  syncSkip();
 
   titleEl.textContent = `${habit.name} — ${formatRelative(iso, state.today)}`;
-  hintEl.textContent = hintFor(habit, iso);
+  hintEl.textContent = hintFor(iso);
 
   openPage(dialog);
-  input.select();
+  if (check || before.skipped) form.elements.note.focus();
+  else input.select();
 }
 
-/** Returns the hint below the stepper: the target on `iso`, and the step if not 1. */
-function hintFor(habit, iso) {
-  const goal = t("Daily target: {target}", { target: H.formatValue(habit, H.target(habit, iso)) });
+/** Returns the entry as entered. */
+function collect() {
+  const skipped = form.elements.skipped.checked;
+  let value = habit.kind === "check"
+    ? (form.elements.done.checked ? 1 : 0)
+    : Math.max(0, Math.round((Number(input.value) || 0) * scale));
+  if (skipped) value = 0;
+  return { value, skipped, note: form.elements.note.value.trim() };
+}
+
+/**
+ * Returns the hint below the stepper: the target on `iso` (or the limit), and
+ * the step if not 1.
+ */
+function hintFor(iso) {
+  const amount = H.formatValue(habit, H.target(habit, iso));
+  const goal = H.isLimit(habit, iso)
+    ? t("Daily limit: {target}", { target: amount })
+    : t("Daily target: {target}", { target: amount });
   // A step of 1 is not shown for counts.
   if (habit.kind === "count" && currentStep === 1) return goal;
 
@@ -121,15 +164,26 @@ function hintFor(habit, iso) {
 }
 
 /** Returns the unit of the input value, for its accessible name. */
-function unitName(habit) {
+function unitName() {
   return habit.kind === "distance" ? "km" : H.unitLabel(habit);
 }
 
-async function submit(value) {
+/**
+ * Passes the parts of `entry` that differ from the entry as it was to the
+ * handler. A value is only sent for a day that is not skipped, as a skip
+ * clears it anyway.
+ */
+async function submit(entry) {
+  const change = {};
+  if (entry.skipped !== before.skipped) change.skipped = entry.skipped;
+  if (!entry.skipped && entry.value !== before.value) change.value = entry.value;
+  if (entry.note !== before.note) change.note = entry.note;
+
   const handler = onSave;
   closePage(dialog, { force: true });
+  if (Object.keys(change).length === 0) return;
   try {
-    await handler(value);
+    await handler(change);
   } catch (err) {
     toast(errorText(err), { error: true });
   }

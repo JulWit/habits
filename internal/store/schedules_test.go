@@ -15,7 +15,7 @@ func TestSchedulesRoundTrip(t *testing.T) {
 
 	later := h.Current().From.AddDays(10)
 	weekdays := domain.Frequency{Kind: domain.FreqWeekdays, Weekdays: 0b10101}
-	if err := h.Reschedule(80, weekdays, later, false); err != nil {
+	if err := h.Reschedule(domain.Schedule{TargetValue: 80, Frequency: weekdays}, later, false); err != nil {
 		t.Fatalf("Reschedule: %v", err)
 	}
 	if err := st.UpdateHabit(ctx, "alice", &h, nil); err != nil {

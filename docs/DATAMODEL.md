@@ -14,19 +14,47 @@ their category ID and appear under "No category" until it is restored.
 - `time`: minutes
 - `distance`: stored in metres, shown in kilometres
 
-Each entry is one integer per day; counts and minutes are stored in tenths. A
-day is done when `value >= target`. Days without a value have no row in
-`entries`.
+A day's value is one integer; counts and minutes are stored in tenths.
 
 Changing the kind of a habit converts its history (`domain.ConvertKind`): to
 check, completed days stay ticked; from check, ticked days get the new target;
 between measured kinds, values and targets keep their number in the new unit.
-Completion and streaks stay the same.
+Completion and streaks stay the same. Skipped days and notes are kept. A limit
+becomes a plain target, as check habits have none.
+
+## Entries
+
+A day's entry (`domain.Entry`) holds its value, whether the day is skipped,
+and a note (up to 500 characters). Days with nothing recorded have no row in
+`entries`. A value, a skip or a note can only be recorded on a due day;
+removing is possible on any day.
+
+**Skipped days** (sick, on holiday) count as not due: they neither extend nor
+break a streak and are left out of the completion rate. A skipped day has no
+value; recording a value ends the skip. For times-per-week and
+times-per-month habits, each skipped day lowers the period's target in
+proportion, rounded up (three times a week with four days skipped needs two),
+future skipped days included, so a planned holiday counts for the current week.
+A period skipped entirely neither extends nor breaks the streak.
+
+**Notes** are free text per day, with or without a value.
+
+## Targets and limits
+
+A measured habit (count, time, distance) has a target to reach (`at_least`,
+done when `value >= target`) or a limit to stay within (`at_most`, done when
+`value <= target`). A limit may be 0, "none at all". A limit is also kept by a
+day without a value, from the habit's first day on: nothing recorded means
+nothing consumed. As empty days keep it, a limit needs fixed due days: it
+cannot be combined with `times_per_week` or `times_per_month`, whose count of
+completed days would always be met. Check habits always have the target 1.
 
 ## Frequencies
 
 - `daily`
 - `times_per_week`: x times per week (weeks start on Monday)
+- `times_per_month`: x times per calendar month (1 to 28, so the target fits
+  every month)
 - `weekdays`: selected weekdays (bitmask, bit 0 = Monday), optionally only every
   n-th week from an anchor date, or only the n-th or last occurrence in the
   month
@@ -37,23 +65,24 @@ see [DATAFLOW.md](DATAFLOW.md#due-days) for how the client learns the due days.
 
 ## Schedules
 
-Target and frequency are versioned in `habit_schedules`. A change in the
-editor starts a new version from today on; past days keep the target and
-frequency they had, so their completion and streaks do not change. Several
-changes on one day replace that day's version, and changing back merges it
-with the previous one. "Apply to past days as well" replaces the whole history
-with the new schedule. The first version also covers days before it (entries
-recorded before the habit was created). A change of kind converts the history
-(see [Kinds](#kinds)).
+Target, target type (target or limit) and frequency are versioned in
+`habit_schedules`. A change in the editor starts a new version from today on;
+past days keep the target and frequency they had, so their completion and
+streaks do not change. Several changes on one day replace that day's version,
+and changing back merges it with the previous one. "Apply to past days as
+well" replaces the whole history with the new schedule. The first version also
+covers days before it (entries recorded before the habit was created). A
+change of kind converts the history (see [Kinds](#kinds)).
 
-For a times-per-week habit, weeks from before a switch to times-per-week are
-met when every day due in them was completed; weeks without a due day neither
-extend nor break the streak.
+For a times-per-week or times-per-month habit, periods from before a switch to
+that frequency are met when every day due in them was completed; periods
+without a due day neither extend nor break the streak.
 
 ## Streaks
 
-An open today does not break a streak. For `times_per_week`, the streak counts
-weeks.
+An open today does not break a streak, and skipped days neither extend nor
+break it. For `times_per_week`, the streak counts weeks; for
+`times_per_month`, months. Both are counted by `domain.period`.
 
 **Streak colours**: A completed day is coloured by how long its run had lasted
 on that day: one week, two weeks, a month, three months, six months, a year.

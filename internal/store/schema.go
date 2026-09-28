@@ -60,33 +60,91 @@ CREATE INDEX idx_habits_user ON habits(user_id, deleted_at, position);
 CREATE INDEX idx_habits_category ON habits(category_id);
 
 CREATE TABLE habit_schedules (
-	habit_id            TEXT    NOT NULL REFERENCES habits(id) ON DELETE CASCADE,
-	valid_from          TEXT    NOT NULL CHECK (valid_from GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'),
-	target_value        INTEGER NOT NULL CHECK (target_value > 0),
-	freq_kind           TEXT    NOT NULL CHECK (freq_kind IN ('daily', 'times_per_week', 'weekdays', 'custom_interval')),
-	freq_times_per_week INTEGER NOT NULL DEFAULT 0 CHECK (freq_times_per_week BETWEEN 0 AND 7),
-	freq_weekdays       INTEGER NOT NULL DEFAULT 0 CHECK (freq_weekdays BETWEEN 0 AND 127),
-	freq_interval_days  INTEGER NOT NULL DEFAULT 0 CHECK (freq_interval_days >= 0),
-	freq_week_interval  INTEGER NOT NULL DEFAULT 0 CHECK (freq_week_interval >= 0),
-	freq_week_of_month  INTEGER NOT NULL DEFAULT 0 CHECK (freq_week_of_month BETWEEN -1 AND 4),
-	freq_anchor_date    TEXT    NOT NULL DEFAULT '',
-	PRIMARY KEY (habit_id, valid_from)
+	habit_id             TEXT    NOT NULL REFERENCES habits(id) ON DELETE CASCADE,
+	valid_from           TEXT    NOT NULL CHECK (valid_from GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'),
+	target_value         INTEGER NOT NULL CHECK (target_value >= 0),
+	target_type          TEXT    NOT NULL DEFAULT 'at_least' CHECK (target_type IN ('at_least', 'at_most')),
+	freq_kind            TEXT    NOT NULL CHECK (freq_kind IN ('daily', 'times_per_week', 'times_per_month', 'weekdays', 'custom_interval')),
+	freq_times_per_week  INTEGER NOT NULL DEFAULT 0 CHECK (freq_times_per_week BETWEEN 0 AND 7),
+	freq_times_per_month INTEGER NOT NULL DEFAULT 0 CHECK (freq_times_per_month BETWEEN 0 AND 28),
+	freq_weekdays        INTEGER NOT NULL DEFAULT 0 CHECK (freq_weekdays BETWEEN 0 AND 127),
+	freq_interval_days   INTEGER NOT NULL DEFAULT 0 CHECK (freq_interval_days >= 0),
+	freq_week_interval   INTEGER NOT NULL DEFAULT 0 CHECK (freq_week_interval >= 0),
+	freq_week_of_month   INTEGER NOT NULL DEFAULT 0 CHECK (freq_week_of_month BETWEEN -1 AND 4),
+	freq_anchor_date     TEXT    NOT NULL DEFAULT '',
+	PRIMARY KEY (habit_id, valid_from),
+	-- A limit may be 0 ("none at all"), a target not.
+	CHECK (target_value > 0 OR target_type = 'at_most')
 ) STRICT, WITHOUT ROWID;
 
--- Days without a value have no row.
+-- Days with nothing recorded have no row. A skipped day has no value.
 CREATE TABLE entries (
 	habit_id   TEXT    NOT NULL REFERENCES habits(id) ON DELETE CASCADE,
 	date       TEXT    NOT NULL CHECK (date GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'),
-	value      INTEGER NOT NULL CHECK (value > 0),
+	value      INTEGER NOT NULL DEFAULT 0 CHECK (value >= 0),
+	skipped    INTEGER NOT NULL DEFAULT 0 CHECK (skipped IN (0, 1)),
+	note       TEXT    NOT NULL DEFAULT '',
 	updated_at TEXT    NOT NULL,
-	PRIMARY KEY (habit_id, date)
+	PRIMARY KEY (habit_id, date),
+	CHECK (skipped = 0 OR value = 0),
+	CHECK (value > 0 OR skipped = 1 OR note <> '')
 ) STRICT, WITHOUT ROWID;
 `
 
 // migrations change the schema of an existing database, oldest first. Append
 // new ones, never change released ones, and make the same change to schema,
 // which creates new databases.
-var migrations = []string{}
+var migrations = []string{
+	// 2: limits (target_type, a limit may be 0), times per month, and
+	// skipped days and notes in entries. SQLite cannot change a CHECK
+	// constraint, so both tables are rebuilt.
+	`
+CREATE TABLE habit_schedules_new (
+	habit_id             TEXT    NOT NULL REFERENCES habits(id) ON DELETE CASCADE,
+	valid_from           TEXT    NOT NULL CHECK (valid_from GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'),
+	target_value         INTEGER NOT NULL CHECK (target_value >= 0),
+	target_type          TEXT    NOT NULL DEFAULT 'at_least' CHECK (target_type IN ('at_least', 'at_most')),
+	freq_kind            TEXT    NOT NULL CHECK (freq_kind IN ('daily', 'times_per_week', 'times_per_month', 'weekdays', 'custom_interval')),
+	freq_times_per_week  INTEGER NOT NULL DEFAULT 0 CHECK (freq_times_per_week BETWEEN 0 AND 7),
+	freq_times_per_month INTEGER NOT NULL DEFAULT 0 CHECK (freq_times_per_month BETWEEN 0 AND 28),
+	freq_weekdays        INTEGER NOT NULL DEFAULT 0 CHECK (freq_weekdays BETWEEN 0 AND 127),
+	freq_interval_days   INTEGER NOT NULL DEFAULT 0 CHECK (freq_interval_days >= 0),
+	freq_week_interval   INTEGER NOT NULL DEFAULT 0 CHECK (freq_week_interval >= 0),
+	freq_week_of_month   INTEGER NOT NULL DEFAULT 0 CHECK (freq_week_of_month BETWEEN -1 AND 4),
+	freq_anchor_date     TEXT    NOT NULL DEFAULT '',
+	PRIMARY KEY (habit_id, valid_from),
+	-- A limit may be 0 ("none at all"), a target not.
+	CHECK (target_value > 0 OR target_type = 'at_most')
+) STRICT, WITHOUT ROWID;
+
+INSERT INTO habit_schedules_new (habit_id, valid_from, target_value,
+	freq_kind, freq_times_per_week, freq_weekdays, freq_interval_days,
+	freq_week_interval, freq_week_of_month, freq_anchor_date)
+SELECT habit_id, valid_from, target_value,
+	freq_kind, freq_times_per_week, freq_weekdays, freq_interval_days,
+	freq_week_interval, freq_week_of_month, freq_anchor_date
+FROM habit_schedules;
+DROP TABLE habit_schedules;
+ALTER TABLE habit_schedules_new RENAME TO habit_schedules;
+
+CREATE TABLE entries_new (
+	habit_id   TEXT    NOT NULL REFERENCES habits(id) ON DELETE CASCADE,
+	date       TEXT    NOT NULL CHECK (date GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'),
+	value      INTEGER NOT NULL DEFAULT 0 CHECK (value >= 0),
+	skipped    INTEGER NOT NULL DEFAULT 0 CHECK (skipped IN (0, 1)),
+	note       TEXT    NOT NULL DEFAULT '',
+	updated_at TEXT    NOT NULL,
+	PRIMARY KEY (habit_id, date),
+	CHECK (skipped = 0 OR value = 0),
+	CHECK (value > 0 OR skipped = 1 OR note <> '')
+) STRICT, WITHOUT ROWID;
+
+INSERT INTO entries_new (habit_id, date, value, updated_at)
+SELECT habit_id, date, value, updated_at FROM entries;
+DROP TABLE entries;
+ALTER TABLE entries_new RENAME TO entries;
+`,
+}
 
 // The user_version of a database is 1 plus the number of migrations applied
 // to it; 0 means the database is empty.

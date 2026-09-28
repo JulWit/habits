@@ -44,7 +44,10 @@ func countHabit(kind domain.Kind, target int) domain.Habit {
 	}
 }
 
-func ptr(n int) *int { return &n }
+func ptr[T any](v T) *T { return &v }
+
+// setValue is the change that sets a day's value.
+func setValue(v int) domain.EntryChange { return domain.EntryChange{Value: &v} }
 
 // Migrations apply to an empty database, and reopening it does not run them
 // again.
@@ -112,7 +115,7 @@ func TestDeleteUserRemovesAllTheirData(t *testing.T) {
 	h := countHabit(domain.KindCount, 10)
 	h.CategoryID = cat.ID
 	h = mustCreateHabit(t, st, "alice", h)
-	if _, _, err := st.SetEntry(ctx, "alice", h.ID, day(2026, time.January, 5), 20, nil); err != nil {
+	if _, _, _, err := st.SetEntry(ctx, "alice", h.ID, day(2026, time.January, 5), setValue(20), nil); err != nil {
 		t.Fatalf("SetEntry: %v", err)
 	}
 	if _, err := st.UpdateSettings(ctx, "alice", func(s *Settings) error { s.Theme = "dark"; return nil }); err != nil {

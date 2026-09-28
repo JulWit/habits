@@ -13,8 +13,12 @@ import (
 // entries.
 type habitView struct {
 	domain.Habit
-	Stats   domain.Stats   `json:"stats"`
-	Entries map[string]int `json:"entries"`
+	Stats domain.Stats `json:"stats"`
+	// Entries holds the value of each day with one, Skipped the skipped days
+	// and Notes the notes, each keyed by date.
+	Entries map[string]int    `json:"entries"`
+	Skipped map[string]bool   `json:"skipped"`
+	Notes   map[string]string `json:"notes"`
 	// StreakRuns are the streak runs that reach into the sent entries, oldest
 	// first.
 	StreakRuns []domain.StreakRun `json:"streakRuns"`
@@ -136,11 +140,27 @@ func (s *Server) handleState(w http.ResponseWriter, r *http.Request) {
 // viewFor returns the view of a habit. Statistics are computed from all
 // entries, but only entries and streak runs from from onwards are included. A
 // zero from includes everything.
-func (s *Server) viewFor(h domain.Habit, all map[domain.Date]int, today, from domain.Date) habitView {
-	windowed := make(map[string]int, len(all))
-	for d, v := range all {
-		if from.IsZero() || !d.Before(from) {
-			windowed[d.String()] = v
+func (s *Server) viewFor(h domain.Habit, all map[domain.Date]domain.Entry, today, from domain.Date) habitView {
+	view := habitView{
+		Habit:   h,
+		Stats:   domain.ComputeStats(h, all, today, domain.DefaultRateWindowDays),
+		Entries: map[string]int{},
+		Skipped: map[string]bool{},
+		Notes:   map[string]string{},
+	}
+	for d, e := range all {
+		if !from.IsZero() && d.Before(from) {
+			continue
+		}
+		key := d.String()
+		if e.Value > 0 {
+			view.Entries[key] = e.Value
+		}
+		if e.Skipped {
+			view.Skipped[key] = true
+		}
+		if e.Note != "" {
+			view.Notes[key] = e.Note
 		}
 	}
 	// The due days cover the sent entries up to the entry horizon. A full view
@@ -151,21 +171,15 @@ func (s *Server) viewFor(h domain.Habit, all map[domain.Date]int, today, from do
 			Min(domain.Date{Year: today.Year, Month: time.January, Day: 1}).
 			Min(today.AddDays(-(entryWindowDays - 1)))
 	}
-	runs := domain.StreakRuns(h, all, today)
-	visible := make([]domain.StreakRun, 0, len(runs))
-	for _, run := range runs {
+	view.StreakRuns = []domain.StreakRun{}
+	for _, run := range domain.StreakRuns(h, all, today) {
 		if from.IsZero() || !run.To.Before(from) {
-			visible = append(visible, run)
+			view.StreakRuns = append(view.StreakRuns, run)
 		}
 	}
-	return habitView{
-		Habit:      h,
-		Stats:      domain.ComputeStats(h, all, today, domain.DefaultRateWindowDays),
-		Entries:    windowed,
-		StreakRuns: visible,
-		DueFrom:    dueFrom,
-		Due:        domain.DueDays(h, dueFrom, today.AddDays(EntryHorizonDays)),
-	}
+	view.DueFrom = dueFrom
+	view.Due = domain.DueDays(h, dueFrom, today.AddDays(EntryHorizonDays))
+	return view
 }
 
 // loadView returns the view of a habit with all its entries.
@@ -205,15 +219,22 @@ type habitInput struct {
 	StepValue  *int    `json:"stepValue"`
 	Unit       *string `json:"unit"`
 	Archived   *bool   `json:"archived"`
-	// TargetValue and Frequency change the current schedule, from today on.
-	TargetValue *int              `json:"targetValue"`
-	Frequency   *domain.Frequency `json:"frequency"`
+	// TargetValue, TargetType and Frequency change the current schedule, from
+	// today on.
+	TargetValue *int               `json:"targetValue"`
+	TargetType  *domain.TargetType `json:"targetType"`
+	Frequency   *domain.Frequency  `json:"frequency"`
 	// Retroactive applies a new target or frequency to the past days as well,
 	// instead of from today on.
 	Retroactive bool `json:"retroactive"`
 	// Schedules replaces the whole schedule history, e.g. to undo an edit. It
-	// cannot be combined with TargetValue and Frequency.
+	// cannot be combined with TargetValue, TargetType and Frequency.
 	Schedules []domain.Schedule `json:"schedules"`
+}
+
+// changesSchedule reports whether in changes the current schedule.
+func (in habitInput) changesSchedule() bool {
+	return in.TargetValue != nil || in.TargetType != nil || in.Frequency != nil
 }
 
 // applyTo copies the set fields of in to h, except those of the schedule.
@@ -255,11 +276,12 @@ func (s *Server) handleCreateHabit(w http.ResponseWriter, r *http.Request) {
 	today := s.todayFor(r.Context(), user.ID)
 	var h domain.Habit
 	in.applyTo(&h)
-	target := 1
-	setIf(&target, in.TargetValue)
+	first := domain.Schedule{From: today, TargetValue: 1, Frequency: *in.Frequency}
+	setIf(&first.TargetValue, in.TargetValue)
+	setIf(&first.TargetType, in.TargetType)
 	// The first schedule starts on the user's today, which may differ from the
 	// UTC day of the creation time.
-	h.Schedules = []domain.Schedule{{From: today, TargetValue: target, Frequency: *in.Frequency}}
+	h.Schedules = []domain.Schedule{first}
 
 	if err := s.store.CreateHabit(r.Context(), user.ID, &h); err != nil {
 		s.writeStoreError(w, err, "creating habit")
@@ -278,9 +300,9 @@ func (s *Server) handleUpdateHabit(w http.ResponseWriter, r *http.Request) {
 	if !decodeJSON(w, r, &in) {
 		return
 	}
-	if in.Schedules != nil && (in.TargetValue != nil || in.Frequency != nil) {
+	if in.Schedules != nil && in.changesSchedule() {
 		writeProblem(w, http.StatusUnprocessableEntity, domain.Invalid("schedules_with_target",
-			"schedules cannot be combined with targetValue or frequency"))
+			"schedules cannot be combined with targetValue, targetType or frequency"))
 		return
 	}
 	ctx := r.Context()
@@ -295,7 +317,7 @@ func (s *Server) handleUpdateHabit(w http.ResponseWriter, r *http.Request) {
 	in.applyTo(&h)
 
 	// nil keeps the recorded entries.
-	var converted map[domain.Date]int
+	var converted map[domain.Date]domain.Entry
 	if h.Kind != before.Kind {
 		entries, err := s.store.EntriesForHabit(ctx, user.ID, h.ID)
 		if err != nil {
@@ -322,12 +344,12 @@ func (s *Server) handleUpdateHabit(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case in.Schedules != nil:
 		h.Schedules = in.Schedules
-	case in.TargetValue != nil || in.Frequency != nil:
-		current := h.Current()
-		target, frequency := current.TargetValue, current.Frequency
-		setIf(&target, in.TargetValue)
-		setIf(&frequency, in.Frequency)
-		err = h.Reschedule(target, frequency, s.todayFor(ctx, user.ID), in.Retroactive)
+	case in.changesSchedule():
+		rules := h.Current()
+		setIf(&rules.TargetValue, in.TargetValue)
+		setIf(&rules.TargetType, in.TargetType)
+		setIf(&rules.Frequency, in.Frequency)
+		err = h.Reschedule(rules, s.todayFor(ctx, user.ID), in.Retroactive)
 	}
 	if err == nil {
 		err = s.store.UpdateHabit(ctx, user.ID, &h, converted)

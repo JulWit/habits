@@ -21,7 +21,7 @@ func TestHabitsAreScopedToTheirUser(t *testing.T) {
 	if err := st.SoftDeleteHabit(ctx, "someone-else", mine.ID); !errors.Is(err, ErrNotFound) {
 		t.Errorf("SoftDelete foreign: %v, want ErrNotFound", err)
 	}
-	if _, _, err := st.SetEntry(ctx, "someone-else", mine.ID, day(2026, time.September, 18), 1, nil); !errors.Is(err, ErrNotFound) {
+	if _, _, _, err := st.SetEntry(ctx, "someone-else", mine.ID, day(2026, time.September, 18), setValue(1), nil); !errors.Is(err, ErrNotFound) {
 		t.Errorf("SetEntry foreign: %v, want ErrNotFound", err)
 	}
 	habits, err := st.ListHabits(ctx, "someone-else", true)
@@ -41,20 +41,20 @@ func TestUpdateHabitReplacesTheEntries(t *testing.T) {
 	h := mustCreateHabit(t, st, "alice", countHabit(domain.KindDistance, 5000))
 	friday, saturday := day(2026, time.September, 18), day(2026, time.September, 19)
 	for _, d := range []domain.Date{friday, saturday} {
-		if _, _, err := st.SetEntry(ctx, "alice", h.ID, d, 5200, nil); err != nil {
+		if _, _, _, err := st.SetEntry(ctx, "alice", h.ID, d, setValue(5200), nil); err != nil {
 			t.Fatalf("SetEntry: %v", err)
 		}
 	}
 
 	h.Kind = domain.KindCheck
-	if err := st.UpdateHabit(ctx, "alice", &h, map[domain.Date]int{friday: 1}); err != nil {
+	if err := st.UpdateHabit(ctx, "alice", &h, map[domain.Date]domain.Entry{friday: {Value: 1, Note: "kept"}}); err != nil {
 		t.Fatalf("UpdateHabit: %v", err)
 	}
 	entries, err := st.EntriesForHabit(ctx, "alice", h.ID)
 	if err != nil {
 		t.Fatalf("EntriesForHabit: %v", err)
 	}
-	if len(entries) != 1 || entries[friday] != 1 {
+	if want := (domain.Entry{Value: 1, Note: "kept"}); len(entries) != 1 || entries[friday] != want {
 		t.Errorf("entries = %v, want only Friday, ticked", entries)
 	}
 }
@@ -64,7 +64,7 @@ func TestUpdateHabitKeepsTheEntries(t *testing.T) {
 	ctx := context.Background()
 	st := openTestStore(t)
 	h := mustCreateHabit(t, st, "alice", countHabit(domain.KindCount, 80))
-	if _, _, err := st.SetEntry(ctx, "alice", h.ID, day(2026, time.September, 18), 50, nil); err != nil {
+	if _, _, _, err := st.SetEntry(ctx, "alice", h.ID, day(2026, time.September, 18), setValue(50), nil); err != nil {
 		t.Fatalf("SetEntry: %v", err)
 	}
 
@@ -141,7 +141,7 @@ func TestSoftDeleteKeepsTheHistory(t *testing.T) {
 	st := openTestStore(t)
 	h := mustCreateHabit(t, st, "alice", countHabit(domain.KindCheck, 1))
 	day := day(2026, time.September, 18)
-	if _, _, err := st.SetEntry(ctx, "alice", h.ID, day, 1, nil); err != nil {
+	if _, _, _, err := st.SetEntry(ctx, "alice", h.ID, day, setValue(1), nil); err != nil {
 		t.Fatalf("SetEntry: %v", err)
 	}
 
@@ -163,7 +163,7 @@ func TestSoftDeleteKeepsTheHistory(t *testing.T) {
 	if err != nil {
 		t.Fatalf("EntriesForHabit: %v", err)
 	}
-	if entries[day] != 1 {
+	if entries[day].Value != 1 {
 		t.Errorf("the history did not come back: %+v", entries)
 	}
 }

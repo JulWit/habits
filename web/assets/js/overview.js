@@ -308,7 +308,7 @@ function saveFilter() {
 function matches(habit) {
   if (!onlyOpen) return true;
   const day = activeDay();
-  return !habit.archivedAt && H.isScheduled(habit, day) &&
+  return !habit.archivedAt && H.isDue(habit, day) &&
     !H.isComplete(habit, day, habit.entries[day] ?? 0);
 }
 

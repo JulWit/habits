@@ -7,12 +7,12 @@ type Stats struct {
 	BestStreak     int     `json:"bestStreak"`
 	CompletionRate float64 `json:"completionRate"`
 	// Expected and Achieved are the counts behind CompletionRate: days, or
-	// completions for times-per-week habits.
+	// completions for times-per-week and times-per-month habits.
 	Expected int `json:"expected"`
 	Achieved int `json:"achieved"`
 	// Total is the sum of all values recorded up to today.
 	Total int `json:"total"`
-	// StreakUnit is "days" or "weeks".
+	// StreakUnit is "days", "weeks" or "months".
 	StreakUnit string `json:"streakUnit"`
 }
 
@@ -21,20 +21,20 @@ const DefaultRateWindowDays = 30
 
 // ComputeStats computes the statistics of a habit from all its entries. The
 // completion rate covers the last windowDays days. An open today does not
-// break a streak.
-func ComputeStats(h Habit, entries map[Date]int, today Date, windowDays int) Stats {
+// break a streak, and skipped days count as not due.
+func ComputeStats(h Habit, entries map[Date]Entry, today Date, windowDays int) Stats {
 	if windowDays < 1 {
 		windowDays = DefaultRateWindowDays
 	}
-	if h.Current().Frequency.Kind == FreqTimesPerWeek {
-		return weeklyStats(h, entries, today, windowDays)
+	if p, ok := periodOf(h.Current().Frequency.Kind); ok {
+		return periodicStats(h, entries, today, windowDays, p)
 	}
 	return dailyStats(h, entries, today, windowDays)
 }
 
 // HistoryStart returns the first day of the habit's history: its creation day,
 // or its earliest entry if that is earlier.
-func HistoryStart(h Habit, entries map[Date]int) Date {
+func HistoryStart(h Habit, entries map[Date]Entry) Date {
 	start := DateFromTime(h.CreatedAt)
 	for d := range entries {
 		if start.IsZero() || d.Before(start) {
@@ -44,20 +44,26 @@ func HistoryStart(h Habit, entries map[Date]int) Date {
 	return start
 }
 
+// isDue reports whether d is a due day of the habit: scheduled and not
+// skipped.
+func isDue(h Habit, entries map[Date]Entry, d Date) bool {
+	return h.IsScheduled(d) && !entries[d].Skipped
+}
+
 // totalValue sums the values of all entries up to today.
-func totalValue(entries map[Date]int, today Date) int {
+func totalValue(entries map[Date]Entry, today Date) int {
 	sum := 0
-	for d, v := range entries {
+	for d, e := range entries {
 		if d.After(today) {
 			continue
 		}
-		sum += v
+		sum += e.Value
 	}
 	return sum
 }
 
 // dailyStats computes the statistics of a habit with fixed due days.
-func dailyStats(h Habit, entries map[Date]int, today Date, windowDays int) Stats {
+func dailyStats(h Habit, entries map[Date]Entry, today Date, windowDays int) Stats {
 	st := Stats{StreakUnit: "days", Total: totalValue(entries, today)}
 	start := HistoryStart(h, entries)
 	if start.IsZero() || start.After(today) {
@@ -66,11 +72,11 @@ func dailyStats(h Habit, entries map[Date]int, today Date, windowDays int) Stats
 
 	run := 0
 	for d := start; !d.After(today); d = d.AddDays(1) {
-		if !h.IsScheduled(d) {
+		if !isDue(h, entries, d) {
 			continue
 		}
 		switch {
-		case h.IsComplete(d, entries[d]):
+		case h.IsComplete(d, entries[d].Value):
 			run++
 			if run > st.BestStreak {
 				st.BestStreak = run
@@ -88,11 +94,11 @@ func dailyStats(h Habit, entries map[Date]int, today Date, windowDays int) Stats
 		from = start
 	}
 	for d := from; !d.After(today); d = d.AddDays(1) {
-		if !h.IsScheduled(d) {
+		if !isDue(h, entries, d) {
 			continue
 		}
 		st.Expected++
-		if h.IsComplete(d, entries[d]) {
+		if h.IsComplete(d, entries[d].Value) {
 			st.Achieved++
 		}
 	}
@@ -102,98 +108,47 @@ func dailyStats(h Habit, entries map[Date]int, today Date, windowDays int) Stats
 	return st
 }
 
-// weeklyStats computes the statistics of a times-per-week habit. A week counts
-// as met once its target is reached (see tallyWeek). The rate window is
-// rounded up to whole weeks.
-func weeklyStats(h Habit, entries map[Date]int, today Date, windowDays int) Stats {
-	st := Stats{StreakUnit: "weeks", Total: totalValue(entries, today)}
+// periodicStats computes the statistics of a times-per-week or
+// times-per-month habit. A period counts as met once its target is reached
+// (see period.tally). The rate window is extended to whole periods.
+func periodicStats(h Habit, entries map[Date]Entry, today Date, windowDays int, p period) Stats {
+	st := Stats{StreakUnit: p.streakUnit(), Total: totalValue(entries, today)}
 	start := HistoryStart(h, entries)
 	if start.IsZero() || start.After(today) {
 		return st
 	}
 
-	firstWeek := start.StartOfWeek()
-	currentWeek := today.StartOfWeek()
-	windowWeeks := (windowDays + 6) / 7
-	windowFirstWeek := currentWeek.AddDays(-7 * (windowWeeks - 1))
+	current := p.startOf(today)
+	windowFirst := p.startOf(today.AddDays(-(windowDays - 1)))
 
 	run := 0
-	for week := firstWeek; !week.After(currentWeek); week = week.AddDays(7) {
-		w := tallyWeek(h, entries, week, start, today)
+	for first := p.startOf(start); !first.After(current); first = p.next(first) {
+		t := p.tally(h, entries, first, start, today)
 		switch {
-		case w.target == 0:
-			// Nothing was due: the week neither extends nor breaks the streak.
+		case t.target == 0:
+			// Nothing was due: the period neither extends nor breaks the
+			// streak.
 			continue
-		case w.done >= w.target:
+		case t.done >= t.target:
 			run++
 			if run > st.BestStreak {
 				st.BestStreak = run
 			}
-		case week == currentWeek:
-			// The current week can still be completed.
+		case first == current:
+			// The current period can still be completed.
 		default:
 			run = 0
 		}
 
-		if week.Before(windowFirstWeek) {
+		if first.Before(windowFirst) {
 			continue
 		}
-		st.Expected += w.expected
-		st.Achieved += min(w.done, w.expected)
+		st.Expected += t.expected
+		st.Achieved += min(t.done, t.expected)
 	}
 	st.CurrentStreak = run
 	if st.Expected > 0 {
 		st.CompletionRate = float64(st.Achieved) / float64(st.Expected)
 	}
 	return st
-}
-
-// weekTally is the outcome of one week of a times-per-week habit.
-type weekTally struct {
-	// done is the number of completed days, target the number the week needs.
-	done, target int
-	// expected is the target's share for the days of the week that lie in the
-	// habit's history, rounded up.
-	expected int
-}
-
-// tallyWeek counts the week starting on week, from start to today. The week
-// is judged by the schedule of its first day in the history. Under a
-// times-per-week schedule it needs that many completed days; under any other
-// schedule (from before a change of frequency) it needs every due day.
-func tallyWeek(h Habit, entries map[Date]int, week, start, today Date) weekTally {
-	first := week
-	if first.Before(start) {
-		first = start
-	}
-	schedule := h.ScheduleOn(first)
-	weekly := schedule.Frequency.Kind == FreqTimesPerWeek
-
-	var w weekTally
-	open := 0
-	for i := range 7 {
-		d := week.AddDays(i)
-		if d.Before(start) || d.After(today) {
-			continue
-		}
-		open++
-		due := weekly || schedule.IsScheduled(d)
-		if due && !weekly {
-			w.target++
-		}
-		if due && h.IsComplete(d, entries[d]) {
-			w.done++
-		}
-	}
-	if !weekly {
-		w.expected = w.target
-		return w
-	}
-	w.target = max(schedule.Frequency.TimesPerWeek, 1)
-	w.expected = w.target
-	if open < 7 {
-		// Partial weeks expect a proportional share of the target.
-		w.expected = (w.target*open + 6) / 7
-	}
-	return w
 }

@@ -29,7 +29,10 @@ the editor needs its input fields. Also handle it in `domain.ConvertKind`
 
 Implement the rule in `domain.Schedule.IsScheduled`. The client only reads the
 due days the server sends (see [DATAFLOW.md](DATAFLOW.md#due-days)), so it
-needs no change beyond the editor.
+needs no change beyond the editor. A frequency that counts completed days per
+period, like `times_per_week` and `times_per_month`, also needs its period in
+`domain.periodOf` (`internal/domain/period.go`), which the statistics and
+streaks use.
 
 ## New language
 

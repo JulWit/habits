@@ -158,7 +158,7 @@ func insertHabit(ctx context.Context, tx *sql.Tx, userID string, h *domain.Habit
 // Unless entries is nil, it also replaces all entries of the habit with
 // entries, e.g. with the history converted to a new kind (see
 // domain.ConvertKind).
-func (s *Store) UpdateHabit(ctx context.Context, userID string, h *domain.Habit, entries map[domain.Date]int) error {
+func (s *Store) UpdateHabit(ctx context.Context, userID string, h *domain.Habit, entries map[domain.Date]domain.Entry) error {
 	h.UpdatedAt = time.Now().UTC()
 	if err := h.Validate(); err != nil {
 		return err
@@ -221,21 +221,16 @@ func nullableID(id string) any {
 }
 
 // replaceEntries replaces all entries of the habit.
-func replaceEntries(ctx context.Context, tx *sql.Tx, h *domain.Habit, entries map[domain.Date]int) error {
+func replaceEntries(ctx context.Context, tx *sql.Tx, h *domain.Habit, entries map[domain.Date]domain.Entry) error {
 	if _, err := tx.ExecContext(ctx, `DELETE FROM entries WHERE habit_id = ?`, h.ID); err != nil {
 		return err
 	}
 	now := formatTime(time.Now())
-	for d, v := range entries {
-		if err := domain.ValidateEntryValue(h.Kind, v); err != nil {
+	for d, e := range entries {
+		if err := e.Validate(h.Kind); err != nil {
 			return err
 		}
-		if v == 0 {
-			continue
-		}
-		if _, err := tx.ExecContext(ctx,
-			`INSERT INTO entries (habit_id, date, value, updated_at) VALUES (?,?,?,?)`,
-			h.ID, d.String(), v, now); err != nil {
+		if err := writeEntry(ctx, tx, h.ID, d, e, now); err != nil {
 			return err
 		}
 	}

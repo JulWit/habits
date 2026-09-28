@@ -50,12 +50,14 @@ type exportHabit struct {
 	Icon  string      `json:"icon"`
 	Kind  domain.Kind `json:"kind"`
 	// Category is the Key of the habit's category, or "" for none.
-	Category    string           `json:"category"`
-	StepValue   int              `json:"stepValue"`
-	Unit        string           `json:"unit"`
-	TargetValue int              `json:"targetValue"`
-	Frequency   domain.Frequency `json:"frequency"`
-	Archived    bool             `json:"archived"`
+	Category    string `json:"category"`
+	StepValue   int    `json:"stepValue"`
+	Unit        string `json:"unit"`
+	TargetValue int    `json:"targetValue"`
+	// TargetType is "" in files from before limits, which is a plain target.
+	TargetType domain.TargetType `json:"targetType"`
+	Frequency  domain.Frequency  `json:"frequency"`
+	Archived   bool              `json:"archived"`
 }
 
 // importResult is the response of POST /api/import.
@@ -113,6 +115,7 @@ func (s *Server) handleExport(w http.ResponseWriter, r *http.Request) {
 			StepValue:   h.StepValue,
 			Unit:        h.Unit,
 			TargetValue: current.TargetValue,
+			TargetType:  current.TargetType,
 			Frequency:   current.Frequency,
 			Archived:    h.ArchivedAt != nil,
 		})
@@ -200,7 +203,9 @@ func (s *Server) handleImport(w http.ResponseWriter, r *http.Request) {
 			CategoryID: catByKey[eh.Category],
 			StepValue:  eh.StepValue,
 			Unit:       eh.Unit,
-			Schedules:  []domain.Schedule{{From: today, TargetValue: eh.TargetValue, Frequency: eh.Frequency}},
+			Schedules: []domain.Schedule{{
+				From: today, TargetValue: eh.TargetValue, TargetType: eh.TargetType, Frequency: eh.Frequency,
+			}},
 		}
 		if eh.Archived {
 			h.ArchivedAt = &now

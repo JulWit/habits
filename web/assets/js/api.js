@@ -83,13 +83,14 @@ export const api = {
   deleteHabit: (id) => request("DELETE", `/api/habits/${encodeURIComponent(id)}`),
   restoreHabit: (id) => request("POST", `/api/habits/${encodeURIComponent(id)}/restore`, {}),
   reorderHabits: (ids) => request("POST", "/api/habits/reorder", { ids }),
-  // With `expect`, the server only writes while the day still holds that value
-  // and answers 409 otherwise.
-  setEntry: (habitId, date, value, expect) =>
+  // `change` sets some of value, skipped and note. With `expect` (an entry),
+  // the server only writes while the day still holds it and answers 409
+  // otherwise.
+  setEntry: (habitId, date, change, expect) =>
     request(
       "PUT",
       `/api/habits/${encodeURIComponent(habitId)}/entries/${encodeURIComponent(date)}`,
-      expect === undefined ? { value } : { value, expect },
+      expect === undefined ? change : { ...change, expect },
     ),
   saveSettings: (settings) => request("PATCH", "/api/settings", settings),
   // The habits and categories with their settings, without entries.

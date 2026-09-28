@@ -17,30 +17,31 @@ func TestSetEntryBoundsTheValue(t *testing.T) {
 	day := day(2026, time.September, 18)
 
 	for _, bad := range []int{-1, domain.KindDistance.MaxTarget() + 1, 1 << 40} {
-		if _, _, err := st.SetEntry(ctx, "alice", h.ID, day, bad, nil); !errors.Is(err, domain.ErrValidation) {
+		if _, _, _, err := st.SetEntry(ctx, "alice", h.ID, day, setValue(bad), nil); !errors.Is(err, domain.ErrValidation) {
 			t.Errorf("SetEntry(%d) = %v, want ErrValidation", bad, err)
 		}
 	}
-	if _, _, err := st.SetEntry(ctx, "alice", h.ID, day, domain.KindDistance.MaxTarget(), nil); err != nil {
+	if _, _, _, err := st.SetEntry(ctx, "alice", h.ID, day, setValue(domain.KindDistance.MaxTarget()), nil); err != nil {
 		t.Errorf("the maximum itself must be allowed: %v", err)
 	}
 }
 
-// SetEntry returns the previous value; a value of 0 deletes the entry.
-func TestSetEntryReturnsThePreviousValueAndStaysSparse(t *testing.T) {
+// SetEntry returns the previous entry; a day with nothing recorded has no
+// row.
+func TestSetEntryReturnsThePreviousEntryAndStaysSparse(t *testing.T) {
 	ctx := context.Background()
 	st := openTestStore(t)
 	h := mustCreateHabit(t, st, "alice", countHabit(domain.KindCount, 80))
 	day := day(2026, time.September, 18)
 
-	if prev, _, err := st.SetEntry(ctx, "alice", h.ID, day, 30, nil); err != nil || prev != 0 {
-		t.Fatalf("first write: prev = %d, err = %v", prev, err)
+	if prev, next, _, err := st.SetEntry(ctx, "alice", h.ID, day, setValue(30), nil); err != nil || !prev.IsZero() || next.Value != 30 {
+		t.Fatalf("first write: prev = %+v, next = %+v, err = %v", prev, next, err)
 	}
-	if prev, _, err := st.SetEntry(ctx, "alice", h.ID, day, 50, nil); err != nil || prev != 30 {
-		t.Fatalf("second write: prev = %d, want 30, err = %v", prev, err)
+	if prev, _, _, err := st.SetEntry(ctx, "alice", h.ID, day, setValue(50), nil); err != nil || prev.Value != 30 {
+		t.Fatalf("second write: prev = %+v, want 30, err = %v", prev, err)
 	}
-	if prev, _, err := st.SetEntry(ctx, "alice", h.ID, day, 0, nil); err != nil || prev != 50 {
-		t.Fatalf("delete: prev = %d, want 50, err = %v", prev, err)
+	if prev, _, _, err := st.SetEntry(ctx, "alice", h.ID, day, setValue(0), nil); err != nil || prev.Value != 50 {
+		t.Fatalf("delete: prev = %+v, want 50, err = %v", prev, err)
 	}
 
 	entries, err := st.EntriesForHabit(ctx, "alice", h.ID)
@@ -52,24 +53,71 @@ func TestSetEntryReturnsThePreviousValueAndStaysSparse(t *testing.T) {
 	}
 }
 
-// SetEntry with expect writes only while the stored value is still the expected one.
-func TestSetEntryWithExpectRefusesAChangedValue(t *testing.T) {
+// A skip and a note are stored with the entry; a note keeps a day without a
+// value, and a value ends a skip.
+func TestSetEntryStoresSkipsAndNotes(t *testing.T) {
+	ctx := context.Background()
+	st := openTestStore(t)
+	h := mustCreateHabit(t, st, "alice", countHabit(domain.KindCount, 80))
+	day := day(2026, time.September, 18)
+	stored := func() domain.Entry {
+		t.Helper()
+		entries, err := st.EntriesForHabit(ctx, "alice", h.ID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return entries[day]
+	}
+
+	change := domain.EntryChange{Skipped: ptr(true), Note: ptr("  ill  ")}
+	if _, _, _, err := st.SetEntry(ctx, "alice", h.ID, day, change, nil); err != nil {
+		t.Fatal(err)
+	}
+	if want := (domain.Entry{Skipped: true, Note: "ill"}); stored() != want {
+		t.Errorf("after the skip: %+v, want %+v", stored(), want)
+	}
+
+	if _, _, _, err := st.SetEntry(ctx, "alice", h.ID, day, setValue(20), nil); err != nil {
+		t.Fatal(err)
+	}
+	if want := (domain.Entry{Value: 20, Note: "ill"}); stored() != want {
+		t.Errorf("after a value: %+v, want %+v", stored(), want)
+	}
+
+	if _, _, _, err := st.SetEntry(ctx, "alice", h.ID, day, setValue(0), nil); err != nil {
+		t.Fatal(err)
+	}
+	if want := (domain.Entry{Note: "ill"}); stored() != want {
+		t.Errorf("a note alone keeps the day: %+v, want %+v", stored(), want)
+	}
+}
+
+// SetEntry with expect writes only while the stored entry is still the
+// expected one.
+func TestSetEntryWithExpectRefusesAChangedEntry(t *testing.T) {
 	ctx := context.Background()
 	st := openTestStore(t)
 	h := mustCreateHabit(t, st, "alice", countHabit(domain.KindCount, 80))
 	day := day(2026, time.September, 18)
 
-	if _, _, err := st.SetEntry(ctx, "alice", h.ID, day, 30, ptr(0)); err != nil {
+	if _, _, _, err := st.SetEntry(ctx, "alice", h.ID, day, setValue(30), &domain.Entry{}); err != nil {
 		t.Fatalf("expecting no entry: %v", err)
 	}
-	prev, _, err := st.SetEntry(ctx, "alice", h.ID, day, 0, ptr(20))
-	if !errors.Is(err, ErrConflict) || prev != 30 {
-		t.Fatalf("got %d, %v; want the stored 30 and ErrConflict", prev, err)
+	prev, _, _, err := st.SetEntry(ctx, "alice", h.ID, day, setValue(0), &domain.Entry{Value: 20})
+	if !errors.Is(err, ErrConflict) || prev.Value != 30 {
+		t.Fatalf("got %+v, %v; want the stored 30 and ErrConflict", prev, err)
 	}
-	if got, _ := st.EntriesForHabit(ctx, "alice", h.ID); got[day] != 30 {
-		t.Errorf("value = %d after a refused write, want 30", got[day])
+	if got, _ := st.EntriesForHabit(ctx, "alice", h.ID); got[day].Value != 30 {
+		t.Errorf("value = %d after a refused write, want 30", got[day].Value)
 	}
-	if _, _, err := st.SetEntry(ctx, "alice", h.ID, day, 0, ptr(30)); err != nil {
-		t.Errorf("expecting the stored value: %v", err)
+	// A note changed meanwhile is a change too.
+	if _, _, _, err := st.SetEntry(ctx, "alice", h.ID, day, domain.EntryChange{Note: ptr("x")}, nil); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, _, err := st.SetEntry(ctx, "alice", h.ID, day, setValue(0), &domain.Entry{Value: 30}); !errors.Is(err, ErrConflict) {
+		t.Errorf("expecting the old note: %v, want ErrConflict", err)
+	}
+	if _, _, _, err := st.SetEntry(ctx, "alice", h.ID, day, setValue(0), &domain.Entry{Value: 30, Note: "x"}); err != nil {
+		t.Errorf("expecting the stored entry: %v", err)
 	}
 }

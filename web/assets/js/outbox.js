@@ -135,6 +135,8 @@ export function overlay(loaded) {
     if (!habit) continue;
     if (w.value > 0) habit.entries[w.date] = w.value;
     else delete habit.entries[w.date];
+    // A value ends a skip, as on the server.
+    if (habit.skipped) delete habit.skipped[w.date];
   }
   return loaded;
 }

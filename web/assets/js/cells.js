@@ -77,7 +77,8 @@ function streakBadge(count) {
 
 /** Builds a day cell of a row; `active` is the day of the band. */
 export function dayEntry(habit, iso, active = state.today) {
-  const value = habit.entries[iso] ?? 0;
+  const entry = H.entryOn(habit, iso);
+  const { value } = entry;
   const future = iso > state.today;
   const scheduled = H.isScheduled(habit, iso);
   // Length of the run this day belongs to; 0 for future days.
@@ -86,17 +87,19 @@ export function dayEntry(habit, iso, active = state.today) {
   const btn = document.createElement("button");
   btn.type = "button";
   btn.className = iso === active ? "cell is-today" : "cell";
+  // A dot in the corner marks a note.
+  if (entry.note) btn.classList.add("has-note");
   btn.dataset.habit = habit.id;
   btn.dataset.date = iso;
   btn.dataset.role = "cell";
   btn.style.setProperty("--habit-color", colorValue(habit.color));
-  const label = cellLabel(habit, iso, value, scheduled, streakDays);
+  const label = cellLabel(habit, iso, entry, scheduled, streakDays);
   btn.setAttribute("aria-label", label);
   // The same text as a tooltip, so the state is not told by the mark's colour
   // and pattern alone (e.g. hatched: planned ahead).
   btn.title = label;
-  // Unscheduled days are disabled unless they have a value to clear.
-  if (!scheduled && value === 0) btn.disabled = true;
+  // Unscheduled days are disabled unless they hold something to clear.
+  if (!scheduled && H.isEmpty(entry)) btn.disabled = true;
 
   const mark = document.createElement("span");
   mark.className = "mark";
@@ -107,15 +110,21 @@ export function dayEntry(habit, iso, active = state.today) {
   if (!scheduled && value === 0) mark.classList.add("is-off");
   // Future days are dimmed.
   if (future) mark.classList.add("is-future");
-  if (H.isComplete(habit, iso, value)) {
+  if (entry.skipped) {
+    mark.classList.add("is-skipped");
+    mark.innerHTML = icons.skip;
+  } else if (H.isComplete(habit, iso, value)) {
     mark.classList.add("is-complete");
     // Longer runs are drawn with a stronger streak colour. Level 0 changes
     // nothing.
     const level = H.streakLevel(streakDays);
     if (level > 0) mark.dataset.streak = String(level);
-    if (habit.kind === "check") mark.innerHTML = CHECK_SVG;
+    // A kept limit without a value is ticked like a check.
+    if (habit.kind === "check" || value === 0) mark.innerHTML = CHECK_SVG;
     else mark.append(numberLabel(H.cellValue(habit, value)));
   } else if (value > 0) {
+    // A value over the limit is marked as such.
+    if (H.isLimit(habit, iso) && !future) mark.classList.add("is-over");
     mark.append(numberLabel(H.cellValue(habit, value)));
   }
 
@@ -135,17 +144,20 @@ function numberLabel(text) {
   return el;
 }
 
-function cellLabel(habit, iso, value, scheduled, streakDays = 0) {
+function cellLabel(habit, iso, entry, scheduled, streakDays = 0) {
   const when = formatRelative(iso, state.today);
-  const status = cellStatus(habit, iso, value, scheduled);
+  const status = cellStatus(habit, iso, entry, scheduled);
   // Announce the streak length on days that are part of a run.
-  const done = H.isComplete(habit, iso, value) && iso <= state.today;
+  const done = H.isComplete(habit, iso, entry.value) && iso <= state.today;
   const run = done && streakDays > 0 ? t(", day {n} of a streak", { n: streakDays }) : "";
-  return `${habit.name}, ${when}: ${status}${run}`;
+  const note = entry.note ? t(", note: {note}", { note: entry.note }) : "";
+  return `${habit.name}, ${when}: ${status}${run}${note}`;
 }
 
-/** Describes a day's value. Future days are announced as planned. */
-function cellStatus(habit, iso, value, scheduled) {
+/** Describes a day's entry. Future days are announced as planned. */
+function cellStatus(habit, iso, { value, skipped }, scheduled) {
+  if (skipped) return t("skipped");
+  if (H.isLimit(habit, iso)) return limitStatus(habit, iso, value, scheduled);
   const ahead = iso > state.today;
   const vars = { value: H.formatValue(habit, value), target: H.formatValue(habit, H.target(habit, iso)) };
 
@@ -157,4 +169,15 @@ function cellStatus(habit, iso, value, scheduled) {
     return ahead ? t("{value} of {target} planned", vars) : t("{value} of {target}", vars);
   }
   return scheduled ? t("open") : t("not scheduled");
+}
+
+/** Describes a day of a limit: within it, over it, or planned. */
+function limitStatus(habit, iso, value, scheduled) {
+  const vars = { value: H.formatValue(habit, value), target: H.formatValue(habit, H.target(habit, iso)) };
+  if (!scheduled && value === 0) return t("not scheduled");
+  if (iso > state.today) return value > 0 ? t("{value} planned", vars) : t("still ahead");
+  if (!H.isComplete(habit, iso, value)) {
+    return value > 0 ? t("{value}, over the limit of {target}", vars) : t("open");
+  }
+  return value > 0 ? t("{value}, within the limit of {target}", vars) : t("nothing, within the limit");
 }

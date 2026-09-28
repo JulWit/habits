@@ -48,43 +48,43 @@
       <span id="sync-status" class="sync-status" role="status" hidden></span>
       <button id="add-habit" class="icon-button" type="button" data-icon="plus" title="New habit" aria-label="New habit"></button>
       <button id="open-search" class="icon-button" type="button" data-icon="search" title="Search (/)" aria-label="Search" aria-haspopup="dialog"></button>
-      <button id="filter-open" class="icon-button" type="button" title="Show only open" aria-label="Show only open" aria-pressed="false"></button>
+      <button id="filter-open-habits" class="icon-button" type="button" title="Show only open" aria-label="Show only open" aria-pressed="false"></button>
       <button id="open-settings" class="icon-button" type="button" title="Settings" aria-label="Settings" aria-haspopup="dialog"></button>
     </div>
   </div>
 </header>
 
-<main id="view-overview" class="view">
+<main id="board-view" class="view">
   <!-- No aria-live, as the board is re-rendered completely; changes are
        announced via #board-status. -->
-  <div id="overview-grid" class="board"></div>
-  <p id="no-match" class="empty" hidden>Nothing left open on this day.</p>
-  <div id="empty-state" class="empty" hidden>
+  <div id="board-grid" class="board"></div>
+  <p id="board-no-match" class="empty" hidden>Nothing left open on this day.</p>
+  <div id="board-empty" class="empty" hidden>
     <h2>No habits yet</h2>
     <p>Create your first habit — daily, on certain weekdays or every few days.</p>
     <button class="button primary" type="button" data-action="add-first">Create first habit</button>
   </div>
 </main>
 
-<main id="view-detail" class="view" hidden></main>
+<main id="habit-view" class="view" hidden></main>
 
-<main id="view-category" class="view" hidden></main>
+<main id="category-view" class="view" hidden></main>
 
-<main id="view-days" class="view" hidden></main>
+<main id="day-stats-view" class="view" hidden></main>
 
 <!-- Style guide, only reachable at #/styleguide. -->
-<main id="view-styleguide" class="view" hidden></main>
+<main id="style-guide-view" class="view" hidden></main>
 
 <!-- Pages: full-screen dialogs with a back button, stacked (see page-stack.js). -->
 <!-- The two editors are full-screen dialogs: they slide up, close with ✕ and
      ask before discarding changes (see page-stack.js). On wide screens they, and
      the category picker opened from them, float as dialogs (is-floating). -->
-<dialog id="editor" class="dialog page is-sheet is-floating" aria-labelledby="editor-title">
-  <form id="editor-form" method="dialog">
+<dialog id="habit-editor" class="dialog page is-sheet is-floating" aria-labelledby="habit-editor-title">
+  <form id="habit-editor-form" method="dialog">
     <header class="page-head">
       <button type="button" class="icon-button" data-page-back data-icon="close" title="Close" aria-label="Close"></button>
-      <h2 id="editor-title">New habit</h2>
-      <button type="submit" class="button primary" id="editor-submit">Create</button>
+      <h2 id="habit-editor-title">New habit</h2>
+      <button type="submit" class="button primary" id="habit-editor-submit">Create</button>
     </header>
 
     <div class="page-body">
@@ -95,19 +95,19 @@
 
       <fieldset class="field">
         <legend class="field-label">Colour</legend>
-        <div id="color-choices" class="swatches" role="radiogroup" aria-label="Colour"></div>
+        <div id="habit-editor-colors" class="swatches" role="radiogroup" aria-label="Colour"></div>
       </fieldset>
 
       <fieldset class="field">
         <legend class="field-label">Icon</legend>
-        <div id="icon-choices" class="icon-choices" role="radiogroup" aria-label="Icon"></div>
+        <div id="habit-editor-icons" class="icon-choices" role="radiogroup" aria-label="Icon"></div>
       </fieldset>
 
       <div class="field">
-        <span class="field-label" id="category-picker-label">Category</span>
+        <span class="field-label" id="habit-editor-category-label">Category</span>
         <!-- Labelled by the field label and its own text. -->
-        <button type="button" class="picker" id="category-picker" aria-haspopup="dialog"
-                aria-labelledby="category-picker-label category-picker">
+        <button type="button" class="picker" id="habit-editor-category" aria-haspopup="dialog"
+                aria-labelledby="habit-editor-category-label habit-editor-category">
           <span class="picker-value"></span>
         </button>
       </div>
@@ -121,7 +121,7 @@
           <label><input type="radio" name="kind" value="distance"><span data-icon="navigation">Distance</span></label>
         </div>
         <!-- Shown when the kind of a habit with entries changes; set by habit-editor.js. -->
-        <p class="field-hint" id="editor-kind-hint" hidden></p>
+        <p class="field-hint" id="habit-editor-kind-hint" hidden></p>
       </fieldset>
 
       <!-- A target to reach or a limit to stay within, for measured kinds. -->
@@ -131,7 +131,7 @@
           <label><input type="radio" name="targetType" value="at_least" checked><span>At least</span></label>
           <label><input type="radio" name="targetType" value="at_most"><span>At most</span></label>
         </div>
-        <p class="field-hint" id="editor-limit-hint" hidden>A limit is kept on every due day that stays within it, days without an entry included. It needs fixed days, not a number per week or month.</p>
+        <p class="field-hint" id="habit-editor-limit-hint" hidden>A limit is kept on every due day that stays within it, days without an entry included. It needs fixed days, not a number per week or month.</p>
       </fieldset>
 
       <div class="field row" data-when-kind="count" hidden>
@@ -210,8 +210,8 @@
       </div>
 
       <div class="field" data-when-freq="weekdays" hidden>
-        <span class="field-label" id="weekday-choices-label">On these days</span>
-        <div id="weekday-choices" class="weekdays" role="group" aria-labelledby="weekday-choices-label"></div>
+        <span class="field-label" id="habit-editor-weekdays-label">On these days</span>
+        <div id="habit-editor-weekdays" class="weekdays" role="group" aria-labelledby="habit-editor-weekdays-label"></div>
       </div>
 
       <div class="field" data-when-freq="weekdays" hidden>
@@ -261,7 +261,7 @@
         </label>
       </div>
 
-      <div class="field" id="editor-retroactive" hidden>
+      <div class="field" id="habit-editor-retroactive" hidden>
         <label class="switch">
           <input type="checkbox" name="retroactive" autocomplete="off">
           <span>Apply to past days as well</span>
@@ -269,7 +269,7 @@
         <p class="field-hint">Off, the new target and frequency apply from today on. Past days keep the ones they had.</p>
       </div>
 
-      <p id="editor-error" class="error" role="alert" hidden></p>
+      <p id="habit-editor-error" class="error" role="alert" hidden></p>
     </div>
   </form>
 </dialog>
@@ -283,11 +283,11 @@
   <div class="page-body">
     <!-- The signed-in user, filled by settings-dialog.js. -->
     <section class="account" aria-label="Current user">
-      <span class="account-avatar" id="account-avatar" aria-hidden="true"></span>
+      <span class="account-avatar" id="settings-account-avatar" aria-hidden="true"></span>
       <div class="account-text">
-        <p class="account-name" id="account-name"></p>
-        <p class="account-detail" id="account-detail"></p>
-        <p class="account-groups" id="account-groups" hidden></p>
+        <p class="account-name" id="settings-account-name"></p>
+        <p class="account-detail" id="settings-account-detail"></p>
+        <p class="account-groups" id="settings-account-groups" hidden></p>
       </div>
     </section>
     <nav class="menu" aria-label="Settings sections">
@@ -340,7 +340,7 @@
   </header>
   <div class="page-body">
     <!-- Filled by settings-dialog.js. -->
-    <dl class="facts" id="version-facts"></dl>
+    <dl class="facts" id="settings-version-facts"></dl>
   </div>
 </dialog>
 
@@ -379,11 +379,11 @@
 
     <fieldset class="field">
       <legend class="field-label">Accent colour</legend>
-      <div id="band-choices" class="swatches" role="radiogroup" aria-label="Accent colour"></div>
+      <div id="settings-band-colors" class="swatches" role="radiogroup" aria-label="Accent colour"></div>
       <label class="slider">
         <span class="field-label">Opacity</span>
-        <input type="range" id="band-opacity" min="0" max="100" step="5" autocomplete="off">
-        <output id="band-opacity-out"></output>
+        <input type="range" id="settings-band-opacity" min="0" max="100" step="5" autocomplete="off">
+        <output id="settings-band-opacity-out"></output>
       </label>
     </fieldset>
 
@@ -394,10 +394,10 @@
         <span>Band through today's column</span>
       </label>
       <p class="field-hint">Off, only today's date in the header is marked.</p>
-      <label class="slider" id="band-fill-knob">
+      <label class="slider" id="settings-band-fill-knob">
         <span class="field-label">Band opacity</span>
-        <input type="range" id="band-fill-opacity" min="0" max="100" step="5" autocomplete="off">
-        <output id="band-fill-opacity-out"></output>
+        <input type="range" id="settings-band-fill-opacity" min="0" max="100" step="5" autocomplete="off">
+        <output id="settings-band-fill-opacity-out"></output>
       </label>
     </fieldset>
 
@@ -548,19 +548,19 @@
 <!-- Settings errors; settings-dialog.js moves it into the open settings page. -->
 <p id="settings-error" class="error" hidden></p>
 
-<dialog id="category-dialog" class="dialog page is-floating" aria-labelledby="category-dialog-title">
+<dialog id="category-picker" class="dialog page is-floating" aria-labelledby="category-picker-title">
   <header class="page-head">
     <button type="button" class="icon-button" data-page-back data-icon="arrowLeft" title="Back" aria-label="Back"></button>
-    <h2 id="category-dialog-title">Category</h2>
+    <h2 id="category-picker-title">Category</h2>
   </header>
   <div class="page-body">
-    <div id="category-list" class="picker-list" role="listbox" aria-label="Choose category"></div>
-    <form id="category-create" class="picker-create">
+    <div id="category-picker-list" class="picker-list" role="listbox" aria-label="Choose category"></div>
+    <form id="category-picker-create" class="picker-create">
       <input name="name" type="text" maxlength="60" autocomplete="off"
              placeholder="New category" aria-label="Name of the new category">
       <button type="submit" class="button">Create</button>
     </form>
-    <p id="category-error" class="error" hidden></p>
+    <p id="category-picker-error" class="error" hidden></p>
   </div>
 </dialog>
 
@@ -581,12 +581,12 @@
 
       <fieldset class="field">
         <legend class="field-label">Colour</legend>
-        <div id="category-color-choices" class="swatches" role="radiogroup" aria-label="Colour"></div>
+        <div id="category-editor-colors" class="swatches" role="radiogroup" aria-label="Colour"></div>
       </fieldset>
 
       <fieldset class="field">
         <legend class="field-label">Icon</legend>
-        <div id="category-icon-choices" class="icon-choices is-neutral" role="radiogroup" aria-label="Icon"></div>
+        <div id="category-editor-icons" class="icon-choices is-neutral" role="radiogroup" aria-label="Icon"></div>
       </fieldset>
 
       <fieldset class="field">
@@ -605,12 +605,12 @@
 
 <!-- Skipping a range of days of one habit or of all, e.g. for a holiday (see
      skip-editor.js). -->
-<dialog id="skip-dialog" class="dialog page is-sheet is-floating" aria-labelledby="skip-title">
-  <form id="skip-form" method="dialog">
+<dialog id="skip-editor" class="dialog page is-sheet is-floating" aria-labelledby="skip-editor-title">
+  <form id="skip-editor-form" method="dialog">
     <header class="page-head">
       <button type="button" class="icon-button" data-page-back data-icon="close" title="Close" aria-label="Close"></button>
-      <h2 id="skip-title">Skip days</h2>
-      <button type="submit" class="button primary" id="skip-submit">Skip</button>
+      <h2 id="skip-editor-title">Skip days</h2>
+      <button type="submit" class="button primary" id="skip-editor-submit">Skip</button>
     </header>
 
     <div class="page-body">
@@ -625,17 +625,17 @@
         </label>
       </div>
 
-      <fieldset class="field" id="skip-scope">
+      <fieldset class="field" id="skip-editor-scope">
         <legend class="field-label">Habits</legend>
         <div class="segmented" role="radiogroup" aria-label="Habits">
-          <label><input type="radio" name="scope" value="one" checked><span id="skip-scope-one">This habit</span></label>
+          <label><input type="radio" name="scope" value="one" checked><span id="skip-editor-scope-one">This habit</span></label>
           <label><input type="radio" name="scope" value="all"><span>All habits</span></label>
         </div>
       </fieldset>
 
       <p class="field-hint">Only due days without an entry are skipped; days with an entry keep it. Skipped days neither break nor extend a streak. Archived habits are left out.</p>
 
-      <p id="skip-error" class="error" role="alert" hidden></p>
+      <p id="skip-editor-error" class="error" role="alert" hidden></p>
     </div>
   </form>
 </dialog>
@@ -658,23 +658,23 @@
 
 <!-- Day dialog, opened by a long press or right-click on a day cell: the
      value and whether the day is skipped (see day-editor.js). -->
-<dialog id="value-popover" class="dialog compact" aria-labelledby="value-title">
-  <form id="value-form" method="dialog">
-    <h2 id="value-title" class="dialog-head">Enter value</h2>
+<dialog id="day-editor" class="dialog compact" aria-labelledby="day-editor-title">
+  <form id="day-editor-form" method="dialog">
+    <h2 id="day-editor-title" class="dialog-head">Enter value</h2>
     <!-- Disabled while the day is skipped. -->
-    <fieldset class="day-value" id="value-controls">
+    <fieldset class="day-value" id="day-editor-controls">
       <legend class="sr-only">Value</legend>
-      <div id="value-measured">
+      <div id="day-editor-measured">
         <div class="stepper">
           <button type="button" class="button round" data-step="-1" aria-label="Less">−</button>
           <input name="value" type="number" min="0" max="1440" step="1" inputmode="numeric" aria-label="Value">
           <button type="button" class="button round" data-step="1" aria-label="More">+</button>
         </div>
         <!-- Quick value buttons, filled per habit kind. -->
-        <div class="quick-steps" id="value-quick" hidden></div>
-        <p id="value-hint" class="field-hint"></p>
+        <div class="quick-steps" id="day-editor-quick" hidden></div>
+        <p id="day-editor-hint" class="field-hint"></p>
       </div>
-      <label class="switch" id="value-done" hidden>
+      <label class="switch" id="day-editor-done" hidden>
         <input type="checkbox" name="done" autocomplete="off">
         <span>Completed</span>
       </label>

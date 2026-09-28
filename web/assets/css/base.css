@@ -429,9 +429,9 @@ html[data-scrolled="on"] .day-header-backdrop {
 /* The habit, category and day statistics views are as wide as the overview's
    cards (the board without its reorder column), so switching views keeps the
    width. */
-#view-detail,
-#view-category,
-#view-days {
+#habit-view,
+#category-view,
+#day-stats-view {
   max-width: calc(var(--board-width) - var(--tools-outset) + 2 * var(--gutter));
 }
 
@@ -455,7 +455,7 @@ html[data-scrolled="on"] .day-header-backdrop {
 .view { padding-top: calc(1.25 * var(--space)); }
 
 /* Less top padding, as the day header has its own. */
-#view-overview { padding-top: calc(.8 * var(--space)); }
+#board-view { padding-top: calc(.8 * var(--space)); }
 
 .brand {
   display: flex;

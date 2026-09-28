@@ -610,7 +610,7 @@ html:has(.dialog.page[open]) { overflow: hidden; }
   font-variant-numeric: tabular-nums;
 }
 
-#value-hint { padding: 0 calc(1.15 * var(--space)); margin-top: calc(.4 * var(--space)); }
+#day-editor-hint { padding: 0 calc(1.15 * var(--space)); margin-top: calc(.4 * var(--space)); }
 
 /* ---------- day dialog ---------- */
 

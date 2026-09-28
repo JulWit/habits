@@ -24,11 +24,11 @@ let deps;
 
 export function initCategoryPicker(handlers) {
   deps = handlers;
-  dialog = document.getElementById("category-dialog");
-  list = document.getElementById("category-list");
-  createForm = document.getElementById("category-create");
+  dialog = document.getElementById("category-picker");
+  list = document.getElementById("category-picker-list");
+  createForm = document.getElementById("category-picker-create");
   nameInput = createForm.elements.name;
-  errorBox = document.getElementById("category-error");
+  errorBox = document.getElementById("category-picker-error");
 
   list.addEventListener("click", (event) => {
     const option = event.target.closest("[data-value]");

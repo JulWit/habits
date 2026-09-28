@@ -105,6 +105,10 @@ server after changing files in `web/`).
 - JS: ES modules, no framework, no classes unless the file already uses them.
   File names in kebab-case, with a suffix for views (`-view`) and dialogs
   (`-editor`, `-picker`, `-dialog`); see `docs/STRUCTURE.md`.
+- Element IDs in `index.html` follow the same names: a view or dialog has the
+  name of its module (`habit-view`, `day-editor`), and the elements inside it
+  are prefixed with that name, without a trailing `-dialog`
+  (`habit-editor-title`, `settings-band-colors`).
 - Prose in docs and comments uses British spelling ("colour"); identifiers use
   American spelling (`color`).
 

@@ -16,10 +16,10 @@ let onSubmit = null;
 let habit = null;
 
 export function initSkipDialog() {
-  dialog = document.getElementById("skip-dialog");
-  form = document.getElementById("skip-form");
-  errorBox = document.getElementById("skip-error");
-  submitButton = document.getElementById("skip-submit");
+  dialog = document.getElementById("skip-editor");
+  form = document.getElementById("skip-editor-form");
+  errorBox = document.getElementById("skip-editor-error");
+  submitButton = document.getElementById("skip-editor-submit");
 
   form.addEventListener("submit", handleSubmit);
   form.addEventListener("input", () => { errorBox.hidden = true; });
@@ -46,8 +46,8 @@ export function openSkipDialog(target, handler) {
   f.to.value = addDays(state.today, 6);
   f.to.min = f.from.value;
   f.scope.value = "one";
-  document.getElementById("skip-scope").hidden = habit === null;
-  if (habit) document.getElementById("skip-scope-one").textContent = habit.name;
+  document.getElementById("skip-editor-scope").hidden = habit === null;
+  if (habit) document.getElementById("skip-editor-scope-one").textContent = habit.name;
 
   openPage(dialog);
   f.from.focus();

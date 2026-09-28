@@ -1503,9 +1503,9 @@ html.route-detail .view { padding-top: 0; }
 .today-pill:active { transform: translateX(-50%) translateY(1px); }
 
 /* Room below the last row, so it can be scrolled clear of the button. */
-#view-overview:has(.today-pill:not([hidden])) { padding-bottom: 5rem; }
+#board-view:has(.today-pill:not([hidden])) { padding-bottom: 5rem; }
 /* Toasts appear above the floating button. */
-#view-overview:not([hidden]):has(.today-pill:not([hidden])) ~ .toasts {
+#board-view:not([hidden]):has(.today-pill:not([hidden])) ~ .toasts {
   bottom: calc(4.75rem + env(safe-area-inset-bottom, 0px));
 }
 

@@ -32,13 +32,13 @@ let editing = null;
 let initialSchedule = "";
 
 export function initEditor() {
-  dialog = document.getElementById("editor");
-  form = document.getElementById("editor-form");
-  errorBox = document.getElementById("editor-error");
-  submitButton = document.getElementById("editor-submit");
-  titleEl = document.getElementById("editor-title");
-  categoryButton = document.getElementById("category-picker");
-  retroactiveBox = document.getElementById("editor-retroactive");
+  dialog = document.getElementById("habit-editor");
+  form = document.getElementById("habit-editor-form");
+  errorBox = document.getElementById("habit-editor-error");
+  submitButton = document.getElementById("habit-editor-submit");
+  titleEl = document.getElementById("habit-editor-title");
+  categoryButton = document.getElementById("habit-editor-category");
+  retroactiveBox = document.getElementById("habit-editor-retroactive");
 
   buildWeekdayButtons();
   form.addEventListener("change", syncVisibility);
@@ -82,7 +82,7 @@ function paintCategory() {
 }
 
 function buildWeekdayButtons() {
-  const host = document.getElementById("weekday-choices");
+  const host = document.getElementById("habit-editor-weekdays");
   host.replaceChildren(
     ...WEEKDAY_SHORT.map((label, i) => {
       const b = el("button", {
@@ -103,7 +103,7 @@ function buildWeekdayButtons() {
 }
 
 function buildSwatches() {
-  const host = document.getElementById("color-choices");
+  const host = document.getElementById("habit-editor-colors");
   host.replaceChildren(
     ...state.colors.map((color) => {
       const b = el("button", {
@@ -123,16 +123,16 @@ function buildSwatches() {
 
 function selectColor(color) {
   selectedColor = color;
-  for (const node of document.querySelectorAll("#color-choices .swatch")) {
+  for (const node of document.querySelectorAll("#habit-editor-colors .swatch")) {
     node.setAttribute("aria-checked", String(node.dataset.color === color));
   }
   // Show the icons in the selected colour.
-  document.getElementById("icon-choices").style.setProperty("--habit-color", colorValue(color));
+  document.getElementById("habit-editor-icons").style.setProperty("--habit-color", colorValue(color));
 }
 
 function selectIcon(name) {
   selectedIcon = name;
-  markIconChoice(document.getElementById("icon-choices"), name);
+  markIconChoice(document.getElementById("habit-editor-icons"), name);
 }
 
 /**
@@ -193,7 +193,7 @@ function syncLimit(kind) {
     radio.disabled = limit && periodic;
     if (radio.disabled && radio.checked) form.elements.freq.value = "daily";
   }
-  document.getElementById("editor-limit-hint").hidden = !limit;
+  document.getElementById("habit-editor-limit-hint").hidden = !limit;
 }
 
 function setSectionActive(section, active) {
@@ -213,7 +213,7 @@ export function openEditor(habit, handler) {
   editing = habit;
   errorBox.hidden = true;
   buildSwatches();
-  buildIconChoices(document.getElementById("icon-choices"), state.icons, selectIcon);
+  buildIconChoices(document.getElementById("habit-editor-icons"), state.icons, selectIcon);
   selectedCategory = habit?.categoryId ?? "";
   paintCategory();
 
@@ -258,7 +258,7 @@ export function openEditor(habit, handler) {
   }
 
   const mask = freq.weekdays || 0;
-  for (const b of document.querySelectorAll("#weekday-choices .weekday")) {
+  for (const b of document.querySelectorAll("#habit-editor-weekdays .weekday")) {
     b.setAttribute("aria-pressed", String((mask & (1 << Number(b.dataset.day))) !== 0));
   }
 
@@ -314,7 +314,7 @@ function collect() {
       break;
     case "weekdays": {
       let mask = 0;
-      for (const b of document.querySelectorAll("#weekday-choices .weekday")) {
+      for (const b of document.querySelectorAll("#habit-editor-weekdays .weekday")) {
         if (b.getAttribute("aria-pressed") === "true") mask |= 1 << Number(b.dataset.day);
       }
       input.frequency.weekdays = mask;
@@ -384,7 +384,7 @@ function syncRetroactive() {
  * entries changes (domain.ConvertKind).
  */
 function syncKindHint(kind) {
-  const hint = document.getElementById("editor-kind-hint");
+  const hint = document.getElementById("habit-editor-kind-hint");
   const recorded = editing !== null &&
     (Object.keys(editing.entries ?? {}).length > 0 || (editing.stats?.total ?? 0) > 0);
   if (!recorded || kind === editing.kind) {

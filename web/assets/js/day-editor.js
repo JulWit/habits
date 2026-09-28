@@ -37,12 +37,12 @@ const QUICK_JUMPS = {
 };
 
 export function initValueDialog() {
-  dialog = document.getElementById("value-popover");
-  form = document.getElementById("value-form");
+  dialog = document.getElementById("day-editor");
+  form = document.getElementById("day-editor-form");
   input = form.elements.value;
-  titleEl = document.getElementById("value-title");
-  hintEl = document.getElementById("value-hint");
-  quickEl = document.getElementById("value-quick");
+  titleEl = document.getElementById("day-editor-title");
+  hintEl = document.getElementById("day-editor-hint");
+  quickEl = document.getElementById("day-editor-quick");
 
   for (const b of form.querySelectorAll("[data-step]")) {
     b.addEventListener("click", () => {
@@ -91,7 +91,7 @@ function paintQuick() {
 
 /** A skipped day has no value, so the value controls are off while skipping. */
 function syncSkip() {
-  document.getElementById("value-controls").disabled = form.elements.skipped.checked;
+  document.getElementById("day-editor-controls").disabled = form.elements.skipped.checked;
 }
 
 /**
@@ -108,8 +108,8 @@ export function openDayDialog(target, iso, handler) {
   // Maximum in input units.
   maxInBox = H.maxValue(habit) / scale;
 
-  document.getElementById("value-measured").hidden = check;
-  document.getElementById("value-done").hidden = check === false;
+  document.getElementById("day-editor-measured").hidden = check;
+  document.getElementById("day-editor-done").hidden = check === false;
   input.disabled = check;
   form.elements.done.checked = before.value > 0;
 

@@ -25,8 +25,8 @@ export function initCategoryEditor() {
   form = document.getElementById("category-editor-form");
   errorBox = document.getElementById("category-editor-error");
   submitButton = document.getElementById("category-editor-submit");
-  colorHost = document.getElementById("category-color-choices");
-  iconHost = document.getElementById("category-icon-choices");
+  colorHost = document.getElementById("category-editor-colors");
+  iconHost = document.getElementById("category-editor-icons");
 
   form.addEventListener("submit", handleSubmit);
   guardPage(dialog, () => JSON.stringify(collect()) !== initial);
@@ -36,7 +36,7 @@ export function initCategoryEditor() {
   form.addEventListener("input", hideError);
   form.addEventListener("change", hideError);
   form.addEventListener("click", (event) => {
-    if (event.target.closest("#category-color-choices, #category-icon-choices")) hideError();
+    if (event.target.closest("#category-editor-colors, #category-editor-icons")) hideError();
   });
 }
 

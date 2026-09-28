@@ -55,11 +55,11 @@ export function initSettings(handlers) {
   densityInputs = [...document.querySelectorAll('input[name="settings-density"]')];
   patternSelect = document.getElementById("settings-pattern");
   rateWindowSelect = document.getElementById("settings-rate-window");
-  bandChoices = document.getElementById("band-choices");
-  bandOpacity = document.getElementById("band-opacity");
-  bandOpacityOut = document.getElementById("band-opacity-out");
-  bandFillOpacity = document.getElementById("band-fill-opacity");
-  bandFillOpacityOut = document.getElementById("band-fill-opacity-out");
+  bandChoices = document.getElementById("settings-band-colors");
+  bandOpacity = document.getElementById("settings-band-opacity");
+  bandOpacityOut = document.getElementById("settings-band-opacity-out");
+  bandFillOpacity = document.getElementById("settings-band-fill-opacity");
+  bandFillOpacityOut = document.getElementById("settings-band-fill-opacity-out");
   showBandInput = document.getElementById("settings-show-band");
   reorderInputs = [...document.querySelectorAll('input[name="settings-reorder"]')];
   reorderHint = document.getElementById("settings-reorder-hint");
@@ -203,12 +203,12 @@ function paintAccount() {
   const detail = user.email || (user.id !== name ? user.id : "");
   const groups = user.groups ?? [];
 
-  document.getElementById("account-avatar").textContent = initials(name);
-  document.getElementById("account-name").textContent = name;
-  const detailEl = document.getElementById("account-detail");
+  document.getElementById("settings-account-avatar").textContent = initials(name);
+  document.getElementById("settings-account-name").textContent = name;
+  const detailEl = document.getElementById("settings-account-detail");
   detailEl.textContent = detail;
   detailEl.hidden = !detail;
-  const groupsEl = document.getElementById("account-groups");
+  const groupsEl = document.getElementById("settings-account-groups");
   groupsEl.textContent = t("Groups: {list}", { list: groups.join(", ") });
   groupsEl.hidden = groups.length === 0;
 }
@@ -239,7 +239,7 @@ function paintVersion() {
     [t("Built"), formatBuildTime(build.time)],
     [t("Go version"), build.goVersion || t("Unknown")],
   ];
-  document.getElementById("version-facts")
+  document.getElementById("settings-version-facts")
     .replaceChildren(...facts.map(([label, value]) => factItem(label, value)));
 }
 

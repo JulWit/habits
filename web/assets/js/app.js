@@ -28,11 +28,11 @@ import {
 /** Whether reorder mode is active. Not persisted. */
 let editing = false;
 
-const overviewView = document.getElementById("view-overview");
-const detailView = document.getElementById("view-detail");
-const categoryView = document.getElementById("view-category");
-const daysView = document.getElementById("view-days");
-const styleguideView = document.getElementById("view-styleguide");
+const boardView = document.getElementById("board-view");
+const habitView = document.getElementById("habit-view");
+const categoryView = document.getElementById("category-view");
+const dayStatsView = document.getElementById("day-stats-view");
+const styleGuideView = document.getElementById("style-guide-view");
 
 const handlers = {
   openHabit: (id) => openView(`#/habit/${id}`),
@@ -280,7 +280,7 @@ async function showStyleguide() {
   styleguideDrawn = true;
   try {
     const module = await import("./style-guide-view.js");
-    module.renderStyleguide(styleguideView);
+    module.renderStyleguide(styleGuideView);
   } catch (err) {
     styleguideDrawn = false;
     toast(errorText(err), { error: true });
@@ -330,12 +330,12 @@ function goHome() {
  * app's title bar on the views that have their own (see components.css).
  */
 function showView(view) {
-  for (const other of [overviewView, detailView, categoryView, daysView, styleguideView]) {
+  for (const other of [boardView, habitView, categoryView, dayStatsView, styleGuideView]) {
     other.hidden = other !== view;
   }
   const root = document.documentElement;
-  root.classList.toggle("route-styleguide", view === styleguideView);
-  root.classList.toggle("route-detail", view === detailView || view === categoryView || view === daysView);
+  root.classList.toggle("route-styleguide", view === styleGuideView);
+  root.classList.toggle("route-detail", view === habitView || view === categoryView || view === dayStatsView);
 }
 
 /** Returns to the overview without a history entry, e.g. for a removed habit. */
@@ -346,13 +346,13 @@ function replaceWithOverview() {
 function syncRoute() {
   // The style guide needs no data.
   if (location.hash === "#/styleguide") {
-    showView(styleguideView);
+    showView(styleGuideView);
     showStyleguide();
     return;
   }
 
   if (location.hash === "#/days") {
-    showView(daysView);
+    showView(dayStatsView);
     renderDays();
     return;
   }
@@ -373,7 +373,7 @@ function syncRoute() {
   if (habitId) {
     const habit = habitById(habitId);
     if (habit) {
-      showView(detailView);
+      showView(habitView);
       renderDetail(habit);
       // Render from the loaded entries, then again once the full history arrives.
       ensureFullHistory(habit.id);
@@ -383,7 +383,7 @@ function syncRoute() {
     if (state.habits.length > 0) replaceWithOverview();
   }
 
-  showView(overviewView);
+  showView(boardView);
   // Re-render, as the board could not be measured while hidden.
   renderOverview();
 }

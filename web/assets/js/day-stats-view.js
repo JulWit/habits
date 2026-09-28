@@ -21,7 +21,7 @@ let actions;
 
 export function initDays(handlers) {
   actions = handlers;
-  root = document.getElementById("view-days");
+  root = document.getElementById("day-stats-view");
   root.addEventListener("click", (event) => {
     const target = event.target.closest("[data-action]");
     if (target?.dataset.action === "back") actions.closeDays();

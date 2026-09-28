@@ -98,10 +98,10 @@ function pageStep(days) {
 
 export function initOverview(handlers) {
   actions = handlers;
-  board = document.getElementById("overview-grid");
+  board = document.getElementById("board-grid");
   initSummary(board);
-  emptyState = document.getElementById("empty-state");
-  noMatch = document.getElementById("no-match");
+  emptyState = document.getElementById("board-empty");
+  noMatch = document.getElementById("board-no-match");
   initFilter();
   initTodayPill();
 
@@ -320,7 +320,7 @@ let dragging = false;
 
 /** Initialises the filter toggle in the title bar. */
 function initFilter() {
-  const openOnly = document.getElementById("filter-open");
+  const openOnly = document.getElementById("filter-open-habits");
   openOnly.innerHTML = icons.filter;
   openOnly.setAttribute("aria-pressed", String(onlyOpen));
 

@@ -1,6 +1,8 @@
 // Client-side copy of the server state. Every change goes to the server first;
 // its response replaces the local state.
 
+import { daysBetween } from "./dates.js";
+
 export const state = {
   user: null,
   // Complete once the state is loaded.
@@ -15,12 +17,23 @@ export const state = {
 
 const listeners = new Set();
 
+/**
+ * Counts the changes of the state, so that data loaded for a view (see
+ * remote.js) can tell whether it may be outdated.
+ */
+let revision = 0;
+
+export function stateRevision() {
+  return revision;
+}
+
 /** Calls `fn` after every change of the state. */
 export function subscribe(fn) {
   listeners.add(fn);
 }
 
 function notify() {
+  revision++;
   for (const fn of listeners) fn(state);
 }
 
@@ -71,28 +84,72 @@ export function removeHabit(id) {
 }
 
 /**
- * Sets a day's entry ({value, skipped}) locally. Stats and streak runs are
- * taken from the server's `answer` once it arrives.
+ * Replaces a habit by a copy that `change` modifies. Habits are never changed
+ * in place, so that a view can tell a changed habit by its identity (see the
+ * row cache in overview.js).
  */
-export function setEntryLocal(habitId, date, entry, answer) {
-  const habit = habitById(habitId);
-  if (!habit) return;
-  setDay(habit, "entries", date, entry.value > 0 ? entry.value : null);
-  setDay(habit, "skipped", date, entry.skipped ? true : null);
-  if (answer) {
-    habit.stats = answer.stats;
-    habit.streakRuns = answer.streakRuns ?? [];
-    // The server updates the habit's timestamp on every write.
-    if (answer.updatedAt) habit.updatedAt = answer.updatedAt;
-  }
+function changeHabit(id, change) {
+  const i = state.habits.findIndex((h) => h.id === id);
+  if (i === -1) return;
+  const next = { ...state.habits[i] };
+  change(next);
+  state.habits[i] = next;
   notify();
 }
 
-/** Sets or, for null, removes the day `date` in the map `key` of a habit. */
-function setDay(habit, key, date, value) {
-  habit[key] ??= {};
-  if (value === null) delete habit[key][date];
-  else habit[key][date] = value;
+/**
+ * Shows a write of a day's entry ({value, skipped}) before the server has
+ * answered. The day's status stays as it was until then (see isPending in
+ * habit.js).
+ */
+export function showPending(habitId, date, entry) {
+  changeHabit(habitId, (habit) => {
+    habit.pending = { ...habit.pending, [date]: entry };
+  });
+}
+
+/** Drops the pending write of a day, e.g. once the server refused it. */
+export function dropPending(habitId, date) {
+  if (!habitById(habitId)?.pending?.[date]) return;
+  changeHabit(habitId, (habit) => {
+    habit.pending = withoutKey(habit.pending, date);
+  });
+}
+
+/**
+ * Takes over the server's answer to a write of a day's entry: the stored
+ * value, the day's status, and the statistics and streak runs.
+ */
+export function applyEntryAnswer(habitId, date, answer) {
+  changeHabit(habitId, (habit) => {
+    habit.pending = withoutKey(habit.pending, date);
+    habit.entries = answer.value > 0
+      ? { ...habit.entries, [date]: answer.value }
+      : withoutKey(habit.entries, date);
+    habit.days = withStatus(habit, date, answer.status);
+    habit.stats = answer.stats;
+    habit.streakRuns = answer.streakRuns ?? [];
+    habit.historyStart = answer.historyStart;
+    // The server updates the habit's timestamp on every write.
+    if (answer.updatedAt) habit.updatedAt = answer.updatedAt;
+  });
+}
+
+/** Returns a copy of `map` without `key`. */
+function withoutKey(map, key) {
+  const { [key]: _, ...rest } = map ?? {};
+  return rest;
+}
+
+/**
+ * Returns the habit's statuses with that of `date` set to `status`, if they
+ * cover the day.
+ */
+function withStatus(habit, date, status) {
+  if (!habit.days || !habit.daysFrom || !status) return habit.days;
+  const i = daysBetween(habit.daysFrom, date);
+  if (i < 0 || i >= habit.days.length) return habit.days;
+  return habit.days.slice(0, i) + status + habit.days.slice(i + 1);
 }
 
 export function categoryById(id) {

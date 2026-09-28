@@ -51,7 +51,7 @@ async function request(method, path, body) {
       code: "session_expired",
     });
   }
-  if (res.status === 204) return null;
+  if (res.status === 204) return withChange(null, res.headers.get("Change-Id"));
 
   const text = await res.text();
   let data = null;
@@ -70,7 +70,18 @@ async function request(method, path, body) {
       params: data?.params,
     });
   }
-  return data;
+  return withChange(data, res.headers.get("Change-Id"));
+}
+
+/**
+ * Adds the undo step a write recorded (the Change-Id header) to its answer as
+ * `changeId`, for the undo button. An answer without a body becomes an object
+ * holding only that.
+ */
+function withChange(data, changeId) {
+  if (!changeId) return data;
+  if (data === null || typeof data !== "object") return { changeId: Number(changeId) };
+  return { ...data, changeId: Number(changeId) };
 }
 
 export const api = {
@@ -78,35 +89,38 @@ export const api = {
   loadState: (from) =>
     request("GET", from ? `/api/state?from=${encodeURIComponent(from)}` : "/api/state"),
   getHabit: (id) => request("GET", `/api/habits/${encodeURIComponent(id)}`),
+  // A habit's values of `year` summed per `grain` (day, week or month).
+  habitTotals: (id, year, grain) =>
+    request("GET", `/api/habits/${encodeURIComponent(id)}/totals?year=${year}&grain=${grain}`),
+  // The day statistics of `year`.
+  days: (year) => request("GET", `/api/days?year=${year}`),
+  categoryStats: (id) => request("GET", `/api/categories/${encodeURIComponent(id)}/stats`),
   createHabit: (input) => request("POST", "/api/habits", input),
+  // Saves what the editor shows; a new target or frequency starts today
+  // unless `retroactive` is set, a new kind converts the history.
   updateHabit: (id, input) => request("PATCH", `/api/habits/${encodeURIComponent(id)}`, input),
+  archiveHabit: (id, archived) =>
+    request("PUT", `/api/habits/${encodeURIComponent(id)}/archived`, { archived }),
   deleteHabit: (id) => request("DELETE", `/api/habits/${encodeURIComponent(id)}`),
-  restoreHabit: (id) => request("POST", `/api/habits/${encodeURIComponent(id)}/restore`, {}),
   reorderHabits: (ids) => request("POST", "/api/habits/reorder", { ids }),
-  // `change` sets value, skipped or both. With `expect` (an entry),
-  // the server only writes while the day still holds it and answers 409
-  // otherwise.
-  setEntry: (habitId, date, change, expect) =>
-    request(
-      "PUT",
-      `/api/habits/${encodeURIComponent(habitId)}/entries/${encodeURIComponent(date)}`,
-      expect === undefined ? change : { ...change, expect },
-    ),
+  // `change` sets value, skipped or both.
+  setEntry: (habitId, date, change) =>
+    request("PUT", `/api/habits/${encodeURIComponent(habitId)}/entries/${encodeURIComponent(date)}`, change),
   // Skips the due days without a value from `from` to `to` of the habits
-  // `habitIds`, or of all; answers with the changed days.
+  // `habitIds`, or of all; answers with the number of days skipped.
   skipDays: (input) => request("POST", "/api/skips", input),
-  // Writes whole entries, each only while its day still holds `expect`.
-  writeEntries: (changes) => request("POST", "/api/entries", { changes }),
+  // Undoes the undo step `id`, or the latest; redo the other way round.
+  undo: (id = 0) => request("POST", "/api/undo", { id }),
+  redo: (id = 0) => request("POST", "/api/redo", { id }),
   saveSettings: (settings) => request("PATCH", "/api/settings", settings),
-  // The habits and categories with their settings, without entries.
+  // The habits with their history, and the categories.
   exportHabits: () => request("GET", "/api/export"),
   importHabits: (file) => request("POST", "/api/import", file),
-  // Everything: habits, entries, categories and settings.
+  // Everything: habits, entries, categories, settings and undo steps.
   deleteAllData: () => request("DELETE", "/api/data"),
 
   createCategory: (input) => request("POST", "/api/categories", input),
   updateCategory: (id, input) => request("PATCH", `/api/categories/${encodeURIComponent(id)}`, input),
   deleteCategory: (id) => request("DELETE", `/api/categories/${encodeURIComponent(id)}`),
-  restoreCategory: (id) => request("POST", `/api/categories/${encodeURIComponent(id)}/restore`, {}),
   reorderCategories: (ids) => request("POST", "/api/categories/reorder", { ids }),
 };

@@ -308,8 +308,7 @@ function saveFilter() {
 function matches(habit) {
   if (!onlyOpen) return true;
   const day = activeDay();
-  return !habit.archivedAt && H.isDue(habit, day) &&
-    !H.isComplete(habit, day, habit.entries[day] ?? 0);
+  return !habit.archivedAt && H.isDue(habit, day) && !H.isDone(habit, day);
 }
 
 /**
@@ -395,11 +394,14 @@ export function render() {
   const everyHabit = all.flatMap((b) => b.habits);
   const flights = newlyDone(everyHabit, active);
 
+  // Before building, which moves reused rows out of the board.
+  const focused = focusedControl();
   const frag = document.createDocumentFragment();
   frag.append(dayHeader(dates, active), daySummary(everyHabit, active));
+  nextRowCache = new Map();
   for (const block of blocks) frag.append(renderBlock(block, dates, labelled, active));
+  rowCache = nextRowCache;
 
-  const focused = focusedControl();
   board.replaceChildren(frag);
   setTabStops();
   restoreFocus(focused);
@@ -682,19 +684,43 @@ function renderBlock({ category, habits, visible }, dates, labelled, active) {
 
   const list = document.createElement("div");
   list.className = "block-rows";
-  for (const habit of visible) {
-    const row = document.createElement("div");
+  for (const habit of visible) list.append(habitRow(habit, habits, dates, active));
+  section.append(list);
+  return section;
+}
+
+/**
+ * The rows of the last render by habit ID, with what they were built from.
+ * A tap changes one habit, so the board reuses the rows of the others instead
+ * of building every cell again.
+ */
+let rowCache = new Map();
+let nextRowCache = new Map();
+
+/**
+ * Returns the row of a habit: the one of the last render if the habit (which
+ * the state replaces on every change, see state.js) and everything else the
+ * row shows are the same, or a new one.
+ */
+function habitRow(habit, siblings, dates, active) {
+  const key = [
+    dates[0], dates.length, active, state.today, byDragging(),
+    siblings.indexOf(habit), siblings.length,
+  ].join("|");
+  const cached = rowCache.get(habit.id);
+  let row = cached?.el;
+  if (!cached || cached.habit !== habit || cached.key !== key) {
+    row = document.createElement("div");
     row.className = "habit-row";
     row.dataset.habit = habit.id;
     row.append(
       nameCell(habit),
       ...dates.map((iso) => dayEntry(habit, iso, active)),
-      habitTools(habit, habits),
+      habitTools(habit, siblings),
     );
-    list.append(row);
   }
-  section.append(list);
-  return section;
+  nextRowCache.set(habit.id, { habit, key, el: row });
+  return row;
 }
 
 /**

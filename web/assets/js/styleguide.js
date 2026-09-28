@@ -11,16 +11,20 @@ import { STREAK_LEVELS } from "./habit.js";
 const day = (back) => addDays(state.today, -back);
 
 /**
- * Returns the due days of a sample habit from 400 days ago to tomorrow, in the
- * form the server sends them: `isDue` decides each day.
+ * Returns a sample habit with the statuses of its days from 400 days ago to
+ * tomorrow, in the form the server sends them (domain.DayStatus): `isDue`
+ * decides the due days, the entries whether they are done. The real ones come
+ * from the server only.
  */
-function dueDays(isDue = () => true) {
+function withDays(habit, isDue = () => true) {
   const from = day(400);
-  let due = "";
+  let days = "";
   for (let iso = from; iso <= addDays(state.today, 1); iso = addDays(iso, 1)) {
-    due += isDue(iso) ? "1" : "0";
+    const value = habit.entries[iso] ?? 0;
+    if (!isDue(iso)) days += "-";
+    else days += value >= habit.schedules[0].targetValue ? "c" : "o";
   }
-  return { dueFrom: from, due };
+  return { ...habit, daysFrom: from, days };
 }
 
 /** Returns sample habits, one per kind and state. */
@@ -36,43 +40,40 @@ function samples() {
   }];
   const base = {
     unit: "", archivedAt: null, categoryId: "",
-    ...dueDays(),
     stats: { currentStreak: 0, streakUnit: "days", completionRate: 0, longestStreak: 0, total: 0 },
   };
   return {
-    check: {
+    check: withDays({
       ...base, id: "sg-check", name: "Meditate", color: "blue", kind: "check",
       schedules: schedules(1),
       stats: { ...base.stats, currentStreak: 6, streakUnit: "days" },
       entries: { [day(1)]: 1, [day(2)]: 1, [day(0)]: 1 },
-    },
-    count: {
+    }),
+    count: withDays({
       ...base, id: "sg-count", name: "Drink water", color: "teal", kind: "count",
       unit: "glasses", schedules: schedules(80),
       entries: { [day(0)]: 80, [day(1)]: 30, [day(2)]: 65 },
-    },
-    time: {
+    }),
+    time: withDays({
       ...base, id: "sg-time", name: "Reading", color: "violet", kind: "time",
       schedules: schedules(200, { kind: "times_per_week", timesPerWeek: 4 }),
       stats: { ...base.stats, currentStreak: 1, streakUnit: "weeks" },
       entries: { [day(0)]: 200, [day(1)]: 125, [day(2)]: 250 },
-    },
-    distance: {
+    }),
+    distance: withDays({
       ...base, id: "sg-distance", name: "Running", color: "orange", kind: "distance",
       schedules: schedules(5000, { kind: "custom_interval", intervalDays: 3, anchorDate: day(0) }),
-      ...dueDays((iso) => { const n = daysBetween(day(0), iso); return n >= 0 && n % 3 === 0; }),
       entries: { [day(0)]: 5200, [day(1)]: 2400, [day(2)]: 5000 },
-    },
+    }, (iso) => { const n = daysBetween(day(0), iso); return n >= 0 && n % 3 === 0; }),
     // Scheduled on Mondays only.
-    sparse: {
+    sparse: withDays({
       ...base, id: "sg-sparse", name: "Laundry", color: "slate", kind: "check",
       schedules: schedules(1, { kind: "weekdays", weekdays: 1 }), entries: {},
-      ...dueDays((iso) => weekdayIndex(iso) === 0),
-    },
-    archived: {
+    }, (iso) => weekdayIndex(iso) === 0),
+    archived: withDays({
       ...base, id: "sg-archived", name: "Old habit", color: "pink", kind: "check",
       schedules: schedules(1), entries: {}, archivedAt: day(30),
-    },
+    }),
   };
 }
 
@@ -247,11 +248,11 @@ function streakScale(habit) {
   const row = el("div", "sg-cells");
   [0, ...STREAK_LEVELS].forEach((length, i) => {
     const iso = day(i);
-    row.append(dayEntry({
+    row.append(dayEntry(withDays({
       ...habit,
       entries: { [iso]: 1 },
       streakRuns: length ? [{ from: addDays(iso, -(length - 1)), to: iso }] : [],
-    }, iso));
+    }), iso));
   });
   return row;
 }

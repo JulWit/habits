@@ -354,8 +354,6 @@ function syncRoute() {
   if (location.hash === "#/days") {
     showView(daysView);
     renderDays();
-    // The statistics cover the whole year.
-    if (state.today) extendHistory(`${state.today.slice(0, 4)}-01-01`);
     return;
   }
 
@@ -365,8 +363,6 @@ function syncRoute() {
     if (category) {
       showView(categoryView);
       renderCategory(category);
-      // Perfect days are counted over the whole year.
-      extendHistory(`${state.today.slice(0, 4)}-01-01`);
       return;
     }
     // The category no longer exists.

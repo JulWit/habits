@@ -1,6 +1,6 @@
-// The current calendar year as the statistics views show it: the range of
-// loaded days, the perfect days, and the year grid of the heatmaps with its
-// tooltips. Used by the habit, category and day statistics views.
+// The current calendar year as the statistics views show it: the label of
+// the range counted and the year grid of the heatmaps with its tooltips. Used
+// by the habit, category and day statistics views.
 
 import {
   addDays, startOfWeek, daysBetween, dayOfMonth, monthIndex, MONTH_SHORT, formatDayMonth,
@@ -8,7 +8,6 @@ import {
 } from "./dates.js";
 import { t } from "./i18n.js";
 import { state } from "./state.js";
-import * as H from "./habit.js";
 import { showTooltip, hideTooltip } from "./tooltip.js";
 
 /** Returns the current year, e.g. "2026". */
@@ -16,71 +15,11 @@ export function currentYear() {
   return state.today.slice(0, 4);
 }
 
-/** Returns January 1 of this year, or the start of the loaded entries if later. */
-export function rangeStart() {
-  const yearStart = `${currentYear()}-01-01`;
-  const loaded = state.entriesFrom ?? yearStart;
-  return loaded > yearStart ? loaded : yearStart;
-}
-
 /** Returns "(2026)" for a full year, "(since 12 Mar)" otherwise. */
 export function sinceLabel(from) {
   const year = currentYear();
   if (from === `${year}-01-01`) return `(${year})`;
   return t("(since {date})", { date: formatDayMonth(from) });
-}
-
-// ---------- perfect days ----------
-
-/**
- * Returns one record per day from `from` to `to`: the habits due (`due`), how
- * many of them are complete (`done`) and the share (`rate`, 0…1, null if
- * nothing is due). Habits count from their creation day, or from their first
- * entry if that is earlier (imported history); skipped days are not due.
- * Future days have nothing done.
- */
-export function dayRecords(habits, from, to) {
-  const firstDay = new Map(habits.map((h) => [h.id, H.historyStart(h)]));
-
-  const records = [];
-  for (let iso = from; iso <= to; iso = addDays(iso, 1)) {
-    const due = habits.filter((h) => firstDay.get(h.id) <= iso && H.isDue(h, iso));
-    const done = iso > state.today
-      ? 0
-      : due.filter((h) => H.isComplete(h, iso, h.entries[iso] ?? 0)).length;
-    records.push({
-      iso,
-      due: due.length,
-      done,
-      rate: due.length === 0 ? null : done / due.length,
-    });
-  }
-  return records;
-}
-
-/** Reports whether every habit due on the day of `record` is complete. */
-export function isPerfect(record) {
-  return record.due > 0 && record.done === record.due;
-}
-
-/**
- * Returns the current and the longest run of perfect days. Days without due
- * habits neither extend nor end a run; an open today does not end the current
- * one.
- */
-export function perfectStreaks(records) {
-  let run = 0;
-  let best = 0;
-  for (const d of records) {
-    if (d.due === 0) continue;
-    if (isPerfect(d)) {
-      run++;
-      best = Math.max(best, run);
-    } else if (d.iso !== state.today) {
-      run = 0;
-    }
-  }
-  return { current: run, best };
 }
 
 // ---------- year grid ----------

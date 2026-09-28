@@ -12,6 +12,8 @@ import {
   statRow, factsPanel, factItem, rateLabel, createdItem, changedItem, daysAgo,
 } from "./panels.js";
 import { hideTooltip } from "./tooltip.js";
+import { api } from "./api.js";
+import { remote } from "./remote.js";
 import { currentYear, yearGrid, centreToday, initChartTooltips } from "./year.js";
 
 let root;
@@ -48,7 +50,7 @@ let shownFor = null;
 /** Returns the first and the last year of the habit's history, as numbers. */
 function yearRange(habit) {
   const last = Number(currentYear());
-  const first = Number(H.historyStart(habit).slice(0, 4)) || last;
+  const first = Number(habit.historyStart?.slice(0, 4)) || last;
   return [Math.min(first, last), last];
 }
 
@@ -166,34 +168,13 @@ function describeSchedule(habit, schedule) {
  * server's updatedAt).
  */
 function activity(habit) {
-  const done = lastDone(habit);
+  // The server leaves it empty if the habit was never done.
+  const done = habit.stats?.lastDone || null;
   return factsPanel(t("Activity"), [
     createdItem(habit.createdAt),
     factItem(t("Last done"), done ? formatLong(done) : t("Not yet"), done ? daysAgo(done) : ""),
     changedItem(habit.updatedAt),
   ], "activity");
-}
-
-/**
- * Returns the latest day up to today whose value met the target, or null. A
- * limit is also met by days without a value, so its days are walked back from
- * today.
- */
-function lastDone(habit) {
-  if (H.isLimit(habit, state.today)) {
-    const first = H.historyStart(habit);
-    for (let iso = state.today; iso >= first; iso = addDays(iso, -1)) {
-      if (H.isDue(habit, iso) && H.isComplete(habit, iso, habit.entries[iso] ?? 0)) return iso;
-    }
-    return null;
-  }
-  let newest = null;
-  for (const [iso, value] of Object.entries(habit.entries)) {
-    // Skip future days and incomplete days.
-    if (iso > state.today || !H.isComplete(habit, iso, value)) continue;
-    if (newest === null || iso > newest) newest = iso;
-  }
-  return newest;
 }
 
 function heatmap(habit) {
@@ -241,7 +222,7 @@ function yearNav(habit) {
 function heatCell(habit, iso) {
   const el = document.createElement("div");
   el.className = "heat";
-  const value = habit.entries[iso] ?? 0;
+  const { value } = H.entryOn(habit, iso);
 
   // Used by centreToday().
   if (iso === state.today) el.classList.add("is-today");
@@ -274,7 +255,7 @@ function heatStatus(habit, iso, value) {
   }
   if (H.isLimit(habit, iso) && H.isScheduled(habit, iso)) {
     if (value > 0) return t("{value} of at most {target}", vars);
-    return H.isComplete(habit, iso, value) ? t("nothing, within the limit") : t("nothing recorded");
+    return H.isDone(habit, iso) ? t("nothing, within the limit") : t("nothing recorded");
   }
   if (value > 0) return t("{value} of {target}", vars);
   return H.isScheduled(habit, iso) ? t("nothing recorded") : t("not scheduled");
@@ -308,13 +289,26 @@ let grain = "month";
 
 /**
  * Builds the cumulative chart: each bar is the running total at the end of its
- * day, week or month, with the period's own sum highlighted at the top.
+ * day, week or month, with the period's own sum highlighted at the top. The
+ * server sums the values (GET /api/habits/{id}/totals).
  */
 function cumulative(habit) {
   const panel = document.createElement("section");
-  panel.className = "panel";
+  panel.className = "panel cum-panel";
   panel.append(grainHead(habit), cumulativeBody(habit));
   return panel;
+}
+
+/**
+ * Rebuilds the chart of the habit shown, e.g. once its totals have arrived,
+ * keeping the heatmap's scroll position.
+ */
+function redrawCumulative(id) {
+  const panel = root.querySelector(".cum-panel");
+  const habit = habitById(id);
+  if (!panel || !habit || root.dataset.habit !== id) return;
+  panel.replaceChild(cumulativeBody(habit), panel.lastElementChild);
+  showNewest(panel);
 }
 
 /**
@@ -348,10 +342,7 @@ function grainHead(habit) {
     input.checked = key === grain;
     input.addEventListener("change", () => {
       grain = key;
-      // Only rebuild the chart, keeping the heatmap's scroll position.
-      const panel = head.parentElement;
-      panel.replaceChild(cumulativeBody(habit), panel.lastElementChild);
-      showNewest(panel);
+      redrawCumulative(habit.id);
     });
     const text = document.createElement("span");
     text.textContent = label;
@@ -367,7 +358,16 @@ function cumulativeBody(habit) {
   // The year shown, to today in the current year.
   const year = shownYear;
   const current = year === currentYear();
-  const summary = H.periodSummary(habit, `${year}-01-01`, current ? state.today : `${year}-12-31`, grain);
+  const summary = remote(
+    `totals|${habit.id}|${year}|${grain}`,
+    () => api.habitTotals(habit.id, year, grain),
+    () => redrawCumulative(habit.id),
+  );
+  // Until the first answer arrives.
+  if (!summary) {
+    body.className = "cum-loading";
+    return body;
+  }
 
   if (summary.total === 0) {
     const empty = document.createElement("p");

@@ -2,13 +2,15 @@
 // every scheduled habit of the category was completed.
 
 import { t } from "./i18n.js";
-import { state } from "./state.js";
+import { state, categoryById } from "./state.js";
 import * as H from "./habit.js";
 import { habitIconBadge, categoryIconBadge, colorValue } from "./icons.js";
 import { appBar } from "./appbar.js";
 import { openCategoryEditor } from "./categoryeditor.js";
 import { statRow, factsPanel, factItem, rateLabel, createdItem, changedItem } from "./panels.js";
-import { rangeStart, sinceLabel, dayRecords, isPerfect, perfectStreaks } from "./year.js";
+import { currentYear, sinceLabel } from "./year.js";
+import { api } from "./api.js";
+import { remote } from "./remote.js";
 
 let root;
 let actions;
@@ -37,7 +39,7 @@ export function renderCategory(category) {
   root.replaceChildren(
     header(category),
     details(category),
-    stats(habits),
+    stats(category),
     habitList(habits),
     activity(category),
   );
@@ -60,23 +62,29 @@ function header(category) {
   });
 }
 
-function stats(habits) {
-  const from = rangeStart();
-  const days = dayRecords(habits, from, state.today);
-  const due = days.filter((d) => d.due > 0).length;
-  const perfect = days.filter(isPerfect).length;
-  const streak = perfectStreaks(days).current;
-
-  // Summed from the habits' own stats.
-  const expected = habits.reduce((sum, h) => sum + (h.stats?.expected ?? 0), 0);
-  const achieved = habits.reduce((sum, h) => sum + (h.stats?.achieved ?? 0), 0);
-  const rate = expected > 0 ? Math.round((achieved / expected) * 100) : 0;
-
+/**
+ * Builds the stat tiles from the server's statistics of the category (GET
+ * /api/categories/{id}/stats); dashes until they have arrived.
+ */
+function stats(category) {
+  const s = remote(`category|${category.id}`, () => api.categoryStats(category.id), () => {
+    if (!root.hidden && root.dataset.category === category.id) renderCategory(categoryById(category.id));
+  });
+  if (!s) {
+    return statRow([
+      [t("Current streak"), "–", "streak"],
+      [t("Perfect days {since}", { since: sinceLabel(`${currentYear()}-01-01`) }), "–", "calendarCheck"],
+      [rateLabel(), "–", "percent"],
+      [t("Habits"), "–", "list"],
+    ]);
+  }
+  const rate = s.expected > 0 ? Math.round((s.achieved / s.expected) * 100) : 0;
   return statRow([
-    [t("Current streak"), streak === 1 ? t("1 day") : t("{n} days", { n: streak }), "streak"],
-    [t("Perfect days {since}", { since: sinceLabel(from) }), t("{n} of {total}", { n: perfect, total: due }), "calendarCheck"],
+    [t("Current streak"), s.currentStreak === 1 ? t("1 day") : t("{n} days", { n: s.currentStreak }), "streak"],
+    [t("Perfect days {since}", { since: sinceLabel(s.from) }),
+      t("{n} of {total}", { n: s.perfect, total: s.dueDays }), "calendarCheck"],
     [rateLabel(), `${rate} %`, "percent"],
-    [t("Habits"), String(habits.length), "list"],
+    [t("Habits"), String(s.habits), "list"],
   ]);
 }
 

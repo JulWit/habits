@@ -1,14 +1,13 @@
-// Undo/redo history and the toast. Each action carries server calls to undo
-// and redo it.
+// Undo, redo and the toast. The server keeps the undo steps: every change
+// that can be undone answers with the ID of its step (changeId, see api.js),
+// and undo and redo ask the server to turn a step, or the latest one.
 
+import { api } from "./api.js";
+import { state } from "./state.js";
+import { formatRelative } from "./dates.js";
 import { t, locale, errorTemplate } from "./i18n.js";
 
-const MAX_HISTORY = 50;
-
-const undoStack = [];
-const redoStack = [];
-
-/** Called after every undo and redo. Set by app.js. */
+/** Called after every undo and redo, to reload the state. Set by app.js. */
 let onChange = async () => {};
 
 export function setChangeHandler(fn) {
@@ -16,70 +15,77 @@ export function setChangeHandler(fn) {
 }
 
 /**
- * Records an action that has already been carried out.
- * @param {{label: string, undo: () => Promise<void>, redo: () => Promise<void>,
- *          toastLabel?: string, silent?: boolean}} action
+ * Shows `text` in a toast with a button that undoes the step `changeId`. A
+ * change without a step (e.g. one waiting offline) shows the text only.
  */
-export function record(action) {
-  undoStack.push(action);
-  if (undoStack.length > MAX_HISTORY) undoStack.shift();
-  // A new action clears the redo stack.
-  redoStack.length = 0;
+export function offerUndo(changeId, text) {
+  if (!changeId) {
+    toast(text);
+    return;
+  }
+  toast(text, { actionLabel: t("Undo"), onAction: () => undoStep(changeId) });
+}
 
-  if (!action.silent) {
-    toast(action.toastLabel ?? action.label, {
-      actionLabel: t("Undo"),
-      onAction: undoLast,
+/** Undoes the latest step, e.g. for Ctrl+Z. */
+export function undoLast() {
+  return undoStep(0);
+}
+
+/** Redoes the step undone last, e.g. for Ctrl+Y. */
+export function redoLast() {
+  return redoStep(0);
+}
+
+/** Undoes the step `id` (0 for the latest) and offers to redo it. */
+async function undoStep(id) {
+  try {
+    const step = await api.undo(id);
+    await onChange();
+    toast(t("Undone: {label}", { label: stepLabel(step) }), {
+      actionLabel: t("Redo"),
+      onAction: () => redoStep(step.id),
     });
+  } catch (err) {
+    await failed(err);
   }
 }
 
-export function canUndo() {
-  return undoStack.length > 0;
-}
-
-export function canRedo() {
-  return redoStack.length > 0;
-}
-
-export async function undoLast() {
-  const action = undoStack.pop();
-  if (!action) return;
+/** Redoes the step `id` (0 for the one undone last) and offers to undo it. */
+async function redoStep(id) {
   try {
-    await action.undo();
-    redoStack.push(action);
+    const step = await api.redo(id);
     await onChange();
-    toast(t("Undone: {label}", { label: action.label }), { actionLabel: t("Redo"), onAction: redoLast });
+    toast(t("Redone: {label}", { label: stepLabel(step) }), {
+      actionLabel: t("Undo"),
+      onAction: () => undoStep(step.id),
+    });
   } catch (err) {
-    await failed(err, action, undoStack);
-  }
-}
-
-export async function redoLast() {
-  const action = redoStack.pop();
-  if (!action) return;
-  try {
-    await action.redo();
-    undoStack.push(action);
-    await onChange();
-    toast(t("Redone: {label}", { label: action.label }), { actionLabel: t("Undo"), onAction: undoLast });
-  } catch (err) {
-    await failed(err, action, redoStack);
+    await failed(err);
   }
 }
 
 /**
- * Handles a failed undo or redo. The action is kept so it can be retried,
- * unless the data was changed elsewhere meanwhile (409): then retrying would
- * fail again, so the action is dropped and the state reloaded.
+ * Shows why a step could not be turned. If the data was changed elsewhere
+ * meanwhile (409), the server has dropped the step and the state is reloaded.
  */
-async function failed(err, action, stack) {
+async function failed(err) {
   toast(errorText(err), { error: true });
-  if (err?.status === 409) {
-    await onChange();
-    return;
+  if (err?.status === 409) await onChange();
+}
+
+/**
+ * Returns the label of a step in the UI language: its English template,
+ * translated like any text, with its parameters; a date is shown relative to
+ * today.
+ */
+function stepLabel(step) {
+  const vars = {};
+  for (const [name, value] of Object.entries(step.params ?? {})) {
+    if (name === "date") vars[name] = formatRelative(value, state.today);
+    else if (typeof value === "number") vars[name] = value.toLocaleString(locale);
+    else vars[name] = value;
   }
-  stack.push(action);
+  return t(step.label, vars);
 }
 
 /**

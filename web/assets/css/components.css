@@ -1132,6 +1132,14 @@ html[data-filtering="on"] {
 /* Future days are dimmed. */
 .mark.is-future { opacity: .6; }
 
+/* A write waiting for the server: its value is shown, but whether it
+   completes the day is only known from the answer. Offline it can wait long,
+   so the mark is outlined instead of animated. */
+.mark.is-pending {
+  outline: 1.5px dashed var(--habit-color);
+  outline-offset: 2px;
+}
+
 /* Future days that reach the target are hatched. Fine stripes, so the value
    on top stays readable; the shadow lifts it off the stripes. */
 .mark.is-future.is-complete {
@@ -1648,6 +1656,9 @@ html.route-detail .view { padding-top: 0; }
 .cum-summary strong { color: var(--text); font-weight: var(--weight-bold); }
 
 .cum-empty { margin: 0; color: var(--text-faint); font-size: var(--text-md); }
+
+/* Holds the place of the chart until its totals have arrived. */
+.cum-loading { min-height: 8rem; }
 
 .cum-chart { --cols: 12; }
 

@@ -1,13 +1,36 @@
-// Presentation helpers shared by the overview and the detail view.
+// Presentation helpers shared by the overview and the detail view. How a day
+// stands (due, done, over a limit, skipped) comes from the server as one
+// status per day (`days` from `daysFrom`, see domain.DayStatus); nothing here
+// judges a day.
 
-import { daysBetween, addDays, startOfWeek, WEEKDAY_SHORT } from "./dates.js";
+import { daysBetween, WEEKDAY_SHORT } from "./dates.js";
 import { state } from "./state.js";
 import { t, locale } from "./i18n.js";
 
+/** The statuses of domain.DayStatus. */
+const STATUS = {
+  off: "-",
+  offDone: "+",
+  open: "o",
+  done: "c",
+  over: "x",
+  skipped: "s",
+};
+
 /**
- * Returns the schedule ({from, targetValue, frequency}) that applies on `iso`.
- * Mirrors domain.Habit.ScheduleOn: the first schedule also covers the days
- * before it.
+ * Returns the server's status of the habit on `iso`. Days outside the sent
+ * range count as not due.
+ */
+export function statusOn(habit, iso) {
+  if (!habit.days || !habit.daysFrom) return STATUS.off;
+  const i = daysBetween(habit.daysFrom, iso);
+  return i >= 0 && i < habit.days.length ? habit.days[i] : STATUS.off;
+}
+
+/**
+ * Returns the schedule ({from, targetValue, targetType, frequency}) that
+ * applies on `iso`, for describing the day. The first schedule also covers
+ * the days before it.
  */
 export function scheduleOn(habit, iso) {
   const all = habit.schedules;
@@ -23,27 +46,31 @@ export function currentSchedule(habit) {
   return habit.schedules.at(-1);
 }
 
-/**
- * Reports whether the habit is due on `iso`. Values can only be recorded on
- * due days. The server computes the due days (`due`, one character per day
- * from `dueFrom`), so the frequency rules exist only in
- * domain.Schedule.IsScheduled. Days outside the sent range count as not due.
- */
+/** Reports whether values can be recorded on `iso`: it is due or skipped. */
 export function isScheduled(habit, iso) {
-  if (!habit.due || !habit.dueFrom) return false;
-  const i = daysBetween(habit.dueFrom, iso);
-  return i >= 0 && i < habit.due.length && habit.due[i] === "1";
+  const s = statusOn(habit, iso);
+  return s !== STATUS.off && s !== STATUS.offDone;
 }
 
 /**
- * Returns what is recorded on `iso` (domain.Entry): the value and whether the
- * day is skipped.
+ * Returns what is shown for `iso` ({value, skipped}): a write still waiting
+ * for the server (isPending), or what the server sent.
  */
 export function entryOn(habit, iso) {
+  const pending = habit.pending?.[iso];
+  if (pending) return pending;
   return {
     value: habit.entries?.[iso] ?? 0,
-    skipped: habit.skipped?.[iso] === true,
+    skipped: statusOn(habit, iso) === STATUS.skipped,
   };
+}
+
+/**
+ * Reports whether a write of `iso` waits for the server. Its status is not
+ * known until the server answers.
+ */
+export function isPending(habit, iso) {
+  return habit.pending?.[iso] !== undefined;
 }
 
 /** Reports whether nothing is recorded in `entry`. */
@@ -52,30 +79,27 @@ export function isEmpty(entry) {
 }
 
 export function isSkipped(habit, iso) {
-  return habit.skipped?.[iso] === true;
+  return entryOn(habit, iso).skipped;
 }
 
 /**
  * Reports whether the habit is due on `iso` and the day is not skipped. These
- * are the days the day summary, the filter and the perfect days count, as
- * the server's statistics do.
+ * are the days the day summary, the filter and the progress bars count.
  */
 export function isDue(habit, iso) {
-  return isScheduled(habit, iso) && !isSkipped(habit, iso);
+  const s = statusOn(habit, iso);
+  return s === STATUS.open || s === STATUS.done || s === STATUS.over;
 }
 
-/**
- * Returns the first day of the habit's history: its creation day, or an
- * earlier recorded day (domain.HistoryStart).
- */
-export function historyStart(habit) {
-  let first = habit.createdAt?.slice(0, 10) ?? "";
-  for (const recorded of [habit.entries, habit.skipped]) {
-    for (const iso of Object.keys(recorded ?? {})) {
-      if (!first || iso < first) first = iso;
-    }
-  }
-  return first;
+/** Reports whether the day is complete: its value meets the target. */
+export function isDone(habit, iso) {
+  const s = statusOn(habit, iso);
+  return s === STATUS.done || s === STATUS.offDone;
+}
+
+/** Reports whether the day's value exceeds its limit. */
+export function isOver(habit, iso) {
+  return statusOn(habit, iso) === STATUS.over;
 }
 
 /** Reports whether the target on `iso` is a limit (at most). */
@@ -106,29 +130,12 @@ function written(habit, value) {
  * reach, or for a limit the largest value that still meets it.
  */
 export function target(habit, iso) {
-  if (habit.kind === "check") return 1;
-  const schedule = scheduleOn(habit, iso);
-  if (isLimit(habit, iso)) return schedule.targetValue;
-  return Math.max(1, schedule.targetValue);
+  return scheduleOn(habit, iso).targetValue;
 }
 
 /**
- * Reports whether `value` meets the target that applies on `iso`, as
- * domain.Habit.IsComplete does. A skipped day is never complete. A limit is
- * also met by a day without a value, once the day has come and from the
- * habit's first day on.
- */
-export function isComplete(habit, iso, value) {
-  if (isSkipped(habit, iso)) return false;
-  if (isLimit(habit, iso)) {
-    return iso <= state.today && iso >= historyStart(habit) && (value || 0) <= target(habit, iso);
-  }
-  return (value || 0) >= target(habit, iso);
-}
-
-/**
- * Returns the progress towards the target of `iso`, 0…1. For a limit it is
- * the share of the limit used up.
+ * Returns the progress towards the target of `iso`, 0…1, for drawing the
+ * ring. For a limit it is the share of the limit used up.
  */
 export function progress(habit, iso, value) {
   const goal = target(habit, iso);
@@ -204,57 +211,6 @@ export function formatTotal(habit, total) {
 /** Reports whether the habit's values can be summed. */
 export function isCountable(habit) {
   return habit.kind === "count" || habit.kind === "time" || habit.kind === "distance";
-}
-
-/**
- * Sums the values between `from` and `to` per day, week or month (`size`).
- * Each bucket has the period's `sum` and the running `cumulative` total.
- */
-export function periodSummary(habit, from, to, size) {
-  // Weeks start on Monday.
-  const origin = size === "week" ? startOfWeek(from) : from;
-  const indexOf = (iso) => {
-    if (size === "day") return daysBetween(origin, iso);
-    if (size === "week") return Math.floor(daysBetween(origin, iso) / 7);
-    return monthsBetween(origin, iso);
-  };
-
-  const buckets = [];
-  for (let i = 0; i <= indexOf(to); i++) {
-    buckets.push({ start: startOfBucket(origin, i, size), sum: 0, cumulative: 0 });
-  }
-
-  let total = 0;
-  let best = 0;
-  let activeDays = 0;
-  for (const [iso, value] of Object.entries(habit.entries)) {
-    if (iso < from || iso > to || value <= 0) continue;
-    buckets[indexOf(iso)].sum += value;
-    total += value;
-    activeDays++;
-    if (value > best) best = value;
-  }
-
-  let running = 0;
-  for (const bucket of buckets) {
-    running += bucket.sum;
-    bucket.cumulative = running;
-  }
-  return { buckets, total, best, activeDays };
-}
-
-/** Returns the first day of the i-th bucket after `origin`. */
-function startOfBucket(origin, i, size) {
-  if (size === "day") return addDays(origin, i);
-  if (size === "week") return addDays(origin, i * 7);
-  const month = Number(origin.slice(5, 7)) - 1 + i;
-  const year = Number(origin.slice(0, 4)) + Math.floor(month / 12);
-  return `${year}-${String((month % 12) + 1).padStart(2, "0")}-01`;
-}
-
-function monthsBetween(from, to) {
-  return (Number(to.slice(0, 4)) - Number(from.slice(0, 4))) * 12 +
-    Number(to.slice(5, 7)) - Number(from.slice(5, 7));
 }
 
 /**
@@ -353,17 +309,15 @@ export function streakDaysOn(habit, iso) {
 }
 
 /**
- * Returns the heat level 0…4 for the calendar heatmap. A limit shows 4 while
- * it is kept and 1 once it is exceeded.
+ * Returns the heat level 0…4 for the calendar heatmap: 4 for a complete day,
+ * otherwise by the progress towards the target. A limit shows 1 once it is
+ * exceeded.
  */
 export function heatLevel(habit, iso, value) {
-  if (isLimit(habit, iso)) {
-    if (isComplete(habit, iso, value)) return 4;
-    return value > 0 ? 1 : 0;
-  }
+  if (isDone(habit, iso)) return 4;
+  if (isLimit(habit, iso)) return value > 0 ? 1 : 0;
   if (!value) return 0;
   const p = progress(habit, iso, value);
-  if (p >= 1) return 4;
   if (p >= 0.66) return 3;
   if (p >= 0.33) return 2;
   return 1;

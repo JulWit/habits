@@ -126,17 +126,16 @@ export function discard(habitId, date, value) {
 }
 
 /**
- * Lays the waiting writes over a loaded state, so they stay visible until
- * they are sent. Writes to habits that no longer exist are dropped.
+ * Lays the waiting writes over a loaded state as pending writes (see
+ * isPending in habit.js), so they stay visible until they are sent. Writes to
+ * habits that no longer exist are left out.
  */
 export function overlay(loaded) {
   for (const w of pending()) {
     const habit = loaded.habits?.find((h) => h.id === w.habitId);
     if (!habit) continue;
-    if (w.value > 0) habit.entries[w.date] = w.value;
-    else delete habit.entries[w.date];
-    // A value ends a skip, as on the server.
-    if (habit.skipped) delete habit.skipped[w.date];
+    habit.pending ??= {};
+    habit.pending[w.date] = { value: w.value, skipped: false };
   }
   return loaded;
 }

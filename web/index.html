@@ -514,13 +514,13 @@
   <div class="page-body">
     <div class="field">
       <span class="field-label">Export</span>
-      <p class="field-hint">Saves your habits and categories with their settings as a file. Recorded days and statistics are not included.</p>
+      <p class="field-hint">Saves your habits with their schedules and recorded days, and your categories, as a file: a backup that importing restores. Statistics are computed again.</p>
       <button type="button" class="button" id="settings-export" data-icon="download">Export habits</button>
     </div>
 
     <div class="field">
       <span class="field-label">Import</span>
-      <p class="field-hint">Adds the habits of an exported file. Habits whose name already exists are skipped; categories of the same name are shared. Schedules start today.</p>
+      <p class="field-hint">Adds the habits of an exported file with their history. Habits whose name already exists are skipped; categories of the same name are shared.</p>
       <input type="file" id="settings-import-file" accept=".json,application/json" hidden>
       <button type="button" class="button" id="settings-import" data-icon="upload">Import habits</button>
       <p class="field-hint" id="settings-import-result" role="status" hidden></p>

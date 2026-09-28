@@ -231,11 +231,11 @@ const de = {
   "Import, export and delete": "Importieren, exportieren und löschen",
   "Export": "Export",
   "Import": "Import",
-  "Saves your habits and categories with their settings as a file. Recorded days and statistics are not included.":
-    "Speichert deine Gewohnheiten und Kategorien mit ihren Einstellungen als Datei. Erfasste Tage und Statistiken sind nicht enthalten.",
+  "Saves your habits with their schedules and recorded days, and your categories, as a file: a backup that importing restores. Statistics are computed again.":
+    "Speichert deine Gewohnheiten mit ihren Zeitplänen und erfassten Tagen sowie deine Kategorien als Datei: eine Sicherung, die ein Import wiederherstellt. Statistiken werden neu berechnet.",
   "Export habits": "Gewohnheiten exportieren",
-  "Adds the habits of an exported file. Habits whose name already exists are skipped; categories of the same name are shared. Schedules start today.":
-    "Fügt die Gewohnheiten einer exportierten Datei hinzu. Gewohnheiten, deren Name schon existiert, werden übersprungen; gleichnamige Kategorien werden gemeinsam genutzt. Die Zeitpläne beginnen heute.",
+  "Adds the habits of an exported file with their history. Habits whose name already exists are skipped; categories of the same name are shared.":
+    "Fügt die Gewohnheiten einer exportierten Datei mit ihrem Verlauf hinzu. Gewohnheiten, deren Name schon existiert, werden übersprungen; gleichnamige Kategorien werden gemeinsam genutzt.",
   "Import habits": "Gewohnheiten importieren",
   "The file is not an export of the habits.": "Die Datei ist kein Export der Gewohnheiten.",
   "1 habit imported.": "1 Gewohnheit importiert.",
@@ -341,6 +341,8 @@ const de = {
   "skipped": "übersprungen",
   "{value}, over the limit of {target}": "{value}, über dem Limit von {target}",
   "{value}, within the limit of {target}": "{value}, im Limit von {target}",
+  "{value}, not saved yet": "{value}, noch nicht gespeichert",
+  "cleared, not saved yet": "gelöscht, noch nicht gespeichert",
   "nothing, within the limit": "nichts, im Limit",
   "{value} of at most {target}": "{value} von höchstens {target}",
   "none at all": "gar nichts",

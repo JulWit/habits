@@ -1,12 +1,14 @@
-// All data changes, including their undo steps.
+// All data changes. The server keeps an undo step for each change that can be
+// undone; its answer carries the step's ID (changeId), which the toast offers
+// to undo (see undo.js).
 
 import { api } from "./api.js";
 import {
-  state, habitById, upsertHabit, removeHabit, setEntryLocal,
+  state, habitById, upsertHabit, removeHabit, showPending, dropPending, applyEntryAnswer,
   categoryById, upsertCategory, removeCategory, reorderCategoriesLocal,
   reorderHabitsLocal, groupedHabits,
 } from "./state.js";
-import { record, toast, errorText } from "./undo.js";
+import { offerUndo, toast, errorText } from "./undo.js";
 import { openEditor } from "./editor.js";
 import { openDayDialog } from "./value.js";
 import { formatRelative } from "./dates.js";
@@ -35,6 +37,11 @@ function announce(text) {
   clearTimeout(announceTimer);
   el.textContent = "";
   announceTimer = setTimeout(() => { el.textContent = text; }, 50);
+}
+
+/** Returns an answer without the ID of its undo step, as kept in the state. */
+function withoutChange({ changeId, ...rest }) {
+  return rest;
 }
 
 // ---------- entries ----------
@@ -85,8 +92,9 @@ function serialize(key, task) {
 }
 
 /**
- * Returns `entry` with `change` ({value?, skipped?}) applied, as
- * domain.EntryChange.Apply does, to show it before the server answers.
+ * Returns `entry` with `change` ({value?, skipped?}) applied: what the cell
+ * shows until the server answers. A value ends a skip, a skip clears the
+ * value.
  */
 function applied(entry, change) {
   const next = { ...entry };
@@ -107,60 +115,50 @@ function isValueOnly(change) {
 }
 
 /**
- * Writes a change of a day's entry and records the undo step. The change is
- * shown immediately. A change of the value only waits in the outbox if it
- * cannot be sent now (see canSendLater); a skip needs the server.
- * If the server rejects the change, it is taken back and the state reloaded.
- * Undo writes back the previous entry on the condition that the day still
- * holds this one, so it does not overwrite a change made elsewhere in the
- * meantime.
+ * Writes a change of a day's entry. The change is shown at once as pending;
+ * the server's answer brings the day's status. A change of the value only
+ * waits in the outbox if it cannot be sent now (see canSendLater); a skip
+ * needs the server. If the server rejects the change, it is taken back and
+ * the state reloaded. Clearing or skipping a day offers to undo it.
  */
 async function writeEntry(habit, iso, change) {
   const before = H.entryOn(habit, iso);
   let after = applied(before, change);
-  setEntryLocal(habit.id, iso, after);
+  showPending(habit.id, iso, after);
+  const historyStart = habit.historyStart;
 
-  let previous;
+  let previous = before;
+  let changeId = null;
   try {
     const result = await serialize(`${habit.id}|${iso}`, () => api.setEntry(habit.id, iso, change));
     sent(habit.id, iso);
     // The entry as stored.
     after = { value: result.value, skipped: result.skipped };
     previous = result.previous;
-    setEntryLocal(habit.id, iso, after, result);
+    changeId = result.changeId;
+    applyEntryAnswer(habit.id, iso, result);
+    // An entry before the history's start moves it, which changes the status
+    // of other days of a limit.
+    if (result.historyStart !== historyStart) await deps.refresh();
   } catch (err) {
     if (!canSendLater(err) || !isValueOnly(change)) {
-      setEntryLocal(habit.id, iso, before);
+      dropPending(habit.id, iso);
       toast(errorText(err), { error: true });
       await deps.refresh();
       return;
     }
     queue(habit.id, iso, after.value, err);
-    // The server did not answer; the entry before is known locally.
-    previous = before;
   }
 
   const when = formatRelative(iso, state.today);
   // Taps show no toast, so announce them.
   announce(describeWrite(habit, when, after));
-  // Clearing an unscheduled day cannot be undone, as the server would reject
-  // the old value.
-  if (!H.isScheduled(habit, iso)) {
-    toast(t("Entry cleared: {name}, {when}", { name: habit.name, when }));
-    return;
+  const name = habit.name;
+  if (after.skipped && !previous.skipped) {
+    offerUndo(changeId, t("Day skipped: {name}, {when}", { name, when }));
+  } else if (after.value === 0 && !after.skipped && previous.value > 0) {
+    offerUndo(changeId, t("Entry cleared: {name}, {when}", { name, when }));
   }
-  const cleared = after.value === 0 && !after.skipped && previous.value > 0;
-  const skipped = after.skipped && !previous.skipped;
-  record({
-    label: `${habit.name} — ${when}`,
-    // Only clearing or skipping a day shows a toast.
-    silent: !cleared && !skipped,
-    toastLabel: skipped
-      ? t("Day skipped: {name}, {when}", { name: habit.name, when })
-      : t("Entry cleared: {name}, {when}", { name: habit.name, when }),
-    undo: () => putEntry(habit.id, iso, previous, after),
-    redo: () => putEntry(habit.id, iso, after, previous),
-  });
 }
 
 /** Describes a written entry for the live region. */
@@ -169,22 +167,6 @@ function describeWrite(habit, when, entry) {
   if (entry.skipped) return t("{name}, {when}: skipped", { name, when });
   if (entry.value > 0) return `${name}, ${when}: ${H.formatValue(habit, entry.value)}`;
   return t("{name}, {when}: cleared", { name, when });
-}
-
-/**
- * Writes a whole entry for undo or redo, on the condition that the day still
- * holds `expect`. If it cannot be sent now, a change of the value only waits
- * in the outbox, and then without the condition: for each day the last value
- * wins.
- */
-async function putEntry(habitId, iso, entry, expect) {
-  try {
-    await api.setEntry(habitId, iso, entry, expect);
-    sent(habitId, iso);
-  } catch (err) {
-    if (!canSendLater(err) || entry.skipped) throw err;
-    queue(habitId, iso, entry.value, err);
-  }
 }
 
 /**
@@ -258,136 +240,70 @@ export async function syncOutbox() {
 }
 
 /**
- * Skips a range of days ({from, to, habitIds}) and records the undo
- * step, which writes the entries before back. Errors are thrown for the
- * dialog to display.
+ * Skips a range of days ({from, to, habitIds}) as one undo step. Errors are
+ * thrown for the dialog to display.
  */
 export async function skipDays(input) {
-  const { changes } = await api.skipDays(input);
-  if (changes.length === 0) {
+  const { skipped, changeId } = await api.skipDays(input);
+  if (skipped === 0) {
     toast(t("Nothing to skip: the days are not due or already have an entry."));
     return;
   }
   await deps.refresh();
-  // Forward from the entries before to the skipped ones, or back.
-  const writes = (back) => changes.map((c) => ({
-    habitId: c.habitId,
-    date: c.date,
-    expect: back ? c.entry : c.previous,
-    entry: back ? c.previous : c.entry,
-  }));
-  record({
-    label: changes.length === 1 ? t("1 day skipped") : t("{n} days skipped", { n: changes.length }),
-    undo: () => api.writeEntries(writes(true)),
-    redo: () => api.writeEntries(writes(false)),
-  });
+  offerUndo(changeId, skipped === 1 ? t("1 day skipped") : t("{n} days skipped", { n: skipped }));
 }
 
 // ---------- habits ----------
 
 export function createHabit() {
   openEditor(null, async (input) => {
-    const created = await api.createHabit(input);
+    const created = withoutChange(await api.createHabit(input));
     upsertHabit(created);
-    record({
-      label: t("\"{name}\" created", { name: created.name }),
-      silent: true,
-      undo: async () => {
-        await api.deleteHabit(created.id);
-        removeHabit(created.id);
-      },
-      redo: async () => upsertHabit(await api.restoreHabit(created.id)),
-    });
     toast(t("\"{name}\" created", { name: created.name }));
   });
 }
 
+/** Opens the editor for a habit and saves what it sends. */
 export function editHabit(id) {
   const habit = habitById(id);
   if (!habit) return;
-  const before = writableFields(habit);
-
   openEditor(habit, async (input) => {
-    upsertHabit(await api.updateHabit(id, input));
-    record({
-      label: t("\"{name}\" edited", { name: habit.name }),
-      silent: true,
-      undo: async () => upsertHabit(await api.updateHabit(id, before)),
-      redo: async () => upsertHabit(await api.updateHabit(id, input)),
-    });
+    upsertHabit(withoutChange(await api.updateHabit(id, input)));
   });
-}
-
-/**
- * Returns all fields the editor can change, for undoing an edit. Must include
- * every field the editor sends.
- */
-function writableFields(habit) {
-  return {
-    name: habit.name,
-    color: habit.color,
-    icon: habit.icon ?? "",
-    kind: habit.kind,
-    categoryId: habit.categoryId,
-    stepValue: habit.stepValue,
-    unit: habit.unit,
-    // The whole schedule history, so that undo also restores a retroactive
-    // change of target or frequency.
-    schedules: habit.schedules.map((s) => ({ ...s, frequency: { ...s.frequency } })),
-  };
 }
 
 export async function deleteHabit(id) {
   const habit = habitById(id);
   if (!habit) return;
+  let answer;
   try {
-    await api.deleteHabit(id);
+    answer = await api.deleteHabit(id);
   } catch (err) {
     toast(errorText(err), { error: true });
     return;
   }
   removeHabit(id);
   if (deps.currentHabitId() === id) deps.goHome();
-
-  // Undo restores the soft-deleted habit.
-  record({
-    label: t("\"{name}\" deleted", { name: habit.name }),
-    undo: async () => upsertHabit(await api.restoreHabit(id)),
-    redo: async () => {
-      await api.deleteHabit(id);
-      removeHabit(id);
-    },
-  });
+  offerUndo(answer?.changeId, t("\"{name}\" deleted", { name: habit.name }));
 }
 
 export async function toggleArchive(id) {
   const habit = habitById(id);
   if (!habit) return;
   const archived = !habit.archivedAt;
-  const name = habit.name;
-
+  let answer;
   try {
-    await api.updateHabit(id, { archived });
+    answer = await api.archiveHabit(id, archived);
   } catch (err) {
     toast(errorText(err), { error: true });
     return;
   }
   if (archived && deps.currentHabitId() === id) deps.goHome();
   await deps.refresh();
-
-  record({
-    label: archived
-      ? t("\"{name}\" archived", { name })
-      : t("\"{name}\" reactivated", { name }),
-    undo: async () => {
-      await api.updateHabit(id, { archived: !archived });
-      await deps.refresh();
-    },
-    redo: async () => {
-      await api.updateHabit(id, { archived });
-      await deps.refresh();
-    },
-  });
+  const name = habit.name;
+  offerUndo(answer?.changeId, archived
+    ? t("\"{name}\" archived", { name })
+    : t("\"{name}\" reactivated", { name }));
 }
 
 // ---------- categories ----------
@@ -399,21 +315,12 @@ export async function createCategory(name) {
 
   let created;
   try {
-    created = await api.createCategory({ name: wanted });
+    created = withoutChange(await api.createCategory({ name: wanted }));
   } catch (err) {
     toast(errorText(err), { error: true });
     return;
   }
   upsertCategory(created);
-  record({
-    label: t("Category \"{name}\" created", { name: created.name }),
-    silent: true,
-    undo: async () => {
-      await api.deleteCategory(created.id);
-      removeCategory(created.id);
-    },
-    redo: async () => upsertCategory(await api.restoreCategory(created.id)),
-  });
   toast(t("Category \"{name}\" created", { name: created.name }));
   // Returned so the picker can select it.
   return created;
@@ -454,7 +361,7 @@ export function moveHabit(id, delta) {
   saveHabitOrder(after);
 }
 
-/** Moves a category one place up (-1) or down (+1). No undo step is recorded. */
+/** Moves a category one place up (-1) or down (+1). Reordering is no undo step. */
 export function moveCategory(id, delta) {
   const after = state.categories.map((c) => c.id);
   const from = after.indexOf(id);
@@ -496,63 +403,35 @@ export async function setCategoryOrder(ids) {
   }
 }
 
-/**
- * Updates a category and records the undo step. Errors are thrown for the
- * dialog to display.
- */
+/** Updates a category. Errors are thrown for the dialog to display. */
 export async function updateCategory(id, { name, color, icon, showProgress }) {
-  const category = categoryById(id);
-  if (!category) return;
-  const before = {
-    name: category.name,
-    color: category.color ?? "",
-    icon: category.icon ?? "",
-    showProgress: category.showProgress === true,
-  };
-  const after = { name, color, icon, showProgress };
-  if (Object.keys(after).every((key) => after[key] === before[key])) return;
-
-  upsertCategory(await api.updateCategory(id, after));
-  record({
-    label: t("Category \"{name}\" edited", { name: before.name }),
-    silent: true,
-    undo: async () => upsertCategory(await api.updateCategory(id, before)),
-    redo: async () => upsertCategory(await api.updateCategory(id, after)),
-  });
+  if (!categoryById(id)) return;
+  upsertCategory(withoutChange(await api.updateCategory(id, { name, color, icon, showProgress })));
 }
 
 /**
- * Deletes a category. Its habits keep their category ID, so undo restores the
- * category unchanged.
+ * Deletes a category. Its habits stay, without a category; undo puts them
+ * back.
  */
 export async function deleteCategory(id) {
   const category = categoryById(id);
   if (!category) return;
   const affected = state.habits.filter((h) => h.categoryId === id).length;
 
+  let answer;
   try {
-    await api.deleteCategory(id);
+    answer = await api.deleteCategory(id);
   } catch (err) {
     toast(errorText(err), { error: true });
     return;
   }
   removeCategory(id);
+  await deps.refresh();
 
   const name = category.name;
   let label;
   if (affected === 0) label = t("Category \"{name}\" deleted", { name });
   else if (affected === 1) label = t("Category \"{name}\" deleted — 1 habit kept", { name });
   else label = t("Category \"{name}\" deleted — {n} habits kept", { name, n: affected });
-
-  record({
-    label,
-    undo: async () => {
-      upsertCategory(await api.restoreCategory(id));
-      await deps.refresh();
-    },
-    redo: async () => {
-      await api.deleteCategory(id);
-      removeCategory(id);
-    },
-  });
+  offerUndo(answer?.changeId, label);
 }

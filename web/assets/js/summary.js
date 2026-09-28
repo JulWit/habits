@@ -14,10 +14,13 @@ export function initSummary(boardElement) {
   board = boardElement;
 }
 
-/** Counts the habits due on `day` and how many of them are complete. */
+/**
+ * Counts the habits due on `day` and how many of them are complete, by the
+ * statuses the server sent.
+ */
 export function dayProgress(habits, day) {
   const due = habits.filter((h) => !h.archivedAt && H.isDue(h, day));
-  const done = due.filter((h) => H.isComplete(h, day, h.entries[day] ?? 0));
+  const done = due.filter((h) => H.isDone(h, day));
   return { due: due.length, done: done.length };
 }
 
@@ -204,7 +207,7 @@ const ORBS_PER_HABIT = 6;
  */
 export function newlyDone(habits, day) {
   const due = habits.filter((h) => !h.archivedAt && H.isDue(h, day));
-  const done = new Set(due.filter((h) => H.isComplete(h, day, h.entries[day] ?? 0)).map((h) => h.id));
+  const done = new Set(due.filter((h) => H.isDone(h, day)).map((h) => h.id));
   const before = lastDoneDay === day ? lastDone : null;
   lastDone = done;
   lastDoneDay = day;

@@ -15,86 +15,93 @@ func TestHabitsAreScopedToTheirUser(t *testing.T) {
 	st := openTestStore(t)
 	mine := mustCreateHabit(t, st, "alice", countHabit(domain.KindCheck, 1))
 
-	if _, err := st.GetHabit(ctx, "someone-else", mine.ID); !errors.Is(err, ErrNotFound) {
-		t.Errorf("GetHabit foreign: %v, want ErrNotFound", err)
+	err := st.View(ctx, "someone-else", func(tx *Tx) error {
+		_, err := tx.Habit(mine.ID)
+		return err
+	})
+	if !errors.Is(err, ErrNotFound) {
+		t.Errorf("Habit of another user: %v, want ErrNotFound", err)
 	}
-	if err := st.SoftDeleteHabit(ctx, "someone-else", mine.ID); !errors.Is(err, ErrNotFound) {
-		t.Errorf("SoftDelete foreign: %v, want ErrNotFound", err)
+	_, err = st.Update(ctx, "someone-else", func(tx *Tx) error { return tx.DeleteHabit(mine.ID) })
+	if !errors.Is(err, ErrNotFound) {
+		t.Errorf("DeleteHabit of another user: %v, want ErrNotFound", err)
 	}
-	if _, _, _, err := st.SetEntry(ctx, "someone-else", mine.ID, day(2026, time.September, 18), setValue(1), nil); !errors.Is(err, ErrNotFound) {
-		t.Errorf("SetEntry foreign: %v, want ErrNotFound", err)
+	_, err = st.Update(ctx, "someone-else", func(tx *Tx) error {
+		h := mine
+		h.Name = "Mine now"
+		return tx.SaveHabit(&h)
+	})
+	if !errors.Is(err, ErrNotFound) {
+		t.Errorf("SaveHabit of another user: %v, want ErrNotFound", err)
 	}
-	habits, err := st.ListHabits(ctx, "someone-else", true)
-	if err != nil {
-		t.Fatalf("ListHabits: %v", err)
+	if theirs := read(t, st, "someone-else", func(tx *Tx) ([]domain.Habit, error) { return tx.Habits(true) }); len(theirs) != 0 {
+		t.Errorf("another user's list contains %d habits", len(theirs))
 	}
-	if len(habits) != 0 {
-		t.Errorf("foreign list contains %d habits", len(habits))
+	if entries := entriesOf(t, st, "someone-else", mine.ID); len(entries) != 0 {
+		t.Errorf("another user reads %d entries", len(entries))
 	}
 }
 
-// UpdateHabit with entries replaces the history of the habit, as after a
-// change of kind.
-func TestUpdateHabitReplacesTheEntries(t *testing.T) {
-	ctx := context.Background()
+// ReplaceEntries replaces the history of a habit, as after a change of kind.
+func TestReplaceEntries(t *testing.T) {
 	st := openTestStore(t)
 	h := mustCreateHabit(t, st, "alice", countHabit(domain.KindDistance, 5000))
 	friday, saturday := day(2026, time.September, 18), day(2026, time.September, 19)
 	for _, d := range []domain.Date{friday, saturday} {
-		if _, _, _, err := st.SetEntry(ctx, "alice", h.ID, d, setValue(5200), nil); err != nil {
-			t.Fatalf("SetEntry: %v", err)
-		}
+		setEntry(t, st, "alice", h, d, domain.Entry{Value: 5200})
 	}
 
-	h.Kind = domain.KindCheck
-	if err := st.UpdateHabit(ctx, "alice", &h, map[domain.Date]domain.Entry{friday: {Value: 1}}); err != nil {
-		t.Fatalf("UpdateHabit: %v", err)
-	}
-	entries, err := st.EntriesForHabit(ctx, "alice", h.ID)
-	if err != nil {
-		t.Fatalf("EntriesForHabit: %v", err)
-	}
+	update(t, st, "alice", func(tx *Tx) error {
+		h.Kind = domain.KindCheck
+		if err := tx.SaveHabit(&h); err != nil {
+			return err
+		}
+		return tx.ReplaceEntries(h, map[domain.Date]domain.Entry{friday: {Value: 1}})
+	})
+	entries := entriesOf(t, st, "alice", h.ID)
 	if want := (domain.Entry{Value: 1}); len(entries) != 1 || entries[friday] != want {
 		t.Errorf("entries = %v, want only Friday, ticked", entries)
 	}
 }
 
-// UpdateHabit without entries keeps the history and stores every other field.
-func TestUpdateHabitKeepsTheEntries(t *testing.T) {
-	ctx := context.Background()
+// SaveHabit stores every field and keeps the history.
+func TestSaveHabitKeepsTheEntries(t *testing.T) {
 	st := openTestStore(t)
 	h := mustCreateHabit(t, st, "alice", countHabit(domain.KindCount, 80))
-	if _, _, _, err := st.SetEntry(ctx, "alice", h.ID, day(2026, time.September, 18), setValue(50), nil); err != nil {
-		t.Fatalf("SetEntry: %v", err)
-	}
+	setEntry(t, st, "alice", h, day(2026, time.September, 18), domain.Entry{Value: 50})
 
 	h.Name = "Wasser trinken"
 	h.Color = "sky"
 	h.StepValue = 20
 	h.Schedules[0].TargetValue = 100
 	h.Schedules[0].Frequency = domain.Frequency{Kind: domain.FreqTimesPerWeek, TimesPerWeek: 4}
-	if err := st.UpdateHabit(ctx, "alice", &h, nil); err != nil {
-		t.Fatalf("UpdateHabit: %v", err)
-	}
+	update(t, st, "alice", func(tx *Tx) error { return tx.SaveHabit(&h) })
 
-	after, err := st.GetHabit(ctx, "alice", h.ID)
-	if err != nil {
-		t.Fatalf("GetHabit: %v", err)
-	}
+	after := habitOf(t, st, "alice", h.ID)
 	if after.Name != "Wasser trinken" || after.Current().TargetValue != 100 || after.StepValue != 20 {
 		t.Errorf("changes did not arrive: %+v", after)
 	}
 	if f := after.Current().Frequency; f.Kind != domain.FreqTimesPerWeek || f.TimesPerWeek != 4 {
 		t.Errorf("frequency did not arrive: %+v", f)
 	}
-	if entries, _ := st.EntriesForHabit(ctx, "alice", h.ID); len(entries) != 1 {
+	if entries := entriesOf(t, st, "alice", h.ID); len(entries) != 1 {
 		t.Errorf("entries = %v, want the one kept", entries)
+	}
+}
+
+// A new habit keeps a creation time already set, as an imported one does.
+func TestCreateHabitKeepsASetCreationTime(t *testing.T) {
+	st := openTestStore(t)
+	h := countHabit(domain.KindCheck, 1)
+	h.CreatedAt = time.Date(2024, 3, 1, 8, 0, 0, 0, time.UTC)
+	h = mustCreateHabit(t, st, "alice", h)
+	if got := habitOf(t, st, "alice", h.ID).CreatedAt; !got.Equal(h.CreatedAt) {
+		t.Errorf("createdAt = %v, want %v", got, h.CreatedAt)
 	}
 }
 
 // Week interval and week of month are stored and read back.
 func TestNarrowedWeekdaysRoundTrip(t *testing.T) {
-	ctx := context.Background()
 	st := openTestStore(t)
 	for _, freq := range []domain.Frequency{
 		{Kind: domain.FreqWeekdays, Weekdays: 1, WeekInterval: 4, AnchorDate: day(2026, time.September, 14)},
@@ -103,11 +110,7 @@ func TestNarrowedWeekdaysRoundTrip(t *testing.T) {
 		h := countHabit(domain.KindCheck, 1)
 		h.Schedules[0].Frequency = freq
 		h = mustCreateHabit(t, st, "alice", h)
-		after, err := st.GetHabit(ctx, "alice", h.ID)
-		if err != nil {
-			t.Fatalf("GetHabit: %v", err)
-		}
-		if got := after.Current().Frequency; got != freq {
+		if got := habitOf(t, st, "alice", h.ID).Current().Frequency; got != freq {
 			t.Errorf("frequency = %+v, want %+v", got, freq)
 		}
 	}
@@ -117,120 +120,76 @@ func TestNarrowedWeekdaysRoundTrip(t *testing.T) {
 func TestHabitCannotJoinAForeignCategory(t *testing.T) {
 	ctx := context.Background()
 	st := openTestStore(t)
+	var theirs domain.Category
+	update(t, st, "someone-else", func(tx *Tx) error {
+		theirs = domain.Category{Name: "Sport"}
+		return tx.CreateCategory(&theirs)
+	})
 
-	theirs := domain.Category{Name: "Sport"}
-	if err := st.CreateCategory(ctx, "someone-else", &theirs); err != nil {
-		t.Fatalf("CreateCategory: %v", err)
-	}
-
-	h := countHabit(domain.KindCheck, 1)
-	h.CategoryID = theirs.ID
-	if err := st.CreateHabit(ctx, "alice", &h); !errors.Is(err, domain.ErrValidation) {
-		t.Errorf("foreign category: %v, want ErrValidation", err)
-	}
-
-	h.CategoryID = "does-not-exist"
-	if err := st.CreateHabit(ctx, "alice", &h); !errors.Is(err, domain.ErrValidation) {
-		t.Errorf("unknown category: %v, want ErrValidation", err)
+	for _, id := range []string{theirs.ID, "does-not-exist"} {
+		_, err := st.Update(ctx, "alice", func(tx *Tx) error {
+			h := countHabit(domain.KindCheck, 1)
+			h.CategoryID = id
+			return tx.CreateHabit(&h)
+		})
+		if !errors.Is(err, domain.ErrValidation) {
+			t.Errorf("category %q: %v, want ErrValidation", id, err)
+		}
 	}
 }
 
-// A soft-deleted habit can be restored with its entries.
-func TestSoftDeleteKeepsTheHistory(t *testing.T) {
-	ctx := context.Background()
+// Deleting a habit removes its schedules and entries.
+func TestDeleteHabitRemovesItsHistory(t *testing.T) {
 	st := openTestStore(t)
 	h := mustCreateHabit(t, st, "alice", countHabit(domain.KindCheck, 1))
-	day := day(2026, time.September, 18)
-	if _, _, _, err := st.SetEntry(ctx, "alice", h.ID, day, setValue(1), nil); err != nil {
-		t.Fatalf("SetEntry: %v", err)
-	}
+	setEntry(t, st, "alice", h, day(2026, time.September, 18), domain.Entry{Value: 1})
 
-	if err := st.SoftDeleteHabit(ctx, "alice", h.ID); err != nil {
-		t.Fatalf("SoftDeleteHabit: %v", err)
-	}
-	if habits, _ := st.ListHabits(ctx, "alice", true); len(habits) != 0 {
-		t.Error("a deleted habit must no longer be listed")
-	}
-	// PurgeDeleted keeps habits deleted within the retention period.
-	if n, err := st.PurgeDeleted(ctx, 30*24*time.Hour); err != nil || n != 0 {
-		t.Errorf("PurgeDeleted removed %d rows too early (err %v)", n, err)
-	}
-
-	if err := st.RestoreHabit(ctx, "alice", h.ID); err != nil {
-		t.Fatalf("RestoreHabit: %v", err)
-	}
-	entries, err := st.EntriesForHabit(ctx, "alice", h.ID)
-	if err != nil {
-		t.Fatalf("EntriesForHabit: %v", err)
-	}
-	if entries[day].Value != 1 {
-		t.Errorf("the history did not come back: %+v", entries)
+	update(t, st, "alice", func(tx *Tx) error { return tx.DeleteHabit(h.ID) })
+	for _, table := range []string{"habits", "habit_schedules", "entries"} {
+		var n int
+		st.db.QueryRow(`SELECT COUNT(*) FROM ` + table).Scan(&n)
+		if n != 0 {
+			t.Errorf("%s: %d rows left", table, n)
+		}
 	}
 }
 
-// PurgeDeleted removes expired habits and their entries.
-func TestPurgeRemovesWhatIsPastTheWindow(t *testing.T) {
-	ctx := context.Background()
-	st := openTestStore(t)
-	h := mustCreateHabit(t, st, "alice", countHabit(domain.KindCheck, 1))
-	if err := st.SoftDeleteHabit(ctx, "alice", h.ID); err != nil {
-		t.Fatalf("SoftDeleteHabit: %v", err)
+// habitIDs returns the IDs of the user's habits in display order.
+func habitIDs(t *testing.T, st *Store, user string) []string {
+	t.Helper()
+	var ids []string
+	for _, h := range read(t, st, user, func(tx *Tx) ([]domain.Habit, error) { return tx.Habits(true) }) {
+		ids = append(ids, h.ID)
 	}
-
-	// A negative duration puts the cutoff in the future, independent of the
-	// clock resolution.
-	n, err := st.PurgeDeleted(ctx, -time.Hour)
-	if err != nil {
-		t.Fatalf("PurgeDeleted: %v", err)
-	}
-	if n != 1 {
-		t.Errorf("PurgeDeleted entfernte %d Zeilen, want 1", n)
-	}
-	if err := st.RestoreHabit(ctx, "alice", h.ID); !errors.Is(err, ErrNotFound) {
-		t.Errorf("after the purge: %v, want ErrNotFound", err)
-	}
+	return ids
 }
 
 // Reordering ignores other users' habits.
 func TestReorderIgnoresForeignIDs(t *testing.T) {
-	ctx := context.Background()
 	st := openTestStore(t)
 	a := mustCreateHabit(t, st, "alice", countHabit(domain.KindCheck, 1))
 	b := mustCreateHabit(t, st, "alice", countHabit(domain.KindCheck, 1))
 	theirs := mustCreateHabit(t, st, "someone-else", countHabit(domain.KindCheck, 1))
 
-	if err := st.ReorderHabits(ctx, "alice", []string{b.ID, theirs.ID, a.ID}); err != nil {
-		t.Fatalf("ReorderHabits: %v", err)
+	update(t, st, "alice", func(tx *Tx) error { return tx.ReorderHabits([]string{b.ID, theirs.ID, a.ID}) })
+	if got := habitIDs(t, st, "alice"); len(got) != 2 || got[0] != b.ID || got[1] != a.ID {
+		t.Errorf("order = %v", got)
 	}
-	habits, err := st.ListHabits(ctx, "alice", true)
-	if err != nil {
-		t.Fatalf("ListHabits: %v", err)
-	}
-	if len(habits) != 2 || habits[0].ID != b.ID || habits[1].ID != a.ID {
-		t.Errorf("order = %v", habits)
-	}
-	// The other user's habit keeps its position.
-	if other, _ := st.ListHabits(ctx, "someone-else", true); len(other) != 1 {
-		t.Error("the foreign list was touched")
+	if other := habitIDs(t, st, "someone-else"); len(other) != 1 {
+		t.Error("the other user's list was touched")
 	}
 }
 
 // Habits missing from the new order follow the given ones in their previous
 // order.
 func TestReorderPlacesUnnamedHabitsAfterTheNamedOnes(t *testing.T) {
-	ctx := context.Background()
 	st := openTestStore(t)
 	a := mustCreateHabit(t, st, "alice", countHabit(domain.KindCheck, 1))
 	b := mustCreateHabit(t, st, "alice", countHabit(domain.KindCheck, 1))
 	c := mustCreateHabit(t, st, "alice", countHabit(domain.KindCheck, 1))
 
-	if err := st.ReorderHabits(ctx, "alice", []string{c.ID}); err != nil {
-		t.Fatalf("ReorderHabits: %v", err)
-	}
-	habits, err := st.ListHabits(ctx, "alice", true)
-	if err != nil {
-		t.Fatalf("ListHabits: %v", err)
-	}
+	update(t, st, "alice", func(tx *Tx) error { return tx.ReorderHabits([]string{c.ID}) })
+	habits := read(t, st, "alice", func(tx *Tx) ([]domain.Habit, error) { return tx.Habits(true) })
 	want := []string{c.ID, a.ID, b.ID}
 	for i, h := range habits {
 		if h.ID != want[i] || h.Position != i {
@@ -241,39 +200,30 @@ func TestReorderPlacesUnnamedHabitsAfterTheNamedOnes(t *testing.T) {
 
 // An order containing a habit twice is rejected.
 func TestReorderRefusesADuplicate(t *testing.T) {
-	ctx := context.Background()
 	st := openTestStore(t)
 	a := mustCreateHabit(t, st, "alice", countHabit(domain.KindCheck, 1))
 	b := mustCreateHabit(t, st, "alice", countHabit(domain.KindCheck, 1))
 
-	err := st.ReorderHabits(ctx, "alice", []string{b.ID, a.ID, b.ID})
+	_, err := st.Update(context.Background(), "alice", func(tx *Tx) error {
+		return tx.ReorderHabits([]string{b.ID, a.ID, b.ID})
+	})
 	if !errors.Is(err, domain.ErrValidation) {
 		t.Fatalf("err = %v, want a validation error", err)
 	}
-	habits, _ := st.ListHabits(ctx, "alice", true)
-	if habits[0].ID != a.ID || habits[1].ID != b.ID {
+	if got := habitIDs(t, st, "alice"); got[0] != a.ID || got[1] != b.ID {
 		t.Error("a refused order was applied anyway")
 	}
 }
 
 // Reordering does not change updated_at.
 func TestReorderKeepsUpdatedAt(t *testing.T) {
-	ctx := context.Background()
 	st := openTestStore(t)
 	a := mustCreateHabit(t, st, "alice", countHabit(domain.KindCheck, 1))
 	b := mustCreateHabit(t, st, "alice", countHabit(domain.KindCheck, 1))
-	before, err := st.GetHabit(ctx, "alice", a.ID)
-	if err != nil {
-		t.Fatalf("GetHabit: %v", err)
-	}
+	before := habitOf(t, st, "alice", a.ID)
 
-	if err := st.ReorderHabits(ctx, "alice", []string{b.ID, a.ID}); err != nil {
-		t.Fatalf("ReorderHabits: %v", err)
-	}
-	after, err := st.GetHabit(ctx, "alice", a.ID)
-	if err != nil {
-		t.Fatalf("GetHabit: %v", err)
-	}
+	update(t, st, "alice", func(tx *Tx) error { return tx.ReorderHabits([]string{b.ID, a.ID}) })
+	after := habitOf(t, st, "alice", a.ID)
 	if after.Position != 1 {
 		t.Errorf("position = %d, want 1", after.Position)
 	}

@@ -1,7 +1,6 @@
 package store
 
 import (
-	"context"
 	"database/sql"
 	"fmt"
 
@@ -12,13 +11,13 @@ const scheduleColumns = `s.habit_id, s.valid_from, s.target_value, s.target_type
 	s.freq_kind, s.freq_times_per_week, s.freq_times_per_month, s.freq_weekdays, s.freq_interval_days,
 	s.freq_week_interval, s.freq_week_of_month, s.freq_anchor_date`
 
-// schedulesOfUser returns the schedules of the user's non-deleted habits,
-// oldest first, keyed by habit ID.
-func (s *Store) schedulesOfUser(ctx context.Context, userID string) (map[string][]domain.Schedule, error) {
-	rows, err := s.db.QueryContext(ctx, `SELECT `+scheduleColumns+`
+// schedulesOfUser returns the schedules of the user's habits, oldest first,
+// keyed by habit ID.
+func (t *Tx) schedulesOfUser() (map[string][]domain.Schedule, error) {
+	rows, err := t.query(`SELECT `+scheduleColumns+`
 		FROM habit_schedules s JOIN habits h ON h.id = s.habit_id
-		WHERE h.user_id = ? AND h.deleted_at IS NULL
-		ORDER BY s.habit_id, s.valid_from`, userID)
+		WHERE h.user_id = ?
+		ORDER BY s.habit_id, s.valid_from`, t.userID)
 	if err != nil {
 		return nil, fmt.Errorf("loading schedules: %w", err)
 	}
@@ -27,8 +26,8 @@ func (s *Store) schedulesOfUser(ctx context.Context, userID string) (map[string]
 }
 
 // schedulesOfHabit returns the schedules of a habit, oldest first.
-func (s *Store) schedulesOfHabit(ctx context.Context, habitID string) ([]domain.Schedule, error) {
-	rows, err := s.db.QueryContext(ctx, `SELECT `+scheduleColumns+`
+func (t *Tx) schedulesOfHabit(habitID string) ([]domain.Schedule, error) {
+	rows, err := t.query(`SELECT `+scheduleColumns+`
 		FROM habit_schedules s WHERE s.habit_id = ? ORDER BY s.valid_from`, habitID)
 	if err != nil {
 		return nil, fmt.Errorf("loading schedules: %w", err)
@@ -74,13 +73,16 @@ func collectSchedules(rows *sql.Rows) (map[string][]domain.Schedule, error) {
 }
 
 // saveSchedules replaces the stored schedules of the habit with h.Schedules.
-func saveSchedules(ctx context.Context, tx *sql.Tx, h *domain.Habit) error {
-	if _, err := tx.ExecContext(ctx, `DELETE FROM habit_schedules WHERE habit_id = ?`, h.ID); err != nil {
+func (t *Tx) saveSchedules(h *domain.Habit) error {
+	if err := t.watch("habit_schedules", "habit_id = ?", h.ID); err != nil {
+		return err
+	}
+	if _, err := t.exec(`DELETE FROM habit_schedules WHERE habit_id = ?`, h.ID); err != nil {
 		return fmt.Errorf("replacing schedules: %w", err)
 	}
 	for _, sc := range h.Schedules {
 		f := sc.Frequency
-		if _, err := tx.ExecContext(ctx, `
+		if _, err := t.exec(`
 			INSERT INTO habit_schedules (habit_id, valid_from, target_value, target_type,
 				freq_kind, freq_times_per_week, freq_times_per_month, freq_weekdays, freq_interval_days,
 				freq_week_interval, freq_week_of_month, freq_anchor_date)

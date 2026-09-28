@@ -1,23 +1,28 @@
 package store
 
 import (
-	"context"
 	"database/sql"
 	"errors"
 	"fmt"
-	"time"
+	"maps"
+	"slices"
 
 	"github.com/JulWit/habits/internal/domain"
 )
 
-// EntriesForUser returns the entries of all non-deleted habits of the user,
-// keyed by habit ID.
-func (s *Store) EntriesForUser(ctx context.Context, userID string) (map[string]map[domain.Date]domain.Entry, error) {
-	rows, err := s.db.QueryContext(ctx, `
+// Entries returns the entries of all habits of the user, keyed by habit ID.
+func (t *Tx) Entries() (map[string]map[domain.Date]domain.Entry, error) {
+	return t.EntriesFrom(domain.Date{})
+}
+
+// EntriesFrom returns the entries of all habits of the user dated from on,
+// keyed by habit ID; all of them for the zero Date.
+func (t *Tx) EntriesFrom(from domain.Date) (map[string]map[domain.Date]domain.Entry, error) {
+	// ISO dates compare correctly as text, and every date is later than "".
+	rows, err := t.query(`
 		SELECT e.habit_id, e.date, e.value, e.skipped
-		FROM entries e
-		JOIN habits h ON h.id = e.habit_id
-		WHERE h.user_id = ? AND h.deleted_at IS NULL`, userID)
+		FROM entries e JOIN habits h ON h.id = e.habit_id
+		WHERE h.user_id = ? AND e.date >= ?`, t.userID, from.String())
 	if err != nil {
 		return nil, fmt.Errorf("loading entries: %w", err)
 	}
@@ -38,13 +43,12 @@ func (s *Store) EntriesForUser(ctx context.Context, userID string) (map[string]m
 	return out, rows.Err()
 }
 
-// EntriesForHabit returns all entries of a habit of the user.
-func (s *Store) EntriesForHabit(ctx context.Context, userID, habitID string) (map[domain.Date]domain.Entry, error) {
-	rows, err := s.db.QueryContext(ctx, `
+// HabitEntries returns all entries of a habit of the user.
+func (t *Tx) HabitEntries(habitID string) (map[domain.Date]domain.Entry, error) {
+	rows, err := t.query(`
 		SELECT e.habit_id, e.date, e.value, e.skipped
-		FROM entries e
-		JOIN habits h ON h.id = e.habit_id
-		WHERE h.user_id = ? AND h.deleted_at IS NULL AND e.habit_id = ?`, userID, habitID)
+		FROM entries e JOIN habits h ON h.id = e.habit_id
+		WHERE h.user_id = ? AND e.habit_id = ?`, t.userID, habitID)
 	if err != nil {
 		return nil, fmt.Errorf("loading entries: %w", err)
 	}
@@ -79,138 +83,81 @@ func scanEntry(rows *sql.Rows, habitID *string) (domain.Date, domain.Entry, erro
 	return d, e, nil
 }
 
-// SetEntry applies change to the entry of a habit on date and returns the
-// entry before and after, and the habit's new updated_at. An entry with
-// nothing recorded is deleted.
-//
-// With expect, the write is conditional: it only happens while the stored
-// entry (the zero Entry without one) is still *expect. Otherwise nothing
-// changes and SetEntry returns ErrConflict with the stored entry as previous.
-// Undo uses it so that it does not overwrite a change made elsewhere in the
-// meantime.
-func (s *Store) SetEntry(ctx context.Context, userID, habitID string, date domain.Date, change domain.EntryChange, expect *domain.Entry) (previous, next domain.Entry, updatedAt time.Time, err error) {
-	if date.IsZero() {
-		return previous, next, updatedAt, domain.Invalid("date_missing", "date is missing")
+// Entry returns the entry of a habit of the user on date; the zero Entry if
+// nothing is recorded.
+func (t *Tx) Entry(habitID string, date domain.Date) (domain.Entry, error) {
+	var e domain.Entry
+	err := t.queryRow(`
+		SELECT e.value, e.skipped FROM entries e JOIN habits h ON h.id = e.habit_id
+		WHERE h.user_id = ? AND e.habit_id = ? AND e.date = ?`,
+		t.userID, habitID, date.String()).Scan(&e.Value, &e.Skipped)
+	if errors.Is(err, sql.ErrNoRows) {
+		return domain.Entry{}, nil
 	}
+	return e, err
+}
 
-	updatedAt = time.Now().UTC()
-	err = s.inTx(ctx, "saving entry", func(tx *sql.Tx) error {
-		// Check ownership and load the kind, which bounds the value.
-		var kind domain.Kind
-		err := tx.QueryRowContext(ctx,
-			`SELECT kind FROM habits WHERE id = ? AND user_id = ? AND deleted_at IS NULL`,
-			habitID, userID).Scan(&kind)
-		if errors.Is(err, sql.ErrNoRows) {
-			return ErrNotFound
-		}
-		if err != nil {
+// SetEntries stores the entries of the habit h on their days, deleting those
+// that record nothing, and updates the habit's updated_at. Each entry is
+// validated for the habit's kind.
+func (t *Tx) SetEntries(h domain.Habit, entries map[domain.Date]domain.Entry) error {
+	if len(entries) == 0 {
+		return nil
+	}
+	days := slices.SortedFunc(maps.Keys(entries), domain.Date.Compare)
+	for _, d := range days {
+		if err := entries[d].Validate(h.Kind); err != nil {
 			return err
 		}
-
-		err = tx.QueryRowContext(ctx,
-			`SELECT value, skipped FROM entries WHERE habit_id = ? AND date = ?`,
-			habitID, date.String()).Scan(&previous.Value, &previous.Skipped)
-		if err != nil && !errors.Is(err, sql.ErrNoRows) {
-			return err
-		}
-		if expect != nil && previous != *expect {
-			return ErrConflict
-		}
-		next = change.Apply(previous)
-		if err := next.Validate(kind); err != nil {
-			return err
-		}
-
-		now := formatTime(updatedAt)
-		if err := writeEntry(ctx, tx, habitID, date, next, now); err != nil {
-			return err
-		}
-		_, err = tx.ExecContext(ctx, `UPDATE habits SET updated_at = ? WHERE id = ?`, now, habitID)
+	}
+	if err := t.watch("entries", "habit_id = ? AND date BETWEEN ? AND ?",
+		h.ID, days[0].String(), days[len(days)-1].String()); err != nil {
 		return err
-	})
-	if err != nil {
-		// previous holds the stored entry on ErrConflict.
-		return previous, domain.Entry{}, time.Time{}, err
 	}
-	return previous, next, updatedAt, nil
+	now := formatTime(t.now)
+	for _, d := range days {
+		if err := t.writeEntry(h.ID, d, entries[d], now); err != nil {
+			return err
+		}
+	}
+	_, err := t.exec(`UPDATE habits SET updated_at = ? WHERE id = ? AND user_id = ?`, now, h.ID, t.userID)
+	return err
+}
+
+// ReplaceEntries replaces all entries of the habit h with entries, e.g. with
+// its history converted to a new kind (domain.ConvertKind).
+func (t *Tx) ReplaceEntries(h domain.Habit, entries map[domain.Date]domain.Entry) error {
+	for _, e := range entries {
+		if err := e.Validate(h.Kind); err != nil {
+			return err
+		}
+	}
+	if err := t.watch("entries", "habit_id = ?", h.ID); err != nil {
+		return err
+	}
+	if _, err := t.exec(`DELETE FROM entries WHERE habit_id = ?`, h.ID); err != nil {
+		return err
+	}
+	now := formatTime(t.now)
+	for d, e := range entries {
+		if err := t.writeEntry(h.ID, d, e, now); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // writeEntry stores e as the entry of the habit on date, or deletes the entry
 // if e records nothing.
-func writeEntry(ctx context.Context, tx *sql.Tx, habitID string, date domain.Date, e domain.Entry, now string) error {
+func (t *Tx) writeEntry(habitID string, date domain.Date, e domain.Entry, now string) error {
 	if e.IsZero() {
-		_, err := tx.ExecContext(ctx,
-			`DELETE FROM entries WHERE habit_id = ? AND date = ?`, habitID, date.String())
+		_, err := t.exec(`DELETE FROM entries WHERE habit_id = ? AND date = ?`, habitID, date.String())
 		return err
 	}
-	_, err := tx.ExecContext(ctx, `
+	_, err := t.exec(`
 		INSERT INTO entries (habit_id, date, value, skipped, updated_at) VALUES (?,?,?,?,?)
 		ON CONFLICT(habit_id, date) DO UPDATE SET
 			value = excluded.value, skipped = excluded.skipped, updated_at = excluded.updated_at`,
 		habitID, date.String(), e.Value, e.Skipped, now)
 	return err
-}
-
-// EntryWrite replaces the entry of a habit on a day with Entry, on the
-// condition that the day still holds Expect.
-type EntryWrite struct {
-	HabitID string
-	Date    domain.Date
-	Expect  domain.Entry
-	Entry   domain.Entry
-}
-
-// WriteEntries applies the writes of the user's habits in one transaction and
-// returns those it applied. A write whose day no longer holds its Expect is
-// left out, as a change made elsewhere in the meantime wins. A habit that is
-// not the user's, or an invalid entry, fails all of them.
-func (s *Store) WriteEntries(ctx context.Context, userID string, writes []EntryWrite) ([]EntryWrite, error) {
-	var applied []EntryWrite
-	err := s.inTx(ctx, "saving entries", func(tx *sql.Tx) error {
-		now := formatTime(time.Now())
-		kinds := map[string]domain.Kind{}
-		for _, w := range writes {
-			kind, ok := kinds[w.HabitID]
-			if !ok {
-				err := tx.QueryRowContext(ctx,
-					`SELECT kind FROM habits WHERE id = ? AND user_id = ? AND deleted_at IS NULL`,
-					w.HabitID, userID).Scan(&kind)
-				if errors.Is(err, sql.ErrNoRows) {
-					return ErrNotFound
-				}
-				if err != nil {
-					return err
-				}
-				kinds[w.HabitID] = kind
-			}
-			if err := w.Entry.Validate(kind); err != nil {
-				return err
-			}
-
-			var stored domain.Entry
-			err := tx.QueryRowContext(ctx,
-				`SELECT value, skipped FROM entries WHERE habit_id = ? AND date = ?`,
-				w.HabitID, w.Date.String()).Scan(&stored.Value, &stored.Skipped)
-			if err != nil && !errors.Is(err, sql.ErrNoRows) {
-				return err
-			}
-			if stored != w.Expect {
-				continue
-			}
-			if err := writeEntry(ctx, tx, w.HabitID, w.Date, w.Entry, now); err != nil {
-				return err
-			}
-			applied = append(applied, w)
-		}
-		for id := range kinds {
-			if _, err := tx.ExecContext(ctx, `UPDATE habits SET updated_at = ? WHERE id = ?`, now, id); err != nil {
-				return err
-			}
-		}
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-	return applied, nil
 }

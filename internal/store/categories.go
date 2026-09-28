@@ -1,11 +1,9 @@
 package store
 
 import (
-	"context"
 	"database/sql"
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/JulWit/habits/internal/domain"
 )
@@ -32,14 +30,10 @@ func scanCategory(row interface{ Scan(...any) error }) (domain.Category, error) 
 	return c, nil
 }
 
-// ListCategories returns the user's categories in display order, excluding
-// deleted categories.
-func (s *Store) ListCategories(ctx context.Context, userID string) ([]domain.Category, error) {
-	rows, err := s.db.QueryContext(ctx,
-		`SELECT `+categoryColumns+`
-		 FROM categories
-		 WHERE user_id = ? AND deleted_at IS NULL
-		 ORDER BY position, created_at`, userID)
+// Categories returns the user's categories in display order.
+func (t *Tx) Categories() ([]domain.Category, error) {
+	rows, err := t.query(`SELECT `+categoryColumns+` FROM categories
+		WHERE user_id = ? ORDER BY position, created_at`, t.userID)
 	if err != nil {
 		return nil, fmt.Errorf("loading categories: %w", err)
 	}
@@ -56,12 +50,10 @@ func (s *Store) ListCategories(ctx context.Context, userID string) ([]domain.Cat
 	return out, rows.Err()
 }
 
-// GetCategory returns a category of the user, or ErrNotFound.
-func (s *Store) GetCategory(ctx context.Context, userID, id string) (domain.Category, error) {
-	row := s.db.QueryRowContext(ctx,
-		`SELECT `+categoryColumns+` FROM categories
-		 WHERE id = ? AND user_id = ? AND deleted_at IS NULL`, id, userID)
-	c, err := scanCategory(row)
+// Category returns a category of the user, or ErrNotFound.
+func (t *Tx) Category(id string) (domain.Category, error) {
+	c, err := scanCategory(t.queryRow(
+		`SELECT `+categoryColumns+` FROM categories WHERE id = ? AND user_id = ?`, id, t.userID))
 	if errors.Is(err, sql.ErrNoRows) {
 		return domain.Category{}, ErrNotFound
 	}
@@ -71,97 +63,69 @@ func (s *Store) GetCategory(ctx context.Context, userID, id string) (domain.Cate
 	return c, nil
 }
 
-// CreateCategory inserts the category at the end of the list and sets its ID,
-// position and timestamps.
-func (s *Store) CreateCategory(ctx context.Context, userID string, c *domain.Category) error {
-	now := time.Now().UTC()
+// CreateCategory validates the category and inserts it at the end of the
+// user's list, with a new ID, its position and timestamps.
+func (t *Tx) CreateCategory(c *domain.Category) error {
 	c.ID = NewID()
-	c.CreatedAt, c.UpdatedAt = now, now
+	c.CreatedAt, c.UpdatedAt = t.now, t.now
 	if err := c.Validate(); err != nil {
 		return err
 	}
-
-	return s.inTx(ctx, "creating category", func(tx *sql.Tx) error {
-		if err := ensureUser(ctx, tx, userID); err != nil {
-			return err
-		}
-		return insertCategory(ctx, tx, userID, c)
-	})
-}
-
-// insertCategory inserts the validated category c, whose ID and timestamps are
-// set, at the end of the user's list and sets its position.
-func insertCategory(ctx context.Context, tx *sql.Tx, userID string, c *domain.Category) error {
 	var last sql.NullInt64
-	if err := tx.QueryRowContext(ctx,
-		`SELECT MAX(position) FROM categories WHERE user_id = ? AND deleted_at IS NULL`, userID,
-	).Scan(&last); err != nil {
+	if err := t.queryRow(`SELECT MAX(position) FROM categories WHERE user_id = ?`, t.userID).Scan(&last); err != nil {
 		return err
 	}
 	c.Position = int(last.Int64) + 1
 
-	_, err := tx.ExecContext(ctx,
-		`INSERT INTO categories (id, user_id, name, icon, color, show_progress, position, created_at, updated_at)
-		 VALUES (?,?,?,?,?,?,?,?,?)`,
-		c.ID, userID, c.Name, c.Icon, c.Color, c.ShowProgress, c.Position, formatTime(c.CreatedAt), formatTime(c.UpdatedAt))
+	if err := t.watch("categories", "id = ?", c.ID); err != nil {
+		return err
+	}
+	_, err := t.exec(`
+		INSERT INTO categories (id, user_id, name, icon, color, show_progress, position, created_at, updated_at)
+		VALUES (?,?,?,?,?,?,?,?,?)`,
+		c.ID, t.userID, c.Name, c.Icon, c.Color, c.ShowProgress, c.Position,
+		formatTime(c.CreatedAt), formatTime(c.UpdatedAt))
 	return err
 }
 
-// UpdateCategory updates all fields except the position.
-func (s *Store) UpdateCategory(ctx context.Context, userID string, c *domain.Category) error {
-	c.UpdatedAt = time.Now().UTC()
+// SaveCategory validates the category and stores all its fields except the
+// position (see ReorderCategories).
+func (t *Tx) SaveCategory(c *domain.Category) error {
+	c.UpdatedAt = t.now
 	if err := c.Validate(); err != nil {
 		return err
 	}
-	res, err := s.db.ExecContext(ctx,
-		`UPDATE categories SET name = ?, icon = ?, color = ?, show_progress = ?, updated_at = ?
-		 WHERE id = ? AND user_id = ? AND deleted_at IS NULL`,
-		c.Name, c.Icon, c.Color, c.ShowProgress, formatTime(c.UpdatedAt), c.ID, userID)
+	if err := t.watch("categories", "id = ?", c.ID); err != nil {
+		return err
+	}
+	res, err := t.exec(`
+		UPDATE categories SET name = ?, icon = ?, color = ?, show_progress = ?, updated_at = ?
+		WHERE id = ? AND user_id = ?`,
+		c.Name, c.Icon, c.Color, c.ShowProgress, formatTime(c.UpdatedAt), c.ID, t.userID)
 	if err != nil {
 		return fmt.Errorf("updating category: %w", err)
 	}
 	return expectOneRow(res)
 }
 
-// SoftDeleteCategory marks the category as deleted. Its habits keep their
-// category ID and are shown as uncategorised until it is restored.
-func (s *Store) SoftDeleteCategory(ctx context.Context, userID, id string) error {
-	now := formatTime(time.Now())
-	res, err := s.db.ExecContext(ctx,
-		`UPDATE categories SET deleted_at = ?, updated_at = ?
-		 WHERE id = ? AND user_id = ? AND deleted_at IS NULL`, now, now, id, userID)
+// DeleteCategory removes a category of the user. Its habits stay, without a
+// category; undoing the step puts them back into it.
+func (t *Tx) DeleteCategory(id string) error {
+	if err := errors.Join(
+		t.watch("categories", "id = ? AND user_id = ?", id, t.userID),
+		t.watch("habits", "category_id = ?", id),
+	); err != nil {
+		return err
+	}
+	res, err := t.exec(`DELETE FROM categories WHERE id = ? AND user_id = ?`, id, t.userID)
 	if err != nil {
 		return fmt.Errorf("deleting category: %w", err)
 	}
 	return expectOneRow(res)
 }
 
-// RestoreCategory restores a soft-deleted category.
-func (s *Store) RestoreCategory(ctx context.Context, userID, id string) error {
-	res, err := s.db.ExecContext(ctx,
-		`UPDATE categories SET deleted_at = NULL, updated_at = ?
-		 WHERE id = ? AND user_id = ? AND deleted_at IS NOT NULL`,
-		formatTime(time.Now()), id, userID)
-	if err != nil {
-		return fmt.Errorf("restoring category: %w", err)
-	}
-	return expectOneRow(res)
-}
-
 // ReorderCategories sets the display order of the user's categories (see
 // reorder).
-func (s *Store) ReorderCategories(ctx context.Context, userID string, ids []string) error {
-	return s.reorder(ctx, "categories", userID, ids)
-}
-
-// PurgeDeletedCategories permanently removes categories deleted more than
-// olderThan ago and returns their number. Their habits become uncategorised.
-func (s *Store) PurgeDeletedCategories(ctx context.Context, olderThan time.Duration) (int64, error) {
-	res, err := s.db.ExecContext(ctx,
-		`DELETE FROM categories WHERE deleted_at IS NOT NULL AND deleted_at < ?`,
-		formatTime(time.Now().Add(-olderThan)))
-	if err != nil {
-		return 0, fmt.Errorf("purging deleted categories: %w", err)
-	}
-	return res.RowsAffected()
+func (t *Tx) ReorderCategories(ids []string) error {
+	return t.reorder("categories", ids)
 }

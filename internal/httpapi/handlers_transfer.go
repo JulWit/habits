@@ -2,7 +2,9 @@ package httpapi
 
 import (
 	"errors"
+	"maps"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
@@ -11,18 +13,19 @@ import (
 	"github.com/JulWit/habits/internal/store"
 )
 
-// Export files carry the habits and categories with their settings, but no
-// entries and no statistics: importing them sets up the same habits from
-// scratch.
+// Export files carry the habits with their schedules and entries, and the
+// categories: a backup that importing restores, on the same server or
+// another. Statistics are not part of them; the server computes them again.
 
 // exportFormat and exportVersion identify an export file.
 const (
 	exportFormat  = "habits"
-	exportVersion = 1
+	exportVersion = 2
 )
 
-// maxImportBytes is the maximum size of an import file.
-const maxImportBytes = 1 << 20
+// maxImportBytes is the maximum size of an import file: years of entries of
+// a few dozen habits.
+const maxImportBytes = 16 << 20
 
 // exportFile is the document of GET /api/export and POST /api/import.
 type exportFile struct {
@@ -43,21 +46,22 @@ type exportCategory struct {
 	ShowProgress bool   `json:"showProgress"`
 }
 
-// exportHabit is a habit in an export file, with its current schedule only.
+// exportHabit is a habit in an export file with its history.
 type exportHabit struct {
 	Name  string      `json:"name"`
 	Color string      `json:"color"`
 	Icon  string      `json:"icon"`
 	Kind  domain.Kind `json:"kind"`
 	// Category is the Key of the habit's category, or "" for none.
-	Category    string `json:"category"`
-	StepValue   int    `json:"stepValue"`
-	Unit        string `json:"unit"`
-	TargetValue int    `json:"targetValue"`
-	// TargetType is "" in files from before limits, which is a plain target.
-	TargetType domain.TargetType `json:"targetType"`
-	Frequency  domain.Frequency  `json:"frequency"`
-	Archived   bool              `json:"archived"`
+	Category  string            `json:"category"`
+	StepValue int               `json:"stepValue"`
+	Unit      string            `json:"unit"`
+	Archived  bool              `json:"archived"`
+	CreatedAt time.Time         `json:"createdAt"`
+	Schedules []domain.Schedule `json:"schedules"`
+	// Entries holds the value of each day with one, Skipped the skipped days.
+	Entries map[string]int `json:"entries"`
+	Skipped []domain.Date  `json:"skipped"`
 }
 
 // importResult is the response of POST /api/import.
@@ -68,70 +72,102 @@ type importResult struct {
 	Skipped int `json:"skipped"`
 }
 
-// handleExport sends the user's habits, archived ones included, and their
-// categories as a file to download.
+// handleExport sends the user's habits, archived ones included, with their
+// history, and their categories as a file to download.
 func (s *Server) handleExport(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	user := auth.MustUser(ctx)
-
-	categories, err := s.store.ListCategories(ctx, user.ID)
-	if err != nil {
-		s.writeStoreError(w, err, "loading categories")
-		return
-	}
-	habits, err := s.store.ListHabits(ctx, user.ID, true)
-	if err != nil {
-		s.writeStoreError(w, err, "loading habits")
-		return
-	}
-
-	out := exportFile{
-		Format:     exportFormat,
-		Version:    exportVersion,
-		ExportedAt: time.Now().UTC().Truncate(time.Second),
-		Categories: make([]exportCategory, 0, len(categories)),
-		Habits:     make([]exportHabit, 0, len(habits)),
-	}
-	listed := map[string]bool{}
-	for _, c := range categories {
-		listed[c.ID] = true
-		out.Categories = append(out.Categories, exportCategory{
-			Key: c.ID, Name: c.Name, Icon: c.Icon, Color: c.Color, ShowProgress: c.ShowProgress,
-		})
-	}
-	for _, h := range habits {
-		category := h.CategoryID
-		// A deleted category is not exported; its habits are uncategorised.
-		if !listed[category] {
-			category = ""
+	user := auth.MustUser(r.Context())
+	var (
+		out   exportFile
+		today domain.Date
+	)
+	err := s.store.View(r.Context(), user.ID, func(tx *store.Tx) error {
+		b, err := s.basis(tx)
+		if err != nil {
+			return err
 		}
-		current := h.Current()
-		out.Habits = append(out.Habits, exportHabit{
-			Name:        h.Name,
-			Color:       h.Color,
-			Icon:        h.Icon,
-			Kind:        h.Kind,
-			Category:    category,
-			StepValue:   h.StepValue,
-			Unit:        h.Unit,
-			TargetValue: current.TargetValue,
-			TargetType:  current.TargetType,
-			Frequency:   current.Frequency,
-			Archived:    h.ArchivedAt != nil,
-		})
+		today = b.today
+		categories, err := tx.Categories()
+		if err != nil {
+			return err
+		}
+		habits, err := tx.Habits(true)
+		if err != nil {
+			return err
+		}
+		entries, err := tx.Entries()
+		if err != nil {
+			return err
+		}
+		out = exportFile{
+			Format:     exportFormat,
+			Version:    exportVersion,
+			ExportedAt: time.Now().UTC().Truncate(time.Second),
+			Categories: make([]exportCategory, 0, len(categories)),
+			Habits:     make([]exportHabit, 0, len(habits)),
+		}
+		for _, c := range categories {
+			out.Categories = append(out.Categories, exportCategory{
+				Key: c.ID, Name: c.Name, Icon: c.Icon, Color: c.Color, ShowProgress: c.ShowProgress,
+			})
+		}
+		for _, h := range habits {
+			out.Habits = append(out.Habits, exportHabitOf(h, entries[h.ID]))
+		}
+		return nil
+	})
+	if err != nil {
+		s.writeStoreError(w, err, "exporting")
+		return
 	}
-
-	name := "habits-" + s.todayFor(ctx, user.ID).String() + ".json"
+	name := "habits-" + today.String() + ".json"
 	w.Header().Set("Content-Disposition", `attachment; filename="`+name+`"`)
 	writeJSON(w, http.StatusOK, out)
 }
 
-// handleImport adds the habits and categories of an export file.
+// exportHabitOf returns h with its entries as it is exported.
+func exportHabitOf(h domain.Habit, entries map[domain.Date]domain.Entry) exportHabit {
+	out := exportHabit{
+		Name:      h.Name,
+		Color:     h.Color,
+		Icon:      h.Icon,
+		Kind:      h.Kind,
+		Category:  h.CategoryID,
+		StepValue: h.StepValue,
+		Unit:      h.Unit,
+		Archived:  h.ArchivedAt != nil,
+		CreatedAt: h.CreatedAt,
+		Schedules: h.Schedules,
+		Entries:   map[string]int{},
+		Skipped:   []domain.Date{},
+	}
+	for _, d := range slices.SortedFunc(maps.Keys(entries), domain.Date.Compare) {
+		e := entries[d]
+		if e.Value > 0 {
+			out.Entries[d.String()] = e.Value
+		}
+		if e.Skipped {
+			out.Skipped = append(out.Skipped, d)
+		}
+	}
+	return out
+}
+
+// importProblem is an invalid habit or category of an import file, which
+// the answer names in the parameter param.
+type importProblem struct {
+	error
+	param, name string
+}
+
+func (p importProblem) Unwrap() error { return p.error }
+
+// handleImport adds the habits and categories of an export file, with the
+// habits' schedules and entries. The import is one undo step.
 //
 // Categories are matched by name: a habit joins an existing category of the
 // same name, and only missing categories are created. Habits whose name is
-// already taken are skipped, so importing a file twice adds nothing. The
-// schedules start today. Nothing is saved if any habit is invalid.
+// already taken are skipped, so importing a file twice adds nothing. Nothing
+// is saved if any habit or category is invalid.
 func (s *Server) handleImport(w http.ResponseWriter, r *http.Request) {
 	var in exportFile
 	if !decodeJSONLimit(w, r, &in, maxImportBytes) {
@@ -142,18 +178,44 @@ func (s *Server) handleImport(w http.ResponseWriter, r *http.Request) {
 			"the file is not a habits export of version {version}", "version", exportVersion))
 		return
 	}
-	ctx := r.Context()
-	user := auth.MustUser(ctx)
+	user := auth.MustUser(r.Context())
 
-	existingCats, err := s.store.ListCategories(ctx, user.ID)
-	if err != nil {
-		s.writeStoreError(w, err, "loading categories")
+	var result importResult
+	changeID, err := s.store.Update(r.Context(), user.ID, func(tx *store.Tx) error {
+		var err error
+		if result, err = importFile(tx, in); err != nil {
+			return err
+		}
+		if result.Habits == 1 {
+			tx.Record("1 habit imported")
+		} else {
+			tx.Record("{n} habits imported", "n", result.Habits)
+		}
+		return nil
+	})
+	var problem importProblem
+	switch {
+	case errors.As(err, &problem) && errors.Is(err, domain.ErrValidation):
+		writeImportProblem(w, problem.error, problem.param, problem.name)
+		return
+	case err != nil:
+		s.writeStoreError(w, err, "importing")
 		return
 	}
-	existingHabits, err := s.store.ListHabits(ctx, user.ID, true)
+	writeChange(w, changeID)
+	writeJSON(w, http.StatusOK, result)
+}
+
+// importFile adds the categories and habits of in (see handleImport).
+func importFile(tx *store.Tx, in exportFile) (importResult, error) {
+	var result importResult
+	existingCats, err := tx.Categories()
 	if err != nil {
-		s.writeStoreError(w, err, "loading habits")
-		return
+		return result, err
+	}
+	existingHabits, err := tx.Habits(true)
+	if err != nil {
+		return result, err
 	}
 
 	// Category IDs by normalised name, and by key in the file.
@@ -162,77 +224,86 @@ func (s *Server) handleImport(w http.ResponseWriter, r *http.Request) {
 		catByName[nameKey(c.Name)] = c.ID
 	}
 	catByKey := map[string]string{}
-	var newCats []domain.Category
 	for _, ec := range in.Categories {
 		if id, ok := catByName[nameKey(ec.Name)]; ok {
 			catByKey[ec.Key] = id
 			continue
 		}
-		c := domain.Category{
-			ID: store.NewID(), Name: ec.Name, Icon: ec.Icon, Color: ec.Color, ShowProgress: ec.ShowProgress,
-		}
-		if err := c.Validate(); err != nil {
-			writeImportProblem(w, err, "category", ec.Name)
-			return
+		c := domain.Category{Name: ec.Name, Icon: ec.Icon, Color: ec.Color, ShowProgress: ec.ShowProgress}
+		if err := tx.CreateCategory(&c); err != nil {
+			return result, importProblem{err, "category", ec.Name}
 		}
 		catByName[nameKey(c.Name)] = c.ID
 		catByKey[ec.Key] = c.ID
-		newCats = append(newCats, c)
+		result.Categories++
 	}
 
 	taken := map[string]bool{}
 	for _, h := range existingHabits {
 		taken[nameKey(h.Name)] = true
 	}
-	today := s.todayFor(ctx, user.ID)
-	now := time.Now().UTC()
-	var newHabits []domain.Habit
-	result := importResult{}
 	for _, eh := range in.Habits {
 		if taken[nameKey(eh.Name)] {
 			result.Skipped++
 			continue
 		}
-		h := domain.Habit{
-			ID:    store.NewID(),
-			Name:  eh.Name,
-			Color: eh.Color,
-			Icon:  eh.Icon,
-			Kind:  eh.Kind,
-			// An unknown key leaves the habit uncategorised.
-			CategoryID: catByKey[eh.Category],
-			StepValue:  eh.StepValue,
-			Unit:       eh.Unit,
-			Schedules: []domain.Schedule{{
-				From: today, TargetValue: eh.TargetValue, TargetType: eh.TargetType, Frequency: eh.Frequency,
-			}},
+		if err := importHabit(tx, eh, catByKey); err != nil {
+			return result, importProblem{err, "habit", eh.Name}
 		}
-		if eh.Archived {
-			h.ArchivedAt = &now
-		}
-		if err := h.Validate(); err != nil {
-			writeImportProblem(w, err, "habit", eh.Name)
-			return
-		}
-		taken[nameKey(h.Name)] = true
-		newHabits = append(newHabits, h)
+		taken[nameKey(eh.Name)] = true
+		result.Habits++
 	}
+	return result, nil
+}
 
-	if err := s.store.Import(ctx, user.ID, newCats, newHabits); err != nil {
-		s.writeStoreError(w, err, "importing")
-		return
+// importHabit adds the habit eh with its entries; catByKey maps the category
+// keys of the file to category IDs.
+func importHabit(tx *store.Tx, eh exportHabit, catByKey map[string]string) error {
+	h := domain.Habit{
+		Name:  eh.Name,
+		Color: eh.Color,
+		Icon:  eh.Icon,
+		Kind:  eh.Kind,
+		// An unknown key leaves the habit uncategorised.
+		CategoryID: catByKey[eh.Category],
+		StepValue:  eh.StepValue,
+		Unit:       eh.Unit,
+		CreatedAt:  eh.CreatedAt,
+		Schedules:  eh.Schedules,
 	}
-	result.Habits, result.Categories = len(newHabits), len(newCats)
-	writeJSON(w, http.StatusOK, result)
+	if eh.Archived {
+		now := tx.Now()
+		h.ArchivedAt = &now
+	}
+	if err := tx.CreateHabit(&h); err != nil {
+		return err
+	}
+	entries := map[domain.Date]domain.Entry{}
+	for day, value := range eh.Entries {
+		d, err := domain.ParseDate(day)
+		if err != nil {
+			return domain.Invalid("invalid_date", "Invalid date, expected YYYY-MM-DD")
+		}
+		entries[d] = domain.Entry{Value: value}
+	}
+	for _, d := range eh.Skipped {
+		if entries[d].Value > 0 {
+			return domain.Invalid("skipped_with_value", "a skipped day cannot have a value")
+		}
+		entries[d] = domain.Entry{Skipped: true}
+	}
+	return tx.SetEntries(h, entries)
 }
 
 // handleDeleteData removes all of the user's data: habits with their entries,
-// categories and settings. It cannot be undone. DELETE is not a simple
-// method, so a cross-site request needs a CORS preflight, which fails.
+// categories, settings and undo steps. It cannot be undone. DELETE is not a
+// simple method, so a cross-site request needs a CORS preflight, which fails.
 func (s *Server) handleDeleteData(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	user := auth.MustUser(ctx)
-	if err := s.store.DeleteUser(ctx, user.ID); err != nil {
+	user := auth.MustUser(r.Context())
+	_, err := s.store.Update(r.Context(), user.ID, func(tx *store.Tx) error {
+		return tx.DeleteUser()
+	})
+	if err != nil {
 		s.writeStoreError(w, err, "deleting data")
 		return
 	}

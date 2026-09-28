@@ -67,7 +67,7 @@ func TestEntryValueIsBounded(t *testing.T) {
 	if w := do(t, h, "PUT", far, `{"value":1000}`, "application/json"); w.Code != http.StatusUnprocessableEntity {
 		t.Errorf("date beyond the horizon: status %d, want 422", w.Code)
 	}
-	// Dates before EarliestEntry are answered with 422, but may be cleared.
+	// Dates before domain.EarliestEntry are answered with 422, but may be cleared.
 	old := "/api/habits/" + created.ID + "/entries/1999-12-31"
 	if w := do(t, h, "PUT", old, `{"value":1000}`, "application/json"); w.Code != http.StatusUnprocessableEntity {
 		t.Errorf("date before the floor: status %d, want 422", w.Code)
@@ -183,34 +183,6 @@ func TestEntryAnswersWithUpdatedAt(t *testing.T) {
 	}
 }
 
-// A write with expect only happens while the stored value is still the
-// expected one; otherwise it is answered with 409 and the current value.
-func TestConditionalEntryWrite(t *testing.T) {
-	h := newTestServer(t)
-	w := do(t, h, "POST", "/api/habits",
-		`{"name":"Water","kind":"count","targetValue":80,"frequency":{"kind":"daily"}}`,
-		"application/json")
-	var created struct {
-		ID string `json:"id"`
-	}
-	if err := json.Unmarshal(w.Body.Bytes(), &created); err != nil {
-		t.Fatalf("reading response: %v", err)
-	}
-	path := "/api/habits/" + created.ID + "/entries/" + time.Now().UTC().Format("2006-01-02")
-
-	if w := do(t, h, "PUT", path, `{"value":30,"expect":{}}`, "application/json"); w.Code != http.StatusOK {
-		t.Fatalf("first write: %d (%s)", w.Code, w.Body)
-	}
-	w = do(t, h, "PUT", path, `{"value":0,"expect":{"value":50}}`, "application/json")
-	if w.Code != http.StatusConflict {
-		t.Fatalf("status %d, want 409 (%s)", w.Code, w.Body)
-	}
-	if !strings.Contains(w.Body.String(), `"code":"entry_changed"`) ||
-		!strings.Contains(w.Body.String(), `"current":30`) {
-		t.Errorf("body = %s", w.Body)
-	}
-}
-
 // A skip is sent with the habit and keeps the streak, and a value ends it.
 // The answer carries the entry before and after.
 func TestSkipReachesTheState(t *testing.T) {
@@ -245,17 +217,18 @@ func TestSkipReachesTheState(t *testing.T) {
 
 	var state struct {
 		Habits []struct {
-			Skipped map[string]bool `json:"skipped"`
-			Stats   domain.Stats    `json:"stats"`
+			DaysFrom domain.Date  `json:"daysFrom"`
+			Days     string       `json:"days"`
+			Stats    domain.Stats `json:"stats"`
 		} `json:"habits"`
 	}
 	if err := json.Unmarshal(mustDo(t, h, "GET", "/api/state", "", http.StatusOK), &state); err != nil {
 		t.Fatal(err)
 	}
 	got := state.Habits[0]
-	yesterday := today.AddDate(0, 0, -1).Format("2006-01-02")
-	if !got.Skipped[yesterday] {
-		t.Errorf("skipped = %v", got.Skipped)
+	yesterday := domain.DateFromTime(today.AddDate(0, 0, -1))
+	if i := yesterday.DaysSince(got.DaysFrom); got.Days[i] != byte(domain.StatusSkipped) {
+		t.Errorf("status of yesterday = %c, want skipped", got.Days[i])
 	}
 	if got.Stats.CurrentStreak != 2 {
 		t.Errorf("streak = %d, want 2 across the skipped day", got.Stats.CurrentStreak)

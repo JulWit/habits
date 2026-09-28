@@ -19,6 +19,7 @@ import (
 	"github.com/JulWit/habits/internal/auth"
 	"github.com/JulWit/habits/internal/config"
 	"github.com/JulWit/habits/internal/domain"
+	"github.com/JulWit/habits/internal/settings"
 	"github.com/JulWit/habits/internal/store"
 )
 
@@ -31,6 +32,8 @@ type Server struct {
 	assets http.Handler
 	// manifest is the parsed web app manifest, see handleManifest.
 	manifest map[string]any
+	// history keeps the statistics of the habits between requests.
+	history historyCache
 }
 
 // New returns the HTTP handler of the application. webFS contains the frontend
@@ -59,20 +62,23 @@ func New(cfg config.Config, st *store.Store, log *slog.Logger, webFS fs.FS) (htt
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /api/state", s.handleState)
+	mux.HandleFunc("GET /api/days", s.handleDays)
 	mux.HandleFunc("POST /api/habits", s.handleCreateHabit)
 	mux.HandleFunc("POST /api/habits/reorder", s.handleReorderHabits)
 	mux.HandleFunc("GET /api/habits/{id}", s.handleGetHabit)
 	mux.HandleFunc("PATCH /api/habits/{id}", s.handleUpdateHabit)
 	mux.HandleFunc("DELETE /api/habits/{id}", s.handleDeleteHabit)
-	mux.HandleFunc("POST /api/habits/{id}/restore", s.handleRestoreHabit)
+	mux.HandleFunc("PUT /api/habits/{id}/archived", s.handleArchiveHabit)
+	mux.HandleFunc("GET /api/habits/{id}/totals", s.handleHabitTotals)
 	mux.HandleFunc("PUT /api/habits/{id}/entries/{date}", s.handleSetEntry)
-	mux.HandleFunc("POST /api/entries", s.handleWriteEntries)
 	mux.HandleFunc("POST /api/skips", s.handleSkipDays)
 	mux.HandleFunc("POST /api/categories", s.handleCreateCategory)
 	mux.HandleFunc("POST /api/categories/reorder", s.handleReorderCategories)
 	mux.HandleFunc("PATCH /api/categories/{id}", s.handleUpdateCategory)
 	mux.HandleFunc("DELETE /api/categories/{id}", s.handleDeleteCategory)
-	mux.HandleFunc("POST /api/categories/{id}/restore", s.handleRestoreCategory)
+	mux.HandleFunc("GET /api/categories/{id}/stats", s.handleCategoryStats)
+	mux.HandleFunc("POST /api/undo", s.handleUndo)
+	mux.HandleFunc("POST /api/redo", s.handleRedo)
 	mux.HandleFunc("GET /api/settings", s.handleGetSettings)
 	mux.HandleFunc("PATCH /api/settings", s.handleUpdateSettings)
 	mux.HandleFunc("GET /api/export", s.handleExport)
@@ -125,20 +131,16 @@ func securityHeaders(next http.Handler) http.Handler {
 // page is styled correctly before any script runs.
 func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	user := auth.MustUser(r.Context())
-	settings, err := s.store.GetSettings(r.Context(), user.ID)
-	if err != nil {
-		s.log.Error("loading settings failed", "error", err, "user", user.ID)
-		settings = store.DefaultSettings()
-	}
+	prefs := s.settingsOf(r.Context(), user.ID)
 	data := struct {
-		store.Settings
+		settings.Settings
 		Lang string
 		// Options are the choices of the enumerated settings.
-		Options map[string][]store.Option
+		Options map[string][]settings.Option
 	}{
-		Settings: settings,
-		Lang:     resolveLanguage(settings.Language, r.Header.Get("Accept-Language")),
-		Options:  store.Options,
+		Settings: prefs,
+		Lang:     resolveLanguage(prefs.Language, r.Header.Get("Accept-Language")),
+		Options:  settings.Options,
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -148,47 +150,70 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// basis is what a user's statistics depend on besides their entries.
+type basis struct {
+	settings settings.Settings
+	// loc is the user's time zone, today the current date there.
+	loc   *time.Location
+	today domain.Date
+	// windowDays is the number of days the completion rate covers, 0 for the
+	// whole history.
+	windowDays int
+}
+
+// basis loads the user's settings in tx and derives the basis of their
+// statistics from them.
+func (s *Server) basis(tx *store.Tx) (basis, error) {
+	prefs, err := tx.Settings()
+	if err != nil {
+		return basis{}, err
+	}
+	loc := s.location(prefs)
+	return basis{
+		settings:   prefs,
+		loc:        loc,
+		today:      domain.Today(loc),
+		windowDays: prefs.RateWindowDays(),
+	}, nil
+}
+
 // location returns the user's time zone, or the server's if the user has not
 // chosen one.
-func (s *Server) location(settings store.Settings) *time.Location {
-	if settings.TimeZone != "" {
-		if loc, err := time.LoadLocation(settings.TimeZone); err == nil {
+func (s *Server) location(prefs settings.Settings) *time.Location {
+	if prefs.TimeZone != "" {
+		if loc, err := time.LoadLocation(prefs.TimeZone); err == nil {
 			return loc
 		}
 	}
 	return s.cfg.Location
 }
 
-// todayFor returns the current date in the user's time zone. If the settings
-// cannot be loaded, the server's time zone is used.
-func (s *Server) todayFor(ctx context.Context, userID string) domain.Date {
-	today, _ := s.statsBasis(ctx, userID)
-	return today
-}
-
-// statsBasis returns what the statistics of the user depend on besides their
-// entries: the current date in their time zone and the days their completion
-// rate covers. If the settings cannot be loaded, the server's time zone and
-// the default window are used.
-func (s *Server) statsBasis(ctx context.Context, userID string) (today domain.Date, windowDays int) {
-	settings, err := s.store.GetSettings(ctx, userID)
+// settingsOf returns the user's settings, or the defaults if they cannot be
+// loaded, for pages that are shown either way.
+func (s *Server) settingsOf(ctx context.Context, userID string) settings.Settings {
+	var prefs settings.Settings
+	err := s.store.View(ctx, userID, func(tx *store.Tx) error {
+		var err error
+		prefs, err = tx.Settings()
+		return err
+	})
 	if err != nil {
 		s.log.Error("loading settings failed", "error", err, "user", userID)
-		return domain.Today(s.cfg.Location), domain.DefaultRateWindowDays
+		return settings.Default()
 	}
-	return domain.Today(s.location(settings)), settings.RateWindowDays()
+	return prefs
 }
 
 // resolveLanguage returns the UI language. For "system" it returns the first
 // supported language in Accept-Language, or "en".
 func resolveLanguage(chosen, acceptLanguage string) string {
-	if chosen != "system" && store.IsOption("language", chosen) {
+	if chosen != "system" && settings.IsOption("language", chosen) {
 		return chosen
 	}
 	for part := range strings.SplitSeq(acceptLanguage, ",") {
 		tag, _, _ := strings.Cut(strings.TrimSpace(part), ";")
 		primary, _, _ := strings.Cut(strings.ToLower(tag), "-")
-		if primary != "system" && store.IsOption("language", primary) {
+		if primary != "system" && settings.IsOption("language", primary) {
 			return primary
 		}
 	}

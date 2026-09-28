@@ -5,6 +5,7 @@ import (
 
 	"github.com/JulWit/habits/internal/auth"
 	"github.com/JulWit/habits/internal/domain"
+	"github.com/JulWit/habits/internal/store"
 )
 
 // categoryInput is the request body for creating and updating a category. Nil
@@ -41,10 +42,18 @@ func (s *Server) handleCreateCategory(w http.ResponseWriter, r *http.Request) {
 
 	var c domain.Category
 	in.applyTo(&c)
-	if err := s.store.CreateCategory(r.Context(), user.ID, &c); err != nil {
+	changeID, err := s.store.Update(r.Context(), user.ID, func(tx *store.Tx) error {
+		if err := tx.CreateCategory(&c); err != nil {
+			return err
+		}
+		tx.Record(`Category "{name}" created`, "name", c.Name)
+		return nil
+	})
+	if err != nil {
 		s.writeStoreError(w, err, "creating category")
 		return
 	}
+	writeChange(w, changeID)
 	writeJSON(w, http.StatusCreated, c)
 }
 
@@ -57,44 +66,59 @@ func (s *Server) handleUpdateCategory(w http.ResponseWriter, r *http.Request) {
 	}
 	user := auth.MustUser(r.Context())
 
-	c, err := s.store.GetCategory(r.Context(), user.ID, r.PathValue("id"))
+	var c domain.Category
+	changeID, err := s.store.Update(r.Context(), user.ID, func(tx *store.Tx) error {
+		var err error
+		if c, err = tx.Category(r.PathValue("id")); err != nil {
+			return err
+		}
+		tx.Record(`Category "{name}" edited`, "name", c.Name)
+		in.applyTo(&c)
+		return tx.SaveCategory(&c)
+	})
 	if err != nil {
-		s.writeStoreError(w, err, "loading category")
-		return
-	}
-	in.applyTo(&c)
-	if err := s.store.UpdateCategory(r.Context(), user.ID, &c); err != nil {
 		s.writeStoreError(w, err, "updating category")
 		return
 	}
+	writeChange(w, changeID)
 	writeJSON(w, http.StatusOK, c)
 }
 
-// handleDeleteCategory soft-deletes a category.
+// handleDeleteCategory deletes a category. Its habits stay, without a
+// category; undo puts them back.
 func (s *Server) handleDeleteCategory(w http.ResponseWriter, r *http.Request) {
 	user := auth.MustUser(r.Context())
-	if err := s.store.SoftDeleteCategory(r.Context(), user.ID, r.PathValue("id")); err != nil {
+	changeID, err := s.store.Update(r.Context(), user.ID, func(tx *store.Tx) error {
+		c, err := tx.Category(r.PathValue("id"))
+		if err != nil {
+			return err
+		}
+		habits, err := tx.Habits(true)
+		if err != nil {
+			return err
+		}
+		kept := 0
+		for _, h := range habits {
+			if h.CategoryID == c.ID {
+				kept++
+			}
+		}
+		switch kept {
+		case 0:
+			tx.Record(`Category "{name}" deleted`, "name", c.Name)
+		case 1:
+			tx.Record(`Category "{name}" deleted — 1 habit kept`, "name", c.Name)
+		default:
+			tx.Record(`Category "{name}" deleted — {n} habits kept`, "name", c.Name, "n", kept)
+		}
+		return tx.DeleteCategory(c.ID)
+	})
+	if err != nil {
 		s.writeStoreError(w, err, "deleting category")
 		return
 	}
-	writeJSON(w, http.StatusNoContent, nil)
-}
-
-// handleRestoreCategory restores a soft-deleted category.
-func (s *Server) handleRestoreCategory(w http.ResponseWriter, r *http.Request) {
-	user := auth.MustUser(r.Context())
-	id := r.PathValue("id")
-
-	if err := s.store.RestoreCategory(r.Context(), user.ID, id); err != nil {
-		s.writeStoreError(w, err, "restoring category")
-		return
-	}
-	c, err := s.store.GetCategory(r.Context(), user.ID, id)
-	if err != nil {
-		s.writeStoreError(w, err, "loading category")
-		return
-	}
-	writeJSON(w, http.StatusOK, c)
+	writeChange(w, changeID)
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // handleReorderCategories sets the order of the categories to the given IDs.
@@ -106,9 +130,12 @@ func (s *Server) handleReorderCategories(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	user := auth.MustUser(r.Context())
-	if err := s.store.ReorderCategories(r.Context(), user.ID, body.IDs); err != nil {
+	_, err := s.store.Update(r.Context(), user.ID, func(tx *store.Tx) error {
+		return tx.ReorderCategories(body.IDs)
+	})
+	if err != nil {
 		s.writeStoreError(w, err, "saving order")
 		return
 	}
-	writeJSON(w, http.StatusNoContent, nil)
+	w.WriteHeader(http.StatusNoContent)
 }

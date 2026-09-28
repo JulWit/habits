@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 
@@ -101,24 +102,24 @@ func TestEntriesFollowTheScheduleOfTheirDay(t *testing.T) {
 	iso := func(d domain.Date) string { return d.String() }
 	todayOnly := 1 << ((int(today.Weekday()) + 6) % 7)
 
-	w := do(t, h, "POST", "/api/habits",
-		`{"name":"Reading","kind":"check","frequency":{"kind":"daily"}}`, "application/json")
-	var created struct {
-		ID string `json:"id"`
+	// Daily until yesterday, only on today's weekday from today on: a history
+	// only an import can bring, as a change starts today.
+	file := fmt.Sprintf(`{"format":"habits","version":2,"categories":[],"habits":[
+		{"name":"Reading","kind":"check","color":"blue","createdAt":"%sT08:00:00Z","schedules":[
+			{"from":%q,"targetValue":1,"frequency":{"kind":"daily"}},
+			{"from":%q,"targetValue":1,"frequency":{"kind":"weekdays","weekdays":%d}}]}]}`,
+		iso(today.AddDays(-30)), iso(today.AddDays(-30)), iso(today), todayOnly)
+	mustDo(t, h, "POST", "/api/import", file, http.StatusOK)
+	var state struct {
+		Habits []struct {
+			ID string `json:"id"`
+		} `json:"habits"`
 	}
-	if err := json.Unmarshal(w.Body.Bytes(), &created); err != nil {
-		t.Fatalf("reading response: %v (%s)", err, w.Body)
+	if err := json.Unmarshal(mustDo(t, h, "GET", "/api/state", "", http.StatusOK), &state); err != nil || len(state.Habits) != 1 {
+		t.Fatalf("state: %v, %+v", err, state)
 	}
-	path := "/api/habits/" + created.ID
-
-	// Daily until yesterday, only on today's weekday from today on.
-	history := fmt.Sprintf(`{"schedules":[
-		{"from":%q,"targetValue":1,"frequency":{"kind":"daily"}},
-		{"from":%q,"targetValue":1,"frequency":{"kind":"weekdays","weekdays":%d}}]}`,
-		iso(today.AddDays(-30)), iso(today), todayOnly)
-	if w := do(t, h, "PATCH", path, history, "application/json"); w.Code != http.StatusOK {
-		t.Fatalf("setting schedules: %d (%s)", w.Code, w.Body)
-	}
+	path := "/api/habits/" + state.Habits[0].ID
+	var w *httptest.ResponseRecorder
 
 	yesterday := path + "/entries/" + iso(today.AddDays(-1))
 	if w := do(t, h, "PUT", yesterday, `{"value":1}`, "application/json"); w.Code != http.StatusOK {
@@ -149,24 +150,7 @@ func TestEntriesFollowTheScheduleOfTheirDay(t *testing.T) {
 	}
 }
 
-// Schedules cannot be combined with a target or frequency.
-func TestSchedulesExcludeTargetAndFrequency(t *testing.T) {
-	h := newTestServer(t)
-	w := do(t, h, "POST", "/api/habits",
-		`{"name":"Reading","kind":"check","frequency":{"kind":"daily"}}`, "application/json")
-	var created struct {
-		ID string `json:"id"`
-	}
-	if err := json.Unmarshal(w.Body.Bytes(), &created); err != nil {
-		t.Fatalf("reading response: %v", err)
-	}
-	body := `{"targetValue":1,"schedules":[{"from":"2026-01-01","targetValue":1,"frequency":{"kind":"daily"}}]}`
-	if w := do(t, h, "PATCH", "/api/habits/"+created.ID, body, "application/json"); w.Code != http.StatusUnprocessableEntity {
-		t.Errorf("status %d, want 422 (%s)", w.Code, w.Body)
-	}
-}
-
-// Every habit carries its due days, computed by the server, up to a year
+// Every habit carries the status of its days, computed by the server, up to a year
 // ahead.
 func TestStateCarriesTheDueDays(t *testing.T) {
 	h := newTestServer(t)
@@ -180,20 +164,20 @@ func TestStateCarriesTheDueDays(t *testing.T) {
 	w := do(t, h, "GET", "/api/state", "", "")
 	var got struct {
 		Habits []struct {
-			DueFrom domain.Date `json:"dueFrom"`
-			Due     string      `json:"due"`
+			DaysFrom domain.Date `json:"daysFrom"`
+			Days     string      `json:"days"`
 		} `json:"habits"`
 	}
 	if err := json.Unmarshal(w.Body.Bytes(), &got); err != nil || len(got.Habits) != 1 {
 		t.Fatalf("reading response: %v (%s)", err, w.Body)
 	}
 	v := got.Habits[0]
-	if want := today.AddDays(EntryHorizonDays).DaysSince(v.DueFrom) + 1; len(v.Due) != want {
-		t.Fatalf("%d due days, want %d", len(v.Due), want)
+	if want := today.AddDays(domain.EntryHorizonDays).DaysSince(v.DaysFrom) + 1; len(v.Days) != want {
+		t.Fatalf("%d due days, want %d", len(v.Days), want)
 	}
-	i := today.DaysSince(v.DueFrom)
-	if v.Due[i:i+8] != "10000001" {
-		t.Errorf("due from today = %q, want weekly", v.Due[i:i+8])
+	i := today.DaysSince(v.DaysFrom)
+	if v.Days[i:i+8] != "o------o" {
+		t.Errorf("due from today = %q, want weekly", v.Days[i:i+8])
 	}
 }
 
@@ -209,14 +193,14 @@ func TestRateWindowAndYearsOfTheHistory(t *testing.T) {
 
 	expected := func() int {
 		var view struct {
-			Stats   domain.Stats `json:"stats"`
-			DueFrom string       `json:"dueFrom"`
+			Stats    domain.Stats `json:"stats"`
+			DaysFrom string       `json:"daysFrom"`
 		}
 		if err := json.Unmarshal(mustDo(t, h, "GET", "/api/habits/"+id, "", http.StatusOK), &view); err != nil {
 			t.Fatal(err)
 		}
-		if want := fmt.Sprintf("%d-01-01", old.Year()); view.DueFrom != want {
-			t.Errorf("dueFrom = %s, want %s", view.DueFrom, want)
+		if want := fmt.Sprintf("%d-01-01", old.Year()); view.DaysFrom != want {
+			t.Errorf("dueFrom = %s, want %s", view.DaysFrom, want)
 		}
 		return view.Stats.Expected
 	}

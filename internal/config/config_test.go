@@ -40,8 +40,8 @@ func TestLoadDefaultsToSingleUser(t *testing.T) {
 	if cfg.Location == nil {
 		t.Error("Location is nil")
 	}
-	if cfg.DeletedRetention <= 0 {
-		t.Errorf("DeletedRetention = %v", cfg.DeletedRetention)
+	if cfg.UndoRetention <= 0 {
+		t.Errorf("UndoRetention = %v", cfg.UndoRetention)
 	}
 }
 

@@ -6,6 +6,7 @@ import (
 
 	"github.com/JulWit/habits/internal/auth"
 	"github.com/JulWit/habits/internal/domain"
+	"github.com/JulWit/habits/internal/settings"
 	"github.com/JulWit/habits/internal/store"
 )
 
@@ -14,25 +15,24 @@ import (
 type habitView struct {
 	domain.Habit
 	Stats domain.Stats `json:"stats"`
-	// Entries holds the value of each day with one, Skipped the skipped days,
-	// both keyed by date.
-	Entries map[string]int  `json:"entries"`
-	Skipped map[string]bool `json:"skipped"`
+	// Entries holds the value of each day with one, keyed by date.
+	Entries map[string]int `json:"entries"`
 	// StreakRuns are the streak runs that reach into the sent entries, oldest
 	// first.
 	StreakRuns []domain.StreakRun `json:"streakRuns"`
-	// Due has one character per day from DueFrom on: '1' if the habit is due
-	// on that day, '0' if not. The client shows the schedule from it and does
-	// not evaluate the frequency rules itself.
-	DueFrom domain.Date `json:"dueFrom"`
-	Due     string      `json:"due"`
+	// Days has one domain.DayStatus per day from DaysFrom on. The client shows
+	// every day from it and its value, and never judges a day itself.
+	DaysFrom domain.Date `json:"daysFrom"`
+	Days     string      `json:"days"`
+	// HistoryStart is the first day of the habit's history.
+	HistoryStart domain.Date `json:"historyStart"`
 }
 
 // stateResponse is the response of GET /api/state.
 type stateResponse struct {
-	User     auth.User      `json:"user"`
-	Settings store.Settings `json:"settings"`
-	Today    domain.Date    `json:"today"`
+	User     auth.User         `json:"user"`
+	Settings settings.Settings `json:"settings"`
+	Today    domain.Date       `json:"today"`
 	// NextDayIn is the number of milliseconds until the next day begins in
 	// the user's time zone. The client reloads the state then.
 	NextDayIn  int64             `json:"nextDayIn"`
@@ -64,139 +64,145 @@ const entryWindowDays = 200
 // parameter archived=1|0 overrides the ShowArchived setting; from=YYYY-MM-DD
 // extends the entry window into the past.
 func (s *Server) handleState(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	user := auth.MustUser(ctx)
-
-	settings, err := s.store.GetSettings(ctx, user.ID)
-	if err != nil {
-		s.writeStoreError(w, err, "loading settings")
-		return
-	}
-	includeArchived := settings.ShowArchived
-	if v := r.URL.Query().Get("archived"); v != "" {
-		includeArchived = v == "1"
-	}
-
-	habits, err := s.store.ListHabits(ctx, user.ID, includeArchived)
-	if err != nil {
-		s.writeStoreError(w, err, "loading habits")
-		return
-	}
-	entries, err := s.store.EntriesForUser(ctx, user.ID)
-	if err != nil {
-		s.writeStoreError(w, err, "loading entries")
-		return
-	}
-	categories, err := s.store.ListCategories(ctx, user.ID)
-	if err != nil {
-		s.writeStoreError(w, err, "loading categories")
-		return
-	}
-	archivedCount, err := s.store.CountArchivedHabits(ctx, user.ID)
-	if err != nil {
-		s.writeStoreError(w, err, "counting archived habits")
-		return
-	}
-
-	loc := s.location(settings)
-	now := time.Now()
-	today := domain.DateFromTime(now.In(loc))
-	from := today.AddDays(-(entryWindowDays - 1))
+	user := auth.MustUser(r.Context())
+	var from domain.Date
 	if v := r.URL.Query().Get("from"); v != "" {
-		asked, err := domain.ParseDate(v)
-		if err != nil {
+		var err error
+		if from, err = domain.ParseDate(v); err != nil {
 			writeError(w, http.StatusBadRequest, "invalid_date", "Invalid date, expected YYYY-MM-DD")
 			return
 		}
-		// from can only extend the window, not shorten it.
-		if asked.Before(from) {
-			from = asked
-		}
-	}
-	views := make([]habitView, 0, len(habits))
-	for _, h := range habits {
-		views = append(views, s.viewFor(h, entries[h.ID], today, from, settings.RateWindowDays()))
 	}
 
-	writeJSON(w, http.StatusOK, stateResponse{
-		User:           user,
-		Settings:       settings,
-		Today:          today,
-		NextDayIn:      domain.UntilTomorrow(now, loc).Milliseconds(),
-		Categories:     categories,
-		ArchivedCount:  archivedCount,
-		Habits:         views,
-		Colors:         domain.Colors,
-		Icons:          domain.HabitIcons,
-		Kinds:          domain.KindDescriptors(),
-		EntriesFrom:    from,
-		EarliestEntry:  EarliestEntry,
-		ServerTimeZone: s.cfg.Location.String(),
-		Build:          currentBuild(),
+	var out stateResponse
+	err := s.store.View(r.Context(), user.ID, func(tx *store.Tx) error {
+		b, err := s.basis(tx)
+		if err != nil {
+			return err
+		}
+		includeArchived := b.settings.ShowArchived
+		if v := r.URL.Query().Get("archived"); v != "" {
+			includeArchived = v == "1"
+		}
+		habits, err := tx.Habits(includeArchived)
+		if err != nil {
+			return err
+		}
+		// from can only extend the window, not shorten it.
+		window := b.today.AddDays(-(entryWindowDays - 1))
+		if from.IsZero() || window.Before(from) {
+			from = window
+		}
+		// The statistics come from the cache; only the window's entries are
+		// sent, so only they are loaded.
+		entries, err := tx.EntriesFrom(from)
+		if err != nil {
+			return err
+		}
+		categories, err := tx.Categories()
+		if err != nil {
+			return err
+		}
+		archivedCount, err := tx.ArchivedCount()
+		if err != nil {
+			return err
+		}
+
+		views := make([]habitView, 0, len(habits))
+		for _, h := range habits {
+			hist, err := s.history.of(h, b, func() (map[domain.Date]domain.Entry, error) {
+				return tx.HabitEntries(h.ID)
+			})
+			if err != nil {
+				return err
+			}
+			views = append(views, viewFor(h, hist, entries[h.ID], b, from))
+		}
+		out = stateResponse{
+			User:           user,
+			Settings:       b.settings,
+			Today:          b.today,
+			NextDayIn:      domain.UntilTomorrow(time.Now(), b.loc).Milliseconds(),
+			Categories:     categories,
+			ArchivedCount:  archivedCount,
+			Habits:         views,
+			Colors:         domain.Colors,
+			Icons:          domain.HabitIcons,
+			Kinds:          domain.KindDescriptors(),
+			EntriesFrom:    from,
+			EarliestEntry:  domain.EarliestEntry,
+			ServerTimeZone: s.cfg.Location.String(),
+			Build:          currentBuild(),
+		}
+		return nil
 	})
+	if err != nil {
+		s.writeStoreError(w, err, "loading the state")
+		return
+	}
+	writeJSON(w, http.StatusOK, out)
 }
 
-// viewFor returns the view of a habit. Statistics are computed from all
-// entries, with the completion rate over windowDays (see domain.ComputeStats),
-// but only entries and streak runs from from onwards are included. A zero
-// from includes everything.
-func (s *Server) viewFor(h domain.Habit, all map[domain.Date]domain.Entry, today, from domain.Date, windowDays int) habitView {
+// viewFor returns the view of a habit with its statistics hist and its
+// entries from from onwards, or all of them for a zero from.
+func viewFor(h domain.Habit, hist history, entries map[domain.Date]domain.Entry, b basis, from domain.Date) habitView {
 	view := habitView{
-		Habit:   h,
-		Stats:   domain.ComputeStats(h, all, today, windowDays),
-		Entries: map[string]int{},
-		Skipped: map[string]bool{},
+		Habit:        h,
+		Stats:        hist.stats,
+		Entries:      map[string]int{},
+		HistoryStart: hist.start,
 	}
-	for d, e := range all {
-		if !from.IsZero() && d.Before(from) {
-			continue
-		}
-		key := d.String()
-		if e.Value > 0 {
-			view.Entries[key] = e.Value
-		}
-		if e.Skipped {
-			view.Skipped[key] = true
+	for d, e := range entries {
+		if e.Value > 0 && (from.IsZero() || !d.Before(from)) {
+			view.Entries[d.String()] = e.Value
 		}
 	}
-	// The due days cover the sent entries up to the entry horizon. A full view
+	// The statuses cover the sent entries up to the entry horizon. A full view
 	// covers every year of the history from its 1 January, as the detail view
 	// shows whole years, and at least the default window.
-	dueFrom := from
-	if dueFrom.IsZero() {
-		firstYear := min(domain.HistoryStart(h, all).Year, today.Year)
-		dueFrom = domain.Date{Year: firstYear, Month: time.January, Day: 1}.
-			Min(today.AddDays(-(entryWindowDays - 1)))
+	daysFrom := from
+	if daysFrom.IsZero() {
+		firstYear := min(hist.start.Year, b.today.Year)
+		daysFrom = domain.Date{Year: firstYear, Month: time.January, Day: 1}.
+			Min(b.today.AddDays(-(entryWindowDays - 1)))
 	}
 	view.StreakRuns = []domain.StreakRun{}
-	for _, run := range domain.StreakRuns(h, all, today) {
+	for _, run := range hist.runs {
 		if from.IsZero() || !run.To.Before(from) {
 			view.StreakRuns = append(view.StreakRuns, run)
 		}
 	}
-	view.DueFrom = dueFrom
-	view.Due = domain.DueDays(h, dueFrom, today.AddDays(EntryHorizonDays))
+	view.DaysFrom = daysFrom
+	view.Days = domain.DayStatuses(h, entries, hist.start, daysFrom, b.today.AddDays(domain.EntryHorizonDays), b.today)
 	return view
 }
 
-// loadView returns the view of a habit with all its entries.
-func (s *Server) loadView(r *http.Request, userID, habitID string) (habitView, error) {
-	h, err := s.store.GetHabit(r.Context(), userID, habitID)
+// fullView returns the view of a habit of the user with all its entries.
+func (s *Server) fullView(tx *store.Tx, id string) (habitView, error) {
+	h, err := tx.Habit(id)
 	if err != nil {
 		return habitView{}, err
 	}
-	entries, err := s.store.EntriesForHabit(r.Context(), userID, habitID)
+	entries, err := tx.HabitEntries(id)
 	if err != nil {
 		return habitView{}, err
 	}
-	today, windowDays := s.statsBasis(r.Context(), userID)
-	return s.viewFor(h, entries, today, domain.Date{}, windowDays), nil
+	b, err := s.basis(tx)
+	if err != nil {
+		return habitView{}, err
+	}
+	return viewFor(h, computeHistory(h, entries, b), entries, b, domain.Date{}), nil
 }
 
-// handleGetHabit returns a single habit.
+// handleGetHabit returns a habit with its full history.
 func (s *Server) handleGetHabit(w http.ResponseWriter, r *http.Request) {
 	user := auth.MustUser(r.Context())
-	view, err := s.loadView(r, user.ID, r.PathValue("id"))
+	var view habitView
+	err := s.store.View(r.Context(), user.ID, func(tx *store.Tx) error {
+		var err error
+		view, err = s.fullView(tx, r.PathValue("id"))
+		return err
+	})
 	if err != nil {
 		s.writeStoreError(w, err, "loading habit")
 		return
@@ -204,8 +210,8 @@ func (s *Server) handleGetHabit(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, view)
 }
 
-// habitInput is the request body for creating and updating a habit. Nil fields
-// are left unchanged.
+// habitInput is the request body for creating and editing a habit: what the
+// editor shows. Nil fields are left unchanged.
 type habitInput struct {
 	Name  *string `json:"name"`
 	Color *string `json:"color"`
@@ -216,7 +222,6 @@ type habitInput struct {
 	CategoryID *string `json:"categoryId"`
 	StepValue  *int    `json:"stepValue"`
 	Unit       *string `json:"unit"`
-	Archived   *bool   `json:"archived"`
 	// TargetValue, TargetType and Frequency change the current schedule, from
 	// today on.
 	TargetValue *int               `json:"targetValue"`
@@ -225,37 +230,20 @@ type habitInput struct {
 	// Retroactive applies a new target or frequency to the past days as well,
 	// instead of from today on.
 	Retroactive bool `json:"retroactive"`
-	// Schedules replaces the whole schedule history, e.g. to undo an edit. It
-	// cannot be combined with TargetValue, TargetType and Frequency.
-	Schedules []domain.Schedule `json:"schedules"`
 }
 
-// changesSchedule reports whether in changes the current schedule.
-func (in habitInput) changesSchedule() bool {
-	return in.TargetValue != nil || in.TargetType != nil || in.Frequency != nil
-}
-
-// applyTo copies the set fields of in to h, except those of the schedule.
-func (in habitInput) applyTo(h *domain.Habit) {
-	setIf(&h.Name, in.Name)
-	setIf(&h.Color, in.Color)
-	setIf(&h.Icon, in.Icon)
-	setIf(&h.Kind, in.Kind)
-	setIf(&h.CategoryID, in.CategoryID)
-	setIf(&h.StepValue, in.StepValue)
-	setIf(&h.Unit, in.Unit)
-	if in.Archived != nil {
-		switch {
-		case *in.Archived && h.ArchivedAt == nil:
-			now := time.Now().UTC()
-			h.ArchivedAt = &now
-		case !*in.Archived:
-			h.ArchivedAt = nil
-		}
+// edit returns the input as a domain.HabitEdit.
+func (in habitInput) edit() domain.HabitEdit {
+	return domain.HabitEdit{
+		Name: in.Name, Color: in.Color, Icon: in.Icon, Kind: in.Kind, CategoryID: in.CategoryID,
+		StepValue: in.StepValue, Unit: in.Unit,
+		TargetValue: in.TargetValue, TargetType: in.TargetType, Frequency: in.Frequency,
+		Retroactive: in.Retroactive,
 	}
 }
 
 // handleCreateHabit creates a habit. Name, kind and frequency are required.
+// The first schedule starts on the user's today.
 func (s *Server) handleCreateHabit(w http.ResponseWriter, r *http.Request) {
 	var in habitInput
 	if !decodeJSON(w, r, &in) {
@@ -265,131 +253,140 @@ func (s *Server) handleCreateHabit(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "missing_fields", "name, kind and frequency are required")
 		return
 	}
-	if in.Schedules != nil {
-		writeError(w, http.StatusBadRequest, "schedules_on_create", "schedules cannot be set on a new habit")
-		return
-	}
-
 	user := auth.MustUser(r.Context())
-	today, windowDays := s.statsBasis(r.Context(), user.ID)
-	var h domain.Habit
-	in.applyTo(&h)
-	first := domain.Schedule{From: today, TargetValue: 1, Frequency: *in.Frequency}
-	setIf(&first.TargetValue, in.TargetValue)
-	setIf(&first.TargetType, in.TargetType)
-	// The first schedule starts on the user's today, which may differ from the
-	// UTC day of the creation time.
-	h.Schedules = []domain.Schedule{first}
 
-	if err := s.store.CreateHabit(r.Context(), user.ID, &h); err != nil {
+	var view habitView
+	changeID, err := s.store.Update(r.Context(), user.ID, func(tx *store.Tx) error {
+		b, err := s.basis(tx)
+		if err != nil {
+			return err
+		}
+		h := domain.NewHabit(in.edit(), b.today)
+		if err := tx.CreateHabit(&h); err != nil {
+			return err
+		}
+		tx.Record(`"{name}" created`, "name", h.Name)
+		view = viewFor(h, computeHistory(h, nil, b), nil, b, domain.Date{})
+		return nil
+	})
+	if err != nil {
 		s.writeStoreError(w, err, "creating habit")
 		return
 	}
-	writeJSON(w, http.StatusCreated, s.viewFor(h, nil, today, domain.Date{}, windowDays))
+	writeChange(w, changeID)
+	writeJSON(w, http.StatusCreated, view)
 }
 
-// handleUpdateHabit updates the fields of a habit given in the request body.
-//
-// A new target or frequency starts a new schedule from today on, unless
-// Retroactive is set. A change of kind converts the recorded history
-// (domain.ConvertKind).
+// handleUpdateHabit changes the fields of a habit given in the request body,
+// as saved in the editor (domain.Habit.Apply): a new target or frequency
+// starts a new schedule from today on unless it is retroactive, and a change
+// of kind converts the recorded history.
 func (s *Server) handleUpdateHabit(w http.ResponseWriter, r *http.Request) {
 	var in habitInput
 	if !decodeJSON(w, r, &in) {
 		return
 	}
-	if in.Schedules != nil && in.changesSchedule() {
-		writeProblem(w, http.StatusUnprocessableEntity, domain.Invalid("schedules_with_target",
-			"schedules cannot be combined with targetValue, targetType or frequency"))
-		return
-	}
-	ctx := r.Context()
-	user := auth.MustUser(ctx)
+	user := auth.MustUser(r.Context())
+	id := r.PathValue("id")
 
-	h, err := s.store.GetHabit(ctx, user.ID, r.PathValue("id"))
-	if err != nil {
-		s.writeStoreError(w, err, "loading habit")
-		return
-	}
-	before := h
-	in.applyTo(&h)
-
-	// nil keeps the recorded entries.
-	var converted map[domain.Date]domain.Entry
-	if h.Kind != before.Kind {
-		entries, err := s.store.EntriesForHabit(ctx, user.ID, h.ID)
+	var view habitView
+	changeID, err := s.store.Update(r.Context(), user.ID, func(tx *store.Tx) error {
+		b, err := s.basis(tx)
 		if err != nil {
-			s.writeStoreError(w, err, "loading entries")
-			return
+			return err
 		}
-		// Ticked days get the new target: the one sent, or for undo the one of
-		// the last schedule sent.
-		target := h.Current().TargetValue
-		setIf(&target, in.TargetValue)
-		if len(in.Schedules) > 0 {
-			target = in.Schedules[len(in.Schedules)-1].TargetValue
+		h, err := tx.Habit(id)
+		if err != nil {
+			return err
 		}
-		h.Schedules, converted = domain.ConvertKind(before, entries, h.Kind, target)
-		// The step and unit of the old kind mean nothing for the new one.
-		if in.StepValue == nil {
-			h.StepValue = 0
+		entries, err := tx.HabitEntries(id)
+		if err != nil {
+			return err
 		}
-		if in.Unit == nil {
-			h.Unit = ""
+		name := h.Name
+		converted, err := h.Apply(in.edit(), entries, b.today)
+		if err != nil {
+			return err
 		}
-	}
-
-	switch {
-	case in.Schedules != nil:
-		h.Schedules = in.Schedules
-	case in.changesSchedule():
-		rules := h.Current()
-		setIf(&rules.TargetValue, in.TargetValue)
-		setIf(&rules.TargetType, in.TargetType)
-		setIf(&rules.Frequency, in.Frequency)
-		err = h.Reschedule(rules, s.todayFor(ctx, user.ID), in.Retroactive)
-	}
-	if err == nil {
-		err = s.store.UpdateHabit(ctx, user.ID, &h, converted)
-	}
+		if err := tx.SaveHabit(&h); err != nil {
+			return err
+		}
+		if converted != nil {
+			if err := tx.ReplaceEntries(h, converted); err != nil {
+				return err
+			}
+			entries = converted
+		}
+		tx.Record(`"{name}" edited`, "name", name)
+		view = viewFor(h, computeHistory(h, entries, b), entries, b, domain.Date{})
+		return nil
+	})
 	if err != nil {
 		s.writeStoreError(w, err, "updating habit")
 		return
 	}
-
-	view, err := s.loadView(r, user.ID, h.ID)
-	if err != nil {
-		s.writeStoreError(w, err, "loading habit")
-		return
-	}
+	writeChange(w, changeID)
 	writeJSON(w, http.StatusOK, view)
 }
 
-// handleDeleteHabit soft-deletes a habit.
+// handleArchiveHabit archives a habit (PUT …/archived with {"archived":
+// true}) or reactivates it.
+func (s *Server) handleArchiveHabit(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Archived *bool `json:"archived"`
+	}
+	if !decodeJSON(w, r, &body) {
+		return
+	}
+	if body.Archived == nil {
+		writeError(w, http.StatusBadRequest, "missing_fields", "archived is required")
+		return
+	}
+	user := auth.MustUser(r.Context())
+
+	changeID, err := s.store.Update(r.Context(), user.ID, func(tx *store.Tx) error {
+		h, err := tx.Habit(r.PathValue("id"))
+		if err != nil {
+			return err
+		}
+		switch {
+		case *body.Archived && h.ArchivedAt == nil:
+			now := time.Now().UTC()
+			h.ArchivedAt = &now
+			tx.Record(`"{name}" archived`, "name", h.Name)
+		case !*body.Archived && h.ArchivedAt != nil:
+			h.ArchivedAt = nil
+			tx.Record(`"{name}" reactivated`, "name", h.Name)
+		default:
+			return nil
+		}
+		return tx.SaveHabit(&h)
+	})
+	if err != nil {
+		s.writeStoreError(w, err, "archiving habit")
+		return
+	}
+	writeChange(w, changeID)
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// handleDeleteHabit deletes a habit with its history. Undo brings it back.
 func (s *Server) handleDeleteHabit(w http.ResponseWriter, r *http.Request) {
 	user := auth.MustUser(r.Context())
-	if err := s.store.SoftDeleteHabit(r.Context(), user.ID, r.PathValue("id")); err != nil {
+	changeID, err := s.store.Update(r.Context(), user.ID, func(tx *store.Tx) error {
+		h, err := tx.Habit(r.PathValue("id"))
+		if err != nil {
+			return err
+		}
+		tx.Record(`"{name}" deleted`, "name", h.Name)
+		return tx.DeleteHabit(h.ID)
+	})
+	if err != nil {
 		s.writeStoreError(w, err, "deleting habit")
 		return
 	}
-	writeJSON(w, http.StatusNoContent, nil)
-}
-
-// handleRestoreHabit restores a soft-deleted habit.
-func (s *Server) handleRestoreHabit(w http.ResponseWriter, r *http.Request) {
-	user := auth.MustUser(r.Context())
-	id := r.PathValue("id")
-
-	if err := s.store.RestoreHabit(r.Context(), user.ID, id); err != nil {
-		s.writeStoreError(w, err, "restoring habit")
-		return
-	}
-	view, err := s.loadView(r, user.ID, id)
-	if err != nil {
-		s.writeStoreError(w, err, "loading habit")
-		return
-	}
-	writeJSON(w, http.StatusOK, view)
+	writeChange(w, changeID)
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // handleReorderHabits sets the order of the habits to the given IDs.
@@ -401,9 +398,12 @@ func (s *Server) handleReorderHabits(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	user := auth.MustUser(r.Context())
-	if err := s.store.ReorderHabits(r.Context(), user.ID, body.IDs); err != nil {
+	_, err := s.store.Update(r.Context(), user.ID, func(tx *store.Tx) error {
+		return tx.ReorderHabits(body.IDs)
+	})
+	if err != nil {
 		s.writeStoreError(w, err, "saving order")
 		return
 	}
-	writeJSON(w, http.StatusNoContent, nil)
+	w.WriteHeader(http.StatusNoContent)
 }

@@ -9,144 +9,75 @@ import (
 	"github.com/JulWit/habits/internal/domain"
 )
 
-// SetEntry rejects values above the kind's maximum.
-func TestSetEntryBoundsTheValue(t *testing.T) {
-	ctx := context.Background()
+// SetEntries rejects values above the kind's maximum.
+func TestSetEntriesBoundsTheValue(t *testing.T) {
 	st := openTestStore(t)
 	h := mustCreateHabit(t, st, "alice", countHabit(domain.KindDistance, 5000))
-	day := day(2026, time.September, 18)
+	d := day(2026, time.September, 18)
+	write := func(value int) error {
+		_, err := st.Update(context.Background(), "alice", func(tx *Tx) error {
+			return tx.SetEntries(h, map[domain.Date]domain.Entry{d: {Value: value}})
+		})
+		return err
+	}
 
 	for _, bad := range []int{-1, domain.KindDistance.MaxTarget() + 1, 1 << 40} {
-		if _, _, _, err := st.SetEntry(ctx, "alice", h.ID, day, setValue(bad), nil); !errors.Is(err, domain.ErrValidation) {
-			t.Errorf("SetEntry(%d) = %v, want ErrValidation", bad, err)
+		if err := write(bad); !errors.Is(err, domain.ErrValidation) {
+			t.Errorf("value %d: %v, want ErrValidation", bad, err)
 		}
 	}
-	if _, _, _, err := st.SetEntry(ctx, "alice", h.ID, day, setValue(domain.KindDistance.MaxTarget()), nil); err != nil {
+	if err := write(domain.KindDistance.MaxTarget()); err != nil {
 		t.Errorf("the maximum itself must be allowed: %v", err)
 	}
 }
 
-// SetEntry returns the previous entry; a day with nothing recorded has no
-// row.
-func TestSetEntryReturnsThePreviousEntryAndStaysSparse(t *testing.T) {
-	ctx := context.Background()
+// A day with nothing recorded has no row.
+func TestEntriesStaySparse(t *testing.T) {
 	st := openTestStore(t)
 	h := mustCreateHabit(t, st, "alice", countHabit(domain.KindCount, 80))
-	day := day(2026, time.September, 18)
+	d := day(2026, time.September, 18)
 
-	if prev, next, _, err := st.SetEntry(ctx, "alice", h.ID, day, setValue(30), nil); err != nil || !prev.IsZero() || next.Value != 30 {
-		t.Fatalf("first write: prev = %+v, next = %+v, err = %v", prev, next, err)
+	setEntry(t, st, "alice", h, d, domain.Entry{Value: 30})
+	if got := read(t, st, "alice", func(tx *Tx) (domain.Entry, error) { return tx.Entry(h.ID, d) }); got.Value != 30 {
+		t.Errorf("Entry = %+v, want 30", got)
 	}
-	if prev, _, _, err := st.SetEntry(ctx, "alice", h.ID, day, setValue(50), nil); err != nil || prev.Value != 30 {
-		t.Fatalf("second write: prev = %+v, want 30, err = %v", prev, err)
-	}
-	if prev, _, _, err := st.SetEntry(ctx, "alice", h.ID, day, setValue(0), nil); err != nil || prev.Value != 50 {
-		t.Fatalf("delete: prev = %+v, want 50, err = %v", prev, err)
-	}
-
-	entries, err := st.EntriesForHabit(ctx, "alice", h.ID)
-	if err != nil {
-		t.Fatalf("EntriesForHabit: %v", err)
-	}
-	if _, present := entries[day]; present {
-		t.Error("a day set to 0 must have no row, not a row holding 0")
+	setEntry(t, st, "alice", h, d, domain.Entry{})
+	var n int
+	st.db.QueryRow(`SELECT COUNT(*) FROM entries`).Scan(&n)
+	if n != 0 {
+		t.Error("a day set to nothing must have no row, not a row holding 0")
 	}
 }
 
-// A skip is stored with the entry, and a value ends it.
-func TestSetEntryStoresSkips(t *testing.T) {
-	ctx := context.Background()
+// A skip is stored with the entry; a skip with a value is refused.
+func TestEntriesStoreSkips(t *testing.T) {
 	st := openTestStore(t)
 	h := mustCreateHabit(t, st, "alice", countHabit(domain.KindCount, 80))
-	day := day(2026, time.September, 18)
-	stored := func() domain.Entry {
-		t.Helper()
-		entries, err := st.EntriesForHabit(ctx, "alice", h.ID)
-		if err != nil {
-			t.Fatal(err)
-		}
-		return entries[day]
-	}
+	d := day(2026, time.September, 18)
 
-	change := domain.EntryChange{Skipped: ptr(true)}
-	if _, _, _, err := st.SetEntry(ctx, "alice", h.ID, day, change, nil); err != nil {
-		t.Fatal(err)
+	setEntry(t, st, "alice", h, d, domain.Entry{Skipped: true})
+	if got, want := entriesOf(t, st, "alice", h.ID)[d], (domain.Entry{Skipped: true}); got != want {
+		t.Errorf("after the skip: %+v, want %+v", got, want)
 	}
-	if want := (domain.Entry{Skipped: true}); stored() != want {
-		t.Errorf("after the skip: %+v, want %+v", stored(), want)
-	}
-
-	if _, _, _, err := st.SetEntry(ctx, "alice", h.ID, day, setValue(20), nil); err != nil {
-		t.Fatal(err)
-	}
-	if want := (domain.Entry{Value: 20}); stored() != want {
-		t.Errorf("after a value: %+v, want %+v", stored(), want)
-	}
-}
-
-// SetEntry with expect writes only while the stored entry is still the
-// expected one.
-func TestSetEntryWithExpectRefusesAChangedEntry(t *testing.T) {
-	ctx := context.Background()
-	st := openTestStore(t)
-	h := mustCreateHabit(t, st, "alice", countHabit(domain.KindCount, 80))
-	day := day(2026, time.September, 18)
-
-	if _, _, _, err := st.SetEntry(ctx, "alice", h.ID, day, setValue(30), &domain.Entry{}); err != nil {
-		t.Fatalf("expecting no entry: %v", err)
-	}
-	prev, _, _, err := st.SetEntry(ctx, "alice", h.ID, day, setValue(0), &domain.Entry{Value: 20})
-	if !errors.Is(err, ErrConflict) || prev.Value != 30 {
-		t.Fatalf("got %+v, %v; want the stored 30 and ErrConflict", prev, err)
-	}
-	if got, _ := st.EntriesForHabit(ctx, "alice", h.ID); got[day].Value != 30 {
-		t.Errorf("value = %d after a refused write, want 30", got[day].Value)
-	}
-	if _, _, _, err := st.SetEntry(ctx, "alice", h.ID, day, setValue(0), &domain.Entry{Value: 30}); err != nil {
-		t.Errorf("expecting the stored entry: %v", err)
-	}
-}
-
-// WriteEntries applies the writes whose day still holds what they expect, and
-// fails all of them for a foreign habit.
-func TestWriteEntries(t *testing.T) {
-	ctx := context.Background()
-	st := openTestStore(t)
-	h := mustCreateHabit(t, st, "alice", countHabit(domain.KindCount, 80))
-	mon, tue := day(2026, time.September, 14), day(2026, time.September, 15)
-	if _, _, _, err := st.SetEntry(ctx, "alice", h.ID, tue, setValue(30), nil); err != nil {
-		t.Fatal(err)
-	}
-
-	skip := domain.Entry{Skipped: true}
-	applied, err := st.WriteEntries(ctx, "alice", []EntryWrite{
-		{HabitID: h.ID, Date: mon, Expect: domain.Entry{}, Entry: skip},
-		// Tuesday holds 30 by now, so this one is left out.
-		{HabitID: h.ID, Date: tue, Expect: domain.Entry{}, Entry: skip},
+	_, err := st.Update(context.Background(), "alice", func(tx *Tx) error {
+		return tx.SetEntries(h, map[domain.Date]domain.Entry{d: {Value: 5, Skipped: true}})
 	})
-	if err != nil {
+	if !errors.Is(err, domain.ErrValidation) {
+		t.Errorf("a skip with a value: %v, want a validation error", err)
+	}
+}
+
+// Writing entries updates the habit's updated_at.
+func TestSetEntriesTouchesTheHabit(t *testing.T) {
+	st := openTestStore(t)
+	h := mustCreateHabit(t, st, "alice", countHabit(domain.KindCheck, 1))
+	// Far back, as the clock may not have moved on since the habit was created.
+	if _, err := st.db.Exec(`UPDATE habits SET updated_at = '2000-01-01T00:00:00.000000000Z'`); err != nil {
 		t.Fatal(err)
 	}
-	if len(applied) != 1 || applied[0].Date != mon {
-		t.Errorf("applied = %+v, want monday only", applied)
-	}
-	entries, _ := st.EntriesForHabit(ctx, "alice", h.ID)
-	if entries[mon] != skip || entries[tue].Value != 30 {
-		t.Errorf("entries = %+v", entries)
-	}
-
-	// Undo: back to nothing recorded.
-	if _, err := st.WriteEntries(ctx, "alice", []EntryWrite{{HabitID: h.ID, Date: mon, Expect: skip}}); err != nil {
-		t.Fatal(err)
-	}
-	if entries, _ := st.EntriesForHabit(ctx, "alice", h.ID); len(entries) != 1 {
-		t.Errorf("after undo: %+v, want tuesday only", entries)
-	}
-
-	if _, err := st.WriteEntries(ctx, "mallory", []EntryWrite{{HabitID: h.ID, Date: mon, Entry: skip}}); !errors.Is(err, ErrNotFound) {
-		t.Errorf("a foreign habit: %v, want ErrNotFound", err)
-	}
-	if _, err := st.WriteEntries(ctx, "alice", []EntryWrite{{HabitID: h.ID, Date: mon, Entry: domain.Entry{Value: 5, Skipped: true}}}); !errors.Is(err, domain.ErrValidation) {
-		t.Errorf("an invalid entry: %v, want a validation error", err)
+	before := habitOf(t, st, "alice", h.ID).UpdatedAt
+	setEntry(t, st, "alice", h, day(2026, time.September, 18), domain.Entry{Value: 1})
+	if after := habitOf(t, st, "alice", h.ID).UpdatedAt; !after.After(before) {
+		t.Errorf("updatedAt = %v, want later than %v", after, before)
 	}
 }

@@ -39,7 +39,7 @@ func loadManifest(webFS fs.FS) (map[string]any, error) {
 func (s *Server) handleManifest(w http.ResponseWriter, r *http.Request) {
 	user := auth.MustUser(r.Context())
 	dark := false
-	if settings, err := s.store.GetSettings(r.Context(), user.ID); err == nil && settings.Theme != "system" {
+	if settings := s.settingsOf(r.Context(), user.ID); settings.Theme != "system" {
 		dark = settings.Theme == "dark"
 	} else if c, err := r.Cookie("color_scheme"); err == nil {
 		dark = c.Value == "dark"

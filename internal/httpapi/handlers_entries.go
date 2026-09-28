@@ -1,7 +1,6 @@
 package httpapi
 
 import (
-	"errors"
 	"net/http"
 	"strconv"
 	"time"
@@ -11,40 +10,33 @@ import (
 	"github.com/JulWit/habits/internal/store"
 )
 
-// EntryHorizonDays is how many days after today an entry may be dated.
-const EntryHorizonDays = 365
-
-// EarliestEntry is the earliest date an entry may have.
-var EarliestEntry = domain.Date{Year: 2000, Month: time.January, Day: 1}
-
 // setEntryResponse is the response of PUT /api/habits/{id}/entries/{date}.
 type setEntryResponse struct {
 	HabitID string      `json:"habitId"`
 	Date    domain.Date `json:"date"`
 	// The entry after the change: value and skipped.
 	domain.Entry
-	// Previous is the replaced entry; writing it back undoes the change.
+	// Previous is the replaced entry.
 	Previous   domain.Entry       `json:"previous"`
 	Stats      domain.Stats       `json:"stats"`
 	StreakRuns []domain.StreakRun `json:"streakRuns"`
+	// Status is the day's status after the change (domain.DayStatus).
+	Status string `json:"status"`
+	// HistoryStart is the first day of the habit's history after the change;
+	// an entry before it moves it.
+	HistoryStart domain.Date `json:"historyStart"`
 	// UpdatedAt is the habit's updated_at after the change.
 	UpdatedAt time.Time `json:"updatedAt"`
 }
 
 // handleSetEntry changes the entry of a habit on a date: its value and
 // whether the day is skipped; a field left out stays as it is. A change that
-// records something (a value or a skip) is only accepted on scheduled days
-// between EarliestEntry and EntryHorizonDays after today; removing is allowed
-// on any day.
+// records something (a value or a skip) is only accepted on due days between
+// domain.EarliestEntry and domain.EntryHorizonDays after today; removing is
+// allowed on any day.
 func (s *Server) handleSetEntry(w http.ResponseWriter, r *http.Request) {
-	var body struct {
-		domain.EntryChange
-		// Expect makes the write conditional: it only happens while the stored
-		// entry (all zero without one) is still Expect, otherwise the answer
-		// is 409. Undo sends the entry it wants to take back.
-		Expect *domain.Entry `json:"expect"`
-	}
-	if !decodeJSON(w, r, &body) {
+	var change domain.EntryChange
+	if !decodeJSON(w, r, &change) {
 		return
 	}
 	date, err := domain.ParseDate(r.PathValue("date"))
@@ -53,88 +45,86 @@ func (s *Server) handleSetEntry(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	user := auth.MustUser(r.Context())
-	habitID := r.PathValue("id")
-	records := body.Records()
 
-	// Loaded before the write, as recording needs a due day; the write does
-	// not change the habit's rules, so its statistics are computed from it
-	// after.
-	habit, err := s.store.GetHabit(r.Context(), user.ID, habitID)
-	if err != nil {
-		s.writeStoreError(w, err, "loading habit")
-		return
-	}
-	today, windowDays := s.statsBasis(r.Context(), user.ID)
-	if !checkEntryDay(w, habit, date, today, records) {
-		return
-	}
+	var out setEntryResponse
+	changeID, err := s.store.Update(r.Context(), user.ID, func(tx *store.Tx) error {
+		b, err := s.basis(tx)
+		if err != nil {
+			return err
+		}
+		h, err := tx.Habit(r.PathValue("id"))
+		if err != nil {
+			return err
+		}
+		if err := checkEntryDay(h, date, b.today, change.Records()); err != nil {
+			return err
+		}
+		previous, err := tx.Entry(h.ID, date)
+		if err != nil {
+			return err
+		}
+		next := change.Apply(previous)
+		if err := tx.SetEntries(h, map[domain.Date]domain.Entry{date: next}); err != nil {
+			return err
+		}
+		entries, err := tx.HabitEntries(h.ID)
+		if err != nil {
+			return err
+		}
+		tx.Record("{name} — {date}", "name", h.Name, "date", date.String())
 
-	previous, next, updatedAt, err := s.store.SetEntry(r.Context(), user.ID, habitID, date, body.EntryChange, body.Expect)
-	if errors.Is(err, store.ErrConflict) {
-		writeProblemBody(w, problemBody{
-			Status: http.StatusConflict,
-			Code:   "entry_changed",
-			Detail: "The entry was changed in the meantime",
-			Params: map[string]any{"current": previous.Value},
-		})
-		return
-	}
+		start := domain.HistoryStart(h, entries)
+		runs := domain.StreakRuns(h, entries, b.today)
+		if runs == nil {
+			// Sent as [], as in the habit view.
+			runs = []domain.StreakRun{}
+		}
+		out = setEntryResponse{
+			HabitID:      h.ID,
+			Date:         date,
+			Entry:        next,
+			Previous:     previous,
+			Stats:        domain.ComputeStats(h, entries, b.today, b.windowDays),
+			StreakRuns:   runs,
+			Status:       string(h.Status(date, next, start, b.today)),
+			HistoryStart: start,
+			UpdatedAt:    tx.Now(),
+		}
+		return nil
+	})
 	if err != nil {
 		s.writeStoreError(w, err, "saving entry")
 		return
 	}
-	entries, err := s.store.EntriesForHabit(r.Context(), user.ID, habitID)
-	if err != nil {
-		s.writeStoreError(w, err, "loading entries")
-		return
-	}
-
-	runs := domain.StreakRuns(habit, entries, today)
-	if runs == nil {
-		// Sent as [], as in the habit view.
-		runs = []domain.StreakRun{}
-	}
-	writeJSON(w, http.StatusOK, setEntryResponse{
-		HabitID:    habitID,
-		Date:       date,
-		Entry:      next,
-		Previous:   previous,
-		Stats:      domain.ComputeStats(habit, entries, today, windowDays),
-		StreakRuns: runs,
-		UpdatedAt:  updatedAt,
-	})
+	writeChange(w, changeID)
+	writeJSON(w, http.StatusOK, out)
 }
 
-// checkEntryDay reports whether the entry of h on date may be changed, and
-// writes the error if not: within the bounds of checkEntryDate, and on a due
-// day for recording something (records). Removing is allowed on any day.
-func checkEntryDay(w http.ResponseWriter, h domain.Habit, date, today domain.Date, records bool) bool {
-	if !checkEntryDate(w, date, today, records) {
-		return false
+// checkEntryDay returns an error unless the entry of h on date may be
+// changed: within the bounds of checkEntryDate, and on a due day for
+// recording something (records). Removing is allowed on any day.
+func checkEntryDay(h domain.Habit, date, today domain.Date, records bool) error {
+	if err := checkEntryDate(date, today, records); err != nil {
+		return err
 	}
 	if records && !h.IsScheduled(date) {
-		writeError(w, http.StatusUnprocessableEntity, "not_scheduled", "The habit is not scheduled on this day")
-		return false
+		return domain.Invalid("not_scheduled", "The habit is not scheduled on this day")
 	}
-	return true
+	return nil
 }
 
-// checkEntryDate reports whether an entry may be dated on date, and writes the
-// error if not. Nothing may be dated more than EntryHorizonDays after today,
-// and nothing recorded (records) before EarliestEntry.
-func checkEntryDate(w http.ResponseWriter, date, today domain.Date, records bool) bool {
+// checkEntryDate returns an error unless an entry may be dated on date.
+// Nothing may be dated more than domain.EntryHorizonDays after today, and
+// nothing recorded (records) before domain.EarliestEntry.
+func checkEntryDate(date, today domain.Date, records bool) error {
 	switch {
-	case date.IsZero():
-		writeError(w, http.StatusBadRequest, "invalid_date", "Invalid date, expected YYYY-MM-DD")
-	case date.After(today.AddDays(EntryHorizonDays)):
-		writeError(w, http.StatusUnprocessableEntity, "entry_too_far_ahead", "Entries may be at most one year in the future")
-	case records && date.Before(EarliestEntry):
+	case date.After(today.AddDays(domain.EntryHorizonDays)):
+		return domain.Invalid("entry_too_far_ahead", "Entries may be at most one year in the future")
+	case records && date.Before(domain.EarliestEntry):
 		// The year is passed as a string so the client does not format it as
 		// a number.
-		writeProblem(w, http.StatusUnprocessableEntity, domain.Invalid("entry_too_early",
-			"Entries may not be dated before {year}", "year", strconv.Itoa(EarliestEntry.Year)))
-	default:
-		return true
+		return domain.Invalid("entry_too_early",
+			"Entries may not be dated before {year}", "year", strconv.Itoa(domain.EarliestEntry.Year))
 	}
-	return false
+	return nil
 }

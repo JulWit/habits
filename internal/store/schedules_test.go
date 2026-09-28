@@ -1,7 +1,6 @@
 package store
 
 import (
-	"context"
 	"testing"
 
 	"github.com/JulWit/habits/internal/domain"
@@ -9,7 +8,6 @@ import (
 
 // All schedule versions survive a round trip, oldest first.
 func TestSchedulesRoundTrip(t *testing.T) {
-	ctx := context.Background()
 	st := openTestStore(t)
 	h := mustCreateHabit(t, st, "alice", countHabit(domain.KindCount, 60))
 
@@ -18,15 +16,9 @@ func TestSchedulesRoundTrip(t *testing.T) {
 	if err := h.Reschedule(domain.Schedule{TargetValue: 80, Frequency: weekdays}, later, false); err != nil {
 		t.Fatalf("Reschedule: %v", err)
 	}
-	if err := st.UpdateHabit(ctx, "alice", &h, nil); err != nil {
-		t.Fatalf("UpdateHabit: %v", err)
-	}
+	update(t, st, "alice", func(tx *Tx) error { return tx.SaveHabit(&h) })
 
-	got, err := st.GetHabit(ctx, "alice", h.ID)
-	if err != nil {
-		t.Fatalf("GetHabit: %v", err)
-	}
-	all := got.Schedules
+	all := habitOf(t, st, "alice", h.ID).Schedules
 	if len(all) != 2 {
 		t.Fatalf("got %d schedules, want 2: %+v", len(all), all)
 	}
@@ -37,11 +29,8 @@ func TestSchedulesRoundTrip(t *testing.T) {
 		t.Errorf("current frequency = %+v, want the newer one", all[1].Frequency)
 	}
 
-	listed, err := st.ListHabits(ctx, "alice", false)
-	if err != nil {
-		t.Fatalf("ListHabits: %v", err)
-	}
+	listed := read(t, st, "alice", func(tx *Tx) ([]domain.Habit, error) { return tx.Habits(false) })
 	if len(listed) != 1 || len(listed[0].Schedules) != 2 {
-		t.Errorf("ListHabits did not load both schedules: %+v", listed)
+		t.Errorf("Habits did not load both schedules: %+v", listed)
 	}
 }

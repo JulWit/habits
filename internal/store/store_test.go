@@ -2,19 +2,19 @@ package store
 
 import (
 	"context"
+	"errors"
 	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/JulWit/habits/internal/domain"
+	"github.com/JulWit/habits/internal/settings"
 )
 
-// openTestStore opens a new database in a temporary directory, running all
-// migrations.
+// openTestStore opens a new database in a temporary directory.
 func openTestStore(t *testing.T) *Store {
 	t.Helper()
-	ctx := context.Background()
-	st, err := Open(ctx, filepath.Join(t.TempDir(), "test.db"))
+	st, err := Open(context.Background(), filepath.Join(t.TempDir(), "test.db"))
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
@@ -22,12 +22,60 @@ func openTestStore(t *testing.T) *Store {
 	return st
 }
 
+// update runs fn in an Update of user and fails the test if it fails. It
+// returns the ID of the undo step, if fn recorded one.
+func update(t *testing.T, st *Store, user string, fn func(*Tx) error) int64 {
+	t.Helper()
+	id, err := st.Update(context.Background(), user, fn)
+	if err != nil {
+		t.Fatalf("Update: %v", err)
+	}
+	return id
+}
+
+// read returns what fn reads in a View of user and fails the test if it
+// fails.
+func read[T any](t *testing.T, st *Store, user string, fn func(*Tx) (T, error)) T {
+	t.Helper()
+	var out T
+	err := st.View(context.Background(), user, func(tx *Tx) error {
+		var err error
+		out, err = fn(tx)
+		return err
+	})
+	if err != nil {
+		t.Fatalf("View: %v", err)
+	}
+	return out
+}
+
+// mustCreateHabit creates h for user.
 func mustCreateHabit(t *testing.T, st *Store, user string, h domain.Habit) domain.Habit {
 	t.Helper()
-	if err := st.CreateHabit(context.Background(), user, &h); err != nil {
-		t.Fatalf("CreateHabit: %v", err)
-	}
+	update(t, st, user, func(tx *Tx) error { return tx.CreateHabit(&h) })
 	return h
+}
+
+// setEntry stores e as the entry of h on date, as one recorded undo step, and
+// returns its ID.
+func setEntry(t *testing.T, st *Store, user string, h domain.Habit, date domain.Date, e domain.Entry) int64 {
+	t.Helper()
+	return update(t, st, user, func(tx *Tx) error {
+		tx.Record("{name} — {date}", "name", h.Name, "date", date.String())
+		return tx.SetEntries(h, map[domain.Date]domain.Entry{date: e})
+	})
+}
+
+// entriesOf returns the entries of the habit id of user.
+func entriesOf(t *testing.T, st *Store, user, id string) map[domain.Date]domain.Entry {
+	t.Helper()
+	return read(t, st, user, func(tx *Tx) (map[domain.Date]domain.Entry, error) { return tx.HabitEntries(id) })
+}
+
+// habitOf returns the habit id of user.
+func habitOf(t *testing.T, st *Store, user, id string) domain.Habit {
+	t.Helper()
+	return read(t, st, user, func(tx *Tx) (domain.Habit, error) { return tx.Habit(id) })
 }
 
 // day returns a Date (keyed fields, as required by vet).
@@ -44,14 +92,8 @@ func countHabit(kind domain.Kind, target int) domain.Habit {
 	}
 }
 
-func ptr[T any](v T) *T { return &v }
-
-// setValue is the change that sets a day's value.
-func setValue(v int) domain.EntryChange { return domain.EntryChange{Value: &v} }
-
-// Migrations apply to an empty database, and reopening it does not run them
-// again.
-func TestMigrationsAreIdempotent(t *testing.T) {
+// Reopening a database keeps its data and does not create the schema again.
+func TestReopeningKeepsTheData(t *testing.T) {
 	ctx := context.Background()
 	path := filepath.Join(t.TempDir(), "test.db")
 
@@ -67,8 +109,38 @@ func TestMigrationsAreIdempotent(t *testing.T) {
 		t.Fatalf("second Open: %v", err)
 	}
 	defer second.Close()
-	if _, err := second.GetHabit(ctx, "alice", h.ID); err != nil {
-		t.Errorf("habit did not survive the second start: %v", err)
+	habitOf(t, second, "alice", h.ID)
+}
+
+// A failing Update writes nothing.
+func TestAFailingUpdateWritesNothing(t *testing.T) {
+	st := openTestStore(t)
+	boom := errors.New("boom")
+	_, err := st.Update(context.Background(), "alice", func(tx *Tx) error {
+		h := countHabit(domain.KindCheck, 1)
+		if err := tx.CreateHabit(&h); err != nil {
+			return err
+		}
+		return boom
+	})
+	if !errors.Is(err, boom) {
+		t.Fatalf("err = %v, want boom", err)
+	}
+	habits := read(t, st, "alice", func(tx *Tx) ([]domain.Habit, error) { return tx.Habits(true) })
+	if len(habits) != 0 {
+		t.Errorf("%d habits saved by a failed update", len(habits))
+	}
+}
+
+// A View cannot write.
+func TestViewCannotWrite(t *testing.T) {
+	st := openTestStore(t)
+	err := st.View(context.Background(), "alice", func(tx *Tx) error {
+		h := countHabit(domain.KindCheck, 1)
+		return tx.CreateHabit(&h)
+	})
+	if err == nil {
+		t.Error("a habit was created in a View")
 	}
 }
 
@@ -106,28 +178,29 @@ func TestStoredTimestampsSortChronologically(t *testing.T) {
 
 // Deleting a user removes all their data, and only theirs.
 func TestDeleteUserRemovesAllTheirData(t *testing.T) {
-	st := openTestStore(t)
 	ctx := context.Background()
-	cat := domain.Category{Name: "Health"}
-	if err := st.CreateCategory(ctx, "alice", &cat); err != nil {
-		t.Fatalf("CreateCategory: %v", err)
-	}
-	h := countHabit(domain.KindCount, 10)
-	h.CategoryID = cat.ID
-	h = mustCreateHabit(t, st, "alice", h)
-	if _, _, _, err := st.SetEntry(ctx, "alice", h.ID, day(2026, time.January, 5), setValue(20), nil); err != nil {
-		t.Fatalf("SetEntry: %v", err)
-	}
-	if _, err := st.UpdateSettings(ctx, "alice", func(s *Settings) error { s.Theme = "dark"; return nil }); err != nil {
-		t.Fatalf("UpdateSettings: %v", err)
-	}
+	st := openTestStore(t)
+	var h domain.Habit
+	update(t, st, "alice", func(tx *Tx) error {
+		cat := domain.Category{Name: "Health"}
+		if err := tx.CreateCategory(&cat); err != nil {
+			return err
+		}
+		h = countHabit(domain.KindCount, 10)
+		h.CategoryID = cat.ID
+		if err := tx.CreateHabit(&h); err != nil {
+			return err
+		}
+		prefs := settings.Default()
+		prefs.Theme = "dark"
+		return tx.SaveSettings(prefs)
+	})
+	setEntry(t, st, "alice", h, day(2026, time.January, 5), domain.Entry{Value: 20})
 	mustCreateHabit(t, st, "bob", countHabit(domain.KindCheck, 1))
 
-	if err := st.DeleteUser(ctx, "alice"); err != nil {
-		t.Fatalf("DeleteUser: %v", err)
-	}
+	update(t, st, "alice", func(tx *Tx) error { return tx.DeleteUser() })
 
-	for _, table := range []string{"users", "user_settings", "categories", "habits", "habit_schedules", "entries"} {
+	for _, table := range []string{"users", "user_settings", "categories", "habits", "habit_schedules", "entries", "changes"} {
 		var n int
 		if err := st.db.QueryRowContext(ctx, `SELECT count(*) FROM `+table+` WHERE `+ownerColumn(table)+` = 'alice'`).Scan(&n); err != nil {
 			t.Fatalf("counting %s: %v", table, err)
@@ -136,17 +209,11 @@ func TestDeleteUserRemovesAllTheirData(t *testing.T) {
 			t.Errorf("%s: %d rows of alice left", table, n)
 		}
 	}
-	got, err := st.GetSettings(ctx, "alice")
-	if err != nil || got != DefaultSettings() {
-		t.Errorf("settings = %+v, %v; want the defaults", got, err)
+	if got := read(t, st, "alice", (*Tx).Settings); got != settings.Default() {
+		t.Errorf("settings = %+v; want the defaults", got)
 	}
-	bobs, err := st.ListHabits(ctx, "bob", true)
-	if err != nil || len(bobs) != 1 {
-		t.Errorf("bob's habits = %d, %v; want 1", len(bobs), err)
-	}
-	// Once more, without data.
-	if err := st.DeleteUser(ctx, "alice"); err != nil {
-		t.Errorf("DeleteUser without data: %v", err)
+	if bobs := read(t, st, "bob", func(tx *Tx) ([]domain.Habit, error) { return tx.Habits(true) }); len(bobs) != 1 {
+		t.Errorf("bob's habits = %d; want 1", len(bobs))
 	}
 }
 

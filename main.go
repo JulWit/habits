@@ -69,10 +69,10 @@ func run(log *slog.Logger) error {
 	}
 	defer st.Close()
 
-	// Deleted habits and categories are removed once their retention period
-	// is over: now, and daily for a server that runs for long.
-	purgeDeleted(ctx, st, cfg.DeletedRetention, log)
-	go purgeDaily(ctx, st, cfg.DeletedRetention, log)
+	// Undo steps are removed once their retention period is over: now, and
+	// daily for a server that runs for long.
+	purgeSteps(ctx, st, cfg.UndoRetention, log)
+	go purgeDaily(ctx, st, cfg.UndoRetention, log)
 
 	handler, err := httpapi.New(cfg, st, log, webFS)
 	if err != nil {
@@ -112,11 +112,10 @@ func run(log *slog.Logger) error {
 	return srv.Shutdown(shutdownCtx)
 }
 
-// purgeInterval is how often a running server removes expired deleted habits
-// and categories.
+// purgeInterval is how often a running server removes expired undo steps.
 const purgeInterval = 24 * time.Hour
 
-// purgeDaily calls purgeDeleted every purgeInterval until ctx is done.
+// purgeDaily calls purgeSteps every purgeInterval until ctx is done.
 func purgeDaily(ctx context.Context, st *store.Store, retention time.Duration, log *slog.Logger) {
 	ticker := time.NewTicker(purgeInterval)
 	defer ticker.Stop()
@@ -125,23 +124,18 @@ func purgeDaily(ctx context.Context, st *store.Store, retention time.Duration, l
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			purgeDeleted(ctx, st, retention, log)
+			purgeSteps(ctx, st, retention, log)
 		}
 	}
 }
 
-// purgeDeleted permanently removes habits and categories deleted longer than
-// retention ago. Failures are logged; the next run tries again.
-func purgeDeleted(ctx context.Context, st *store.Store, retention time.Duration, log *slog.Logger) {
-	if n, err := st.PurgeDeleted(ctx, retention); err != nil {
-		log.Warn("purging deleted habits failed", "error", err)
+// purgeSteps removes the undo steps older than retention. Failures are
+// logged; the next run tries again.
+func purgeSteps(ctx context.Context, st *store.Store, retention time.Duration, log *slog.Logger) {
+	if n, err := st.PurgeSteps(ctx, retention); err != nil {
+		log.Warn("purging undo steps failed", "error", err)
 	} else if n > 0 {
-		log.Info("permanently deleted habits removed", "count", n)
-	}
-	if n, err := st.PurgeDeletedCategories(ctx, retention); err != nil {
-		log.Warn("purging deleted categories failed", "error", err)
-	} else if n > 0 {
-		log.Info("permanently deleted categories removed", "count", n)
+		log.Info("expired undo steps removed", "count", n)
 	}
 }
 

@@ -12,22 +12,10 @@ import (
 // maxSkipDays is the longest range of days that can be skipped at once.
 const maxSkipDays = 366
 
-// maxEntriesBytes bounds the body of POST /api/entries, which undoes a skipped
-// range: a year of days for a few dozen habits.
-const maxEntriesBytes = 4 << 20
-
-// entryChange is a changed entry of a habit on a day, with the entry before.
-// Writing Previous back with Entry expected undoes it.
-type entryChange struct {
-	HabitID  string       `json:"habitId"`
-	Date     domain.Date  `json:"date"`
-	Previous domain.Entry `json:"previous"`
-	Entry    domain.Entry `json:"entry"`
-}
-
 // handleSkipDays skips the days from From to To of the given habits, or of
 // all habits that are not archived, e.g. for a holiday. Only due days without
-// a value are skipped (domain.DaysToSkip). The answer lists the changed days.
+// a value are skipped (domain.DaysToSkip). The answer counts the skipped
+// days; undo takes them back as one step.
 func (s *Server) handleSkipDays(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		From     domain.Date `json:"from"`
@@ -51,48 +39,57 @@ func (s *Server) handleSkipDays(w http.ResponseWriter, r *http.Request) {
 			"at most {max} days can be skipped at once", "max", maxSkipDays))
 		return
 	}
-	ctx := r.Context()
-	user := auth.MustUser(ctx)
+	user := auth.MustUser(r.Context())
 
-	habits, err := s.skippedHabits(r, user.ID, body.HabitIDs)
-	if err != nil {
-		s.writeStoreError(w, err, "loading habits")
-		return
-	}
-	today := s.todayFor(ctx, user.ID)
-	if !checkEntryDate(w, body.From, today, true) || !checkEntryDate(w, body.To, today, true) {
-		return
-	}
-
-	entries, err := s.store.EntriesForUser(ctx, user.ID)
-	if err != nil {
-		s.writeStoreError(w, err, "loading entries")
-		return
-	}
-	var writes []store.EntryWrite
-	for _, h := range habits {
-		for _, d := range domain.DaysToSkip(h, entries[h.ID], body.From, body.To) {
-			writes = append(writes, store.EntryWrite{
-				HabitID: h.ID, Date: d, Expect: entries[h.ID][d], Entry: domain.Entry{Skipped: true},
-			})
+	skipped := 0
+	changeID, err := s.store.Update(r.Context(), user.ID, func(tx *store.Tx) error {
+		b, err := s.basis(tx)
+		if err != nil {
+			return err
 		}
-	}
-	applied, err := s.store.WriteEntries(ctx, user.ID, writes)
+		if err := checkEntryDate(body.From, b.today, true); err != nil {
+			return err
+		}
+		if err := checkEntryDate(body.To, b.today, true); err != nil {
+			return err
+		}
+		habits, err := habitsToSkip(tx, body.HabitIDs)
+		if err != nil {
+			return err
+		}
+		entries, err := tx.Entries()
+		if err != nil {
+			return err
+		}
+		for _, h := range habits {
+			days := map[domain.Date]domain.Entry{}
+			for _, d := range domain.DaysToSkip(h, entries[h.ID], body.From, body.To) {
+				days[d] = domain.Entry{Skipped: true}
+			}
+			if err := tx.SetEntries(h, days); err != nil {
+				return err
+			}
+			skipped += len(days)
+		}
+		if skipped == 1 {
+			tx.Record("1 day skipped")
+		} else {
+			tx.Record("{n} days skipped", "n", skipped)
+		}
+		return nil
+	})
 	if err != nil {
 		s.writeStoreError(w, err, "skipping days")
 		return
 	}
-	changes := make([]entryChange, 0, len(applied))
-	for _, a := range applied {
-		changes = append(changes, entryChange{HabitID: a.HabitID, Date: a.Date, Previous: a.Expect, Entry: a.Entry})
-	}
-	writeJSON(w, http.StatusOK, map[string]any{"changes": changes})
+	writeChange(w, changeID)
+	writeJSON(w, http.StatusOK, map[string]int{"skipped": skipped})
 }
 
-// skippedHabits returns the habits of the user with the given IDs, or all
+// habitsToSkip returns the habits of the user with the given IDs, or all
 // that are not archived if there are none. An unknown ID is ErrNotFound.
-func (s *Server) skippedHabits(r *http.Request, userID string, ids []string) ([]domain.Habit, error) {
-	all, err := s.store.ListHabits(r.Context(), userID, true)
+func habitsToSkip(tx *store.Tx, ids []string) ([]domain.Habit, error) {
+	all, err := tx.Habits(true)
 	if err != nil {
 		return nil, err
 	}
@@ -108,52 +105,4 @@ func (s *Server) skippedHabits(r *http.Request, userID string, ids []string) ([]
 		chosen = append(chosen, all[i])
 	}
 	return chosen, nil
-}
-
-// handleWriteEntries writes whole entries of several days and habits at once,
-// each only while its day still holds Expect; it undoes and redoes a skipped
-// range. The same days are allowed as for a single entry (checkEntryDay). The
-// answer counts the writes applied and those left out for a conflict.
-func (s *Server) handleWriteEntries(w http.ResponseWriter, r *http.Request) {
-	var body struct {
-		Changes []struct {
-			HabitID string       `json:"habitId"`
-			Date    domain.Date  `json:"date"`
-			Expect  domain.Entry `json:"expect"`
-			Entry   domain.Entry `json:"entry"`
-		} `json:"changes"`
-	}
-	if !decodeJSONLimit(w, r, &body, maxEntriesBytes) {
-		return
-	}
-	ctx := r.Context()
-	user := auth.MustUser(ctx)
-	habits, err := s.store.ListHabits(ctx, user.ID, true)
-	if err != nil {
-		s.writeStoreError(w, err, "loading habits")
-		return
-	}
-	today := s.todayFor(ctx, user.ID)
-
-	writes := make([]store.EntryWrite, 0, len(body.Changes))
-	for _, c := range body.Changes {
-		i := slices.IndexFunc(habits, func(h domain.Habit) bool { return h.ID == c.HabitID })
-		if i == -1 {
-			writeError(w, http.StatusNotFound, "not_found", "Not found")
-			return
-		}
-		if !checkEntryDay(w, habits[i], c.Date, today, !c.Entry.IsZero()) {
-			return
-		}
-		writes = append(writes, store.EntryWrite{HabitID: c.HabitID, Date: c.Date, Expect: c.Expect, Entry: c.Entry})
-	}
-	applied, err := s.store.WriteEntries(ctx, user.ID, writes)
-	if err != nil {
-		s.writeStoreError(w, err, "saving entries")
-		return
-	}
-	writeJSON(w, http.StatusOK, map[string]int{
-		"applied":   len(applied),
-		"conflicts": len(writes) - len(applied),
-	})
 }

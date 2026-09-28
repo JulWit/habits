@@ -188,21 +188,3 @@ func (s Schedule) inScheduledWeek(d Date) bool {
 	}
 	return true
 }
-
-// DueDays reports for every day from from to to whether the habit is due on
-// it, as a string with one character per day: '1' for due, '0' for not. It
-// lets clients show the schedule without knowing its rules.
-func DueDays(h Habit, from, to Date) string {
-	if to.Before(from) {
-		return ""
-	}
-	out := make([]byte, 0, to.DaysSince(from)+1)
-	for d := from; !d.After(to); d = d.AddDays(1) {
-		if h.IsScheduled(d) {
-			out = append(out, '1')
-		} else {
-			out = append(out, '0')
-		}
-	}
-	return string(out)
-}

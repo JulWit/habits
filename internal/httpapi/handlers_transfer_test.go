@@ -5,6 +5,9 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/JulWit/habits/internal/domain"
 )
 
 // mustDo sends a request with a JSON body and fails the test unless the status
@@ -18,20 +21,21 @@ func mustDo(t *testing.T, h http.Handler, method, path, body string, want int) [
 	return w.Body.Bytes()
 }
 
-// An export holds the habits with their settings and categories, but no
-// entries or statistics; importing it elsewhere sets up the same habits.
-func TestExportAndImportCarryTheSettings(t *testing.T) {
+// An export holds the habits with their settings, schedules and entries, and
+// the categories, but no statistics; importing it elsewhere restores them.
+func TestExportAndImportRestoreTheHistory(t *testing.T) {
 	src := newTestServer(t)
 	var cat struct{ ID string }
 	json.Unmarshal(mustDo(t, src, "POST", "/api/categories",
 		`{"name":"Health","icon":"heart","color":"red","showProgress":true}`, http.StatusCreated), &cat)
-	var water struct{ ID string }
-	json.Unmarshal(mustDo(t, src, "POST", "/api/habits",
-		`{"name":"Water","kind":"count","unit":"glasses","stepValue":20,"targetValue":80,"color":"sky","icon":"droplet",
-		  "categoryId":"`+cat.ID+`","frequency":{"kind":"weekdays","weekdays":5}}`, http.StatusCreated), &water)
-	mustDo(t, src, "POST", "/api/habits",
-		`{"name":"Read","kind":"time","targetValue":200,"frequency":{"kind":"daily"},"archived":true}`, http.StatusCreated)
-	mustDo(t, src, "PUT", "/api/habits/"+water.ID+"/entries/2026-01-05", `{"value":30}`, http.StatusOK)
+	water := createHabit(t, src, `{"name":"Water","kind":"count","unit":"glasses","stepValue":20,"targetValue":80,
+		"color":"sky","icon":"droplet","categoryId":"`+cat.ID+`","frequency":{"kind":"daily"}}`)
+	read := createHabit(t, src, `{"name":"Read","kind":"time","targetValue":200,"frequency":{"kind":"daily"}}`)
+	mustDo(t, src, "PUT", "/api/habits/"+read+"/archived", `{"archived":true}`, http.StatusNoContent)
+	today := domain.Today(time.UTC)
+	yesterday := today.AddDays(-1)
+	mustDo(t, src, "PUT", "/api/habits/"+water+"/entries/"+today.String(), `{"value":30}`, http.StatusOK)
+	mustDo(t, src, "PUT", "/api/habits/"+water+"/entries/"+yesterday.String(), `{"skipped":true}`, http.StatusOK)
 
 	w := do(t, src, "GET", "/api/export", "", "")
 	if w.Code != http.StatusOK {
@@ -41,7 +45,7 @@ func TestExportAndImportCarryTheSettings(t *testing.T) {
 		t.Errorf("Content-Disposition = %q", cd)
 	}
 	file := w.Body.String()
-	for _, leak := range []string{"entries", "stats", "streak", "2026-01-05"} {
+	for _, leak := range []string{"stats", "streak"} {
 		if strings.Contains(file, leak) {
 			t.Errorf("export contains %q: %s", leak, file)
 		}
@@ -65,12 +69,11 @@ func TestExportAndImportCarryTheSettings(t *testing.T) {
 			ArchivedAt                                *string
 			Schedules                                 []struct {
 				TargetValue int
-				Frequency   struct {
-					Kind     string
-					Weekdays int
-				}
+				Frequency   struct{ Kind string }
 			}
-			Entries map[string]int
+			Entries  map[string]int
+			DaysFrom domain.Date
+			Days     string
 		}
 	}
 	json.Unmarshal(mustDo(t, dst, "GET", "/api/state?archived=1", "", http.StatusOK), &state)
@@ -86,12 +89,14 @@ func TestExportAndImportCarryTheSettings(t *testing.T) {
 		got.Color != "sky" || got.Icon != "droplet" || got.CategoryID != c.ID || got.ArchivedAt != nil {
 		t.Errorf("habit = %+v", got)
 	}
-	if s := got.Schedules; len(s) != 1 || s[0].TargetValue != 80 ||
-		s[0].Frequency.Kind != "weekdays" || s[0].Frequency.Weekdays != 5 {
+	if s := got.Schedules; len(s) != 1 || s[0].TargetValue != 80 || s[0].Frequency.Kind != "daily" {
 		t.Errorf("schedules = %+v", s)
 	}
-	if len(got.Entries) != 0 {
-		t.Errorf("entries were imported: %v", got.Entries)
+	if got.Entries[today.String()] != 30 {
+		t.Errorf("entries = %v, want 30 today", got.Entries)
+	}
+	if i := yesterday.DaysSince(got.DaysFrom); got.Days[i] != byte(domain.StatusSkipped) {
+		t.Errorf("yesterday = %c, want skipped", got.Days[i])
 	}
 	if read := state.Habits[1]; read.Name != "Read" || read.ArchivedAt == nil {
 		t.Errorf("archived habit = %+v", read)
@@ -107,9 +112,11 @@ func TestExportAndImportCarryTheSettings(t *testing.T) {
 // An invalid habit fails the whole import and is named in the problem.
 func TestImportIsAllOrNothing(t *testing.T) {
 	h := newTestServer(t)
-	file := `{"format":"habits","version":1,"categories":[{"key":"k","name":"Sport"}],"habits":[
-		{"name":"Run","kind":"distance","targetValue":5000,"category":"k","frequency":{"kind":"daily"}},
-		{"name":"Swim","kind":"check","frequency":{"kind":"sometimes"}}]}`
+	file := `{"format":"habits","version":2,"categories":[{"key":"k","name":"Sport"}],"habits":[
+		{"name":"Run","kind":"distance","category":"k","color":"red","createdAt":"2026-01-01T00:00:00Z",
+		 "schedules":[{"from":"2026-01-01","targetValue":5000,"frequency":{"kind":"daily"}}]},
+		{"name":"Swim","kind":"check","color":"blue","createdAt":"2026-01-01T00:00:00Z",
+		 "schedules":[{"from":"2026-01-01","targetValue":1,"frequency":{"kind":"sometimes"}}]}]}`
 	w := do(t, h, "POST", "/api/import", file, "application/json")
 	if w.Code != http.StatusUnprocessableEntity {
 		t.Fatalf("status %d (%s)", w.Code, w.Body)
@@ -134,8 +141,8 @@ func TestImportIsAllOrNothing(t *testing.T) {
 func TestImportChecksTheFormat(t *testing.T) {
 	h := newTestServer(t)
 	for _, file := range []string{
-		`{"format":"other","version":1,"categories":[],"habits":[]}`,
-		`{"format":"habits","version":2,"categories":[],"habits":[]}`,
+		`{"format":"other","version":2,"categories":[],"habits":[]}`,
+		`{"format":"habits","version":1,"categories":[],"habits":[]}`,
 	} {
 		w := do(t, h, "POST", "/api/import", file, "application/json")
 		if w.Code != http.StatusUnprocessableEntity || !strings.Contains(w.Body.String(), "import_format") {
@@ -144,17 +151,20 @@ func TestImportChecksTheFormat(t *testing.T) {
 	}
 }
 
-// Habits join an existing category of the same name instead of a copy.
+// Habits join an existing category of the same name instead of a copy, and
+// the import is one undo step.
 func TestImportReusesCategoriesByName(t *testing.T) {
 	h := newTestServer(t)
 	var cat struct{ ID string }
 	json.Unmarshal(mustDo(t, h, "POST", "/api/categories", `{"name":"Sport"}`, http.StatusCreated), &cat)
-	file := `{"format":"habits","version":1,"categories":[{"key":"k","name":" sport "}],"habits":[
-		{"name":"Run","kind":"check","category":"k","frequency":{"kind":"daily"}}]}`
+	file := `{"format":"habits","version":2,"categories":[{"key":"k","name":" sport "}],"habits":[
+		{"name":"Run","kind":"check","category":"k","color":"red","createdAt":"2026-01-01T00:00:00Z",
+		 "schedules":[{"from":"2026-01-01","targetValue":1,"frequency":{"kind":"daily"}}]}]}`
+	w := do(t, h, "POST", "/api/import", file, "application/json")
 	var result importResult
-	json.Unmarshal(mustDo(t, h, "POST", "/api/import", file, http.StatusOK), &result)
-	if result != (importResult{Habits: 1}) {
-		t.Errorf("result = %+v", result)
+	json.Unmarshal(w.Body.Bytes(), &result)
+	if w.Code != http.StatusOK || result != (importResult{Habits: 1}) {
+		t.Errorf("import: %d, %+v", w.Code, result)
 	}
 	var state struct {
 		Habits []struct{ CategoryID string }
@@ -162,6 +172,12 @@ func TestImportReusesCategoriesByName(t *testing.T) {
 	json.Unmarshal(mustDo(t, h, "GET", "/api/state", "", http.StatusOK), &state)
 	if len(state.Habits) != 1 || state.Habits[0].CategoryID != cat.ID {
 		t.Errorf("habits = %+v, want category %s", state.Habits, cat.ID)
+	}
+
+	mustDo(t, h, "POST", "/api/undo", `{"id":`+w.Header().Get("Change-Id")+`}`, http.StatusOK)
+	json.Unmarshal(mustDo(t, h, "GET", "/api/state", "", http.StatusOK), &state)
+	if len(state.Habits) != 0 {
+		t.Errorf("%d habits left after undoing the import", len(state.Habits))
 	}
 }
 

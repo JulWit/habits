@@ -175,18 +175,18 @@ func TestLaterScheduleAnchorsAtItsStart(t *testing.T) {
 	}
 }
 
-// DueDays marks the due days by the schedule of each day.
-func TestDueDays(t *testing.T) {
+// DayStatuses judge each day by the schedule of that day.
+func TestDayStatusesFollowTheSchedules(t *testing.T) {
 	h := dailyHabit()
 	// Mondays only, from this Monday on.
 	if err := h.Reschedule(Schedule{TargetValue: 1, Frequency: Frequency{Kind: FreqWeekdays, Weekdays: 1}}, monday, false); err != nil {
 		t.Fatal(err)
 	}
 	// Saturday and Sunday before, then Monday to Wednesday.
-	if got := DueDays(h, monday.AddDays(-2), monday.AddDays(2)); got != "11100" {
-		t.Errorf("DueDays = %q, want 11100", got)
+	if got := DayStatuses(h, nil, HistoryStart(h, nil), monday.AddDays(-2), monday.AddDays(2), monday); got != "ooo--" {
+		t.Errorf("DayStatuses = %q, want ooo--", got)
 	}
-	if got := DueDays(h, monday, monday.AddDays(-1)); got != "" {
+	if got := DayStatuses(h, nil, HistoryStart(h, nil), monday, monday.AddDays(-1), monday); got != "" {
 		t.Errorf("empty range: %q", got)
 	}
 }

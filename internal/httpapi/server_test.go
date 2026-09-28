@@ -26,13 +26,13 @@ var testWeb = fstest.MapFS{
 		`{"name":"Habits","theme_color":"#e6e8ec","background_color":"#e6e8ec"}`)},
 }
 
-func newTestServer(t *testing.T) http.Handler {
+func newTestServer(t testing.TB) http.Handler {
 	t.Helper()
 	return newTestServerLogging(t, io.Discard)
 }
 
 // newTestServerLogging is newTestServer with its log written to w.
-func newTestServerLogging(t *testing.T, w io.Writer) http.Handler {
+func newTestServerLogging(t testing.TB, w io.Writer) http.Handler {
 	t.Helper()
 	st, err := store.Open(context.Background(), filepath.Join(t.TempDir(), "test.db"))
 	if err != nil {

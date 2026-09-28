@@ -42,9 +42,9 @@ type Config struct {
 	// DefaultUser is the user in single-user mode.
 	DefaultUser string
 
-	// DeletedRetention is how long deleted habits and categories can be
-	// restored.
-	DeletedRetention time.Duration
+	// UndoRetention is how long undo steps are kept, e.g. to bring back a
+	// deleted habit.
+	UndoRetention time.Duration
 }
 
 // env returns the trimmed value of key, or fallback if it is unset or blank.
@@ -58,15 +58,15 @@ func env(key, fallback string) string {
 // Load reads the configuration from the environment and validates it.
 func Load() (Config, error) {
 	cfg := Config{
-		Addr:             env("HABITS_ADDR", ":8080"),
-		DatabasePath:     env("HABITS_DB", "habits.db"),
-		AuthMode:         AuthMode(strings.ToLower(env("HABITS_AUTH_MODE", string(AuthModeSingleUser)))),
-		UserHeader:       env("HABITS_USER_HEADER", "Remote-User"),
-		DisplayHeader:    env("HABITS_NAME_HEADER", "Remote-Name"),
-		EmailHeader:      env("HABITS_EMAIL_HEADER", "Remote-Email"),
-		GroupsHeader:     env("HABITS_GROUPS_HEADER", "Remote-Groups"),
-		DefaultUser:      env("HABITS_DEFAULT_USER", "local"),
-		DeletedRetention: 30 * 24 * time.Hour,
+		Addr:          env("HABITS_ADDR", ":8080"),
+		DatabasePath:  env("HABITS_DB", "habits.db"),
+		AuthMode:      AuthMode(strings.ToLower(env("HABITS_AUTH_MODE", string(AuthModeSingleUser)))),
+		UserHeader:    env("HABITS_USER_HEADER", "Remote-User"),
+		DisplayHeader: env("HABITS_NAME_HEADER", "Remote-Name"),
+		EmailHeader:   env("HABITS_EMAIL_HEADER", "Remote-Email"),
+		GroupsHeader:  env("HABITS_GROUPS_HEADER", "Remote-Groups"),
+		DefaultUser:   env("HABITS_DEFAULT_USER", "local"),
+		UndoRetention: 30 * 24 * time.Hour,
 	}
 
 	loc, err := time.LoadLocation(env("HABITS_TZ", "Local"))

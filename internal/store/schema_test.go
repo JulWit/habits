@@ -1,7 +1,6 @@
 package store
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -11,12 +10,9 @@ import (
 // The schema rejects values the application never writes, and removing a user
 // removes their data.
 func TestSchemaConstraints(t *testing.T) {
-	ctx := context.Background()
 	st := openTestStore(t)
 	h := mustCreateHabit(t, st, "alice", countHabit(domain.KindCount, 10))
-	if _, _, _, err := st.SetEntry(ctx, "alice", h.ID, day(2026, time.March, 1), setValue(10), nil); err != nil {
-		t.Fatal(err)
-	}
+	setEntry(t, st, "alice", h, day(2026, time.March, 1), domain.Entry{Value: 10})
 
 	for name, stmt := range map[string]string{
 		"unknown kind":    `UPDATE habits SET kind = 'weight'`,
@@ -39,7 +35,7 @@ func TestSchemaConstraints(t *testing.T) {
 	if _, err := st.db.Exec(`DELETE FROM users WHERE id = 'alice'`); err != nil {
 		t.Fatalf("deleting the user: %v", err)
 	}
-	for _, table := range []string{"habits", "habit_schedules", "entries"} {
+	for _, table := range []string{"habits", "habit_schedules", "entries", "changes"} {
 		var n int
 		st.db.QueryRow(`SELECT COUNT(*) FROM ` + table).Scan(&n)
 		if n != 0 {

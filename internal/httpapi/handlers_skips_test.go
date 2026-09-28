@@ -24,60 +24,53 @@ func createHabit(t *testing.T, h http.Handler, body string) string {
 }
 
 // Skipping a range skips the due days without a value of all active habits,
-// and writing the previous entries back undoes it.
+// as one undo step.
 func TestSkipDaysAndUndo(t *testing.T) {
 	h := newTestServer(t)
 	read := createHabit(t, h, `{"name":"Read","kind":"check","frequency":{"kind":"daily"}}`)
 	createHabit(t, h, `{"name":"Run","kind":"check","frequency":{"kind":"daily"}}`)
 	old := createHabit(t, h, `{"name":"Old","kind":"check","frequency":{"kind":"daily"}}`)
-	mustDo(t, h, "PATCH", "/api/habits/"+old, `{"archived":true}`, http.StatusOK)
+	w := do(t, h, "PUT", "/api/habits/"+old+"/archived", `{"archived":true}`, "application/json")
+	if w.Code != http.StatusNoContent {
+		t.Fatalf("archive: %d (%s)", w.Code, w.Body)
+	}
 
 	today := time.Now().UTC()
 	day := func(n int) string { return today.AddDate(0, 0, n).Format("2006-01-02") }
 	mustDo(t, h, "PUT", "/api/habits/"+read+"/entries/"+day(1), `{"value":1}`, http.StatusOK)
 
 	body := fmt.Sprintf(`{"from":%q,"to":%q}`, day(1), day(3))
-	var skipped struct {
-		Changes []struct {
-			HabitID  string       `json:"habitId"`
-			Date     domain.Date  `json:"date"`
-			Previous domain.Entry `json:"previous"`
-			Entry    domain.Entry `json:"entry"`
-		} `json:"changes"`
-	}
-	if err := json.Unmarshal(mustDo(t, h, "POST", "/api/skips", body, http.StatusOK), &skipped); err != nil {
-		t.Fatal(err)
-	}
+	w = do(t, h, "POST", "/api/skips", body, "application/json")
 	// Three days of Run, two of Read (one has a value), none of the archived.
-	if len(skipped.Changes) != 5 {
-		t.Fatalf("changes = %+v, want 5", skipped.Changes)
+	if w.Code != http.StatusOK || !strings.Contains(w.Body.String(), `"skipped":5`) {
+		t.Fatalf("skip: %d (%s), want 5 days", w.Code, w.Body)
 	}
-	for _, c := range skipped.Changes {
-		if c.HabitID == old || !c.Entry.Skipped {
-			t.Errorf("change %+v", c)
-		}
+	if skippedDays(t, h) != 5 {
+		t.Errorf("%d skipped days in the state, want 5", skippedDays(t, h))
 	}
 
-	// Undo writes the previous entries back.
-	var undo strings.Builder
-	undo.WriteString(`{"changes":[`)
-	for i, c := range skipped.Changes {
-		if i > 0 {
-			undo.WriteString(",")
-		}
-		expect, _ := json.Marshal(c.Entry)
-		entry, _ := json.Marshal(c.Previous)
-		fmt.Fprintf(&undo, `{"habitId":%q,"date":%q,"expect":%s,"entry":%s}`, c.HabitID, c.Date, expect, entry)
+	mustDo(t, h, "POST", "/api/undo", `{"id":`+w.Header().Get("Change-Id")+`}`, http.StatusOK)
+	if n := skippedDays(t, h); n != 0 {
+		t.Errorf("%d skipped days left after undo", n)
 	}
-	undo.WriteString(`]}`)
-	answer := string(mustDo(t, h, "POST", "/api/entries", undo.String(), http.StatusOK))
-	if !strings.Contains(answer, `"applied":5`) || !strings.Contains(answer, `"conflicts":0`) {
-		t.Errorf("undo answer = %s", answer)
+}
+
+// skippedDays counts the skipped days of all habits in the state.
+func skippedDays(t *testing.T, h http.Handler) int {
+	t.Helper()
+	var state struct {
+		Habits []struct {
+			Days string `json:"days"`
+		} `json:"habits"`
 	}
-	state := string(mustDo(t, h, "GET", "/api/state", "", http.StatusOK))
-	if strings.Count(state, `"skipped":{}`) != 2 {
-		t.Errorf("skipped days are left after undo: %s", state)
+	if err := json.Unmarshal(mustDo(t, h, "GET", "/api/state?archived=1", "", http.StatusOK), &state); err != nil {
+		t.Fatal(err)
 	}
+	n := 0
+	for _, habit := range state.Habits {
+		n += strings.Count(habit.Days, string(domain.StatusSkipped))
+	}
+	return n
 }
 
 // A range can be limited to some habits, and its bounds are checked.
@@ -89,7 +82,7 @@ func TestSkipDaysChecksItsInput(t *testing.T) {
 
 	answer := string(mustDo(t, h, "POST", "/api/skips",
 		fmt.Sprintf(`{"from":%q,"to":%q,"habitIds":[%q]}`, today, today, read), http.StatusOK))
-	if strings.Count(answer, `"habitId"`) != 1 {
+	if !strings.Contains(answer, `"skipped":1`) {
 		t.Errorf("one habit, one day: %s", answer)
 	}
 

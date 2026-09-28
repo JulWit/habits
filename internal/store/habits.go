@@ -1,17 +1,15 @@
 package store
 
 import (
-	"context"
 	"database/sql"
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/JulWit/habits/internal/domain"
 )
 
 const habitColumns = `id, name, color, icon, kind, step_value, unit,
-	position, archived_at, created_at, updated_at, category_id`
+	position, archived_at, created_at, updated_at, category_id, revision`
 
 // scanHabit scans a row selected with habitColumns.
 func scanHabit(row interface{ Scan(...any) error }) (domain.Habit, error) {
@@ -24,7 +22,7 @@ func scanHabit(row interface{ Scan(...any) error }) (domain.Habit, error) {
 	)
 	err := row.Scan(
 		&h.ID, &h.Name, &h.Color, &h.Icon, &h.Kind, &h.StepValue, &h.Unit,
-		&h.Position, &archivedAt, &created, &updated, &categoryID,
+		&h.Position, &archivedAt, &created, &updated, &categoryID, &h.Revision,
 	)
 	if err != nil {
 		return domain.Habit{}, err
@@ -46,25 +44,20 @@ func scanHabit(row interface{ Scan(...any) error }) (domain.Habit, error) {
 	return h, nil
 }
 
-// ListHabits returns the user's habits in display order, excluding deleted
-// habits.
-func (s *Store) ListHabits(ctx context.Context, userID string, includeArchived bool) ([]domain.Habit, error) {
-	query := `SELECT ` + habitColumns + `
-		FROM habits
-		WHERE user_id = ? AND deleted_at IS NULL`
+// Habits returns the user's habits in display order, archived ones only with
+// includeArchived.
+func (t *Tx) Habits(includeArchived bool) ([]domain.Habit, error) {
+	query := `SELECT ` + habitColumns + ` FROM habits WHERE user_id = ?`
 	if !includeArchived {
 		query += ` AND archived_at IS NULL`
 	}
 	query += ` ORDER BY position, created_at`
 
-	// Loaded first: the pool has a single connection, so the habit rows must be
-	// closed before the next query.
-	schedules, err := s.schedulesOfUser(ctx, userID)
+	schedules, err := t.schedulesOfUser()
 	if err != nil {
 		return nil, err
 	}
-
-	rows, err := s.db.QueryContext(ctx, query, userID)
+	rows, err := t.query(query, t.userID)
 	if err != nil {
 		return nil, fmt.Errorf("loading habits: %w", err)
 	}
@@ -85,19 +78,17 @@ func (s *Store) ListHabits(ctx context.Context, userID string, includeArchived b
 	return habits, rows.Err()
 }
 
-// GetHabit returns a habit of the user, or ErrNotFound.
-func (s *Store) GetHabit(ctx context.Context, userID, id string) (domain.Habit, error) {
-	row := s.db.QueryRowContext(ctx,
-		`SELECT `+habitColumns+` FROM habits WHERE id = ? AND user_id = ? AND deleted_at IS NULL`,
-		id, userID)
-	h, err := scanHabit(row)
+// Habit returns a habit of the user, or ErrNotFound.
+func (t *Tx) Habit(id string) (domain.Habit, error) {
+	h, err := scanHabit(t.queryRow(
+		`SELECT `+habitColumns+` FROM habits WHERE id = ? AND user_id = ?`, id, t.userID))
 	if errors.Is(err, sql.ErrNoRows) {
 		return domain.Habit{}, ErrNotFound
 	}
 	if err != nil {
 		return domain.Habit{}, fmt.Errorf("loading habit: %w", err)
 	}
-	if h.Schedules, err = s.schedulesOfHabit(ctx, h.ID); err != nil {
+	if h.Schedules, err = t.schedulesOfHabit(h.ID); err != nil {
 		return domain.Habit{}, err
 	}
 	if len(h.Schedules) == 0 {
@@ -106,199 +97,123 @@ func (s *Store) GetHabit(ctx context.Context, userID, id string) (domain.Habit, 
 	return h, nil
 }
 
-// CreateHabit inserts the habit at the end of the list and sets its ID,
-// position and timestamps.
-func (s *Store) CreateHabit(ctx context.Context, userID string, h *domain.Habit) error {
-	now := time.Now().UTC()
+// ArchivedCount returns the number of archived habits of the user.
+func (t *Tx) ArchivedCount() (int, error) {
+	var n int
+	err := t.queryRow(`SELECT COUNT(*) FROM habits WHERE user_id = ? AND archived_at IS NOT NULL`,
+		t.userID).Scan(&n)
+	if err != nil {
+		return 0, fmt.Errorf("counting archived habits: %w", err)
+	}
+	return n, nil
+}
+
+// CreateHabit validates the habit and inserts it at the end of the user's
+// list, with a new ID, its position and timestamps; a creation time already
+// set is kept.
+func (t *Tx) CreateHabit(h *domain.Habit) error {
 	h.ID = NewID()
-	h.CreatedAt, h.UpdatedAt = now, now
+	// An imported habit keeps the day it was created on.
+	if h.CreatedAt.IsZero() {
+		h.CreatedAt = t.now
+	}
+	h.UpdatedAt = t.now
 	if err := h.Validate(); err != nil {
 		return err
 	}
-
-	return s.inTx(ctx, "creating habit", func(tx *sql.Tx) error {
-		if err := ensureUser(ctx, tx, userID); err != nil {
-			return err
-		}
-		return insertHabit(ctx, tx, userID, h)
-	})
-}
-
-// insertHabit inserts the validated habit h, whose ID and timestamps are set,
-// at the end of the user's list and sets its position.
-func insertHabit(ctx context.Context, tx *sql.Tx, userID string, h *domain.Habit) error {
+	if err := t.requireOwnCategory(h.CategoryID); err != nil {
+		return err
+	}
 	var last sql.NullInt64
-	if err := tx.QueryRowContext(ctx,
-		`SELECT MAX(position) FROM habits WHERE user_id = ? AND deleted_at IS NULL`, userID,
-	).Scan(&last); err != nil {
+	if err := t.queryRow(`SELECT MAX(position) FROM habits WHERE user_id = ?`, t.userID).Scan(&last); err != nil {
 		return err
 	}
 	h.Position = int(last.Int64) + 1
 
-	if err := requireOwnCategory(ctx, tx, userID, h.CategoryID); err != nil {
+	if err := t.watch("habits", "id = ?", h.ID); err != nil {
 		return err
 	}
-	var archivedAt any
-	if h.ArchivedAt != nil {
-		archivedAt = formatTime(*h.ArchivedAt)
-	}
-	if _, err := tx.ExecContext(ctx, `
+	if _, err := t.exec(`
 		INSERT INTO habits (id, user_id, name, color, icon, kind, step_value, unit,
 			position, archived_at, created_at, updated_at, category_id)
 		VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-		h.ID, userID, h.Name, h.Color, h.Icon, h.Kind, h.StepValue, h.Unit,
-		h.Position, archivedAt, formatTime(h.CreatedAt), formatTime(h.UpdatedAt), nullableID(h.CategoryID),
+		h.ID, t.userID, h.Name, h.Color, h.Icon, h.Kind, h.StepValue, h.Unit,
+		h.Position, archivedAt(h), formatTime(h.CreatedAt), formatTime(h.UpdatedAt), nullableID(h.CategoryID),
 	); err != nil {
 		return err
 	}
-	return saveSchedules(ctx, tx, h)
+	return t.saveSchedules(h)
 }
 
-// UpdateHabit updates all fields except the position (see ReorderHabits).
-// Unless entries is nil, it also replaces all entries of the habit with
-// entries, e.g. with the history converted to a new kind (see
-// domain.ConvertKind).
-func (s *Store) UpdateHabit(ctx context.Context, userID string, h *domain.Habit, entries map[domain.Date]domain.Entry) error {
-	h.UpdatedAt = time.Now().UTC()
+// SaveHabit validates the habit and stores all its fields except the
+// position (see ReorderHabits), with its schedules.
+func (t *Tx) SaveHabit(h *domain.Habit) error {
+	h.UpdatedAt = t.now
 	if err := h.Validate(); err != nil {
 		return err
 	}
-	var archivedAt any
-	if h.ArchivedAt != nil {
-		archivedAt = formatTime(*h.ArchivedAt)
-	}
-
-	return s.inTx(ctx, "updating habit", func(tx *sql.Tx) error {
-		if err := requireOwnCategory(ctx, tx, userID, h.CategoryID); err != nil {
-			return err
-		}
-		res, err := tx.ExecContext(ctx, `
-			UPDATE habits SET
-				name = ?, color = ?, icon = ?, kind = ?, step_value = ?, unit = ?,
-				archived_at = ?, updated_at = ?, category_id = ?
-			WHERE id = ? AND user_id = ? AND deleted_at IS NULL`,
-			h.Name, h.Color, h.Icon, h.Kind, h.StepValue, h.Unit,
-			archivedAt, formatTime(h.UpdatedAt), nullableID(h.CategoryID),
-			h.ID, userID)
-		if err != nil {
-			return err
-		}
-		if err := expectOneRow(res); err != nil {
-			return err
-		}
-		if err := saveSchedules(ctx, tx, h); err != nil {
-			return err
-		}
-		if entries == nil {
-			return nil
-		}
-		return replaceEntries(ctx, tx, h, entries)
-	})
-}
-
-// requireOwnCategory returns a validation error if categoryID is not "" and
-// not a category of the user.
-func requireOwnCategory(ctx context.Context, tx *sql.Tx, userID, categoryID string) error {
-	if categoryID == "" {
-		return nil
-	}
-	var found string
-	err := tx.QueryRowContext(ctx,
-		`SELECT id FROM categories WHERE id = ? AND user_id = ? AND deleted_at IS NULL`,
-		categoryID, userID).Scan(&found)
-	if errors.Is(err, sql.ErrNoRows) {
-		return domain.Invalid("unknown_category", "unknown category")
-	}
-	return err
-}
-
-// nullableID maps "" to NULL.
-func nullableID(id string) any {
-	if id == "" {
-		return nil
-	}
-	return id
-}
-
-// replaceEntries replaces all entries of the habit.
-func replaceEntries(ctx context.Context, tx *sql.Tx, h *domain.Habit, entries map[domain.Date]domain.Entry) error {
-	if _, err := tx.ExecContext(ctx, `DELETE FROM entries WHERE habit_id = ?`, h.ID); err != nil {
+	if err := t.requireOwnCategory(h.CategoryID); err != nil {
 		return err
 	}
-	now := formatTime(time.Now())
-	for d, e := range entries {
-		if err := e.Validate(h.Kind); err != nil {
-			return err
-		}
-		if err := writeEntry(ctx, tx, h.ID, d, e, now); err != nil {
-			return err
-		}
+	if err := t.watch("habits", "id = ?", h.ID); err != nil {
+		return err
 	}
-	return nil
+	res, err := t.exec(`
+		UPDATE habits SET
+			name = ?, color = ?, icon = ?, kind = ?, step_value = ?, unit = ?,
+			archived_at = ?, updated_at = ?, category_id = ?
+		WHERE id = ? AND user_id = ?`,
+		h.Name, h.Color, h.Icon, h.Kind, h.StepValue, h.Unit,
+		archivedAt(h), formatTime(h.UpdatedAt), nullableID(h.CategoryID),
+		h.ID, t.userID)
+	if err != nil {
+		return err
+	}
+	if err := expectOneRow(res); err != nil {
+		return err
+	}
+	return t.saveSchedules(h)
 }
 
-// SoftDeleteHabit marks the habit as deleted. It can be restored with
-// RestoreHabit until PurgeDeleted removes it.
-func (s *Store) SoftDeleteHabit(ctx context.Context, userID, id string) error {
-	now := formatTime(time.Now())
-	res, err := s.db.ExecContext(ctx,
-		`UPDATE habits SET deleted_at = ?, updated_at = ? WHERE id = ? AND user_id = ? AND deleted_at IS NULL`,
-		now, now, id, userID)
+// archivedAt returns the archive time of h for storage, or NULL.
+func archivedAt(h *domain.Habit) any {
+	if h.ArchivedAt == nil {
+		return nil
+	}
+	return formatTime(*h.ArchivedAt)
+}
+
+// DeleteHabit removes a habit of the user with its schedules and entries.
+// Undoing the step brings them back.
+func (t *Tx) DeleteHabit(id string) error {
+	if err := errors.Join(
+		t.watch("habits", "id = ? AND user_id = ?", id, t.userID),
+		t.watch("habit_schedules", "habit_id = ?", id),
+		t.watch("entries", "habit_id = ?", id),
+	); err != nil {
+		return err
+	}
+	res, err := t.exec(`DELETE FROM habits WHERE id = ? AND user_id = ?`, id, t.userID)
 	if err != nil {
 		return fmt.Errorf("deleting habit: %w", err)
 	}
 	return expectOneRow(res)
 }
 
-// RestoreHabit restores a soft-deleted habit.
-func (s *Store) RestoreHabit(ctx context.Context, userID, id string) error {
-	res, err := s.db.ExecContext(ctx,
-		`UPDATE habits SET deleted_at = NULL, updated_at = ? WHERE id = ? AND user_id = ? AND deleted_at IS NOT NULL`,
-		formatTime(time.Now()), id, userID)
-	if err != nil {
-		return fmt.Errorf("restoring habit: %w", err)
+// requireOwnCategory returns a validation error if categoryID is not "" and
+// not a category of the user.
+func (t *Tx) requireOwnCategory(categoryID string) error {
+	if categoryID == "" {
+		return nil
 	}
-	return expectOneRow(res)
+	_, err := t.Category(categoryID)
+	if errors.Is(err, ErrNotFound) {
+		return domain.Invalid("unknown_category", "unknown category")
+	}
+	return err
 }
 
 // ReorderHabits sets the display order of the user's habits (see reorder).
-func (s *Store) ReorderHabits(ctx context.Context, userID string, ids []string) error {
-	return s.reorder(ctx, "habits", userID, ids)
-}
-
-// PurgeDeleted permanently removes habits deleted more than olderThan ago,
-// including their entries, and returns their number.
-func (s *Store) PurgeDeleted(ctx context.Context, olderThan time.Duration) (int64, error) {
-	cutoff := formatTime(time.Now().Add(-olderThan))
-	res, err := s.db.ExecContext(ctx,
-		`DELETE FROM habits WHERE deleted_at IS NOT NULL AND deleted_at < ?`, cutoff)
-	if err != nil {
-		return 0, fmt.Errorf("purging deleted habits: %w", err)
-	}
-	return res.RowsAffected()
-}
-
-// expectOneRow returns ErrNotFound if res affected no rows.
-func expectOneRow(res sql.Result) error {
-	n, err := res.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("affected rows: %w", err)
-	}
-	if n == 0 {
-		return ErrNotFound
-	}
-	return nil
-}
-
-// CountArchivedHabits returns the number of archived habits of the user.
-func (s *Store) CountArchivedHabits(ctx context.Context, userID string) (int, error) {
-	var n int
-	err := s.db.QueryRowContext(ctx,
-		`SELECT COUNT(*) FROM habits
-		 WHERE user_id = ? AND deleted_at IS NULL AND archived_at IS NOT NULL`,
-		userID).Scan(&n)
-	if err != nil {
-		return 0, fmt.Errorf("counting archived habits: %w", err)
-	}
-	return n, nil
+func (t *Tx) ReorderHabits(ids []string) error {
+	return t.reorder("habits", ids)
 }

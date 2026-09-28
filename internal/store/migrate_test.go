@@ -12,30 +12,120 @@ import (
 	"github.com/JulWit/habits/internal/domain"
 )
 
-// A database of version 1 with data is migrated to the schema a new database
-// gets, and keeps its data.
-func TestMigrationFromVersion1(t *testing.T) {
-	ctx := context.Background()
-	path := filepath.Join(t.TempDir(), "v1.db")
-	old, err := sql.Open("sqlite", "file:"+path)
+// schemaV3 is the schema of version 3, the oldest one this binary migrates,
+// for testing the migration from it. It must not change.
+const schemaV3 = `
+CREATE TABLE users (
+	id         TEXT NOT NULL PRIMARY KEY CHECK (id <> ''),
+	created_at TEXT NOT NULL
+) STRICT;
+
+CREATE TABLE user_settings (
+	user_id    TEXT NOT NULL PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+	data       TEXT NOT NULL CHECK (json_valid(data)),
+	updated_at TEXT NOT NULL
+) STRICT;
+
+CREATE TABLE categories (
+	id            TEXT    NOT NULL PRIMARY KEY,
+	user_id       TEXT    NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+	name          TEXT    NOT NULL CHECK (name <> ''),
+	icon          TEXT    NOT NULL DEFAULT '',
+	color         TEXT    NOT NULL DEFAULT '',
+	show_progress INTEGER NOT NULL DEFAULT 0 CHECK (show_progress IN (0, 1)),
+	position      INTEGER NOT NULL DEFAULT 0,
+	deleted_at    TEXT,
+	created_at    TEXT    NOT NULL,
+	updated_at    TEXT    NOT NULL
+) STRICT;
+CREATE INDEX idx_categories_user ON categories(user_id, deleted_at, position);
+
+CREATE TABLE habits (
+	id          TEXT    NOT NULL PRIMARY KEY,
+	user_id     TEXT    NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+	category_id TEXT    REFERENCES categories(id) ON DELETE SET NULL,
+	name        TEXT    NOT NULL CHECK (name <> ''),
+	color       TEXT    NOT NULL,
+	icon        TEXT    NOT NULL DEFAULT '',
+	kind        TEXT    NOT NULL CHECK (kind IN ('check', 'count', 'time', 'distance')),
+	step_value  INTEGER NOT NULL CHECK (step_value > 0),
+	unit        TEXT    NOT NULL DEFAULT '',
+	position    INTEGER NOT NULL DEFAULT 0,
+	archived_at TEXT,
+	deleted_at  TEXT,
+	created_at  TEXT    NOT NULL,
+	updated_at  TEXT    NOT NULL
+) STRICT;
+CREATE INDEX idx_habits_user ON habits(user_id, deleted_at, position);
+CREATE INDEX idx_habits_category ON habits(category_id);
+
+CREATE TABLE habit_schedules (
+	habit_id             TEXT    NOT NULL REFERENCES habits(id) ON DELETE CASCADE,
+	valid_from           TEXT    NOT NULL CHECK (valid_from GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'),
+	target_value         INTEGER NOT NULL CHECK (target_value >= 0),
+	target_type          TEXT    NOT NULL DEFAULT 'at_least' CHECK (target_type IN ('at_least', 'at_most')),
+	freq_kind            TEXT    NOT NULL CHECK (freq_kind IN ('daily', 'times_per_week', 'times_per_month', 'weekdays', 'custom_interval')),
+	freq_times_per_week  INTEGER NOT NULL DEFAULT 0 CHECK (freq_times_per_week BETWEEN 0 AND 7),
+	freq_times_per_month INTEGER NOT NULL DEFAULT 0 CHECK (freq_times_per_month BETWEEN 0 AND 28),
+	freq_weekdays        INTEGER NOT NULL DEFAULT 0 CHECK (freq_weekdays BETWEEN 0 AND 127),
+	freq_interval_days   INTEGER NOT NULL DEFAULT 0 CHECK (freq_interval_days >= 0),
+	freq_week_interval   INTEGER NOT NULL DEFAULT 0 CHECK (freq_week_interval >= 0),
+	freq_week_of_month   INTEGER NOT NULL DEFAULT 0 CHECK (freq_week_of_month BETWEEN -1 AND 4),
+	freq_anchor_date     TEXT    NOT NULL DEFAULT '',
+	PRIMARY KEY (habit_id, valid_from),
+	CHECK (target_value > 0 OR target_type = 'at_most')
+) STRICT, WITHOUT ROWID;
+
+CREATE TABLE entries (
+	habit_id   TEXT    NOT NULL REFERENCES habits(id) ON DELETE CASCADE,
+	date       TEXT    NOT NULL CHECK (date GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'),
+	value      INTEGER NOT NULL DEFAULT 0 CHECK (value >= 0),
+	skipped    INTEGER NOT NULL DEFAULT 0 CHECK (skipped IN (0, 1)),
+	updated_at TEXT    NOT NULL,
+	PRIMARY KEY (habit_id, date),
+	CHECK (skipped = 0 OR value = 0),
+	CHECK (value > 0 OR skipped = 1)
+) STRICT, WITHOUT ROWID;
+`
+
+// oldDatabase creates a database at path with the statements, as an older
+// release left it.
+func oldDatabase(t *testing.T, path string, stmts ...string) {
+	t.Helper()
+	old, err := sql.Open("sqlite", "file:"+path+"?_pragma=foreign_keys(1)")
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, stmt := range []string{
-		schemaV1,
-		`PRAGMA user_version = 1`,
-		`INSERT INTO users VALUES ('alice', '2026-01-01T00:00:00.000000000Z')`,
-		`INSERT INTO habits (id, user_id, name, color, kind, step_value, created_at, updated_at)
-		 VALUES ('h1', 'alice', 'Water', 'sky', 'count', 10, '2026-01-01T00:00:00.000000000Z', '2026-01-01T00:00:00.000000000Z')`,
-		`INSERT INTO habit_schedules (habit_id, valid_from, target_value, freq_kind, freq_times_per_week)
-		 VALUES ('h1', '2026-01-01', 80, 'times_per_week', 3)`,
-		`INSERT INTO entries VALUES ('h1', '2026-01-05', 40, '2026-01-05T00:00:00.000000000Z')`,
-	} {
+	defer old.Close()
+	for _, stmt := range stmts {
 		if _, err := old.Exec(stmt); err != nil {
-			t.Fatalf("setting up version 1: %v", err)
+			t.Fatalf("setting up the old database: %v", err)
 		}
 	}
-	old.Close()
+}
+
+// A database of version 3 with data is migrated to the schema a new database
+// gets. It keeps its data, except what was deleted: deleted habits go, and
+// habits of a deleted category lose it.
+func TestMigrationFromVersion3(t *testing.T) {
+	ctx := context.Background()
+	path := filepath.Join(t.TempDir(), "v3.db")
+	const stamp = "2026-01-01T00:00:00.000000000Z"
+	oldDatabase(t, path,
+		schemaV3,
+		`PRAGMA user_version = 3`,
+		`INSERT INTO users VALUES ('alice', '`+stamp+`')`,
+		`INSERT INTO categories (id, user_id, name, deleted_at, created_at, updated_at)
+		 VALUES ('gone', 'alice', 'Old', '`+stamp+`', '`+stamp+`', '`+stamp+`')`,
+		`INSERT INTO habits (id, user_id, category_id, name, color, kind, step_value, created_at, updated_at)
+		 VALUES ('h1', 'alice', 'gone', 'Water', 'sky', 'count', 10, '`+stamp+`', '`+stamp+`')`,
+		`INSERT INTO habits (id, user_id, name, color, kind, step_value, deleted_at, created_at, updated_at)
+		 VALUES ('h2', 'alice', 'Deleted', 'sky', 'check', 1, '`+stamp+`', '`+stamp+`', '`+stamp+`')`,
+		`INSERT INTO habit_schedules (habit_id, valid_from, target_value, freq_kind, freq_times_per_week)
+		 VALUES ('h1', '2026-01-01', 80, 'times_per_week', 3), ('h2', '2026-01-01', 1, 'daily', 0)`,
+		`INSERT INTO entries (habit_id, date, value, updated_at) VALUES
+		 ('h1', '2026-01-05', 40, '`+stamp+`'), ('h2', '2026-01-05', 1, '`+stamp+`')`,
+	)
 
 	st, err := Open(ctx, path)
 	if err != nil {
@@ -43,10 +133,11 @@ func TestMigrationFromVersion1(t *testing.T) {
 	}
 	defer st.Close()
 
-	h, err := st.GetHabit(ctx, "alice", "h1")
-	if err != nil {
-		t.Fatal(err)
+	habits := read(t, st, "alice", func(tx *Tx) ([]domain.Habit, error) { return tx.Habits(true) })
+	if len(habits) != 1 || habits[0].ID != "h1" {
+		t.Fatalf("habits = %+v, want only h1", habits)
 	}
+	h := habits[0]
 	want := domain.Schedule{
 		From: day(2026, time.January, 1), TargetValue: 80, TargetType: domain.TargetAtLeast,
 		Frequency: domain.Frequency{Kind: domain.FreqTimesPerWeek, TimesPerWeek: 3},
@@ -54,12 +145,16 @@ func TestMigrationFromVersion1(t *testing.T) {
 	if len(h.Schedules) != 1 || h.Schedules[0] != want {
 		t.Errorf("schedules = %+v, want %+v", h.Schedules, want)
 	}
-	entries, err := st.EntriesForHabit(ctx, "alice", "h1")
-	if err != nil {
-		t.Fatal(err)
+	if h.CategoryID != "" {
+		t.Errorf("category = %q, want none", h.CategoryID)
 	}
-	if got := entries[day(2026, time.January, 5)]; got != (domain.Entry{Value: 40}) {
+	if got := entriesOf(t, st, "alice", "h1")[day(2026, time.January, 5)]; got != (domain.Entry{Value: 40}) {
 		t.Errorf("entry = %+v, want the value 40", got)
+	}
+	var orphans int
+	st.db.QueryRow(`SELECT COUNT(*) FROM entries WHERE habit_id = 'h2'`).Scan(&orphans)
+	if orphans != 0 {
+		t.Errorf("%d entries of the deleted habit left", orphans)
 	}
 
 	fresh := openTestStore(t)
@@ -68,63 +163,24 @@ func TestMigrationFromVersion1(t *testing.T) {
 	}
 	var version int
 	st.db.QueryRow("PRAGMA user_version").Scan(&version)
-	if version != latestVersion() {
-		t.Errorf("user_version = %d, want %d", version, latestVersion())
+	if version != latestVersion {
+		t.Errorf("user_version = %d, want %d", version, latestVersion)
 	}
 }
 
-// Migration 3 removes the notes: days that held only a note go, the others
-// keep their value or skip.
-func TestMigrationRemovesNotes(t *testing.T) {
-	ctx := context.Background()
+// A database older than oldestVersion is refused and left as it is.
+func TestTooOldDatabaseIsRefused(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "v2.db")
-	old, err := sql.Open("sqlite", "file:"+path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	const stamp = "2026-01-01T00:00:00.000000000Z"
-	for _, stmt := range []string{
-		schemaV1,
-		migrations[0],
-		`PRAGMA user_version = 2`,
-		`INSERT INTO users VALUES ('alice', '` + stamp + `')`,
-		`INSERT INTO habits (id, user_id, name, color, kind, step_value, created_at, updated_at)
-		 VALUES ('h1', 'alice', 'Read', 'sky', 'check', 1, '` + stamp + `', '` + stamp + `')`,
-		`INSERT INTO habit_schedules (habit_id, valid_from, target_value, freq_kind)
-		 VALUES ('h1', '2026-01-01', 1, 'daily')`,
-		`INSERT INTO entries (habit_id, date, value, skipped, note, updated_at) VALUES
-		 ('h1', '2026-01-05', 1, 0, 'done', '` + stamp + `'),
-		 ('h1', '2026-01-06', 0, 1, 'ill', '` + stamp + `'),
-		 ('h1', '2026-01-07', 0, 0, 'only a note', '` + stamp + `')`,
-	} {
-		if _, err := old.Exec(stmt); err != nil {
-			t.Fatalf("setting up version 2: %v", err)
-		}
-	}
-	old.Close()
-
-	st, err := Open(ctx, path)
-	if err != nil {
-		t.Fatalf("migrating: %v", err)
-	}
-	defer st.Close()
-	entries, err := st.EntriesForHabit(ctx, "alice", "h1")
-	if err != nil {
-		t.Fatal(err)
-	}
-	want := map[domain.Date]domain.Entry{
-		day(2026, time.January, 5): {Value: 1},
-		day(2026, time.January, 6): {Skipped: true},
-	}
-	if len(entries) != len(want) || entries[day(2026, time.January, 5)] != want[day(2026, time.January, 5)] ||
-		entries[day(2026, time.January, 6)] != want[day(2026, time.January, 6)] {
-		t.Errorf("entries = %+v, want %+v", entries, want)
+	oldDatabase(t, path, `CREATE TABLE users (id TEXT)`, `PRAGMA user_version = 2`)
+	if st, err := Open(context.Background(), path); err == nil {
+		st.Close()
+		t.Fatal("a database of version 2 was opened")
 	}
 }
 
 // schemaOf returns the definitions of the tables and indexes of db, with
-// quotes and whitespace normalised, as a table rebuilt and renamed by a
-// migration is stored with a quoted name.
+// comments, quotes and whitespace normalised, as they differ between a
+// table created anew and one changed by ALTER TABLE.
 func schemaOf(t *testing.T, db *sql.DB) string {
 	t.Helper()
 	rows, err := db.Query(`SELECT sql FROM sqlite_master WHERE sql IS NOT NULL ORDER BY type, name`)
@@ -132,6 +188,7 @@ func schemaOf(t *testing.T, db *sql.DB) string {
 		t.Fatal(err)
 	}
 	defer rows.Close()
+	comment := regexp.MustCompile(`--[^\n]*`)
 	space := regexp.MustCompile(`\s+`)
 	var out []string
 	for rows.Next() {
@@ -139,8 +196,13 @@ func schemaOf(t *testing.T, db *sql.DB) string {
 		if err := rows.Scan(&def); err != nil {
 			t.Fatal(err)
 		}
+		def = comment.ReplaceAllString(def, "")
 		def = strings.ReplaceAll(def, `"`, "")
-		out = append(out, space.ReplaceAllString(def, " "))
+		def = space.ReplaceAllString(def, " ")
+		def = strings.ReplaceAll(def, "( ", "(")
+		def = strings.ReplaceAll(def, " )", ")")
+		def = strings.ReplaceAll(def, " ,", ",")
+		out = append(out, def)
 	}
 	if err := rows.Err(); err != nil {
 		t.Fatal(err)

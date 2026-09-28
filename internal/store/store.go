@@ -1,4 +1,9 @@
 // Package store persists the application data in SQLite.
+//
+// All access goes through a transaction of one user (Tx): View for reading,
+// Update for changing. A handler reads, checks and writes within one
+// transaction, so no change made in between can slip through. An Update that
+// calls Tx.Record keeps an undo step (see changes.go).
 package store
 
 import (
@@ -9,6 +14,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"strings"
 	"time"
 
 	_ "modernc.org/sqlite" // pure Go driver, no cgo
@@ -17,7 +23,8 @@ import (
 var (
 	// ErrNotFound is returned when a record does not exist for the user.
 	ErrNotFound = errors.New("not found")
-	// ErrConflict is returned when a change conflicts with the stored state.
+	// ErrConflict is returned when a change conflicts with the stored state,
+	// e.g. an undo of data changed since.
 	ErrConflict = errors.New("conflict")
 )
 
@@ -61,6 +68,103 @@ func Open(ctx context.Context, path string) (*Store, error) {
 // Close closes the database.
 func (s *Store) Close() error { return s.db.Close() }
 
+// Tx is a transaction of one user. Its methods are scoped to that user.
+type Tx struct {
+	ctx    context.Context
+	tx     *sql.Tx
+	userID string
+	// now is the time of the transaction, used for all its timestamps.
+	now time.Time
+	// log collects the rows the transaction changes, for its undo step; nil
+	// in View.
+	log *changeLog
+}
+
+// View runs fn in a transaction that only reads.
+func (s *Store) View(ctx context.Context, userID string, fn func(*Tx) error) error {
+	return s.inTx(ctx, "reading", func(tx *sql.Tx) error {
+		return fn(&Tx{ctx: ctx, tx: tx, userID: userID, now: time.Now().UTC()})
+	})
+}
+
+// Update runs fn in a transaction that changes the user's data and commits
+// it if fn succeeds. If fn calls Tx.Record, the change is kept as an undo
+// step and its ID returned; otherwise the ID is 0.
+func (s *Store) Update(ctx context.Context, userID string, fn func(*Tx) error) (changeID int64, err error) {
+	if strings.TrimSpace(userID) == "" {
+		return 0, errors.New("no user")
+	}
+	err = s.inTx(ctx, "saving", func(tx *sql.Tx) error {
+		t := &Tx{ctx: ctx, tx: tx, userID: userID, now: time.Now().UTC(), log: &changeLog{}}
+		if err := t.ensureUser(); err != nil {
+			return err
+		}
+		if err := fn(t); err != nil {
+			return err
+		}
+		changeID, err = t.saveChange()
+		return err
+	})
+	if err != nil {
+		return 0, err
+	}
+	return changeID, nil
+}
+
+// inTx runs fn in a transaction and commits it. what describes the work for
+// errors; errors of the domain and ErrNotFound are passed on unwrapped.
+func (s *Store) inTx(ctx context.Context, what string, fn func(*sql.Tx) error) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("%s: %w", what, err)
+	}
+	defer tx.Rollback()
+	if err := fn(tx); err != nil {
+		return err
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("%s: %w", what, err)
+	}
+	return nil
+}
+
+// Now returns the time of the transaction, which its timestamps use.
+func (t *Tx) Now() time.Time { return t.now }
+
+// exec runs a statement in the transaction.
+func (t *Tx) exec(query string, args ...any) (sql.Result, error) {
+	return t.tx.ExecContext(t.ctx, query, args...)
+}
+
+// query runs a query in the transaction.
+func (t *Tx) query(query string, args ...any) (*sql.Rows, error) {
+	return t.tx.QueryContext(t.ctx, query, args...)
+}
+
+// queryRow runs a query for a single row in the transaction.
+func (t *Tx) queryRow(query string, args ...any) *sql.Row {
+	return t.tx.QueryRowContext(t.ctx, query, args...)
+}
+
+// ensureUser records the user on their first write. Every user-owned row
+// refers to it.
+func (t *Tx) ensureUser() error {
+	if _, err := t.exec(
+		`INSERT INTO users (id, created_at) VALUES (?, ?) ON CONFLICT(id) DO NOTHING`,
+		t.userID, formatTime(t.now)); err != nil {
+		return fmt.Errorf("recording user: %w", err)
+	}
+	return nil
+}
+
+// DeleteUser removes the user and, through ON DELETE CASCADE, all their data:
+// settings, categories, habits, schedules, entries and undo steps. The user
+// is recorded again on their next write. It cannot be undone.
+func (t *Tx) DeleteUser() error {
+	_, err := t.exec(`DELETE FROM users WHERE id = ?`, t.userID)
+	return err
+}
+
 // NewID returns a random 128-bit ID in hex.
 func NewID() string {
 	var b [16]byte
@@ -78,12 +182,22 @@ func formatTime(t time.Time) string { return t.UTC().Format(storedTimeLayout) }
 // parseTime parses a stored timestamp.
 func parseTime(s string) (time.Time, error) { return time.Parse(time.RFC3339Nano, s) }
 
-// DeleteUser removes the user and, through ON DELETE CASCADE, all their data:
-// settings, categories, habits, schedules and entries. The user is recorded
-// again on their next write. Deleting a user without data is not an error.
-func (s *Store) DeleteUser(ctx context.Context, userID string) error {
-	return s.inTx(ctx, "deleting user data", func(tx *sql.Tx) error {
-		_, err := tx.ExecContext(ctx, `DELETE FROM users WHERE id = ?`, userID)
-		return err
-	})
+// expectOneRow returns ErrNotFound if res affected no rows.
+func expectOneRow(res sql.Result) error {
+	n, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("affected rows: %w", err)
+	}
+	if n == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+// nullableID maps "" to NULL.
+func nullableID(id string) any {
+	if id == "" {
+		return nil
+	}
+	return id
 }

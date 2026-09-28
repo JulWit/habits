@@ -14,6 +14,8 @@ type Stats struct {
 	Total int `json:"total"`
 	// StreakUnit is "days", "weeks" or "months".
 	StreakUnit string `json:"streakUnit"`
+	// LastDone is the latest complete due day up to today, "" if none.
+	LastDone Date `json:"lastDone"`
 }
 
 // DefaultRateWindowDays is the default window for the completion rate.
@@ -24,10 +26,14 @@ const DefaultRateWindowDays = 30
 // 0. An open today does not break a streak, and skipped days count as not
 // due.
 func ComputeStats(h Habit, entries map[Date]Entry, today Date, windowDays int) Stats {
+	var st Stats
 	if p, ok := periodOf(h.Current().Frequency.Kind); ok {
-		return periodicStats(h, entries, today, windowDays, p)
+		st = periodicStats(h, entries, today, windowDays, p)
+	} else {
+		st = dailyStats(h, entries, today, windowDays)
 	}
-	return dailyStats(h, entries, today, windowDays)
+	st.LastDone = LastDone(h, entries, today)
+	return st
 }
 
 // HistoryStart returns the first day of the habit's history: its creation day,

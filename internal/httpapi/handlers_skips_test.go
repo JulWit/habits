@@ -60,7 +60,7 @@ func skippedDays(t *testing.T, h http.Handler) int {
 			Days string `json:"days"`
 		} `json:"habits"`
 	}
-	if err := json.Unmarshal(mustDo(t, h, "GET", "/api/state?archived=1", "", http.StatusOK), &state); err != nil {
+	if err := json.Unmarshal(mustDo(t, h, "GET", "/api/state", "", http.StatusOK), &state); err != nil {
 		t.Fatal(err)
 	}
 	n := 0

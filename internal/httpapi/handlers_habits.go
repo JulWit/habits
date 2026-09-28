@@ -37,11 +37,10 @@ type stateResponse struct {
 	// the user's time zone. The client reloads the state then.
 	NextDayIn  int64             `json:"nextDayIn"`
 	Categories []domain.Category `json:"categories"`
-	// ArchivedCount is the number of archived habits, even if they are not
-	// included in Habits.
-	ArchivedCount int         `json:"archivedCount"`
-	Habits        []habitView `json:"habits"`
-	Colors        []string    `json:"colors"`
+	// Habits holds all habits, archived ones included; the client hides
+	// those unless the ShowArchived setting is on.
+	Habits []habitView `json:"habits"`
+	Colors []string    `json:"colors"`
 	// Icons are the valid habit icons (domain.HabitIcons).
 	Icons []string `json:"icons"`
 	// Kinds describes the value range of each habit kind.
@@ -61,8 +60,7 @@ type stateResponse struct {
 const entryWindowDays = 200
 
 // handleState returns all data the client needs on startup. The query
-// parameter archived=1|0 overrides the ShowArchived setting; from=YYYY-MM-DD
-// extends the entry window into the past.
+// parameter from=YYYY-MM-DD extends the entry window into the past.
 func (s *Server) handleState(w http.ResponseWriter, r *http.Request) {
 	user := auth.MustUser(r.Context())
 	var from domain.Date
@@ -80,11 +78,7 @@ func (s *Server) handleState(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return err
 		}
-		includeArchived := b.settings.ShowArchived
-		if v := r.URL.Query().Get("archived"); v != "" {
-			includeArchived = v == "1"
-		}
-		habits, err := tx.Habits(includeArchived)
+		habits, err := tx.Habits(true)
 		if err != nil {
 			return err
 		}
@@ -103,10 +97,6 @@ func (s *Server) handleState(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return err
 		}
-		archivedCount, err := tx.ArchivedCount()
-		if err != nil {
-			return err
-		}
 
 		views := make([]habitView, 0, len(habits))
 		for _, h := range habits {
@@ -119,7 +109,6 @@ func (s *Server) handleState(w http.ResponseWriter, r *http.Request) {
 			Today:          b.today,
 			NextDayIn:      domain.UntilTomorrow(time.Now(), b.loc).Milliseconds(),
 			Categories:     categories,
-			ArchivedCount:  archivedCount,
 			Habits:         views,
 			Colors:         domain.Colors,
 			Icons:          domain.HabitIcons,

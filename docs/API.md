@@ -8,7 +8,7 @@ only `/healthz` outside `/api` does not.
 
 | Method | Path | Purpose |
 |---|---|---|
-| `GET` | `/api/state` | Complete state for the client; `?archived=0`/`1` overrides the `showArchived` setting, `?from=YYYY-MM-DD` loads entries further back |
+| `GET` | `/api/state` | Complete state for the client, archived habits included (the client hides them unless `showArchived` is on); `?from=YYYY-MM-DD` loads entries further back |
 | `GET` | `/api/days` | Day statistics of `?year=` (default: this year) over the habits that are not archived, or those of `?category=`, see [Statistics](#statistics) |
 | `POST` | `/api/habits` | Create a habit |
 | `GET` | `/api/habits/{id}` | A habit with its full history |

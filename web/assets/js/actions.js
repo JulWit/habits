@@ -295,9 +295,10 @@ export async function toggleArchive(id) {
     return;
   }
   if (archived && deps.currentHabitId() === id) deps.goHome();
-  await deps.refresh();
+  // The state keeps archived habits; the overview hides them unless shown.
+  upsertHabit(withoutChange(answer));
   const name = habit.name;
-  offerUndo(answer?.changeId, archived
+  offerUndo(answer.changeId, archived
     ? t("\"{name}\" archived", { name })
     : t("\"{name}\" reactivated", { name }));
 }

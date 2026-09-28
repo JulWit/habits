@@ -258,3 +258,30 @@ func TestPatchArchivesAHabit(t *testing.T) {
 		t.Error("the habit is still archived after undo")
 	}
 }
+
+// The state holds archived habits even with the ShowArchived setting off;
+// the client hides them.
+func TestStateHoldsArchivedHabits(t *testing.T) {
+	h := newTestServer(t)
+	id := createHabit(t, h, `{"name":"Read","kind":"check","frequency":{"kind":"daily"}}`)
+	mustDo(t, h, "PATCH", "/api/habits/"+id, `{"archived":true}`, http.StatusOK)
+
+	var state struct {
+		Settings struct {
+			ShowArchived bool `json:"showArchived"`
+		} `json:"settings"`
+		Habits []struct {
+			ID         string     `json:"id"`
+			ArchivedAt *time.Time `json:"archivedAt"`
+		} `json:"habits"`
+	}
+	if err := json.Unmarshal(mustDo(t, h, "GET", "/api/state", "", http.StatusOK), &state); err != nil {
+		t.Fatal(err)
+	}
+	if state.Settings.ShowArchived {
+		t.Fatal("showArchived is on by default")
+	}
+	if len(state.Habits) != 1 || state.Habits[0].ID != id || state.Habits[0].ArchivedAt == nil {
+		t.Errorf("habits = %+v, want the archived habit", state.Habits)
+	}
+}

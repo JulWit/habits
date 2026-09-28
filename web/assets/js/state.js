@@ -10,7 +10,6 @@ export const state = {
   habits: [],
   colors: [],
   icons: [],
-  archivedCount: 0,
 };
 
 const listeners = new Set();
@@ -158,9 +157,16 @@ export function removeCategory(id) {
   notify();
 }
 
+/** Returns the number of archived habits. The state holds them all. */
+export function archivedCount() {
+  return state.habits.filter((h) => h.archivedAt).length;
+}
+
 /**
- * Returns the habits grouped by category in display order, followed by the
- * uncategorised habits. Habits of deleted categories count as uncategorised.
+ * Returns the habits shown on the overview grouped by category in display
+ * order, followed by the uncategorised habits. Habits of deleted categories
+ * count as uncategorised. Archived habits are left out unless the
+ * showArchived setting is on.
  */
 export function groupedHabits() {
   const blocks = state.categories.map((category) => ({ category, habits: [] }));
@@ -168,6 +174,7 @@ export function groupedHabits() {
   const loose = { category: null, habits: [] };
 
   for (const habit of state.habits) {
+    if (habit.archivedAt && !state.settings.showArchived) continue;
     (byId.get(habit.categoryId) ?? loose).habits.push(habit);
   }
   if (loose.habits.length > 0) blocks.push(loose);

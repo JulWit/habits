@@ -97,17 +97,6 @@ func (t *Tx) Habit(id string) (domain.Habit, error) {
 	return h, nil
 }
 
-// ArchivedCount returns the number of archived habits of the user.
-func (t *Tx) ArchivedCount() (int, error) {
-	var n int
-	err := t.queryRow(`SELECT COUNT(*) FROM habits WHERE user_id = ? AND archived_at IS NOT NULL`,
-		t.userID).Scan(&n)
-	if err != nil {
-		return 0, fmt.Errorf("counting archived habits: %w", err)
-	}
-	return n, nil
-}
-
 // CreateHabit validates the habit and inserts it at the end of the user's
 // list, with a new ID, its position and timestamps; a creation time already
 // set is kept.

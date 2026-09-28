@@ -76,7 +76,7 @@ func TestExportAndImportRestoreTheHistory(t *testing.T) {
 			Days     string
 		}
 	}
-	json.Unmarshal(mustDo(t, dst, "GET", "/api/state?archived=1", "", http.StatusOK), &state)
+	json.Unmarshal(mustDo(t, dst, "GET", "/api/state", "", http.StatusOK), &state)
 	if len(state.Categories) != 1 || len(state.Habits) != 2 {
 		t.Fatalf("imported %d categories, %d habits", len(state.Categories), len(state.Habits))
 	}
@@ -196,7 +196,7 @@ func TestDeleteDataEmptiesTheBoard(t *testing.T) {
 		Habits     []any
 		Settings   struct{ Theme string }
 	}
-	json.Unmarshal(mustDo(t, h, "GET", "/api/state?archived=1", "", http.StatusOK), &state)
+	json.Unmarshal(mustDo(t, h, "GET", "/api/state", "", http.StatusOK), &state)
 	if len(state.Categories) != 0 || len(state.Habits) != 0 || state.Settings.Theme != "system" {
 		t.Errorf("after deleting: %d categories, %d habits, theme %q",
 			len(state.Categories), len(state.Habits), state.Settings.Theme)

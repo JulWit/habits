@@ -2,7 +2,7 @@
 // first and restored if the server rejects the change.
 
 import { api } from "./api.js";
-import { state, replaceState, subscribe } from "./state.js";
+import { state, replaceState, subscribe, archivedCount } from "./state.js";
 import { icons, colorLabel, colorValue } from "./icons.js";
 import { errorText, toast } from "./undo.js";
 import { t, locale, userTimeZone } from "./i18n.js";
@@ -121,11 +121,8 @@ export function initSettings(handlers) {
     if (await saveSetting({ rateWindow: rateWindowSelect.value })) await reload();
   });
 
-  archivedInput.addEventListener("change", async () => {
-    await saveSetting({ showArchived: archivedInput.checked });
-    // This setting changes which habits the server sends.
-    await reload();
-  });
+  // The state holds the archived habits; the overview shows them at once.
+  archivedInput.addEventListener("change", () => saveSetting({ showArchived: archivedInput.checked }));
 
   initTransfer();
   initDeleteAll();
@@ -183,7 +180,7 @@ function paint() {
   paintAccount();
   paintVersion();
 
-  const archived = state.archivedCount;
+  const archived = archivedCount();
   archivedInput.checked = settings.showArchived;
   // Hidden if there are no archived habits and the switch is off.
   archiveItem.hidden = archived === 0 && !settings.showArchived;

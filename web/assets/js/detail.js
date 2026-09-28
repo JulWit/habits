@@ -73,13 +73,19 @@ export function renderDetail(habit) {
   }
   root.dataset.habit = habit.id;
   root.style.setProperty("--habit-color", colorValue(habit.color));
-  // The cumulative chart is only shown for countable habits.
-  const panels = [header(habit), stats(habit), details(habit), activity(habit), heatmap(habit)];
-  if (H.isCountable(habit)) panels.push(cumulative(habit));
-  // The notes only with notes to show.
-  const notes = notesPanel(habit);
-  if (notes) panels.push(notes);
-  root.replaceChildren(...panels);
+  // How the habit is set up comes first, then its statistics and the year,
+  // then its history. The cumulative chart is only shown for countable
+  // habits, the notes only with notes to show.
+  const panels = [
+    header(habit),
+    details(habit),
+    stats(habit),
+    H.isCountable(habit) ? cumulative(habit) : null,
+    heatmap(habit),
+    notesPanel(habit),
+    activity(habit),
+  ];
+  root.replaceChildren(...panels.filter(Boolean));
   showNewest(root);
   centreToday(root);
 }

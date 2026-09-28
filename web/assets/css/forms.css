@@ -620,7 +620,6 @@ html:has(.dialog.page[open]) { overflow: hidden; }
 .day-value > .switch { padding: calc(.9 * var(--space)) calc(1.15 * var(--space)) 0; }
 
 .day-skip { padding: calc(.9 * var(--space)) calc(1.15 * var(--space)) 0; }
-.day-skip .field-hint { margin: calc(.3 * var(--space)) 0 0; }
 
 .day-note.field { margin: 0; padding: calc(.9 * var(--space)) calc(1.15 * var(--space)) 0; }
 

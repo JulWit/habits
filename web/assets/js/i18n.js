@@ -112,7 +112,7 @@ const de = {
   "e.g. holiday": "z. B. Urlaub",
   "Only due days without an entry are skipped; days with an entry keep it. Skipped days neither break nor extend a streak. Archived habits are left out.":
     "Übersprungen werden nur fällige Tage ohne Eintrag; Tage mit Eintrag behalten ihn. Übersprungene Tage unterbrechen keine Serie und verlängern sie nicht. Archivierte Gewohnheiten bleiben außen vor.",
-  "Holiday or illness: skip days of all habits": "Urlaub oder Krankheit: Tage aller Gewohnheiten überspringen",
+  "Skip days of all habits": "Tage aller Gewohnheiten überspringen",
   "Nothing to skip: the days are not due or already have an entry.":
     "Nichts zu überspringen: Die Tage sind nicht fällig oder haben schon einen Eintrag.",
   "1 day skipped": "1 Tag übersprungen",
@@ -308,8 +308,6 @@ const de = {
   "Daily limit: {target}": "Tageslimit: {target}",
   "Completed": "Erledigt",
   "Skip this day": "Tag überspringen",
-  "A skipped day does not count: it neither breaks nor extends the streak.":
-    "Ein übersprungener Tag zählt nicht: Er unterbricht die Serie nicht und verlängert sie auch nicht.",
   "Note": "Notiz",
   "{goal} · step: {step}": "{goal} · Schritt: {step}",
 

@@ -1,4 +1,5 @@
-# Builds the container image and pushes it to the GitHub Container Registry.
+# Tests the code, then builds the container image and pushes it to the GitHub
+# Container Registry. Pull requests (e.g. from Dependabot) are only tested.
 # The package inherits the repository's visibility, so the image is private
 # for as long as the repository is.
 name: Image
@@ -7,6 +8,7 @@ on:
   push:
     branches: [main]
     tags: ["v*"]
+  pull_request:
   workflow_dispatch:
 
 env:
@@ -16,7 +18,28 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
+  # Vet, format and tests must pass before an image is published.
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+
+      - name: Formatting
+        run: test -z "$(gofmt -l .)" || { gofmt -l .; exit 1; }
+
+      - run: go vet ./...
+
+      - run: go test ./...
+
   image:
+    needs: test
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
 
     # The GITHUB_TOKEN is enough for our own registry; no PAT is needed.

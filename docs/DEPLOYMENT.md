@@ -25,8 +25,9 @@ current day.
 
 ## Container
 
-Every push to `main` builds an image for `linux/amd64` and `linux/arm64` and
-publishes it to the GitHub Container Registry:
+Every push to `main` runs `gofmt`, `go vet` and the tests, and once they pass
+builds an image for `linux/amd64` and `linux/arm64` and publishes it to the
+GitHub Container Registry. Pull requests are only tested.
 
 ```bash
 docker pull ghcr.io/julwit/habits:latest

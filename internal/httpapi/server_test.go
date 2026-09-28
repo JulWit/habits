@@ -28,6 +28,12 @@ var testWeb = fstest.MapFS{
 
 func newTestServer(t *testing.T) http.Handler {
 	t.Helper()
+	return newTestServerLogging(t, io.Discard)
+}
+
+// newTestServerLogging is newTestServer with its log written to w.
+func newTestServerLogging(t *testing.T, w io.Writer) http.Handler {
+	t.Helper()
 	st, err := store.Open(context.Background(), filepath.Join(t.TempDir(), "test.db"))
 	if err != nil {
 		t.Fatalf("store.Open: %v", err)
@@ -40,7 +46,7 @@ func newTestServer(t *testing.T) http.Handler {
 		UserHeader:  "Remote-User",
 		Location:    time.UTC,
 	}
-	h, err := New(cfg, st, slog.New(slog.NewTextHandler(io.Discard, nil)), testWeb)
+	h, err := New(cfg, st, slog.New(slog.NewTextHandler(w, nil)), testWeb)
 	if err != nil {
 		t.Fatalf("New: %v", err)
 	}
@@ -112,6 +118,20 @@ func TestHealthzNeedsNoIdentity(t *testing.T) {
 	w := do(t, h, "GET", "/healthz", "", "")
 	if w.Code != http.StatusOK || !strings.Contains(w.Body.String(), "ok") {
 		t.Errorf("healthz: %d %q", w.Code, w.Body)
+	}
+}
+
+// Successful health checks are not logged, other requests are.
+func TestHealthzIsNotLogged(t *testing.T) {
+	var log strings.Builder
+	h := newTestServerLogging(t, &log)
+	do(t, h, "GET", "/healthz", "", "")
+	do(t, h, "GET", "/api/state", "", "")
+	if strings.Contains(log.String(), "/healthz") {
+		t.Errorf("the health check was logged:\n%s", log.String())
+	}
+	if !strings.Contains(log.String(), "/api/state") {
+		t.Errorf("other requests are no longer logged:\n%s", log.String())
 	}
 }
 

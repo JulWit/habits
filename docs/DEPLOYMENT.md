@@ -39,7 +39,9 @@ requires a token with `read:packages`.
 The image is `FROM scratch` and contains only the binary and an empty `/data`
 directory. There is no shell and no curl, so its `HEALTHCHECK` runs
 `/habits healthcheck`: the binary asks its own `/healthz` on the loopback
-interface and exits with 1 if the answer is not 200.
+interface and exits with 1 if the answer is not 200. Successful health checks
+are not written to the request log, so a check every 30 seconds does not fill
+it; a failing one is.
 
 The image runs as UID and GID 65534 (`nobody`), not as root. A named volume
 takes over the ownership of the image's `/data`. A bind mount must be

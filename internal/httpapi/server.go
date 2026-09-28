@@ -190,6 +190,11 @@ func (s *Server) logRequests(next http.Handler) http.Handler {
 		start := time.Now()
 		rec := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
 		next.ServeHTTP(rec, r)
+		// The container's health check asks every 30 seconds; its answers are not
+		// worth a line each. A failing check is still logged.
+		if r.URL.Path == "/healthz" && rec.status == http.StatusOK {
+			return
+		}
 		level := slog.LevelInfo
 		if rec.status >= 500 {
 			level = slog.LevelError

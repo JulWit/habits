@@ -87,8 +87,6 @@ export function dayEntry(habit, iso, active = state.today) {
   const btn = document.createElement("button");
   btn.type = "button";
   btn.className = iso === active ? "cell is-today" : "cell";
-  // A dot in the corner marks a note.
-  if (entry.note) btn.classList.add("has-note");
   btn.dataset.habit = habit.id;
   btn.dataset.date = iso;
   btn.dataset.role = "cell";
@@ -150,8 +148,7 @@ function cellLabel(habit, iso, entry, scheduled, streakDays = 0) {
   // Announce the streak length on days that are part of a run.
   const done = H.isComplete(habit, iso, entry.value) && iso <= state.today;
   const run = done && streakDays > 0 ? t(", day {n} of a streak", { n: streakDays }) : "";
-  const note = entry.note ? t(", note: {note}", { note: entry.note }) : "";
-  return `${habit.name}, ${when}: ${status}${run}${note}`;
+  return `${habit.name}, ${when}: ${status}${run}`;
 }
 
 /** Describes a day's entry. Future days are announced as planned. */

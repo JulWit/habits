@@ -27,14 +27,12 @@ type entryChange struct {
 
 // handleSkipDays skips the days from From to To of the given habits, or of
 // all habits that are not archived, e.g. for a holiday. Only due days without
-// a value are skipped (domain.DaysToSkip); a skipped day without a note gets
-// Note. The answer lists the changed days.
+// a value are skipped (domain.DaysToSkip). The answer lists the changed days.
 func (s *Server) handleSkipDays(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		From     domain.Date `json:"from"`
 		To       domain.Date `json:"to"`
 		HabitIDs []string    `json:"habitIds"`
-		Note     string      `json:"note"`
 	}
 	if !decodeJSON(w, r, &body) {
 		return
@@ -74,12 +72,9 @@ func (s *Server) handleSkipDays(w http.ResponseWriter, r *http.Request) {
 	var writes []store.EntryWrite
 	for _, h := range habits {
 		for _, d := range domain.DaysToSkip(h, entries[h.ID], body.From, body.To) {
-			before := entries[h.ID][d]
-			after := domain.Entry{Skipped: true, Note: before.Note}
-			if after.Note == "" {
-				after.Note = body.Note
-			}
-			writes = append(writes, store.EntryWrite{HabitID: h.ID, Date: d, Expect: before, Entry: after})
+			writes = append(writes, store.EntryWrite{
+				HabitID: h.ID, Date: d, Expect: entries[h.ID][d], Entry: domain.Entry{Skipped: true},
+			})
 		}
 	}
 	applied, err := s.store.WriteEntries(ctx, user.ID, writes)

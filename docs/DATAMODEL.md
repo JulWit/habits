@@ -19,15 +19,14 @@ A day's value is one integer; counts and minutes are stored in tenths.
 Changing the kind of a habit converts its history (`domain.ConvertKind`): to
 check, completed days stay ticked; from check, ticked days get the new target;
 between measured kinds, values and targets keep their number in the new unit.
-Completion and streaks stay the same. Skipped days and notes are kept. A limit
+Completion and streaks stay the same. Skipped days are kept. A limit
 becomes a plain target, as check habits have none.
 
 ## Entries
 
-A day's entry (`domain.Entry`) holds its value, whether the day is skipped,
-and a note (up to 500 characters). Days with nothing recorded have no row in
-`entries`. A value, a skip or a note can only be recorded on a due day;
-removing is possible on any day.
+A day's entry (`domain.Entry`) holds its value and whether the day is
+skipped. Days with nothing recorded have no row in `entries`. A value or a
+skip can only be recorded on a due day; removing is possible on any day.
 
 **Skipped days** (sick, on holiday) count as not due: they neither extend nor
 break a streak and are left out of the completion rate. A skipped day has no
@@ -38,8 +37,6 @@ future skipped days included, so a planned holiday counts for the current week.
 A period skipped entirely neither extends nor breaks the streak. A range of
 days skipped at once (`domain.DaysToSkip`) only changes due days without a
 value, so what was done on a day is never erased by a holiday.
-
-**Notes** are free text per day, with or without a value.
 
 ## Targets and limits
 

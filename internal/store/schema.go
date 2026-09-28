@@ -83,11 +83,10 @@ CREATE TABLE entries (
 	date       TEXT    NOT NULL CHECK (date GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'),
 	value      INTEGER NOT NULL DEFAULT 0 CHECK (value >= 0),
 	skipped    INTEGER NOT NULL DEFAULT 0 CHECK (skipped IN (0, 1)),
-	note       TEXT    NOT NULL DEFAULT '',
 	updated_at TEXT    NOT NULL,
 	PRIMARY KEY (habit_id, date),
 	CHECK (skipped = 0 OR value = 0),
-	CHECK (value > 0 OR skipped = 1 OR note <> '')
+	CHECK (value > 0 OR skipped = 1)
 ) STRICT, WITHOUT ROWID;
 `
 
@@ -141,6 +140,26 @@ CREATE TABLE entries_new (
 
 INSERT INTO entries_new (habit_id, date, value, updated_at)
 SELECT habit_id, date, value, updated_at FROM entries;
+DROP TABLE entries;
+ALTER TABLE entries_new RENAME TO entries;
+`,
+	// 3: notes are removed. The note column is part of a CHECK constraint, so
+	// entries is rebuilt; days that only held a note have nothing left.
+	`
+CREATE TABLE entries_new (
+	habit_id   TEXT    NOT NULL REFERENCES habits(id) ON DELETE CASCADE,
+	date       TEXT    NOT NULL CHECK (date GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'),
+	value      INTEGER NOT NULL DEFAULT 0 CHECK (value >= 0),
+	skipped    INTEGER NOT NULL DEFAULT 0 CHECK (skipped IN (0, 1)),
+	updated_at TEXT    NOT NULL,
+	PRIMARY KEY (habit_id, date),
+	CHECK (skipped = 0 OR value = 0),
+	CHECK (value > 0 OR skipped = 1)
+) STRICT, WITHOUT ROWID;
+
+INSERT INTO entries_new (habit_id, date, value, skipped, updated_at)
+SELECT habit_id, date, value, skipped, updated_at FROM entries
+WHERE value > 0 OR skipped = 1;
 DROP TABLE entries;
 ALTER TABLE entries_new RENAME TO entries;
 `,

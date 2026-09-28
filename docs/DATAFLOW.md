@@ -56,7 +56,7 @@ frequency rule needs no client change beyond the editor.
 
 A tap or the day dialog is handled in `actions.js`:
 
-1. The changed entry (value, skip, note) is set in `state.js` and shown
+1. The changed entry (value, skip) is set in `state.js` and shown
    immediately.
 2. `api.js` sends `PUT /api/habits/{id}/entries/{date}` with the changed
    parts only. Writes to the same day wait for each other, so they reach the
@@ -79,8 +79,7 @@ The service worker (`sw.js`) caches the app shell, and the client keeps the
 last loaded state in `localStorage`, so the app starts without a connection.
 
 Writes of a value that cannot reach the server wait in an outbox
-(`outbox.js`). A skip or a note needs a connection.
-They are laid over every loaded state, so they stay visible, and are sent
+(`outbox.js`); a skip needs a connection. They are laid over every loaded state, so they stay visible, and are sent
 once the connection is back: on the `online` event, when the page becomes
 visible, and every 30 seconds. A write sets an absolute value, so for each day
 the last one wins. Writes the server rejects are dropped with a message. The

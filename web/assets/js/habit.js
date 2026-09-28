@@ -36,20 +36,19 @@ export function isScheduled(habit, iso) {
 }
 
 /**
- * Returns what is recorded on `iso` (domain.Entry): the value, whether the
- * day is skipped, and the note.
+ * Returns what is recorded on `iso` (domain.Entry): the value and whether the
+ * day is skipped.
  */
 export function entryOn(habit, iso) {
   return {
     value: habit.entries?.[iso] ?? 0,
     skipped: habit.skipped?.[iso] === true,
-    note: habit.notes?.[iso] ?? "",
   };
 }
 
 /** Reports whether nothing is recorded in `entry`. */
 export function isEmpty(entry) {
-  return entry.value === 0 && !entry.skipped && entry.note === "";
+  return entry.value === 0 && !entry.skipped;
 }
 
 export function isSkipped(habit, iso) {
@@ -71,7 +70,7 @@ export function isDue(habit, iso) {
  */
 export function historyStart(habit) {
   let first = habit.createdAt?.slice(0, 10) ?? "";
-  for (const recorded of [habit.entries, habit.skipped, habit.notes]) {
+  for (const recorded of [habit.entries, habit.skipped]) {
     for (const iso of Object.keys(recorded ?? {})) {
       if (!first || iso < first) first = iso;
     }

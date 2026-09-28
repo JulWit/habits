@@ -74,15 +74,14 @@ export function renderDetail(habit) {
   root.dataset.habit = habit.id;
   root.style.setProperty("--habit-color", colorValue(habit.color));
   // How the habit is set up comes first, then its statistics and the year,
-  // then its history. The cumulative chart is only shown for countable
-  // habits, the notes only with notes to show.
+  // then its activity. The cumulative chart is only shown for countable
+  // habits.
   const panels = [
     header(habit),
     details(habit),
     stats(habit),
     H.isCountable(habit) ? cumulative(habit) : null,
     heatmap(habit),
-    notesPanel(habit),
     activity(habit),
   ];
   root.replaceChildren(...panels.filter(Boolean));
@@ -288,17 +287,8 @@ function heatCell(habit, iso) {
   return el;
 }
 
-/**
- * Describes a day of the heatmap, with its note. Future days only show planned
- * values.
- */
+/** Describes a day of the heatmap. Future days only show planned values. */
 function heatStatus(habit, iso, value) {
-  const note = habit.notes?.[iso];
-  const status = dayStatus(habit, iso, value);
-  return note ? `${status} · ${note}` : status;
-}
-
-function dayStatus(habit, iso, value) {
   if (H.isSkipped(habit, iso)) return t("skipped");
   const vars = { value: H.formatValue(habit, value), target: H.formatValue(habit, H.target(habit, iso)) };
   if (iso > state.today) {
@@ -528,25 +518,4 @@ function bucketLabels(buckets) {
     row.append(span);
   });
   return row;
-}
-
-/** How many notes the detail view lists, newest first. */
-const NOTES_SHOWN = 30;
-
-/**
- * Lists the habit's latest notes, each with its day and what was recorded
- * then. Returns null without notes.
- */
-function notesPanel(habit) {
-  const days = Object.keys(habit.notes ?? {}).sort().reverse();
-  if (days.length === 0) return null;
-  const items = days.slice(0, NOTES_SHOWN).map((iso) => {
-    const item = factItem(formatLong(iso), habit.notes[iso], dayStatus(habit, iso, habit.entries[iso] ?? 0));
-    item.className = "note-item";
-    return item;
-  });
-  const title = days.length > NOTES_SHOWN
-    ? t("Notes (latest {n} of {total})", { n: NOTES_SHOWN, total: days.length })
-    : t("Notes");
-  return factsPanel(title, items, "notes");
 }

@@ -47,14 +47,14 @@ func TestUpdateHabitReplacesTheEntries(t *testing.T) {
 	}
 
 	h.Kind = domain.KindCheck
-	if err := st.UpdateHabit(ctx, "alice", &h, map[domain.Date]domain.Entry{friday: {Value: 1, Note: "kept"}}); err != nil {
+	if err := st.UpdateHabit(ctx, "alice", &h, map[domain.Date]domain.Entry{friday: {Value: 1}}); err != nil {
 		t.Fatalf("UpdateHabit: %v", err)
 	}
 	entries, err := st.EntriesForHabit(ctx, "alice", h.ID)
 	if err != nil {
 		t.Fatalf("EntriesForHabit: %v", err)
 	}
-	if want := (domain.Entry{Value: 1, Note: "kept"}); len(entries) != 1 || entries[friday] != want {
+	if want := (domain.Entry{Value: 1}); len(entries) != 1 || entries[friday] != want {
 		t.Errorf("entries = %v, want only Friday, ticked", entries)
 	}
 }

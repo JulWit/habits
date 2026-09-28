@@ -31,7 +31,7 @@ web/                        Frontend (ES modules, no build step)
   assets/js/editor.js         Habit dialog
   assets/js/categoryeditor.js Category dialog
   assets/js/categorypicker.js Category picker
-  assets/js/value.js          Day dialog: value, skip and note
+  assets/js/value.js          Day dialog: value and skip
   assets/js/skip.js           Page for skipping a range of days
   assets/js/search.js         Search dialog
   assets/js/settings.js       Settings dialog

@@ -60,19 +60,18 @@ func TestConvertBetweenMeasuredKindsKeepsTheNumbers(t *testing.T) {
 	}
 }
 
-// A change of kind keeps skipped days and notes, also on days whose value is
-// dropped.
-func TestConvertKeepsSkipsAndNotes(t *testing.T) {
+// A change of kind keeps skipped days, and drops days whose value is dropped.
+func TestConvertKeepsSkips(t *testing.T) {
 	h := countHabit() // target 6
 	entries := map[Date]Entry{
-		friday:             {Value: 30, Note: "half"}, // below the target
-		friday.AddDays(-1): {Skipped: true, Note: "ill"},
+		friday:             {Value: 30}, // below the target
+		friday.AddDays(-1): {Skipped: true},
 	}
 	_, got := ConvertKind(h, entries, KindCheck, 1)
-	if want := (Entry{Note: "half"}); got[friday] != want {
-		t.Errorf("friday = %+v, want %+v", got[friday], want)
+	if _, kept := got[friday]; kept {
+		t.Errorf("friday = %+v, want no entry", got[friday])
 	}
-	if want := (Entry{Skipped: true, Note: "ill"}); got[friday.AddDays(-1)] != want {
+	if want := (Entry{Skipped: true}); got[friday.AddDays(-1)] != want {
 		t.Errorf("thursday = %+v, want %+v", got[friday.AddDays(-1)], want)
 	}
 }

@@ -16,7 +16,7 @@ import "slices"
 //     in the new unit (8 glasses become 8 minutes), within the new kind's
 //     range. As targets and values scale alike, completion is kept too.
 //
-// Skipped days and notes are kept.
+// Skipped days are kept.
 func ConvertKind(h Habit, entries map[Date]Entry, k Kind, target int) ([]Schedule, map[Date]Entry) {
 	schedules := slices.Clone(h.Schedules)
 	out := make(map[Date]Entry, len(entries))

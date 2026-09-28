@@ -1,6 +1,6 @@
 // Day dialog, opened by a long press or right-click on a day cell: the value
-// (or for a check habit whether it is done), whether the day is skipped, and a
-// note. It passes only what changed to its caller.
+// (or for a check habit whether it is done) and whether the day is skipped.
+// It passes only what changed to its caller.
 
 import { formatRelative } from "./dates.js";
 import { state } from "./state.js";
@@ -52,7 +52,7 @@ export function initValueDialog() {
   }
   form.elements.skipped.addEventListener("change", syncSkip);
   form.querySelector('[data-action="clear"]').addEventListener("click", () => {
-    submit({ value: 0, skipped: false, note: "" });
+    submit({ value: 0, skipped: false });
   });
   // A tap on the backdrop cancels, as in the search: without a keyboard there
   // is no Escape.
@@ -96,8 +96,8 @@ function syncSkip() {
 }
 
 /**
- * Opens the day dialog. `handler` receives the change ({value?, skipped?,
- * note?}) with the parts that differ from the entry as it was.
+ * Opens the day dialog. `handler` receives the change ({value?, skipped?})
+ * with the parts that differ from the entry as it was.
  */
 export function openDayDialog(target, iso, handler) {
   onSave = handler;
@@ -125,14 +125,15 @@ export function openDayDialog(target, iso, handler) {
   paintQuick();
 
   form.elements.skipped.checked = before.skipped;
-  form.elements.note.value = before.note;
   syncSkip();
 
   titleEl.textContent = `${habit.name} — ${formatRelative(iso, state.today)}`;
   hintEl.textContent = hintFor(iso);
 
   openPage(dialog);
-  if (check || before.skipped) form.elements.note.focus();
+  // The first control that can be used.
+  if (before.skipped) form.elements.skipped.focus();
+  else if (check) form.elements.done.focus();
   else input.select();
 }
 
@@ -143,7 +144,7 @@ function collect() {
     ? (form.elements.done.checked ? 1 : 0)
     : Math.max(0, Math.round((Number(input.value) || 0) * scale));
   if (skipped) value = 0;
-  return { value, skipped, note: form.elements.note.value.trim() };
+  return { value, skipped };
 }
 
 /**
@@ -177,7 +178,6 @@ async function submit(entry) {
   const change = {};
   if (entry.skipped !== before.skipped) change.skipped = entry.skipped;
   if (!entry.skipped && entry.value !== before.value) change.value = entry.value;
-  if (entry.note !== before.note) change.note = entry.note;
 
   const handler = onSave;
   closePage(dialog, { force: true });

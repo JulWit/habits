@@ -14,7 +14,7 @@ import (
 // keyed by habit ID.
 func (s *Store) EntriesForUser(ctx context.Context, userID string) (map[string]map[domain.Date]domain.Entry, error) {
 	rows, err := s.db.QueryContext(ctx, `
-		SELECT e.habit_id, e.date, e.value, e.skipped, e.note
+		SELECT e.habit_id, e.date, e.value, e.skipped
 		FROM entries e
 		JOIN habits h ON h.id = e.habit_id
 		WHERE h.user_id = ? AND h.deleted_at IS NULL`, userID)
@@ -41,7 +41,7 @@ func (s *Store) EntriesForUser(ctx context.Context, userID string) (map[string]m
 // EntriesForHabit returns all entries of a habit of the user.
 func (s *Store) EntriesForHabit(ctx context.Context, userID, habitID string) (map[domain.Date]domain.Entry, error) {
 	rows, err := s.db.QueryContext(ctx, `
-		SELECT e.habit_id, e.date, e.value, e.skipped, e.note
+		SELECT e.habit_id, e.date, e.value, e.skipped
 		FROM entries e
 		JOIN habits h ON h.id = e.habit_id
 		WHERE h.user_id = ? AND h.deleted_at IS NULL AND e.habit_id = ?`, userID, habitID)
@@ -62,14 +62,14 @@ func (s *Store) EntriesForHabit(ctx context.Context, userID, habitID string) (ma
 	return out, rows.Err()
 }
 
-// scanEntry scans a row of habit_id, date, value, skipped and note; the
-// habit ID goes to habitID.
+// scanEntry scans a row of habit_id, date, value and skipped; the habit ID
+// goes to habitID.
 func scanEntry(rows *sql.Rows, habitID *string) (domain.Date, domain.Entry, error) {
 	var (
 		date string
 		e    domain.Entry
 	)
-	if err := rows.Scan(habitID, &date, &e.Value, &e.Skipped, &e.Note); err != nil {
+	if err := rows.Scan(habitID, &date, &e.Value, &e.Skipped); err != nil {
 		return domain.Date{}, domain.Entry{}, fmt.Errorf("reading entry: %w", err)
 	}
 	d, err := domain.ParseDate(date)
@@ -108,8 +108,8 @@ func (s *Store) SetEntry(ctx context.Context, userID, habitID string, date domai
 		}
 
 		err = tx.QueryRowContext(ctx,
-			`SELECT value, skipped, note FROM entries WHERE habit_id = ? AND date = ?`,
-			habitID, date.String()).Scan(&previous.Value, &previous.Skipped, &previous.Note)
+			`SELECT value, skipped FROM entries WHERE habit_id = ? AND date = ?`,
+			habitID, date.String()).Scan(&previous.Value, &previous.Skipped)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			return err
 		}
@@ -144,11 +144,10 @@ func writeEntry(ctx context.Context, tx *sql.Tx, habitID string, date domain.Dat
 		return err
 	}
 	_, err := tx.ExecContext(ctx, `
-		INSERT INTO entries (habit_id, date, value, skipped, note, updated_at) VALUES (?,?,?,?,?,?)
+		INSERT INTO entries (habit_id, date, value, skipped, updated_at) VALUES (?,?,?,?,?)
 		ON CONFLICT(habit_id, date) DO UPDATE SET
-			value = excluded.value, skipped = excluded.skipped, note = excluded.note,
-			updated_at = excluded.updated_at`,
-		habitID, date.String(), e.Value, e.Skipped, e.Note, now)
+			value = excluded.value, skipped = excluded.skipped, updated_at = excluded.updated_at`,
+		habitID, date.String(), e.Value, e.Skipped, now)
 	return err
 }
 
@@ -190,8 +189,8 @@ func (s *Store) WriteEntries(ctx context.Context, userID string, writes []EntryW
 
 			var stored domain.Entry
 			err := tx.QueryRowContext(ctx,
-				`SELECT value, skipped, note FROM entries WHERE habit_id = ? AND date = ?`,
-				w.HabitID, w.Date.String()).Scan(&stored.Value, &stored.Skipped, &stored.Note)
+				`SELECT value, skipped FROM entries WHERE habit_id = ? AND date = ?`,
+				w.HabitID, w.Date.String()).Scan(&stored.Value, &stored.Skipped)
 			if err != nil && !errors.Is(err, sql.ErrNoRows) {
 				return err
 			}

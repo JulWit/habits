@@ -4,8 +4,8 @@
 |---|---|
 | Tick off | Tap the day; tap again to undo |
 | Increase count/time/distance | Tap: adds one step (default: count 1, time 5 min, distance 500 m; configurable per habit), also beyond the target |
-| Set an exact value, skip a day or add a note | Long press or right-click opens the day dialog |
-| Clear a day | Day dialog, then "Clear": removes the value, the skip and the note |
+| Set an exact value or skip a day | Long press or right-click opens the day dialog |
+| Clear a day | Day dialog, then "Clear": removes the value and the skip |
 | Undo / redo | `Ctrl+Z` / `Ctrl+Shift+Z` or `Ctrl+Y`, or "Undo" in the toast |
 | Move between days and habits | Arrow keys; `Home`/`End` for the first and last day, with `Ctrl` for the first and last habit. The days are a single tab stop, and the arrows page to earlier or later days at the end of a row |
 | Select a day | Click the day in the day header; click today to go back |
@@ -36,9 +36,9 @@ days can be skipped too. A tap on a skipped day records a value and ends the
 skip. See [DATAMODEL.md](DATAMODEL.md#entries).
 
 **Skipping several days**: "Skip days" takes a first and a last day (up to 366
-days), a note, and one habit or all that are not archived. It skips the due
-days without an entry; days with an entry keep it, and a day's own note is
-kept. Undo writes the days back as they were.
+days) and one habit or all that are not archived. It skips the due days
+without an entry; days with an entry keep it. Undo writes the days back as
+they were.
 
 **Years in the detail view**: The heatmap and the cumulative chart show one
 calendar year, the current one when the view opens. The arrows beside the
@@ -48,10 +48,6 @@ year go back to the first year of the habit's history.
 "At least" (a target to reach) or "At most" (a limit to stay within, e.g. at
 most 2 cups of coffee; 0 means none at all). Days without an entry keep the
 limit. See [DATAMODEL.md](DATAMODEL.md#targets-and-limits).
-
-**Notes**: The day dialog takes a note per day. Days with a note have a dot on
-their mark; the note shows in the tooltip, in the heatmap and in the "Notes"
-panel of the detail view.
 
 Deleted habits and categories can be restored for 30 days. After that, they are
 removed permanently: on the next start, and otherwise within a day.

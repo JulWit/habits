@@ -15,7 +15,7 @@ only `/healthz` outside `/api` does not.
 | `DELETE` | `/api/habits/{id}` | Soft delete |
 | `POST` | `/api/habits/{id}/restore` | Restore |
 | `POST` | `/api/habits/reorder` | Set the order; missing habits keep their relative order after the given ones, duplicate IDs are rejected |
-| `PUT` | `/api/habits/{id}/entries/{date}` | Change a day's value, skip or note (from 2000-01-01 to one year ahead; recording needs a due day, removing works on any day); with `expect`, only while the day still holds that entry (409 `entry_changed` otherwise) |
+| `PUT` | `/api/habits/{id}/entries/{date}` | Change a day's value or skip (from 2000-01-01 to one year ahead; recording needs a due day, removing works on any day); with `expect`, only while the day still holds that entry (409 `entry_changed` otherwise) |
 | `POST` | `/api/skips` | Skip the days `from` to `to` (up to 366) of the habits `habitIds`, or of all that are not archived; see [Skipping days](#skipping-days) |
 | `POST` | `/api/entries` | Write whole entries of several days at once, each only while its day still holds `expect` (undo and redo of skipped days) |
 | `POST` | `/api/categories` | Create a category |
@@ -75,8 +75,8 @@ and `frequency` to change the current schedule.
 
 Each habit also carries its due days as `due`, one character per day from
 `dueFrom` (`1` due, `0` not), up to one year ahead, and its streak runs as
-`streakRuns`. What is recorded comes in three maps keyed by date: `entries`
-(the values), `skipped` (`true` for skipped days) and `notes`. The full view of
+`streakRuns`. What is recorded comes in two maps keyed by date: `entries`
+(the values) and `skipped` (`true` for skipped days). The full view of
 `GET /api/habits/{id}` has due days from 1 January of the history's first
 year, as the detail view shows whole years.
 
@@ -85,16 +85,16 @@ the `rateWindow` setting.
 
 ## Entries
 
-`PUT …/entries/{date}` changes a day's entry. The body sets any of `value`,
-`skipped` and `note`; the others stay as they are. A value ends a skip, and
+`PUT …/entries/{date}` changes a day's entry. The body sets `value`,
+`skipped` or both; a field left out stays as it is. A value ends a skip, and
 `skipped: true` clears the value:
 
 ```json
 {"value": 30}
-{"skipped": true, "note": "ill"}
+{"skipped": true}
 ```
 
-The answer carries the entry after the change (`value`, `skipped`, `note`) and
+The answer carries the entry after the change (`value`, `skipped`) and
 the replaced one as `previous`. Undo writes the previous entry back with
 `expect` set to the entry it takes back, so it does not overwrite a change made
 on another device in the meantime; on 409 the undo step is dropped.
@@ -104,12 +104,12 @@ on another device in the meantime; on 409 the undo step is dropped.
 `POST /api/skips` skips a range of days, e.g. a holiday:
 
 ```json
-{"from": "2026-10-01", "to": "2026-10-14", "habitIds": ["…"], "note": "holiday"}
+{"from": "2026-10-01", "to": "2026-10-14", "habitIds": ["…"]}
 ```
 
 Without `habitIds`, it covers all habits that are not archived. Only due days
-without a value and not yet skipped change (`domain.DaysToSkip`); a day's own
-note is kept, `note` is set on the others. The answer lists the changed days
+without a value and not yet skipped change (`domain.DaysToSkip`). The answer
+lists the changed days
 as `changes`, each with `habitId`, `date`, `previous` and `entry`.
 
 `POST /api/entries` undoes and redoes that: its `changes` hold `habitId`,

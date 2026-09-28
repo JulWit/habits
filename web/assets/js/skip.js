@@ -32,8 +32,8 @@ export function initSkipDialog() {
 
 /**
  * Opens the page for `target`, with the choice of all habits, or for all
- * habits if `target` is null. `handler` receives {from, to, note, habitIds};
- * no habitIds means all habits.
+ * habits if `target` is null. `handler` receives {from, to, habitIds}; no
+ * habitIds means all habits.
  */
 export function openSkipDialog(target, handler) {
   habit = target;
@@ -45,7 +45,6 @@ export function openSkipDialog(target, handler) {
   f.from.value = state.today;
   f.to.value = addDays(state.today, 6);
   f.to.min = f.from.value;
-  f.note.value = "";
   f.scope.value = "one";
   document.getElementById("skip-scope").hidden = habit === null;
   if (habit) document.getElementById("skip-scope-one").textContent = habit.name;
@@ -60,7 +59,6 @@ function collect() {
   return {
     from: f.from.value,
     to: f.to.value,
-    note: f.note.value.trim(),
     habitIds: one ? [habit.id] : [],
   };
 }

@@ -55,9 +55,8 @@ export function tapEntry(habitId, iso) {
 }
 
 /**
- * Handles a long press or right-click: opens the day dialog with the value,
- * the skip and the note. A day that is not due only opens with something to
- * clear.
+ * Handles a long press or right-click: opens the day dialog with the value
+ * and the skip. A day that is not due only opens with something to clear.
  */
 export function editEntry(habitId, iso) {
   const habit = habitById(habitId);
@@ -86,7 +85,7 @@ function serialize(key, task) {
 }
 
 /**
- * Returns `entry` with `change` ({value?, skipped?, note?}) applied, as
+ * Returns `entry` with `change` ({value?, skipped?}) applied, as
  * domain.EntryChange.Apply does, to show it before the server answers.
  */
 function applied(entry, change) {
@@ -99,7 +98,6 @@ function applied(entry, change) {
     next.skipped = change.skipped;
     if (change.skipped) next.value = 0;
   }
-  if ("note" in change) next.note = change.note.trim();
   return next;
 }
 
@@ -111,7 +109,7 @@ function isValueOnly(change) {
 /**
  * Writes a change of a day's entry and records the undo step. The change is
  * shown immediately. A change of the value only waits in the outbox if it
- * cannot be sent now (see canSendLater); a skip or a note needs the server.
+ * cannot be sent now (see canSendLater); a skip needs the server.
  * If the server rejects the change, it is taken back and the state reloaded.
  * Undo writes back the previous entry on the condition that the day still
  * holds this one, so it does not overwrite a change made elsewhere in the
@@ -126,8 +124,8 @@ async function writeEntry(habit, iso, change) {
   try {
     const result = await serialize(`${habit.id}|${iso}`, () => api.setEntry(habit.id, iso, change));
     sent(habit.id, iso);
-    // The entry as stored, e.g. with the note trimmed.
-    after = { value: result.value, skipped: result.skipped, note: result.note };
+    // The entry as stored.
+    after = { value: result.value, skipped: result.skipped };
     previous = result.previous;
     setEntryLocal(habit.id, iso, after, result);
   } catch (err) {
@@ -170,7 +168,6 @@ function describeWrite(habit, when, entry) {
   const name = habit.name;
   if (entry.skipped) return t("{name}, {when}: skipped", { name, when });
   if (entry.value > 0) return `${name}, ${when}: ${H.formatValue(habit, entry.value)}`;
-  if (entry.note) return t("{name}, {when}: note saved", { name, when });
   return t("{name}, {when}: cleared", { name, when });
 }
 
@@ -185,7 +182,7 @@ async function putEntry(habitId, iso, entry, expect) {
     await api.setEntry(habitId, iso, entry, expect);
     sent(habitId, iso);
   } catch (err) {
-    if (!canSendLater(err) || entry.skipped || entry.note !== expect.note) throw err;
+    if (!canSendLater(err) || entry.skipped) throw err;
     queue(habitId, iso, entry.value, err);
   }
 }
@@ -261,7 +258,7 @@ export async function syncOutbox() {
 }
 
 /**
- * Skips a range of days ({from, to, note, habitIds}) and records the undo
+ * Skips a range of days ({from, to, habitIds}) and records the undo
  * step, which writes the entries before back. Errors are thrown for the
  * dialog to display.
  */

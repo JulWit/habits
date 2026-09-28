@@ -1158,21 +1158,6 @@ html[data-filtering="on"] {
 /* A value over the limit: the full ring, with the value in the danger colour. */
 .mark.is-over .mark-value { color: var(--danger-text); }
 
-/* A dot at the top right of the mark tells a day with a note. It sits on the
-   mark, not the cell, which may be much wider than the mark. */
-.cell.has-note .mark::before {
-  content: "";
-  position: absolute;
-  z-index: 2;
-  top: -1px;
-  right: -1px;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--text-muted);
-  box-shadow: 0 0 0 1.5px var(--surface);
-}
-
 /* ---------- detail view ---------- */
 
 /* The habit and category views have their own title bar (appbar.js), as

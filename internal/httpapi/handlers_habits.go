@@ -14,11 +14,10 @@ import (
 type habitView struct {
 	domain.Habit
 	Stats domain.Stats `json:"stats"`
-	// Entries holds the value of each day with one, Skipped the skipped days
-	// and Notes the notes, each keyed by date.
-	Entries map[string]int    `json:"entries"`
-	Skipped map[string]bool   `json:"skipped"`
-	Notes   map[string]string `json:"notes"`
+	// Entries holds the value of each day with one, Skipped the skipped days,
+	// both keyed by date.
+	Entries map[string]int  `json:"entries"`
+	Skipped map[string]bool `json:"skipped"`
 	// StreakRuns are the streak runs that reach into the sent entries, oldest
 	// first.
 	StreakRuns []domain.StreakRun `json:"streakRuns"`
@@ -147,7 +146,6 @@ func (s *Server) viewFor(h domain.Habit, all map[domain.Date]domain.Entry, today
 		Stats:   domain.ComputeStats(h, all, today, windowDays),
 		Entries: map[string]int{},
 		Skipped: map[string]bool{},
-		Notes:   map[string]string{},
 	}
 	for d, e := range all {
 		if !from.IsZero() && d.Before(from) {
@@ -159,9 +157,6 @@ func (s *Server) viewFor(h domain.Habit, all map[domain.Date]domain.Entry, today
 		}
 		if e.Skipped {
 			view.Skipped[key] = true
-		}
-		if e.Note != "" {
-			view.Notes[key] = e.Note
 		}
 	}
 	// The due days cover the sent entries up to the entry horizon. A full view

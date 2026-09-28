@@ -21,7 +21,7 @@ var EarliestEntry = domain.Date{Year: 2000, Month: time.January, Day: 1}
 type setEntryResponse struct {
 	HabitID string      `json:"habitId"`
 	Date    domain.Date `json:"date"`
-	// The entry after the change: value, skipped and note.
+	// The entry after the change: value and skipped.
 	domain.Entry
 	// Previous is the replaced entry; writing it back undoes the change.
 	Previous   domain.Entry       `json:"previous"`
@@ -31,11 +31,11 @@ type setEntryResponse struct {
 	UpdatedAt time.Time `json:"updatedAt"`
 }
 
-// handleSetEntry changes the entry of a habit on a date: its value, whether
-// the day is skipped, and its note; fields left out stay as they are. A
-// change that records something (a value, a skip or a note) is only accepted
-// on scheduled days between EarliestEntry and EntryHorizonDays after today;
-// removing is allowed on any day.
+// handleSetEntry changes the entry of a habit on a date: its value and
+// whether the day is skipped; a field left out stays as it is. A change that
+// records something (a value or a skip) is only accepted on scheduled days
+// between EarliestEntry and EntryHorizonDays after today; removing is allowed
+// on any day.
 func (s *Server) handleSetEntry(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		domain.EntryChange

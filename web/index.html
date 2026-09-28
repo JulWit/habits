@@ -633,11 +633,6 @@
         </div>
       </fieldset>
 
-      <label class="field">
-        <span class="field-label">Note</span>
-        <textarea name="note" rows="2" maxlength="500" autocomplete="off" placeholder="e.g. holiday"></textarea>
-      </label>
-
       <p class="field-hint">Only due days without an entry are skipped; days with an entry keep it. Skipped days neither break nor extend a streak. Archived habits are left out.</p>
 
       <p id="skip-error" class="error" role="alert" hidden></p>
@@ -662,7 +657,7 @@
 </dialog>
 
 <!-- Day dialog, opened by a long press or right-click on a day cell: the
-     value, whether the day is skipped, and a note (see value.js). -->
+     value and whether the day is skipped (see value.js). -->
 <dialog id="value-popover" class="dialog compact" aria-labelledby="value-title">
   <form id="value-form" method="dialog">
     <h2 id="value-title" class="dialog-head">Enter value</h2>
@@ -690,10 +685,6 @@
         <span>Skip this day</span>
       </label>
     </div>
-    <label class="field day-note">
-      <span class="field-label">Note</span>
-      <textarea name="note" rows="2" maxlength="500" autocomplete="off"></textarea>
-    </label>
     <footer class="dialog-foot">
       <button type="button" class="button ghost" data-action="clear">Clear</button>
       <button type="submit" class="button primary">Save</button>

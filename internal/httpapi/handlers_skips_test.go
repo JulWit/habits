@@ -36,7 +36,7 @@ func TestSkipDaysAndUndo(t *testing.T) {
 	day := func(n int) string { return today.AddDate(0, 0, n).Format("2006-01-02") }
 	mustDo(t, h, "PUT", "/api/habits/"+read+"/entries/"+day(1), `{"value":1}`, http.StatusOK)
 
-	body := fmt.Sprintf(`{"from":%q,"to":%q,"note":"Holiday"}`, day(1), day(3))
+	body := fmt.Sprintf(`{"from":%q,"to":%q}`, day(1), day(3))
 	var skipped struct {
 		Changes []struct {
 			HabitID  string       `json:"habitId"`
@@ -53,7 +53,7 @@ func TestSkipDaysAndUndo(t *testing.T) {
 		t.Fatalf("changes = %+v, want 5", skipped.Changes)
 	}
 	for _, c := range skipped.Changes {
-		if c.HabitID == old || !c.Entry.Skipped || c.Entry.Note != "Holiday" {
+		if c.HabitID == old || !c.Entry.Skipped {
 			t.Errorf("change %+v", c)
 		}
 	}
@@ -75,8 +75,8 @@ func TestSkipDaysAndUndo(t *testing.T) {
 		t.Errorf("undo answer = %s", answer)
 	}
 	state := string(mustDo(t, h, "GET", "/api/state", "", http.StatusOK))
-	if strings.Contains(state, "Holiday") {
-		t.Error("the skipped days are still there after undo")
+	if strings.Count(state, `"skipped":{}`) != 2 {
+		t.Errorf("skipped days are left after undo: %s", state)
 	}
 }
 

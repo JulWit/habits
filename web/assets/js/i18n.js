@@ -109,7 +109,6 @@ const de = {
   "Until": "Bis",
   "This habit": "Diese Gewohnheit",
   "All habits": "Alle Gewohnheiten",
-  "e.g. holiday": "z. B. Urlaub",
   "Only due days without an entry are skipped; days with an entry keep it. Skipped days neither break nor extend a streak. Archived habits are left out.":
     "Übersprungen werden nur fällige Tage ohne Eintrag; Tage mit Eintrag behalten ihn. Übersprungene Tage unterbrechen keine Serie und verlängern sie nicht. Archivierte Gewohnheiten bleiben außen vor.",
   "Skip days of all habits": "Tage aller Gewohnheiten überspringen",
@@ -308,7 +307,6 @@ const de = {
   "Daily limit: {target}": "Tageslimit: {target}",
   "Completed": "Erledigt",
   "Skip this day": "Tag überspringen",
-  "Note": "Notiz",
   "{goal} · step: {step}": "{goal} · Schritt: {step}",
 
   // ---------- board ----------
@@ -339,7 +337,6 @@ const de = {
   "open": "offen",
   "not scheduled": "nicht geplant",
   "skipped": "übersprungen",
-  ", note: {note}": ", Notiz: {note}",
   "{value}, over the limit of {target}": "{value}, über dem Limit von {target}",
   "{value}, within the limit of {target}": "{value}, im Limit von {target}",
   "nothing, within the limit": "nichts, im Limit",
@@ -349,7 +346,6 @@ const de = {
   ", day {n} of a streak": ", Tag {n} einer Serie",
   "{name}, {when}: cleared": "{name}, {when}: gelöscht",
   "{name}, {when}: skipped": "{name}, {when}: übersprungen",
-  "{name}, {when}: note saved": "{name}, {when}: Notiz gespeichert",
 
   // ---------- habit descriptions ----------
   "daily": "täglich",
@@ -396,8 +392,6 @@ const de = {
   "1 week": "1 Woche",
   "{n} weeks": "{n} Wochen",
   "1 month": "1 Monat",
-  "Notes": "Notizen",
-  "Notes (latest {n} of {total})": "Notizen (die letzten {n} von {total})",
   "{n} months": "{n} Monate",
   "Current streak": "Aktuelle Serie",
   "Best streak": "Beste Serie",
@@ -506,7 +500,6 @@ const deErrors = {
   date_missing: "Das Datum fehlt.",
   value_negative: "Der Wert darf nicht negativ sein.",
   skipped_with_value: "Ein übersprungener Tag kann keinen Wert haben.",
-  note_too_long: "Die Notiz ist länger als {max} Zeichen.",
   skip_range_reversed: "Der letzte Tag liegt vor dem ersten.",
   skip_range_too_long: "Es lassen sich höchstens {max} Tage auf einmal überspringen.",
   value_too_large: "Der Wert darf höchstens {max} sein.",

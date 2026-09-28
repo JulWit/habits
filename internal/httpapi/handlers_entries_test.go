@@ -211,9 +211,9 @@ func TestConditionalEntryWrite(t *testing.T) {
 	}
 }
 
-// A skip and a note are sent with the habit; a skip keeps the streak, and a
-// value ends the skip. The answer carries the entry before and after.
-func TestSkipAndNoteReachTheState(t *testing.T) {
+// A skip is sent with the habit and keeps the streak, and a value ends it.
+// The answer carries the entry before and after.
+func TestSkipReachesTheState(t *testing.T) {
 	h := newTestServer(t)
 	w := do(t, h, "POST", "/api/habits",
 		`{"name":"Read","kind":"check","frequency":{"kind":"daily"}}`, "application/json")
@@ -228,27 +228,25 @@ func TestSkipAndNoteReachTheState(t *testing.T) {
 		return "/api/habits/" + created.ID + "/entries/" + today.AddDate(0, 0, -daysAgo).Format("2006-01-02")
 	}
 	mustDo(t, h, "PUT", path(2), `{"value":1}`, http.StatusOK)
-	answer := mustDo(t, h, "PUT", path(1), `{"skipped":true,"note":"ill"}`, http.StatusOK)
+	answer := mustDo(t, h, "PUT", path(1), `{"skipped":true}`, http.StatusOK)
 	var skipped struct {
 		Value    int          `json:"value"`
 		Skipped  bool         `json:"skipped"`
-		Note     string       `json:"note"`
 		Previous domain.Entry `json:"previous"`
 		Stats    domain.Stats `json:"stats"`
 	}
 	if err := json.Unmarshal(answer, &skipped); err != nil {
 		t.Fatal(err)
 	}
-	if !skipped.Skipped || skipped.Note != "ill" || skipped.Value != 0 || !skipped.Previous.IsZero() {
+	if !skipped.Skipped || skipped.Value != 0 || !skipped.Previous.IsZero() {
 		t.Errorf("answer = %+v", skipped)
 	}
 	mustDo(t, h, "PUT", path(0), `{"value":1}`, http.StatusOK)
 
 	var state struct {
 		Habits []struct {
-			Skipped map[string]bool   `json:"skipped"`
-			Notes   map[string]string `json:"notes"`
-			Stats   domain.Stats      `json:"stats"`
+			Skipped map[string]bool `json:"skipped"`
+			Stats   domain.Stats    `json:"stats"`
 		} `json:"habits"`
 	}
 	if err := json.Unmarshal(mustDo(t, h, "GET", "/api/state", "", http.StatusOK), &state); err != nil {
@@ -256,24 +254,29 @@ func TestSkipAndNoteReachTheState(t *testing.T) {
 	}
 	got := state.Habits[0]
 	yesterday := today.AddDate(0, 0, -1).Format("2006-01-02")
-	if !got.Skipped[yesterday] || got.Notes[yesterday] != "ill" {
-		t.Errorf("skipped = %v, notes = %v", got.Skipped, got.Notes)
+	if !got.Skipped[yesterday] {
+		t.Errorf("skipped = %v", got.Skipped)
 	}
 	if got.Stats.CurrentStreak != 2 {
 		t.Errorf("streak = %d, want 2 across the skipped day", got.Stats.CurrentStreak)
 	}
 
-	// A value ends the skip and keeps the note.
+	// A value ends the skip.
 	answer = mustDo(t, h, "PUT", path(1), `{"value":1}`, http.StatusOK)
 	if err := json.Unmarshal(answer, &skipped); err != nil {
 		t.Fatal(err)
 	}
-	if skipped.Skipped || skipped.Value != 1 || skipped.Note != "ill" {
+	if skipped.Skipped || skipped.Value != 1 {
 		t.Errorf("after a value: %+v", skipped)
+	}
+
+	// Notes are gone: the field is unknown.
+	if w := do(t, h, "PUT", path(1), `{"note":"ill"}`, "application/json"); w.Code != http.StatusBadRequest {
+		t.Errorf("a note: status %d, want 400", w.Code)
 	}
 }
 
-// A skip or a note needs a due day, like a value; removing does not.
+// A skip needs a due day, like a value; removing does not.
 func TestSkipNeedsADueDay(t *testing.T) {
 	h := newTestServer(t)
 	// Due on Mondays only.
@@ -287,46 +290,8 @@ func TestSkipNeedsADueDay(t *testing.T) {
 	}
 	// 2026-09-15 is a Tuesday.
 	path := "/api/habits/" + created.ID + "/entries/2026-09-15"
-	for _, body := range []string{`{"skipped":true}`, `{"note":"x"}`} {
-		if w := do(t, h, "PUT", path, body, "application/json"); w.Code != http.StatusUnprocessableEntity {
-			t.Errorf("%s: status %d, want 422", body, w.Code)
-		}
+	if w := do(t, h, "PUT", path, `{"skipped":true}`, "application/json"); w.Code != http.StatusUnprocessableEntity {
+		t.Errorf("status %d, want 422", w.Code)
 	}
-	mustDo(t, h, "PUT", path, `{"skipped":false,"note":""}`, http.StatusOK)
-}
-
-// A limit and a times-per-month frequency are stored and exported.
-func TestLimitAndMonthlyHabits(t *testing.T) {
-	h := newTestServer(t)
-	mustDo(t, h, "POST", "/api/habits",
-		`{"name":"Coffee","kind":"count","targetValue":20,"targetType":"at_most","frequency":{"kind":"daily"}}`,
-		http.StatusCreated)
-	mustDo(t, h, "POST", "/api/habits",
-		`{"name":"Call home","kind":"check","frequency":{"kind":"times_per_month","timesPerMonth":2}}`,
-		http.StatusCreated)
-	w := do(t, h, "POST", "/api/habits",
-		`{"name":"Sweets","kind":"count","targetValue":20,"targetType":"at_most","frequency":{"kind":"times_per_week","timesPerWeek":2}}`,
-		"application/json")
-	if w.Code != http.StatusUnprocessableEntity || !strings.Contains(w.Body.String(), "limit_needs_fixed_days") {
-		t.Errorf("a weekly limit: %d %s", w.Code, w.Body)
-	}
-
-	export := string(mustDo(t, h, "GET", "/api/export", "", http.StatusOK))
-	for _, want := range []string{`"targetType":"at_most"`, `"timesPerMonth":2`} {
-		if !strings.Contains(export, want) {
-			t.Errorf("export lacks %s: %s", want, export)
-		}
-	}
-	var state struct {
-		Habits []struct {
-			Name  string       `json:"name"`
-			Stats domain.Stats `json:"stats"`
-		} `json:"habits"`
-	}
-	if err := json.Unmarshal(mustDo(t, h, "GET", "/api/state", "", http.StatusOK), &state); err != nil {
-		t.Fatal(err)
-	}
-	if state.Habits[1].Stats.StreakUnit != "months" {
-		t.Errorf("streak unit = %q, want months", state.Habits[1].Stats.StreakUnit)
-	}
+	mustDo(t, h, "PUT", path, `{"skipped":false}`, http.StatusOK)
 }

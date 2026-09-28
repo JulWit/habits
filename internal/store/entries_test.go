@@ -53,9 +53,8 @@ func TestSetEntryReturnsThePreviousEntryAndStaysSparse(t *testing.T) {
 	}
 }
 
-// A skip and a note are stored with the entry; a note keeps a day without a
-// value, and a value ends a skip.
-func TestSetEntryStoresSkipsAndNotes(t *testing.T) {
+// A skip is stored with the entry, and a value ends it.
+func TestSetEntryStoresSkips(t *testing.T) {
 	ctx := context.Background()
 	st := openTestStore(t)
 	h := mustCreateHabit(t, st, "alice", countHabit(domain.KindCount, 80))
@@ -69,26 +68,19 @@ func TestSetEntryStoresSkipsAndNotes(t *testing.T) {
 		return entries[day]
 	}
 
-	change := domain.EntryChange{Skipped: ptr(true), Note: ptr("  ill  ")}
+	change := domain.EntryChange{Skipped: ptr(true)}
 	if _, _, _, err := st.SetEntry(ctx, "alice", h.ID, day, change, nil); err != nil {
 		t.Fatal(err)
 	}
-	if want := (domain.Entry{Skipped: true, Note: "ill"}); stored() != want {
+	if want := (domain.Entry{Skipped: true}); stored() != want {
 		t.Errorf("after the skip: %+v, want %+v", stored(), want)
 	}
 
 	if _, _, _, err := st.SetEntry(ctx, "alice", h.ID, day, setValue(20), nil); err != nil {
 		t.Fatal(err)
 	}
-	if want := (domain.Entry{Value: 20, Note: "ill"}); stored() != want {
+	if want := (domain.Entry{Value: 20}); stored() != want {
 		t.Errorf("after a value: %+v, want %+v", stored(), want)
-	}
-
-	if _, _, _, err := st.SetEntry(ctx, "alice", h.ID, day, setValue(0), nil); err != nil {
-		t.Fatal(err)
-	}
-	if want := (domain.Entry{Note: "ill"}); stored() != want {
-		t.Errorf("a note alone keeps the day: %+v, want %+v", stored(), want)
 	}
 }
 
@@ -110,14 +102,7 @@ func TestSetEntryWithExpectRefusesAChangedEntry(t *testing.T) {
 	if got, _ := st.EntriesForHabit(ctx, "alice", h.ID); got[day].Value != 30 {
 		t.Errorf("value = %d after a refused write, want 30", got[day].Value)
 	}
-	// A note changed meanwhile is a change too.
-	if _, _, _, err := st.SetEntry(ctx, "alice", h.ID, day, domain.EntryChange{Note: ptr("x")}, nil); err != nil {
-		t.Fatal(err)
-	}
-	if _, _, _, err := st.SetEntry(ctx, "alice", h.ID, day, setValue(0), &domain.Entry{Value: 30}); !errors.Is(err, ErrConflict) {
-		t.Errorf("expecting the old note: %v, want ErrConflict", err)
-	}
-	if _, _, _, err := st.SetEntry(ctx, "alice", h.ID, day, setValue(0), &domain.Entry{Value: 30, Note: "x"}); err != nil {
+	if _, _, _, err := st.SetEntry(ctx, "alice", h.ID, day, setValue(0), &domain.Entry{Value: 30}); err != nil {
 		t.Errorf("expecting the stored entry: %v", err)
 	}
 }
@@ -133,7 +118,7 @@ func TestWriteEntries(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	skip := domain.Entry{Skipped: true, Note: "holiday"}
+	skip := domain.Entry{Skipped: true}
 	applied, err := st.WriteEntries(ctx, "alice", []EntryWrite{
 		{HabitID: h.ID, Date: mon, Expect: domain.Entry{}, Entry: skip},
 		// Tuesday holds 30 by now, so this one is left out.

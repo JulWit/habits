@@ -76,7 +76,9 @@ and `frequency` to change the current schedule.
 Each habit also carries its due days as `due`, one character per day from
 `dueFrom` (`1` due, `0` not), up to one year ahead, and its streak runs as
 `streakRuns`. What is recorded comes in three maps keyed by date: `entries`
-(the values), `skipped` (`true` for skipped days) and `notes`.
+(the values), `skipped` (`true` for skipped days) and `notes`. The full view of
+`GET /api/habits/{id}` has due days from 1 January of the history's first
+year, as the detail view shows whole years.
 
 Each habit's `stats` hold its streaks and the completion rate over the days of
 the `rateWindow` setting.

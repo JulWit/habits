@@ -5,9 +5,9 @@ import {
   formatDayMonth, localISO,
 } from "./dates.js";
 import { t, locale, userTimeZone } from "./i18n.js";
-import { state } from "./state.js";
+import { state, habitById } from "./state.js";
 import * as H from "./habit.js";
-import { habitIconBadge, colorValue } from "./icons.js";
+import { habitIconBadge, colorValue, icons } from "./icons.js";
 import { appBar } from "./appbar.js";
 import { statRow, factsPanel, factItem, rateLabel } from "./panels.js";
 import { hideTooltip } from "./tooltip.js";
@@ -29,15 +29,48 @@ export function initDetail(handlers) {
       case "archive": actions.toggleArchive(id); break;
       case "skip": actions.skipDays(id); break;
       case "delete": actions.deleteHabit(id); break;
+      case "year-earlier": showYear(-1); break;
+      case "year-later": showYear(1); break;
     }
   });
   initChartTooltips(root, ".heat[data-date], .cum-col[data-tip]");
+}
+
+/**
+ * The year the heatmap and the cumulative chart show, e.g. "2025", and the
+ * habit it was chosen for. Another habit opens with the current year; the
+ * choice is not kept beyond the session.
+ */
+let shownYear = null;
+let shownFor = null;
+
+/** Returns the first and the last year of the habit's history, as numbers. */
+function yearRange(habit) {
+  const last = Number(currentYear());
+  const first = Number(H.historyStart(habit).slice(0, 4)) || last;
+  return [Math.min(first, last), last];
+}
+
+/** Shows the year before (-1) or after (+1) the one shown. */
+function showYear(delta) {
+  const habit = habitById(root.dataset.habit);
+  if (!habit) return;
+  const [first, last] = yearRange(habit);
+  shownYear = String(Math.min(last, Math.max(first, Number(shownYear) + delta)));
+  renderDetail(habit);
+  // Keep the focus on the arrows, which the render replaced.
+  const again = root.querySelector(`[data-action="${delta < 0 ? "year-earlier" : "year-later"}"]`);
+  (again?.disabled ? root.querySelector(".year-nav button:not(:disabled)") : again)?.focus();
 }
 
 export function renderDetail(habit) {
   if (!root || !habit) return;
   // The tooltip's target is about to be replaced.
   hideTooltip();
+  if (shownFor !== habit.id) {
+    shownFor = habit.id;
+    shownYear = currentYear();
+  }
   root.dataset.habit = habit.id;
   root.style.setProperty("--habit-color", colorValue(habit.color));
   // The cumulative chart is only shown for countable habits.
@@ -185,12 +218,42 @@ function heatmap(habit) {
   const panel = document.createElement("section");
   panel.className = "panel";
 
-  const year = currentYear();
+  const year = shownYear;
   const title = document.createElement("h3");
   title.textContent = t("Year {year}", { year });
+  const head = document.createElement("div");
+  head.className = "year-head";
+  head.append(title, yearNav(habit));
 
-  panel.append(title, yearGrid(year, (iso) => heatCell(habit, iso)), legend(year));
+  panel.append(head, yearGrid(year, (iso) => heatCell(habit, iso)), legend(year));
   return panel;
+}
+
+/**
+ * Builds the arrows to the year before and after the one shown, from the
+ * first year of the habit's history to the current one.
+ */
+function yearNav(habit) {
+  const [first, last] = yearRange(habit);
+  const year = Number(shownYear);
+  const nav = document.createElement("div");
+  nav.className = "year-nav";
+  const arrow = (action, icon, label, disabled) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "icon-button";
+    b.dataset.action = action;
+    b.innerHTML = icon;
+    b.title = label;
+    b.setAttribute("aria-label", label);
+    b.disabled = disabled;
+    return b;
+  };
+  nav.append(
+    arrow("year-earlier", icons.chevronLeft, t("Previous year"), year <= first),
+    arrow("year-later", icons.chevronRight, t("Next year"), year >= last),
+  );
+  return nav;
 }
 
 function heatCell(habit, iso) {
@@ -328,13 +391,17 @@ function grainHead(habit) {
 
 function cumulativeBody(habit) {
   const body = document.createElement("div");
-  const year = currentYear();
-  const summary = H.periodSummary(habit, `${year}-01-01`, state.today, grain);
+  // The year shown, to today in the current year.
+  const year = shownYear;
+  const current = year === currentYear();
+  const summary = H.periodSummary(habit, `${year}-01-01`, current ? state.today : `${year}-12-31`, grain);
 
   if (summary.total === 0) {
     const empty = document.createElement("p");
     empty.className = "cum-empty";
-    empty.textContent = t("No entries in {year} yet.", { year });
+    empty.textContent = current
+      ? t("No entries in {year} yet.", { year })
+      : t("No entries in {year}.", { year });
     body.append(empty);
     return body;
   }

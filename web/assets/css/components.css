@@ -706,7 +706,8 @@ html[data-tight] .habit-tools .icon-button { width: 1.5rem; height: 1.5rem; }
 html[data-tight] .habit-tools .icon-button svg { width: .95rem; height: .95rem; }
 
 /* Disabled buttons are dimmed. */
-.day-nav .icon-button:disabled {
+.day-nav .icon-button:disabled,
+.year-nav .icon-button:disabled {
   opacity: var(--disabled-opacity);
   cursor: default;
   background: transparent;
@@ -1323,6 +1324,19 @@ html.route-detail .view { padding-top: 0; }
 }
 
 .panel h3 { font-size: var(--text-section); color: var(--text-muted); margin-bottom: calc(.85 * var(--space)); }
+
+/* The heading of the year heatmap with the arrows to other years. */
+.year-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space);
+  margin-bottom: calc(.5 * var(--space));
+}
+
+.year-head h3 { margin-bottom: 0; }
+
+.year-nav { display: flex; gap: calc(.25 * var(--space)); }
 
 /* ---------- activity ---------- */
 

@@ -18,6 +18,7 @@
 | Edit or delete a category | Click the category heading, then "Edit" or "Delete" |
 | Close the detail view | `Esc` |
 | Skip several days (holiday, illness) | Settings → "Skip days" for all habits; "Skip days…" in the menu of a habit's detail view for one or all |
+| Show an earlier year in the detail view | Arrows beside the heatmap's year |
 | Import, export or delete all data | Settings → "Data" |
 
 **Active day**: The board has one active day, today by default. The day
@@ -38,6 +39,10 @@ skip. See [DATAMODEL.md](DATAMODEL.md#entries).
 days), a note, and one habit or all that are not archived. It skips the due
 days without an entry; days with an entry keep it, and a day's own note is
 kept. Undo writes the days back as they were.
+
+**Years in the detail view**: The heatmap and the cumulative chart show one
+calendar year, the current one when the view opens. The arrows beside the
+year go back to the first year of the habit's history.
 
 **Limits**: For count, time and distance, "Goal" in the habit editor chooses
 "At least" (a target to reach) or "At most" (a limit to stay within, e.g. at

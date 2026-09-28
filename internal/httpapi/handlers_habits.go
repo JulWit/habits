@@ -165,11 +165,12 @@ func (s *Server) viewFor(h domain.Habit, all map[domain.Date]domain.Entry, today
 		}
 	}
 	// The due days cover the sent entries up to the entry horizon. A full view
-	// covers the whole history and at least this year and the default window.
+	// covers every year of the history from its 1 January, as the detail view
+	// shows whole years, and at least the default window.
 	dueFrom := from
 	if dueFrom.IsZero() {
-		dueFrom = domain.HistoryStart(h, all).
-			Min(domain.Date{Year: today.Year, Month: time.January, Day: 1}).
+		firstYear := min(domain.HistoryStart(h, all).Year, today.Year)
+		dueFrom = domain.Date{Year: firstYear, Month: time.January, Day: 1}.
 			Min(today.AddDays(-(entryWindowDays - 1)))
 	}
 	view.StreakRuns = []domain.StreakRun{}

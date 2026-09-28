@@ -46,4 +46,4 @@ see [Deployment](docs/DEPLOYMENT.md).
   issue, add a separate read-only pool.
 - Changing the kind to check keeps only whether each day was completed; the
   recorded values are lost, so undoing it gives completed days their target.
-- The detail view only shows the current calendar year.
+- The category and day statistics only show the current calendar year.

@@ -196,3 +196,38 @@ func TestStateCarriesTheDueDays(t *testing.T) {
 		t.Errorf("due from today = %q, want weekly", v.Due[i:i+8])
 	}
 }
+
+// The completion rate covers the days of the rateWindow setting, and a full
+// view has due days from 1 January of the history's first year.
+func TestRateWindowAndYearsOfTheHistory(t *testing.T) {
+	h := newTestServer(t)
+	id := createHabit(t, h, `{"name":"Read","kind":"check","frequency":{"kind":"daily"}}`)
+	// An entry from two years ago starts the history then.
+	today := time.Now().UTC()
+	old := today.AddDate(-2, 0, 0)
+	mustDo(t, h, "PUT", "/api/habits/"+id+"/entries/"+old.Format("2006-01-02"), `{"value":1}`, http.StatusOK)
+
+	expected := func() int {
+		var view struct {
+			Stats   domain.Stats `json:"stats"`
+			DueFrom string       `json:"dueFrom"`
+		}
+		if err := json.Unmarshal(mustDo(t, h, "GET", "/api/habits/"+id, "", http.StatusOK), &view); err != nil {
+			t.Fatal(err)
+		}
+		if want := fmt.Sprintf("%d-01-01", old.Year()); view.DueFrom != want {
+			t.Errorf("dueFrom = %s, want %s", view.DueFrom, want)
+		}
+		return view.Stats.Expected
+	}
+	if n := expected(); n != 30 {
+		t.Errorf("default window: %d days expected, want 30", n)
+	}
+	mustDo(t, h, "PATCH", "/api/settings", `{"rateWindow":"all"}`, http.StatusOK)
+	if n := expected(); n < 700 {
+		t.Errorf("whole history: %d days expected, want about two years", n)
+	}
+	if w := do(t, h, "PATCH", "/api/settings", `{"rateWindow":"12"}`, "application/json"); w.Code != http.StatusUnprocessableEntity {
+		t.Errorf("an unknown window: status %d, want 422", w.Code)
+	}
+}

@@ -93,9 +93,9 @@ func (s *Server) handleState(w http.ResponseWriter, r *http.Request) {
 		if from.IsZero() || window.Before(from) {
 			from = window
 		}
-		// The statistics come from the cache; only the window's entries are
-		// sent, so only they are loaded.
-		entries, err := tx.EntriesFrom(from)
+		// The statistics cover the whole history, so all entries are loaded;
+		// only the window's are sent.
+		entries, err := tx.Entries()
 		if err != nil {
 			return err
 		}
@@ -110,13 +110,8 @@ func (s *Server) handleState(w http.ResponseWriter, r *http.Request) {
 
 		views := make([]habitView, 0, len(habits))
 		for _, h := range habits {
-			hist, err := s.history.of(h, b, func() (map[domain.Date]domain.Entry, error) {
-				return tx.HabitEntries(h.ID)
-			})
-			if err != nil {
-				return err
-			}
-			views = append(views, viewFor(h, hist, entries[h.ID], b, from))
+			own := entries[h.ID]
+			views = append(views, viewFor(h, computeHistory(h, own, b), own, b, from))
 		}
 		out = stateResponse{
 			User:           user,
@@ -141,6 +136,23 @@ func (s *Server) handleState(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, out)
+}
+
+// history holds what a habit's view computes from its whole history: its
+// statistics, streak runs and first day.
+type history struct {
+	stats domain.Stats
+	runs  []domain.StreakRun
+	start domain.Date
+}
+
+// computeHistory computes the history of h from all its entries.
+func computeHistory(h domain.Habit, entries map[domain.Date]domain.Entry, b basis) history {
+	return history{
+		stats: domain.ComputeStats(h, entries, b.today, b.windowDays),
+		runs:  domain.StreakRuns(h, entries, b.today),
+		start: domain.HistoryStart(h, entries),
+	}
 }
 
 // viewFor returns the view of a habit with its statistics hist and its

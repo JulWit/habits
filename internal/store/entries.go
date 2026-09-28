@@ -12,17 +12,10 @@ import (
 
 // Entries returns the entries of all habits of the user, keyed by habit ID.
 func (t *Tx) Entries() (map[string]map[domain.Date]domain.Entry, error) {
-	return t.EntriesFrom(domain.Date{})
-}
-
-// EntriesFrom returns the entries of all habits of the user dated from on,
-// keyed by habit ID; all of them for the zero Date.
-func (t *Tx) EntriesFrom(from domain.Date) (map[string]map[domain.Date]domain.Entry, error) {
-	// ISO dates compare correctly as text, and every date is later than "".
 	rows, err := t.query(`
 		SELECT e.habit_id, e.date, e.value, e.skipped
 		FROM entries e JOIN habits h ON h.id = e.habit_id
-		WHERE h.user_id = ? AND e.date >= ?`, t.userID, from.String())
+		WHERE h.user_id = ?`, t.userID)
 	if err != nil {
 		return nil, fmt.Errorf("loading entries: %w", err)
 	}

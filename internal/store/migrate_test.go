@@ -168,6 +168,50 @@ func TestMigrationFromVersion3(t *testing.T) {
 	}
 }
 
+// An undo step recorded in version 4, whose habit rows still carry the
+// revision, can be undone after the migration: deleting a habit is undone,
+// and the habit comes back with its schedule.
+func TestMigrationFromVersion4KeepsUndoSteps(t *testing.T) {
+	ctx := context.Background()
+	path := filepath.Join(t.TempDir(), "v4.db")
+	const stamp = "2026-01-01T00:00:00.000000000Z"
+	habit := `{"id":"h1","user_id":"alice","category_id":null,"name":"Water","color":"sky","icon":"",
+		"kind":"count","step_value":10,"unit":"","position":1,"archived_at":null,
+		"created_at":"` + stamp + `","updated_at":"` + stamp + `","revision":3}`
+	schedule := `{"habit_id":"h1","valid_from":"2026-01-01","target_value":80,"target_type":"at_least",
+		"freq_kind":"daily","freq_times_per_week":0,"freq_times_per_month":0,"freq_weekdays":0,
+		"freq_interval_days":0,"freq_week_interval":0,"freq_week_of_month":0,"freq_anchor_date":""}`
+	diff := `[{"table":"habits","before":` + habit + `,"after":null},
+		{"table":"habit_schedules","before":` + schedule + `,"after":null}]`
+	oldDatabase(t, path,
+		schemaV3,
+		migrations[3],
+		`PRAGMA user_version = 4`,
+		`INSERT INTO users VALUES ('alice', '`+stamp+`')`,
+		`INSERT INTO changes (user_id, label, params, diff, created_at)
+		 VALUES ('alice', '"{name}" deleted', '{"name":"Water"}', '`+diff+`', '`+stamp+`')`,
+	)
+
+	st, err := Open(ctx, path)
+	if err != nil {
+		t.Fatalf("migrating: %v", err)
+	}
+	defer st.Close()
+
+	if _, err := st.Undo(ctx, "alice", 0); err != nil {
+		t.Fatalf("undoing the step of version 4: %v", err)
+	}
+	h := habitOf(t, st, "alice", "h1")
+	if h.Name != "Water" || len(h.Schedules) != 1 || h.Schedules[0].TargetValue != 80 {
+		t.Errorf("habit = %+v, want Water with its schedule back", h)
+	}
+
+	fresh := openTestStore(t)
+	if got, want := schemaOf(t, st.db), schemaOf(t, fresh.db); got != want {
+		t.Errorf("migrated schema differs from a new one:\n%s\nwant:\n%s", got, want)
+	}
+}
+
 // A database older than oldestVersion is refused and left as it is.
 func TestTooOldDatabaseIsRefused(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "v2.db")

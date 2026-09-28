@@ -50,11 +50,7 @@ CREATE TABLE habits (
 	position    INTEGER NOT NULL DEFAULT 0,
 	archived_at TEXT,
 	created_at  TEXT    NOT NULL,
-	updated_at  TEXT    NOT NULL,
-	-- Counts the changes of the habit's schedules and entries, kept by the
-	-- triggers below: statistics computed at one revision stay valid until
-	-- the next.
-	revision    INTEGER NOT NULL DEFAULT 0
+	updated_at  TEXT    NOT NULL
 ) STRICT;
 CREATE INDEX idx_habits_user ON habits(user_id, position);
 CREATE INDEX idx_habits_category ON habits(category_id);
@@ -88,10 +84,11 @@ CREATE TABLE entries (
 	CHECK (skipped = 0 OR value = 0),
 	CHECK (value > 0 OR skipped = 1)
 ) STRICT, WITHOUT ROWID;
-` + revisionTriggers + changesTable
+` + changesTable
 
-// revisionTriggers count every change of a habit's schedules and entries in
-// its revision, whatever makes it: a write, an undo or a deletion.
+// revisionTriggers counted every change of a habit's schedules and entries
+// in its revision, for a statistics cache. Only migration 3 still creates
+// them; migration 4 removes them again.
 const revisionTriggers = `
 CREATE TRIGGER schedules_insert_revise AFTER INSERT ON habit_schedules
 BEGIN UPDATE habits SET revision = revision + 1 WHERE id = NEW.habit_id; END;
@@ -146,10 +143,26 @@ CREATE INDEX idx_habits_user ON habits(user_id, position);
 CREATE INDEX idx_categories_user ON categories(user_id, position);
 ALTER TABLE habits ADD COLUMN revision INTEGER NOT NULL DEFAULT 0;
 ` + revisionTriggers + changesTable,
+
+	// 4 → 5: the statistics are no longer cached, so habits stop counting
+	// their revisions. Undo steps drop the column from their rows, so they
+	// still apply.
+	4: `
+DROP TRIGGER schedules_insert_revise;
+DROP TRIGGER schedules_update_revise;
+DROP TRIGGER schedules_delete_revise;
+DROP TRIGGER entries_insert_revise;
+DROP TRIGGER entries_update_revise;
+DROP TRIGGER entries_delete_revise;
+ALTER TABLE habits DROP COLUMN revision;
+UPDATE changes SET diff = (
+	SELECT json_group_array(json_remove(value, '$.before.revision', '$.after.revision'))
+	FROM (SELECT value FROM json_each(changes.diff) ORDER BY key));
+`,
 }
 
 // latestVersion is the schema version of schema.
-const latestVersion = 4
+const latestVersion = 5
 
 // migrate creates the schema in an empty database, or applies the migrations
 // an existing one is missing, each in its own transaction.

@@ -117,9 +117,5 @@ the undo steps: the rows a change replaced and wrote, as JSON (see
 [DATAFLOW.md](DATAFLOW.md#undo)). The latest 100 steps per user are kept;
 steps older than 30 days are removed on start and once a day.
 
-Every habit has a `revision`, which triggers count up on every change of its
-schedules and entries. Statistics computed at one revision stay valid until
-the next, which the server uses to cache them.
-
 Settings are stored per user as one JSON document; see
 [USAGE.md](USAGE.md#settings).

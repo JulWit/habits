@@ -43,12 +43,10 @@ and keeps it in `state.js`. The views subscribe to the state and re-render on
 changes. The detail view loads a habit's full history via
 `/api/habits/{id}`; `?from=` loads older entries for the board.
 
-Statistics cover a habit's whole history, but the state only loads the
-entries of the window it sends. The statistics come from a cache
-(`historyCache` in `internal/httpapi/history.go`) keyed by the habit's
-revision, which the database counts up on every change of its schedules and
-entries (triggers in `internal/store/schema.go`), and by today and the rate
-window. Nothing invalidates the cache by hand, so no write can leave it stale.
+Statistics cover a habit's whole history, so the server loads all entries
+and computes them on every request (`computeHistory` in
+`internal/httpapi/handlers_habits.go`); only the window's entries are sent.
+Nothing is cached, so no write can leave the statistics stale.
 
 The time zone is resolved on the server, which sends `today`, so all devices
 of a user agree on the current day. It also sends `nextDayIn`, the time

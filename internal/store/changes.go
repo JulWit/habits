@@ -111,9 +111,8 @@ func tableIndex(table string) int {
 func keyColumns(table string) []string { return primaryKeys[tableIndex(table)].columns }
 
 // ignoredColumns change without being part of an undo step: timestamps of
-// the last change, positions, as reordering is not an undo step, and the
-// revisions the database counts (see revisionTriggers).
-var ignoredColumns = []string{"updated_at", "position", "revision"}
+// the last change, and positions, as reordering is not an undo step.
+var ignoredColumns = []string{"updated_at", "position"}
 
 // rowKey identifies a row of table across snapshots.
 func rowKey(table string, r row) string {

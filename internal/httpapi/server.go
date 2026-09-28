@@ -32,8 +32,6 @@ type Server struct {
 	assets http.Handler
 	// manifest is the parsed web app manifest, see handleManifest.
 	manifest map[string]any
-	// history keeps the statistics of the habits between requests.
-	history historyCache
 }
 
 // New returns the HTTP handler of the application. webFS contains the frontend

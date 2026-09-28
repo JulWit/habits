@@ -180,11 +180,8 @@ type Habit struct {
 	// one starts, and the first one also covers the days before its From. The
 	// last one is the current schedule. So changing the target does not
 	// rewrite the past.
-	Schedules []Schedule `json:"schedules"`
-	Position  int        `json:"position"`
-	// Revision counts the changes of the schedules and entries; statistics
-	// computed at one revision stay valid until the next. Kept by the store.
-	Revision   int64      `json:"-"`
+	Schedules  []Schedule `json:"schedules"`
+	Position   int        `json:"position"`
 	ArchivedAt *time.Time `json:"archivedAt"`
 	CreatedAt  time.Time  `json:"createdAt"`
 	UpdatedAt  time.Time  `json:"updatedAt"`

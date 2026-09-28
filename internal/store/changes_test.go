@@ -286,30 +286,3 @@ func TestStepsAreLimited(t *testing.T) {
 		t.Errorf("%d steps left after purging", n)
 	}
 }
-
-// The revision of a habit counts every change of its entries and schedules,
-// an undo included, so statistics cached by it never go stale.
-func TestRevisionCountsEveryChange(t *testing.T) {
-	st := openTestStore(t)
-	h := mustCreateHabit(t, st, "alice", countHabit(domain.KindCount, 80))
-	revision := func() int64 { return habitOf(t, st, "alice", h.ID).Revision }
-
-	seen := map[int64]bool{revision(): true}
-	step := func(what string) {
-		t.Helper()
-		r := revision()
-		if seen[r] {
-			t.Errorf("%s: revision %d was seen before", what, r)
-		}
-		seen[r] = true
-	}
-	id := setEntry(t, st, "alice", h, day(2026, time.September, 18), domain.Entry{Value: 30})
-	step("entry")
-	mustUndo(t, st, "alice", id)
-	step("undo")
-	mustRedo(t, st, "alice", id)
-	step("redo")
-	h.Schedules[0].TargetValue = 90
-	update(t, st, "alice", func(tx *Tx) error { return tx.SaveHabit(&h) })
-	step("schedule")
-}

@@ -7,7 +7,7 @@ internal/auth               User identification (single-user or trusted headers)
 internal/domain             Habits, schedules, day statuses, streaks, statistics (no I/O)
 internal/settings           User settings: defaults, options and rules
 internal/store              SQLite: transactions, schema, migrations, undo steps
-internal/httpapi            Routing, JSON API, statistics cache, frontend delivery
+internal/httpapi            Routing, JSON API, frontend delivery
 scripts/genicons.go         Generates the PNG app icons
 web/                        Frontend (ES modules, no build step)
   index.html                  App shell, rendered as a Go template

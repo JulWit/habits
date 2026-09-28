@@ -69,3 +69,21 @@ func TestEntryValidate(t *testing.T) {
 		t.Errorf("note of %d characters: %v", MaxNoteLen, err)
 	}
 }
+
+// Skipping a range skips the due days without a value and leaves the others.
+func TestDaysToSkip(t *testing.T) {
+	// Due on Mondays, Wednesdays and Fridays.
+	h := Habit{
+		Kind: KindCheck, CreatedAt: longAgo,
+		Schedules: since(longAgo, 1, Frequency{Kind: FreqWeekdays, Weekdays: 0b10101}),
+	}
+	entries := map[Date]Entry{
+		monday:            {Value: 1},                     // done: kept
+		monday.AddDays(2): {Skipped: true},                // skipped already
+		friday:            {Note: "a note, but no value"}, // skipped
+	}
+	got := DaysToSkip(h, entries, monday, sunday)
+	if len(got) != 1 || got[0] != friday {
+		t.Errorf("DaysToSkip = %v, want only friday", got)
+	}
+}

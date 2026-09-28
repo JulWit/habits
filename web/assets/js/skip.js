@@ -1,0 +1,83 @@
+// Page for skipping a range of days, e.g. a holiday: of one habit or of all
+// that are not archived. It passes the input to its caller and stays open with
+// the error message if skipping fails.
+
+import { state } from "./state.js";
+import { addDays } from "./dates.js";
+import { errorText } from "./undo.js";
+import { openPage, closePage } from "./pages.js";
+
+let dialog;
+let form;
+let errorBox;
+let submitButton;
+let onSubmit = null;
+/** The habit the page was opened for, or null for all habits. */
+let habit = null;
+
+export function initSkipDialog() {
+  dialog = document.getElementById("skip-dialog");
+  form = document.getElementById("skip-form");
+  errorBox = document.getElementById("skip-error");
+  submitButton = document.getElementById("skip-submit");
+
+  form.addEventListener("submit", handleSubmit);
+  form.addEventListener("input", () => { errorBox.hidden = true; });
+  // The last day cannot lie before the first.
+  form.elements.from.addEventListener("change", () => {
+    form.elements.to.min = form.elements.from.value;
+    if (form.elements.to.value < form.elements.from.value) form.elements.to.value = form.elements.from.value;
+  });
+}
+
+/**
+ * Opens the page for `target`, with the choice of all habits, or for all
+ * habits if `target` is null. `handler` receives {from, to, note, habitIds};
+ * no habitIds means all habits.
+ */
+export function openSkipDialog(target, handler) {
+  habit = target;
+  onSubmit = handler;
+  errorBox.hidden = true;
+
+  const f = form.elements;
+  // A week from today, the usual holiday.
+  f.from.value = state.today;
+  f.to.value = addDays(state.today, 6);
+  f.to.min = f.from.value;
+  f.note.value = "";
+  f.scope.value = "one";
+  document.getElementById("skip-scope").hidden = habit === null;
+  if (habit) document.getElementById("skip-scope-one").textContent = habit.name;
+
+  openPage(dialog);
+  f.from.focus();
+}
+
+function collect() {
+  const f = form.elements;
+  const one = habit !== null && f.scope.value === "one";
+  return {
+    from: f.from.value,
+    to: f.to.value,
+    note: f.note.value.trim(),
+    habitIds: one ? [habit.id] : [],
+  };
+}
+
+async function handleSubmit(event) {
+  // Keep the page open until the server accepts the input.
+  event.preventDefault();
+  if (!form.reportValidity()) return;
+
+  submitButton.disabled = true;
+  try {
+    await onSubmit(collect());
+    closePage(dialog, { force: true });
+  } catch (err) {
+    errorBox.textContent = errorText(err);
+    errorBox.hidden = false;
+  } finally {
+    submitButton.disabled = false;
+  }
+}

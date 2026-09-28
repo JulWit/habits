@@ -16,6 +16,8 @@ only `/healthz` outside `/api` does not.
 | `POST` | `/api/habits/{id}/restore` | Restore |
 | `POST` | `/api/habits/reorder` | Set the order; missing habits keep their relative order after the given ones, duplicate IDs are rejected |
 | `PUT` | `/api/habits/{id}/entries/{date}` | Change a day's value, skip or note (from 2000-01-01 to one year ahead; recording needs a due day, removing works on any day); with `expect`, only while the day still holds that entry (409 `entry_changed` otherwise) |
+| `POST` | `/api/skips` | Skip the days `from` to `to` (up to 366) of the habits `habitIds`, or of all that are not archived; see [Skipping days](#skipping-days) |
+| `POST` | `/api/entries` | Write whole entries of several days at once, each only while its day still holds `expect` (undo and redo of skipped days) |
 | `POST` | `/api/categories` | Create a category |
 | `PATCH` | `/api/categories/{id}` | Update name, icon, colour or progress display |
 | `DELETE` | `/api/categories/{id}` | Soft delete |
@@ -91,3 +93,20 @@ The answer carries the entry after the change (`value`, `skipped`, `note`) and
 the replaced one as `previous`. Undo writes the previous entry back with
 `expect` set to the entry it takes back, so it does not overwrite a change made
 on another device in the meantime; on 409 the undo step is dropped.
+
+## Skipping days
+
+`POST /api/skips` skips a range of days, e.g. a holiday:
+
+```json
+{"from": "2026-10-01", "to": "2026-10-14", "habitIds": ["…"], "note": "holiday"}
+```
+
+Without `habitIds`, it covers all habits that are not archived. Only due days
+without a value and not yet skipped change (`domain.DaysToSkip`); a day's own
+note is kept, `note` is set on the others. The answer lists the changed days
+as `changes`, each with `habitId`, `date`, `previous` and `entry`.
+
+`POST /api/entries` undoes and redoes that: its `changes` hold `habitId`,
+`date`, `expect` and `entry`, and each is written only while the day still
+holds `expect`. The answer counts them as `applied` and `conflicts`.

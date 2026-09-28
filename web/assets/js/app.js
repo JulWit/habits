@@ -13,6 +13,7 @@ import { initCategoryPicker } from "./categorypicker.js";
 import { initCategoryEditor } from "./categoryeditor.js";
 import { initSettings } from "./settings.js";
 import { initValueDialog } from "./value.js";
+import { initSkipDialog, openSkipDialog } from "./skip.js";
 import { initSearch, openSearch } from "./search.js";
 import * as actions from "./actions.js";
 import { paintIcons } from "./icons.js";
@@ -53,6 +54,8 @@ const handlers = {
   moveHabit: actions.moveHabit,
   setHabitOrder: actions.setHabitOrder,
   deleteCategory: actions.deleteCategory,
+  // Opens the page for skipping days of a habit, or of all for null.
+  skipDays: (habitId) => openSkipDialog(habitId ? habitById(habitId) : null, actions.skipDays),
 };
 
 function initEditMode() {
@@ -105,6 +108,7 @@ async function main() {
   initEditor();
   initCategoryEditor();
   initValueDialog();
+  initSkipDialog();
   initOverview(handlers);
   initSearch(handlers);
   initDetail(handlers);
@@ -113,7 +117,7 @@ async function main() {
   initEditMode();
   initScrollState();
   initServiceWorker();
-  initSettings({ effectiveDays: currentDays, reload: refresh });
+  initSettings({ effectiveDays: currentDays, reload: refresh, skipDays: handlers.skipDays });
   initShortcuts();
   initTooltips();
   initSync();

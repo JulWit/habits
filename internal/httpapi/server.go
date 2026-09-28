@@ -66,6 +66,8 @@ func New(cfg config.Config, st *store.Store, log *slog.Logger, webFS fs.FS) (htt
 	mux.HandleFunc("DELETE /api/habits/{id}", s.handleDeleteHabit)
 	mux.HandleFunc("POST /api/habits/{id}/restore", s.handleRestoreHabit)
 	mux.HandleFunc("PUT /api/habits/{id}/entries/{date}", s.handleSetEntry)
+	mux.HandleFunc("POST /api/entries", s.handleWriteEntries)
+	mux.HandleFunc("POST /api/skips", s.handleSkipDays)
 	mux.HandleFunc("POST /api/categories", s.handleCreateCategory)
 	mux.HandleFunc("POST /api/categories/reorder", s.handleReorderCategories)
 	mux.HandleFunc("PATCH /api/categories/{id}", s.handleUpdateCategory)

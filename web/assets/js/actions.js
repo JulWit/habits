@@ -260,6 +260,32 @@ export async function syncOutbox() {
   await deps.refresh();
 }
 
+/**
+ * Skips a range of days ({from, to, note, habitIds}) and records the undo
+ * step, which writes the entries before back. Errors are thrown for the
+ * dialog to display.
+ */
+export async function skipDays(input) {
+  const { changes } = await api.skipDays(input);
+  if (changes.length === 0) {
+    toast(t("Nothing to skip: the days are not due or already have an entry."));
+    return;
+  }
+  await deps.refresh();
+  // Forward from the entries before to the skipped ones, or back.
+  const writes = (back) => changes.map((c) => ({
+    habitId: c.habitId,
+    date: c.date,
+    expect: back ? c.entry : c.previous,
+    entry: back ? c.previous : c.entry,
+  }));
+  record({
+    label: changes.length === 1 ? t("1 day skipped") : t("{n} days skipped", { n: changes.length }),
+    undo: () => api.writeEntries(writes(true)),
+    redo: () => api.writeEntries(writes(false)),
+  });
+}
+
 // ---------- habits ----------
 
 export function createHabit() {

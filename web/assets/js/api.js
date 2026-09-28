@@ -92,6 +92,11 @@ export const api = {
       `/api/habits/${encodeURIComponent(habitId)}/entries/${encodeURIComponent(date)}`,
       expect === undefined ? change : { ...change, expect },
     ),
+  // Skips the due days without a value from `from` to `to` of the habits
+  // `habitIds`, or of all; answers with the changed days.
+  skipDays: (input) => request("POST", "/api/skips", input),
+  // Writes whole entries, each only while its day still holds `expect`.
+  writeEntries: (changes) => request("POST", "/api/entries", { changes }),
   saveSettings: (settings) => request("PATCH", "/api/settings", settings),
   // The habits and categories with their settings, without entries.
   exportHabits: () => request("GET", "/api/export"),

@@ -44,6 +44,8 @@ let reload;
 export function initSettings(handlers) {
   effectiveDays = handlers.effectiveDays;
   reload = handlers.reload;
+  // Skipping days of all habits opens its own page (skip.js).
+  document.getElementById("settings-skip").addEventListener("click", () => handlers.skipDays(null));
 
   dialog = document.getElementById("settings-dialog");
   themeInputs = [...document.querySelectorAll('input[name="settings-theme"]')];

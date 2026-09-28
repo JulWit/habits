@@ -27,6 +27,7 @@ export function initDetail(handlers) {
       case "back": actions.closeHabit(); break;
       case "edit": actions.editHabit(id); break;
       case "archive": actions.toggleArchive(id); break;
+      case "skip": actions.skipDays(id); break;
       case "delete": actions.deleteHabit(id); break;
     }
   });
@@ -68,6 +69,7 @@ function header(habit) {
     title: habit.name,
     badge,
     menu: [
+      { action: "skip", label: t("Skip days…"), icon: "skip" },
       archived
         ? { action: "archive", label: t("Reactivate"), icon: "unarchive" }
         : { action: "archive", label: t("Archive", { context: "verb" }), icon: "archive" },

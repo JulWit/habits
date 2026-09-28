@@ -56,19 +56,6 @@ func (s *Server) handleSetEntry(w http.ResponseWriter, r *http.Request) {
 	habitID := r.PathValue("id")
 	records := body.Records()
 
-	today := s.todayFor(r.Context(), user.ID)
-	if date.After(today.AddDays(EntryHorizonDays)) {
-		writeError(w, http.StatusUnprocessableEntity, "entry_too_far_ahead", "Entries may be at most one year in the future")
-		return
-	}
-	if records && date.Before(EarliestEntry) {
-		// The year is passed as a string so the client does not format it as
-		// a number.
-		writeProblem(w, http.StatusUnprocessableEntity, domain.Invalid("entry_too_early",
-			"Entries may not be dated before {year}", "year", strconv.Itoa(EarliestEntry.Year)))
-		return
-	}
-
 	// Loaded before the write, as recording needs a due day; the write does
 	// not change the habit's rules, so its statistics are computed from it
 	// after.
@@ -77,8 +64,8 @@ func (s *Server) handleSetEntry(w http.ResponseWriter, r *http.Request) {
 		s.writeStoreError(w, err, "loading habit")
 		return
 	}
-	if records && !habit.IsScheduled(date) {
-		writeError(w, http.StatusUnprocessableEntity, "not_scheduled", "The habit is not scheduled on this day")
+	today := s.todayFor(r.Context(), user.ID)
+	if !checkEntryDay(w, habit, date, today, records) {
 		return
 	}
 
@@ -116,4 +103,38 @@ func (s *Server) handleSetEntry(w http.ResponseWriter, r *http.Request) {
 		StreakRuns: runs,
 		UpdatedAt:  updatedAt,
 	})
+}
+
+// checkEntryDay reports whether the entry of h on date may be changed, and
+// writes the error if not: within the bounds of checkEntryDate, and on a due
+// day for recording something (records). Removing is allowed on any day.
+func checkEntryDay(w http.ResponseWriter, h domain.Habit, date, today domain.Date, records bool) bool {
+	if !checkEntryDate(w, date, today, records) {
+		return false
+	}
+	if records && !h.IsScheduled(date) {
+		writeError(w, http.StatusUnprocessableEntity, "not_scheduled", "The habit is not scheduled on this day")
+		return false
+	}
+	return true
+}
+
+// checkEntryDate reports whether an entry may be dated on date, and writes the
+// error if not. Nothing may be dated more than EntryHorizonDays after today,
+// and nothing recorded (records) before EarliestEntry.
+func checkEntryDate(w http.ResponseWriter, date, today domain.Date, records bool) bool {
+	switch {
+	case date.IsZero():
+		writeError(w, http.StatusBadRequest, "invalid_date", "Invalid date, expected YYYY-MM-DD")
+	case date.After(today.AddDays(EntryHorizonDays)):
+		writeError(w, http.StatusUnprocessableEntity, "entry_too_far_ahead", "Entries may be at most one year in the future")
+	case records && date.Before(EarliestEntry):
+		// The year is passed as a string so the client does not format it as
+		// a number.
+		writeProblem(w, http.StatusUnprocessableEntity, domain.Invalid("entry_too_early",
+			"Entries may not be dated before {year}", "year", strconv.Itoa(EarliestEntry.Year)))
+	default:
+		return true
+	}
+	return false
 }

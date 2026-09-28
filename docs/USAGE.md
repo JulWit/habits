@@ -17,6 +17,7 @@
 | Assign or create a category | "Category" field in the habit editor |
 | Edit or delete a category | Click the category heading, then "Edit" or "Delete" |
 | Close the detail view | `Esc` |
+| Skip several days (holiday, illness) | Settings → "Skip days" for all habits; "Skip days…" in the menu of a habit's detail view for one or all |
 | Import, export or delete all data | Settings → "Data" |
 
 **Active day**: The board has one active day, today by default. The day
@@ -32,6 +33,11 @@ holiday. A skipped day does not count: it neither breaks nor extends the
 streak and is left out of the rate, the day summary and the filter. Future
 days can be skipped too. A tap on a skipped day records a value and ends the
 skip. See [DATAMODEL.md](DATAMODEL.md#entries).
+
+**Skipping several days**: "Skip days" takes a first and a last day (up to 366
+days), a note, and one habit or all that are not archived. It skips the due
+days without an entry; days with an entry keep it, and a day's own note is
+kept. Undo writes the days back as they were.
 
 **Limits**: For count, time and distance, "Goal" in the habit editor chooses
 "At least" (a target to reach) or "At most" (a limit to stay within, e.g. at

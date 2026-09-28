@@ -72,3 +72,18 @@ func (c EntryChange) Records() bool {
 		(c.Skipped != nil && *c.Skipped) ||
 		(c.Note != nil && strings.TrimSpace(*c.Note) != "")
 }
+
+// DaysToSkip returns the days from from to to, oldest first, that skipping
+// them for a holiday or an illness changes: the due days that are not skipped
+// yet and have no value. Days with a value keep it, as skipping a range of
+// days should not erase what was done on them.
+func DaysToSkip(h Habit, entries map[Date]Entry, from, to Date) []Date {
+	var days []Date
+	for d := from; !d.After(to); d = d.AddDays(1) {
+		e := entries[d]
+		if h.IsScheduled(d) && !e.Skipped && e.Value == 0 {
+			days = append(days, d)
+		}
+	}
+	return days
+}

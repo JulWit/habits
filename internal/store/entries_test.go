@@ -121,3 +121,47 @@ func TestSetEntryWithExpectRefusesAChangedEntry(t *testing.T) {
 		t.Errorf("expecting the stored entry: %v", err)
 	}
 }
+
+// WriteEntries applies the writes whose day still holds what they expect, and
+// fails all of them for a foreign habit.
+func TestWriteEntries(t *testing.T) {
+	ctx := context.Background()
+	st := openTestStore(t)
+	h := mustCreateHabit(t, st, "alice", countHabit(domain.KindCount, 80))
+	mon, tue := day(2026, time.September, 14), day(2026, time.September, 15)
+	if _, _, _, err := st.SetEntry(ctx, "alice", h.ID, tue, setValue(30), nil); err != nil {
+		t.Fatal(err)
+	}
+
+	skip := domain.Entry{Skipped: true, Note: "holiday"}
+	applied, err := st.WriteEntries(ctx, "alice", []EntryWrite{
+		{HabitID: h.ID, Date: mon, Expect: domain.Entry{}, Entry: skip},
+		// Tuesday holds 30 by now, so this one is left out.
+		{HabitID: h.ID, Date: tue, Expect: domain.Entry{}, Entry: skip},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(applied) != 1 || applied[0].Date != mon {
+		t.Errorf("applied = %+v, want monday only", applied)
+	}
+	entries, _ := st.EntriesForHabit(ctx, "alice", h.ID)
+	if entries[mon] != skip || entries[tue].Value != 30 {
+		t.Errorf("entries = %+v", entries)
+	}
+
+	// Undo: back to nothing recorded.
+	if _, err := st.WriteEntries(ctx, "alice", []EntryWrite{{HabitID: h.ID, Date: mon, Expect: skip}}); err != nil {
+		t.Fatal(err)
+	}
+	if entries, _ := st.EntriesForHabit(ctx, "alice", h.ID); len(entries) != 1 {
+		t.Errorf("after undo: %+v, want tuesday only", entries)
+	}
+
+	if _, err := st.WriteEntries(ctx, "mallory", []EntryWrite{{HabitID: h.ID, Date: mon, Entry: skip}}); !errors.Is(err, ErrNotFound) {
+		t.Errorf("a foreign habit: %v, want ErrNotFound", err)
+	}
+	if _, err := st.WriteEntries(ctx, "alice", []EntryWrite{{HabitID: h.ID, Date: mon, Entry: domain.Entry{Value: 5, Skipped: true}}}); !errors.Is(err, domain.ErrValidation) {
+		t.Errorf("an invalid entry: %v, want a validation error", err)
+	}
+}

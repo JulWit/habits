@@ -151,3 +151,67 @@ func writeEntry(ctx context.Context, tx *sql.Tx, habitID string, date domain.Dat
 		habitID, date.String(), e.Value, e.Skipped, e.Note, now)
 	return err
 }
+
+// EntryWrite replaces the entry of a habit on a day with Entry, on the
+// condition that the day still holds Expect.
+type EntryWrite struct {
+	HabitID string
+	Date    domain.Date
+	Expect  domain.Entry
+	Entry   domain.Entry
+}
+
+// WriteEntries applies the writes of the user's habits in one transaction and
+// returns those it applied. A write whose day no longer holds its Expect is
+// left out, as a change made elsewhere in the meantime wins. A habit that is
+// not the user's, or an invalid entry, fails all of them.
+func (s *Store) WriteEntries(ctx context.Context, userID string, writes []EntryWrite) ([]EntryWrite, error) {
+	var applied []EntryWrite
+	err := s.inTx(ctx, "saving entries", func(tx *sql.Tx) error {
+		now := formatTime(time.Now())
+		kinds := map[string]domain.Kind{}
+		for _, w := range writes {
+			kind, ok := kinds[w.HabitID]
+			if !ok {
+				err := tx.QueryRowContext(ctx,
+					`SELECT kind FROM habits WHERE id = ? AND user_id = ? AND deleted_at IS NULL`,
+					w.HabitID, userID).Scan(&kind)
+				if errors.Is(err, sql.ErrNoRows) {
+					return ErrNotFound
+				}
+				if err != nil {
+					return err
+				}
+				kinds[w.HabitID] = kind
+			}
+			if err := w.Entry.Validate(kind); err != nil {
+				return err
+			}
+
+			var stored domain.Entry
+			err := tx.QueryRowContext(ctx,
+				`SELECT value, skipped, note FROM entries WHERE habit_id = ? AND date = ?`,
+				w.HabitID, w.Date.String()).Scan(&stored.Value, &stored.Skipped, &stored.Note)
+			if err != nil && !errors.Is(err, sql.ErrNoRows) {
+				return err
+			}
+			if stored != w.Expect {
+				continue
+			}
+			if err := writeEntry(ctx, tx, w.HabitID, w.Date, w.Entry, now); err != nil {
+				return err
+			}
+			applied = append(applied, w)
+		}
+		for id := range kinds {
+			if _, err := tx.ExecContext(ctx, `UPDATE habits SET updated_at = ? WHERE id = ?`, now, id); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return applied, nil
+}

@@ -35,7 +35,9 @@ value; recording a value ends the skip. For times-per-week and
 times-per-month habits, each skipped day lowers the period's target in
 proportion, rounded up (three times a week with four days skipped needs two),
 future skipped days included, so a planned holiday counts for the current week.
-A period skipped entirely neither extends nor breaks the streak.
+A period skipped entirely neither extends nor breaks the streak. A range of
+days skipped at once (`domain.DaysToSkip`) only changes due days without a
+value, so what was done on a day is never erased by a holiday.
 
 **Notes** are free text per day, with or without a value.
 

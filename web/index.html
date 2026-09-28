@@ -311,6 +311,11 @@
         <span class="menu-text"><span class="menu-title">Archive</span><span class="menu-hint">Archived habits</span></span>
         <span class="menu-caret" data-icon="chevronRight" aria-hidden="true"></span>
       </button>
+      <button type="button" class="menu-item" id="settings-skip">
+        <span class="menu-icon" data-icon="skip" aria-hidden="true"></span>
+        <span class="menu-text"><span class="menu-title">Skip days</span><span class="menu-hint">Holiday or illness: skip days of all habits</span></span>
+        <span class="menu-caret" data-icon="chevronRight" aria-hidden="true"></span>
+      </button>
       <button type="button" class="menu-item" data-open-page="settings-data">
         <span class="menu-icon" data-icon="transfer" aria-hidden="true"></span>
         <span class="menu-text"><span class="menu-title">Data</span><span class="menu-hint">Import, export and delete</span></span>
@@ -585,6 +590,48 @@
       </fieldset>
 
       <p id="category-editor-error" class="error" role="alert" hidden></p>
+    </div>
+  </form>
+</dialog>
+
+<!-- Skipping a range of days of one habit or of all, e.g. for a holiday (see
+     skip.js). -->
+<dialog id="skip-dialog" class="dialog page is-sheet is-floating" aria-labelledby="skip-title">
+  <form id="skip-form" method="dialog">
+    <header class="page-head">
+      <button type="button" class="icon-button" data-page-back data-icon="close" title="Close" aria-label="Close"></button>
+      <h2 id="skip-title">Skip days</h2>
+      <button type="submit" class="button primary" id="skip-submit">Skip</button>
+    </header>
+
+    <div class="page-body">
+      <div class="field row">
+        <label class="grow">
+          <span class="field-label">From</span>
+          <input name="from" type="date" required>
+        </label>
+        <label class="grow">
+          <span class="field-label">Until</span>
+          <input name="to" type="date" required>
+        </label>
+      </div>
+
+      <fieldset class="field" id="skip-scope">
+        <legend class="field-label">Habits</legend>
+        <div class="segmented" role="radiogroup" aria-label="Habits">
+          <label><input type="radio" name="scope" value="one" checked><span id="skip-scope-one">This habit</span></label>
+          <label><input type="radio" name="scope" value="all"><span>All habits</span></label>
+        </div>
+      </fieldset>
+
+      <label class="field">
+        <span class="field-label">Note</span>
+        <textarea name="note" rows="2" maxlength="500" autocomplete="off" placeholder="e.g. holiday"></textarea>
+      </label>
+
+      <p class="field-hint">Only due days without an entry are skipped; days with an entry keep it. Skipped days neither break nor extend a streak. Archived habits are left out.</p>
+
+      <p id="skip-error" class="error" role="alert" hidden></p>
     </div>
   </form>
 </dialog>

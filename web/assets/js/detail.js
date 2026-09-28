@@ -15,6 +15,7 @@ import { hideTooltip } from "./tooltip.js";
 import { api } from "./api.js";
 import { remote } from "./remote.js";
 import { currentYear, yearGrid, centreToday, initChartTooltips } from "./year.js";
+import { el, markup } from "./dom.js";
 
 let root;
 let actions;
@@ -23,10 +24,10 @@ export function initDetail(handlers) {
   actions = handlers;
   root = document.getElementById("view-detail");
   root.addEventListener("click", (event) => {
-    const el = event.target.closest("[data-action]");
-    if (!el) return;
+    const target = event.target.closest("[data-action]");
+    if (!target) return;
     const id = root.dataset.habit;
-    switch (el.dataset.action) {
+    switch (target.dataset.action) {
       case "back": actions.closeHabit(); break;
       case "edit": actions.editHabit(id); break;
       case "archive": actions.toggleArchive(id); break;
@@ -99,16 +100,10 @@ export function renderDetail(habit) {
 function header(habit) {
   const archived = habit.archivedAt != null;
 
-  // Without an icon, a dot in the habit's colour.
-  let badge = habitIconBadge(habit, "habit-icon");
-  if (!badge) {
-    badge = document.createElement("span");
-    badge.className = "dot";
-  }
-
   return appBar({
     title: habit.name,
-    badge,
+    // Without an icon, a dot in the habit's colour.
+    badge: habitIconBadge(habit, "habit-icon") ?? el("span", { class: "dot" }),
     menu: [
       { action: "skip", label: t("Skip days…"), icon: "skip" },
       archived
@@ -178,18 +173,15 @@ function activity(habit) {
 }
 
 function heatmap(habit) {
-  const panel = document.createElement("section");
-  panel.className = "panel";
-
   const year = shownYear;
-  const title = document.createElement("h3");
-  title.textContent = t("Year {year}", { year });
-  const head = document.createElement("div");
-  head.className = "year-head";
-  head.append(title, yearNav(habit));
-
-  panel.append(head, yearGrid(year, (iso) => heatCell(habit, iso)), legend(year));
-  return panel;
+  return el("section", { class: "panel" },
+    el("div", { class: "year-head" },
+      el("h3", {}, t("Year {year}", { year })),
+      yearNav(habit),
+    ),
+    yearGrid(year, (iso) => heatCell(habit, iso)),
+    legend(year),
+  );
 }
 
 /**
@@ -199,50 +191,49 @@ function heatmap(habit) {
 function yearNav(habit) {
   const [first, last] = yearRange(habit);
   const year = Number(shownYear);
-  const nav = document.createElement("div");
-  nav.className = "year-nav";
-  const arrow = (action, icon, label, disabled) => {
-    const b = document.createElement("button");
-    b.type = "button";
-    b.className = "icon-button";
-    b.dataset.action = action;
-    b.innerHTML = icon;
-    b.title = label;
-    b.setAttribute("aria-label", label);
-    b.disabled = disabled;
-    return b;
-  };
-  nav.append(
+  const arrow = (action, icon, label, disabled) => el("button", {
+    type: "button",
+    class: "icon-button",
+    data: { action },
+    title: label,
+    "aria-label": label,
+    disabled,
+  }, markup(icon));
+  return el("div", { class: "year-nav" },
     arrow("year-earlier", icons.chevronLeft, t("Previous year"), year <= first),
     arrow("year-later", icons.chevronRight, t("Next year"), year >= last),
   );
-  return nav;
 }
 
 function heatCell(habit, iso) {
-  const el = document.createElement("div");
-  el.className = "heat";
   const { value } = H.entryOn(habit, iso);
-
-  // Used by centreToday().
-  if (iso === state.today) el.classList.add("is-today");
   const ahead = iso > state.today;
   // Unscheduled days are marked in the future too, so the schedule stays
   // visible.
   const off = !H.isScheduled(habit, iso) && value === 0;
-  if (ahead) el.classList.add("is-future");
-  if (off) el.classList.add("is-off");
-  else if (H.isSkipped(habit, iso)) el.classList.add("is-skipped");
-  else if (!ahead) el.dataset.level = String(H.heatLevel(habit, iso, value));
-
-  el.dataset.date = iso;
-  el.dataset.status = heatStatus(habit, iso, value);
-  // Uses the chart tooltip instead of a title attribute; the aria-label holds
-  // the same text.
-  el.setAttribute("role", "img");
+  const skipped = !off && H.isSkipped(habit, iso);
+  const status = heatStatus(habit, iso, value);
   const when = iso === state.today ? t("Today, {date}", { date: formatFull(iso) }) : formatFull(iso);
-  el.setAttribute("aria-label", `${when} — ${el.dataset.status}`);
-  return el;
+
+  return el("div", {
+    class: [
+      "heat",
+      // Used by centreToday().
+      iso === state.today && "is-today",
+      ahead && "is-future",
+      off && "is-off",
+      skipped && "is-skipped",
+    ],
+    data: {
+      date: iso,
+      status,
+      level: off || skipped || ahead ? undefined : H.heatLevel(habit, iso, value),
+    },
+    // Uses the chart tooltip instead of a title attribute; the aria-label holds
+    // the same text.
+    role: "img",
+    "aria-label": `${when} — ${status}`,
+  });
 }
 
 /** Describes a day of the heatmap. Future days only show planned values. */
@@ -262,16 +253,16 @@ function heatStatus(habit, iso, value) {
 }
 
 function legend(year) {
-  const el = document.createElement("div");
-  el.className = "heatmap-legend";
   const from = formatDayMonth(`${year}-01-01`);
   // The grid covers the whole year.
   const to = `${formatDayMonth(`${year}-12-31`)} ${year}`;
-  el.innerHTML =
-    `<span>${from} – ${to}</span><span style="flex:1"></span><span>${t("less")}</span>` +
-    [0, 1, 2, 3, 4].map((l) => `<span class="heat" data-level="${l}"></span>`).join("") +
-    `<span>${t("more")}</span>`;
-  return el;
+  return el("div", { class: "heatmap-legend" },
+    el("span", {}, `${from} – ${to}`),
+    el("span", { style: { flex: "1" } }),
+    el("span", {}, t("less")),
+    ...[0, 1, 2, 3, 4].map((level) => el("span", { class: "heat", data: { level } })),
+    el("span", {}, t("more")),
+  );
 }
 
 /**
@@ -293,10 +284,7 @@ let grain = "month";
  * server sums the values (GET /api/habits/{id}/totals).
  */
 function cumulative(habit) {
-  const panel = document.createElement("section");
-  panel.className = "panel cum-panel";
-  panel.append(grainHead(habit), cumulativeBody(habit));
-  return panel;
+  return el("section", { class: "panel cum-panel" }, grainHead(habit), cumulativeBody(habit));
 }
 
 /**
@@ -322,39 +310,21 @@ function showNewest(panel) {
 
 /** Builds the chart heading with the day/week/month switch. */
 function grainHead(habit) {
-  const head = document.createElement("div");
-  head.className = "cum-head";
-
-  const title = document.createElement("h3");
-  title.textContent = t("Cumulative");
-  head.append(title);
-
-  const choices = document.createElement("div");
-  choices.className = "segmented cum-grain";
-  choices.setAttribute("role", "radiogroup");
-  choices.setAttribute("aria-label", t("Period"));
-  for (const [key, { label }] of Object.entries(GRAINS)) {
-    const wrap = document.createElement("label");
-    const input = document.createElement("input");
-    input.type = "radio";
-    input.name = "cum-grain";
-    input.value = key;
-    input.checked = key === grain;
+  const choices = Object.entries(GRAINS).map(([key, { label }]) => {
+    const input = el("input", { type: "radio", name: "cum-grain", value: key, checked: key === grain });
     input.addEventListener("change", () => {
       grain = key;
       redrawCumulative(habit.id);
     });
-    const text = document.createElement("span");
-    text.textContent = label;
-    wrap.append(input, text);
-    choices.append(wrap);
-  }
-  head.append(choices);
-  return head;
+    return el("label", {}, input, el("span", {}, label));
+  });
+  return el("div", { class: "cum-head" },
+    el("h3", {}, t("Cumulative")),
+    el("div", { class: "segmented cum-grain", role: "radiogroup", "aria-label": t("Period") }, ...choices),
+  );
 }
 
 function cumulativeBody(habit) {
-  const body = document.createElement("div");
   // The year shown, to today in the current year.
   const year = shownYear;
   const current = year === currentYear();
@@ -364,106 +334,81 @@ function cumulativeBody(habit) {
     () => redrawCumulative(habit.id),
   );
   // Until the first answer arrives.
-  if (!summary) {
-    body.className = "cum-loading";
-    return body;
-  }
+  if (!summary) return el("div", { class: "cum-loading" });
 
   if (summary.total === 0) {
-    const empty = document.createElement("p");
-    empty.className = "cum-empty";
-    empty.textContent = current
-      ? t("No entries in {year} yet.", { year })
-      : t("No entries in {year}.", { year });
-    body.append(empty);
-    return body;
+    return el("div", {},
+      el("p", { class: "cum-empty" }, current
+        ? t("No entries in {year} yet.", { year })
+        : t("No entries in {year}.", { year })),
+    );
   }
 
-  body.append(
+  return el("div", {},
     cumulativeSummary(habit, summary, t("in {year}", { year })),
     cumulativeChart(habit, summary),
   );
-  return body;
 }
 
 function cumulativeSummary(habit, { total, best, activeDays }, scopeIn) {
-  const line = document.createElement("p");
-  line.className = "cum-summary";
   // Average per day with an entry.
   const average = Math.round(total / activeDays);
-  line.append(
-    strong(H.formatTotal(habit, total)),
-    text(t(" {scope} · avg ", { scope: scopeIn })),
-    strong(H.formatTotal(habit, average)),
-    text(activeDays === 1
+  return el("p", { class: "cum-summary" },
+    el("strong", {}, H.formatTotal(habit, total)),
+    t(" {scope} · avg ", { scope: scopeIn }),
+    el("strong", {}, H.formatTotal(habit, average)),
+    activeDays === 1
       ? t(" on 1 active day · best day ")
-      : t(" on {n} active days · best day ", { n: activeDays })),
-    strong(H.formatTotal(habit, best)),
+      : t(" on {n} active days · best day ", { n: activeDays }),
+    el("strong", {}, H.formatTotal(habit, best)),
   );
-  return line;
-}
-
-const text = (value) => document.createTextNode(value);
-
-function strong(value) {
-  const el = document.createElement("strong");
-  el.textContent = value;
-  return el;
 }
 
 function cumulativeChart(habit, { buckets, total }) {
-  const chart = document.createElement("div");
-  chart.className = grain === "month" ? "cum-chart" : "cum-chart is-fine";
-  chart.style.setProperty("--cols", String(buckets.length));
-  chart.style.setProperty("--bar-min", GRAINS[grain].barMin);
+  return el("div", {
+    class: ["cum-chart", grain !== "month" && "is-fine"],
+    style: { "--cols": String(buckets.length), "--bar-min": GRAINS[grain].barMin },
+  },
+    // The scale line marks the year's total, outside the scrolling area.
+    el("div", { class: "cum-scale" }, H.formatTotal(habit, total)),
+    // Bars and labels scroll together.
+    el("div", { class: "cum-scroll" },
+      el("div", { class: "cum-track" },
+        el("div", { class: "cum-bars" }, ...buckets.map((bucket) => cumulativeColumn(habit, bucket, total))),
+        bucketLabels(buckets),
+      ),
+    ),
+  );
+}
 
-  // The scale line marks the year's total, outside the scrolling area.
-  const scale = document.createElement("div");
-  scale.className = "cum-scale";
-  scale.textContent = H.formatTotal(habit, total);
+/**
+ * Builds the bar of a bucket: its height is the running total, the period's
+ * own sum is highlighted at its top.
+ */
+function cumulativeColumn(habit, { start, sum, cumulative: running }, total) {
+  // Shown by the shared tooltip.
+  const tip = bucketName(start);
+  const status = sum > 0
+    ? t("{total} · of that +{sum}",
+      { total: H.formatTotal(habit, running), sum: H.formatTotal(habit, sum) })
+    : t("{total} · nothing added", { total: H.formatTotal(habit, running) });
 
-  const bars = document.createElement("div");
-  bars.className = "cum-bars";
-  for (const { start, sum, cumulative: running } of buckets) {
-    const col = document.createElement("div");
-    col.className = "cum-col";
-    // Shown by the shared tooltip.
-    col.dataset.tip = bucketName(start);
-    col.dataset.status = sum > 0
-      ? t("{total} · of that +{sum}",
-        { total: H.formatTotal(habit, running), sum: H.formatTotal(habit, sum) })
-      : t("{total} · nothing added", { total: H.formatTotal(habit, running) });
+  return el("div", {
+    class: "cum-col",
+    data: { tip, status },
     // Accessible name, as the tooltip requires a pointer.
-    col.setAttribute("role", "img");
-    col.setAttribute("aria-label", `${col.dataset.tip}: ${col.dataset.status}`);
-
-    const bar = document.createElement("div");
-    bar.className = "cum-bar";
-    bar.style.height = `${(running / total) * 100}%`;
-    // Hide bars before the first entry.
-    if (running === 0) bar.classList.add("is-zero");
-    // Highlight the period's own sum at the top of the bar.
-    if (sum > 0 && running > 0) {
-      const gain = document.createElement("div");
-      gain.className = "cum-gain";
-      gain.style.height = `${(sum / running) * 100}%`;
-      bar.append(gain);
-    }
-    col.append(bar);
-    bars.append(col);
-  }
-
-  // Bars and labels scroll together.
-  const track = document.createElement("div");
-  track.className = "cum-track";
-  track.append(bars, bucketLabels(buckets));
-
-  const scroller = document.createElement("div");
-  scroller.className = "cum-scroll";
-  scroller.append(track);
-
-  chart.append(scale, scroller);
-  return chart;
+    role: "img",
+    "aria-label": `${tip}: ${status}`,
+  },
+    el("div", {
+      // Hide bars before the first entry.
+      class: ["cum-bar", running === 0 && "is-zero"],
+      style: { height: `${(running / total) * 100}%` },
+    },
+      sum > 0 && running > 0 &&
+        el("div", { class: "cum-gain", style: { height: `${(sum / running) * 100}%` } }),
+    ),
+  );
 }
 
 /** Returns the tooltip label of a bucket. */
@@ -478,21 +423,12 @@ function bucketName(start) {
  * bucket is labelled.
  */
 function bucketLabels(buckets) {
-  const row = document.createElement("div");
-  row.className = "cum-months";
   const { every } = GRAINS[grain];
-  buckets.forEach(({ start }, i) => {
-    const span = document.createElement("span");
+  return el("div", { class: "cum-months" }, ...buckets.map(({ start }, i) => {
     // Counted from the end, so the latest bucket is always labelled.
-    const fromEnd = buckets.length - 1 - i;
-    if (fromEnd % every === 0) {
-      const tick = document.createElement("i");
-      tick.textContent = grain === "month"
-        ? MONTH_SHORT[monthIndex(start)]
-        : `${dayOfMonth(start)}.${monthIndex(start) + 1}.`;
-      span.append(tick);
-    }
-    row.append(span);
-  });
-  return row;
+    const labelled = (buckets.length - 1 - i) % every === 0;
+    return el("span", {}, labelled && el("i", {}, grain === "month"
+      ? MONTH_SHORT[monthIndex(start)]
+      : `${dayOfMonth(start)}.${monthIndex(start) + 1}.`));
+  }));
 }

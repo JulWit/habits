@@ -9,6 +9,7 @@ import { t, locale, userTimeZone } from "./i18n.js";
 import { openPage, topPage } from "./pages.js";
 import { factItem } from "./panels.js";
 import { forget } from "./outbox.js";
+import { el } from "./dom.js";
 
 let dialog;
 let themeInputs;
@@ -390,9 +391,7 @@ function knownTimeZones() {
  */
 function buildTimeZoneOptions() {
   if (timeZoneSelect.options.length > 0) return;
-  const server = document.createElement("option");
-  server.value = "";
-  timeZoneSelect.append(server);
+  timeZoneSelect.append(el("option", { value: "" }));
 
   const groups = new Map();
   for (const zone of knownTimeZones()) {
@@ -401,16 +400,10 @@ function buildTimeZoneOptions() {
     groups.get(region).push(zone);
   }
   for (const [region, zones] of groups) {
-    const group = document.createElement("optgroup");
-    group.label = region;
-    for (const zone of zones) {
-      const option = document.createElement("option");
-      option.value = zone;
+    timeZoneSelect.append(el("optgroup", { label: region }, ...zones.map((zone) =>
       // Without the region prefix and underscores.
-      option.textContent = zone.slice(zone.indexOf("/") + 1).replaceAll("_", " ").replaceAll("/", " / ");
-      group.append(option);
-    }
-    timeZoneSelect.append(group);
+      el("option", { value: zone },
+        zone.slice(zone.indexOf("/") + 1).replaceAll("_", " ").replaceAll("/", " / ")))));
   }
 }
 
@@ -427,10 +420,7 @@ function paintRegion() {
   const chosen = state.settings.timeZone;
   // Add the chosen zone if the browser does not list it.
   if (chosen && ![...timeZoneSelect.options].some((o) => o.value === chosen)) {
-    const option = document.createElement("option");
-    option.value = chosen;
-    option.textContent = chosen;
-    timeZoneSelect.append(option);
+    timeZoneSelect.append(el("option", { value: chosen }, chosen));
   }
   timeZoneSelect.value = chosen;
 
@@ -469,25 +459,20 @@ function paintBandChoices(chosen) {
   const wanted = [NEUTRAL_BAND, ...state.colors];
   if (bandChoices.childElementCount !== wanted.length) {
     bandChoices.replaceChildren(...wanted.map((color) => {
-      const b = document.createElement("button");
-      b.type = "button";
-      b.className = "swatch";
-      b.dataset.color = color;
-      b.setAttribute("role", "radio");
-      if (color === NEUTRAL_BAND) {
-        b.style.setProperty("--swatch", "var(--today-neutral)");
-        b.setAttribute("aria-label", t("Neutral"));
-        b.title = t("Neutral");
-      } else {
-        b.style.setProperty("--swatch", colorValue(color));
-        b.setAttribute("aria-label", t("Colour {color}", { color: colorLabel(color) }));
-        b.title = colorLabel(color);
-      }
-      return b;
+      const neutral = color === NEUTRAL_BAND;
+      return el("button", {
+        type: "button",
+        class: "swatch",
+        data: { color },
+        role: "radio",
+        style: { "--swatch": neutral ? "var(--today-neutral)" : colorValue(color) },
+        "aria-label": neutral ? t("Neutral") : t("Colour {color}", { color: colorLabel(color) }),
+        title: neutral ? t("Neutral") : colorLabel(color),
+      });
     }));
   }
-  for (const el of bandChoices.children) {
-    el.setAttribute("aria-checked", String(el.dataset.color === chosen));
+  for (const node of bandChoices.children) {
+    node.setAttribute("aria-checked", String(node.dataset.color === chosen));
   }
 }
 

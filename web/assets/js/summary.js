@@ -6,6 +6,7 @@ import { state } from "./state.js";
 import * as H from "./habit.js";
 import { icons, colorValue } from "./icons.js";
 import { t } from "./i18n.js";
+import { el, markup } from "./dom.js";
 
 /** The board element, which holds the summary. Set by initSummary. */
 let board;
@@ -31,51 +32,39 @@ export function dayProgress(habits, day) {
 export function daySummary(habits, day) {
   const { due, done } = dayProgress(habits, day);
   const percent = due === 0 ? 0 : Math.round((done / due) * 100);
-  const isToday = day === state.today;
-
-  const el = document.createElement("section");
-  el.className = "day-summary";
-
-  const text = document.createElement("div");
-  text.className = "day-summary-text";
-
-  const date = document.createElement("h2");
-  date.className = "day-summary-date";
   // The year only if it is not the current one.
-  date.textContent = formatFull(day, yearOf(day) !== yearOf(state.today));
-  el.setAttribute("aria-label", `${date.textContent} — ${t("Show day statistics")}`);
-  // Opens the day statistics (overview.js handles the click).
-  el.dataset.role = "open-days";
-  el.setAttribute("role", "button");
-  el.tabIndex = 0;
-  el.title = t("Show day statistics");
-  el.addEventListener("keydown", (event) => {
+  const date = formatFull(day, yearOf(day) !== yearOf(state.today));
+
+  const summary = el("section", {
+    class: ["day-summary", due > 0 && done === due && "is-complete"],
+    // Opens the day statistics (overview.js handles the click).
+    data: { role: "open-days" },
+    role: "button",
+    tabIndex: 0,
+    title: t("Show day statistics"),
+    "aria-label": `${date} — ${t("Show day statistics")}`,
+  },
+    el("div", { class: "day-summary-text" },
+      el("h2", { class: "day-summary-date" }, date),
+      el("p", { class: "day-summary-count" }, ...progressText(due, done, day === state.today)),
+    ),
+    // No ring if nothing is due on the day.
+    due > 0 && progressRing(percent, t("Done on this day")),
+  );
+  summary.addEventListener("keydown", (event) => {
     if (event.key !== "Enter" && event.key !== " ") return;
     event.preventDefault();
-    el.click();
+    summary.click();
   });
+  return summary;
+}
 
-  const count = document.createElement("p");
-  count.className = "day-summary-count";
-  if (due > 0 && done === due) {
-    // Everything due on the day is done.
-    el.classList.add("is-complete");
-    count.innerHTML = icons.check; // constant markup from icons.js
-    const words = document.createElement("span");
-    // The varying messages speak of today.
-    words.textContent = isToday ? completeText(due) : t("All habits done!");
-    count.append(words);
-  } else if (due === 0) {
-    count.textContent = t("Nothing due on this day");
-  } else {
-    count.textContent = t("{done} of {due} done", { done, due });
-  }
-  text.append(date, count);
-  el.append(text);
-
-  // No ring if nothing is due on the day.
-  if (due > 0) el.append(progressRing(percent, t("Done on this day")));
-  return el;
+/** Describes the day's progress; a complete day gets a check. */
+function progressText(due, done, isToday) {
+  if (due === 0) return [t("Nothing due on this day")];
+  if (done < due) return [t("{done} of {due} done", { done, due })];
+  // Everything due on the day is done. The varying messages speak of today.
+  return [markup(icons.check), el("span", {}, isToday ? completeText(due) : t("All habits done!"))];
 }
 
 /** Messages for a completed day; the date selects one, so it stays stable. */
@@ -128,14 +117,6 @@ let lastRingPercent = null;
  * pathLength="100" allows dash lengths in percent.
  */
 function progressRing(percent, name) {
-  const ring = document.createElement("div");
-  ring.className = "day-summary-ring";
-  ring.setAttribute("role", "progressbar");
-  ring.setAttribute("aria-valuemin", "0");
-  ring.setAttribute("aria-valuemax", "100");
-  ring.setAttribute("aria-valuenow", String(percent));
-  ring.setAttribute("aria-label", name);
-
   const ns = "http://www.w3.org/2000/svg";
   const svg = document.createElementNS(ns, "svg");
   svg.setAttribute("viewBox", "0 0 40 40");
@@ -153,9 +134,15 @@ function progressRing(percent, name) {
   fill.setAttribute("pathLength", "100");
   svg.append(track, fill);
 
-  const label = document.createElement("span");
-  label.className = "day-summary-percent";
-  ring.append(svg, label);
+  const label = el("span", { class: "day-summary-percent" });
+  const ring = el("div", {
+    class: "day-summary-ring",
+    role: "progressbar",
+    "aria-valuemin": "0",
+    "aria-valuemax": "100",
+    "aria-valuenow": String(percent),
+    "aria-label": name,
+  }, svg, label);
 
   // While orbs are in flight, they advance the ring as they land.
   if (ringHold) {
@@ -256,8 +243,8 @@ function ringPoint(percent) {
 /** Returns the top of the visible board area, below the sticky header. */
 function visibleTop() {
   let top = 0;
-  for (const el of [document.querySelector(".topbar"), board.querySelector(".day-header")]) {
-    if (el) top = Math.max(top, el.getBoundingClientRect().bottom);
+  for (const bar of [document.querySelector(".topbar"), board.querySelector(".day-header")]) {
+    if (bar) top = Math.max(top, bar.getBoundingClientRect().bottom);
   }
   return top;
 }
@@ -267,27 +254,24 @@ function visibleTop() {
  * colour value, taken from the orb.
  */
 function flash(x, y, size, color) {
-  const el = document.createElement("span");
-  el.className = "orb orb-flash";
-  el.style.setProperty("--habit-color", color);
-  el.style.width = el.style.height = `${size}px`;
-  el.style.left = `${x - size / 2}px`;
-  el.style.top = `${y - size / 2}px`;
-  orbLayer().append(el);
-  el.animate(
+  const spark = document.createElement("span");
+  spark.className = "orb orb-flash";
+  spark.style.setProperty("--habit-color", color);
+  spark.style.width = spark.style.height = `${size}px`;
+  spark.style.left = `${x - size / 2}px`;
+  spark.style.top = `${y - size / 2}px`;
+  orbLayer().append(spark);
+  spark.animate(
     [{ transform: "scale(.6)", opacity: 1 }, { transform: "scale(2.6)", opacity: 0 }],
     { duration: 380, easing: "ease-out" },
-  ).onfinish = () => el.remove();
+  ).onfinish = () => spark.remove();
 }
 
 /** Returns the layer for the orbs, above the board and below dialogs. */
 function orbLayer() {
   let layer = document.getElementById("orb-layer");
   if (!layer) {
-    layer = document.createElement("div");
-    layer.id = "orb-layer";
-    layer.className = "orb-layer";
-    layer.setAttribute("aria-hidden", "true");
+    layer = el("div", { id: "orb-layer", class: "orb-layer", "aria-hidden": "true" });
     document.body.append(layer);
   }
   return layer;

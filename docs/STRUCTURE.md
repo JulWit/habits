@@ -24,6 +24,7 @@ web/                        Frontend (ES modules, no build step)
   assets/js/overview.js       Board with category blocks, day header and active day
   assets/js/summary.js        Day summary with progress ring and the orbs flying into it
   assets/js/cells.js          Habit row and day cell
+  assets/js/dom.js            DOM helpers: el() builds elements, markup() parses trusted SVG
   assets/js/habit.js          Reads the day statuses; value, schedule and streak helpers
   assets/js/detail.js         Habit detail view
   assets/js/category.js       Category detail view

@@ -6,6 +6,7 @@ import { daysBetween, formatLong, localISO } from "./dates.js";
 import { state } from "./state.js";
 import { t, locale, userTimeZone } from "./i18n.js";
 import { icons } from "./icons.js";
+import { el, markup } from "./dom.js";
 
 /**
  * Labels the completion rate with the window it covers, which the server
@@ -21,20 +22,12 @@ export function rateLabel() {
  * one of `icons`, shown in the tile's corner.
  */
 export function statRow(stats) {
-  const row = document.createElement("div");
-  row.className = "stat-row";
-  for (const [label, value, icon] of stats) {
-    const tile = document.createElement("div");
-    tile.className = "stat";
-    // The icon's markup is constant (icons.js).
-    tile.innerHTML =
-      `<div class="value"></div><span class="stat-icon" aria-hidden="true">${icons[icon]}</span>` +
-      `<div class="label"></div>`;
-    tile.querySelector(".value").textContent = value;
-    tile.querySelector(".label").textContent = label;
-    row.append(tile);
-  }
-  return row;
+  return el("div", { class: "stat-row" }, ...stats.map(([label, value, icon]) =>
+    el("div", { class: "stat" },
+      el("div", { class: "value" }, value),
+      el("span", { class: "stat-icon", "aria-hidden": "true" }, markup(icons[icon])),
+      el("div", { class: "label" }, label),
+    )));
 }
 
 /**
@@ -42,35 +35,18 @@ export function statRow(stats) {
  * factItem.
  */
 export function factsPanel(title, items, className = "details") {
-  const panel = document.createElement("section");
-  panel.className = `panel ${className}`;
-
-  const heading = document.createElement("h3");
-  heading.textContent = title;
-
-  const list = document.createElement("dl");
-  list.className = "activity-list";
-  list.append(...items);
-
-  panel.append(heading, list);
-  return panel;
+  return el("section", { class: ["panel", className] },
+    el("h3", {}, title),
+    el("dl", { class: "activity-list" }, ...items),
+  );
 }
 
 /** Builds a labelled fact, with an optional note after the value. */
 export function factItem(label, value, note = "") {
-  const item = document.createElement("div");
-  const dt = document.createElement("dt");
-  dt.textContent = label;
-  const dd = document.createElement("dd");
-  dd.textContent = value;
-  if (note) {
-    const small = document.createElement("span");
-    small.className = "note";
-    small.textContent = note;
-    dd.append(small);
-  }
-  item.append(dt, dd);
-  return item;
+  return el("div", {},
+    el("dt", {}, label),
+    el("dd", {}, value, note && el("span", { class: "note" }, note)),
+  );
 }
 
 /** Builds the fact of when a habit or category was created (its createdAt). */

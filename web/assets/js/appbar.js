@@ -7,6 +7,7 @@
 
 import { icons } from "./icons.js";
 import { t } from "./i18n.js";
+import { el, markup } from "./dom.js";
 
 /**
  * Builds the title bar.
@@ -19,41 +20,29 @@ import { t } from "./i18n.js";
  *   empty list omits the menu
  */
 export function appBar({ title, sub = "", badge = null, edit = true, menu }) {
-  const bar = document.createElement("header");
-  bar.className = "app-bar";
-  bar.innerHTML = `
-    <button class="icon-button" type="button" data-action="back"></button>
-    <div class="app-bar-title">
-      <h2><span class="name"></span></h2>
-      <span class="sub"></span>
-    </div>
-    <div class="app-bar-actions">
-      <button class="icon-button" type="button" data-action="edit"></button>
-    </div>`;
-  labelled(bar.querySelector('[data-action="back"]'), icons.arrowLeft, t("Back"));
-  if (edit) labelled(bar.querySelector('[data-action="edit"]'), icons.edit, t("Edit"));
-  else bar.querySelector('[data-action="edit"]').remove();
-  bar.querySelector(".name").textContent = title;
-  if (badge) bar.querySelector("h2").prepend(badge);
-  // In a span of its own, as the stylesheet draws the dot before it.
-  const subLine = bar.querySelector(".sub");
-  if (sub) {
-    const part = document.createElement("span");
-    part.className = "sub-part";
-    part.textContent = sub;
-    subLine.append(part);
-  } else {
-    subLine.remove();
-  }
-  if (menu.length > 0) bar.querySelector(".app-bar-actions").append(...overflowMenu(menu));
-  return bar;
+  return el("header", { class: "app-bar" },
+    iconButton("back", icons.arrowLeft, t("Back")),
+    el("div", { class: "app-bar-title" },
+      el("h2", {}, badge, el("span", { class: "name" }, title)),
+      // In a span of its own, as the stylesheet draws the dot before it.
+      sub && el("span", { class: "sub" }, el("span", { class: "sub-part" }, sub)),
+    ),
+    el("div", { class: "app-bar-actions" },
+      edit && iconButton("edit", icons.edit, t("Edit")),
+      ...(menu.length > 0 ? overflowMenu(menu) : []),
+    ),
+  );
 }
 
-/** Gives an icon button its icon and label. */
-function labelled(button, icon, label) {
-  button.innerHTML = icon;
-  button.title = label;
-  button.setAttribute("aria-label", label);
+/** Builds an icon button with its label. */
+function iconButton(action, icon, label) {
+  return el("button", {
+    class: "icon-button",
+    type: "button",
+    data: { action },
+    title: label,
+    "aria-label": label,
+  }, markup(icon));
 }
 
 let count = 0;
@@ -69,33 +58,24 @@ let count = 0;
 function overflowMenu(items) {
   const id = `overflow-menu-${++count}`;
 
-  const button = document.createElement("button");
-  button.type = "button";
-  button.className = "icon-button";
-  button.innerHTML = icons.moreVertical;
-  button.title = t("More options");
-  button.setAttribute("aria-label", t("More options"));
-  button.setAttribute("aria-haspopup", "menu");
-  button.setAttribute("aria-expanded", "false");
-  button.setAttribute("popovertarget", id);
+  const button = el("button", {
+    type: "button",
+    class: "icon-button",
+    title: t("More options"),
+    "aria-label": t("More options"),
+    "aria-haspopup": "menu",
+    "aria-expanded": "false",
+    popovertarget: id,
+  }, markup(icons.moreVertical));
 
-  const menu = document.createElement("div");
-  menu.id = id;
-  menu.className = "overflow-menu";
-  menu.popover = "auto";
-  menu.setAttribute("role", "menu");
-  for (const item of items) {
-    const entry = document.createElement("button");
-    entry.type = "button";
-    entry.className = item.danger ? "overflow-item is-danger" : "overflow-item";
-    entry.dataset.action = item.action;
-    entry.setAttribute("role", "menuitem");
-    entry.innerHTML = icons[item.icon] ?? "";
-    const label = document.createElement("span");
-    label.textContent = item.label;
-    entry.append(label);
-    menu.append(entry);
-  }
+  const menu = el("div", { id, class: "overflow-menu", popover: "auto", role: "menu" },
+    ...items.map((item) => el("button", {
+      type: "button",
+      class: ["overflow-item", item.danger && "is-danger"],
+      data: { action: item.action },
+      role: "menuitem",
+    }, icons[item.icon] && markup(icons[item.icon]), el("span", {}, item.label))),
+  );
 
   menu.addEventListener("toggle", (event) => {
     const open = event.newState === "open";

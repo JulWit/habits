@@ -6,6 +6,7 @@ import { habitIconBadge, categoryIconBadge, colorValue } from "./icons.js";
 import * as H from "./habit.js";
 import { t } from "./i18n.js";
 import { openPage, closePage } from "./pages.js";
+import { el } from "./dom.js";
 
 let dialog;
 let input;
@@ -115,43 +116,38 @@ function draw() {
 }
 
 function option(entry, index) {
-  const el = document.createElement("div");
-  el.className = "search-option";
-  el.id = `search-option-${index}`;
-  el.dataset.index = String(index);
-  el.setAttribute("role", "option");
-
-  // Show the icon instead of the dot, if there is one.
-  let dot = entry.kind === "habit"
-    ? habitIconBadge(entry.item, "habit-icon is-small")
-    : categoryIconBadge(entry.item, "habit-icon is-small");
-  if (!dot) {
-    dot = document.createElement("span");
-    dot.className = entry.kind === "habit" ? "dot" : "dot is-category";
-    if (entry.kind === "habit") dot.style.setProperty("--habit-color", colorValue(entry.item.color));
-  }
-
-  const name = document.createElement("span");
-  name.className = "search-option-name";
-  name.textContent = entry.item.name;
-
-  const meta = document.createElement("span");
-  meta.className = "search-option-meta";
-  meta.textContent = entry.kind === "habit"
+  const isHabit = entry.kind === "habit";
+  const meta = isHabit
     ? entry.category?.name ?? H.describeHabit(entry.item)
     : entry.habits.length === 1
       ? t("Category · 1 habit")
       : t("Category · {n} habits", { n: entry.habits.length });
 
-  el.append(dot, name, meta);
-  if (entry.kind === "habit" && entry.item.archivedAt) el.classList.add("is-archived");
-  return el;
+  return el("div", {
+    class: ["search-option", isHabit && entry.item.archivedAt ? "is-archived" : ""],
+    id: `search-option-${index}`,
+    data: { index },
+    role: "option",
+  },
+    optionDot(entry),
+    el("span", { class: "search-option-name" }, entry.item.name),
+    el("span", { class: "search-option-meta" }, meta),
+  );
+}
+
+/** Returns the icon of a result, or a dot if it has none. */
+function optionDot({ kind, item }) {
+  if (kind === "habit") {
+    return habitIconBadge(item, "habit-icon is-small") ??
+      el("span", { class: "dot", style: { "--habit-color": colorValue(item.color) } });
+  }
+  return categoryIconBadge(item, "habit-icon is-small") ?? el("span", { class: "dot is-category" });
 }
 
 /** Highlights the selected result and scrolls it into view. */
 function mark() {
-  for (const el of list.children) {
-    el.setAttribute("aria-selected", String(Number(el.dataset.index) === active));
+  for (const node of list.children) {
+    node.setAttribute("aria-selected", String(Number(node.dataset.index) === active));
   }
   const current = list.children[active];
   if (current) {

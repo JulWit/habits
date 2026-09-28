@@ -14,6 +14,7 @@ import { appBar } from "./appbar.js";
 import { statRow, factsPanel, factItem } from "./panels.js";
 import { hideTooltip } from "./tooltip.js";
 import { currentYear, sinceLabel, yearGrid, centreToday, initChartTooltips } from "./year.js";
+import { el } from "./dom.js";
 
 let root;
 let actions;
@@ -22,8 +23,8 @@ export function initDays(handlers) {
   actions = handlers;
   root = document.getElementById("view-days");
   root.addEventListener("click", (event) => {
-    const el = event.target.closest("[data-action]");
-    if (el?.dataset.action === "back") actions.closeDays();
+    const target = event.target.closest("[data-action]");
+    if (target?.dataset.action === "back") actions.closeDays();
   });
   initChartTooltips(root, ".heat[data-date], .day-bar[data-tip]");
 }
@@ -70,39 +71,35 @@ function statTiles(stats, from) {
 // ---------- heatmap ----------
 
 function heatmap(totals, year) {
-  const panel = document.createElement("section");
-  panel.className = "panel days-heatmap";
-
-  const title = document.createElement("h3");
-  title.textContent = t("Year {year}", { year });
-
   const byDate = new Map(totals.map((d) => [d.date, d]));
-  panel.append(title, yearGrid(year, (iso) => heatCell(iso, byDate.get(iso))), legend(year));
-  return panel;
+  return el("section", { class: "panel days-heatmap" },
+    el("h3", {}, t("Year {year}", { year })),
+    yearGrid(year, (iso) => heatCell(iso, byDate.get(iso))),
+    legend(year),
+  );
 }
 
 /** Builds the square of a day from its total ({due, done}). */
 function heatCell(iso, { due, done }) {
-  const el = document.createElement("div");
-  el.className = "heat";
-  if (iso === state.today) el.classList.add("is-today");
   const ahead = iso > state.today;
-  if (ahead) {
-    el.classList.add("is-future");
-  } else if (due === 0) {
-    el.classList.add("is-off");
-  } else {
-    // The shade grows with the share of completed habits.
-    el.style.setProperty("--rate", (done / due).toFixed(3));
-    if (done === due) el.classList.add("is-perfect");
-  }
-
-  el.dataset.date = iso;
-  el.dataset.status = heatStatus(due, done, ahead);
-  el.setAttribute("role", "img");
+  const counted = !ahead && due > 0;
+  const status = heatStatus(due, done, ahead);
   const when = iso === state.today ? t("Today, {date}", { date: formatFull(iso) }) : formatFull(iso);
-  el.setAttribute("aria-label", `${when} — ${el.dataset.status}`);
-  return el;
+
+  return el("div", {
+    class: [
+      "heat",
+      iso === state.today && "is-today",
+      ahead && "is-future",
+      !ahead && due === 0 && "is-off",
+      counted && done === due && "is-perfect",
+    ],
+    // The shade grows with the share of completed habits.
+    style: { "--rate": counted ? (done / due).toFixed(3) : undefined },
+    data: { date: iso, status },
+    role: "img",
+    "aria-label": `${when} — ${status}`,
+  });
 }
 
 function heatStatus(due, done, ahead) {
@@ -112,15 +109,16 @@ function heatStatus(due, done, ahead) {
 }
 
 function legend(year) {
-  const el = document.createElement("div");
-  el.className = "heatmap-legend";
   const from = formatDayMonth(`${year}-01-01`);
   const to = `${formatDayMonth(`${year}-12-31`)} ${year}`;
-  el.innerHTML =
-    `<span>${from} – ${to}</span><span style="flex:1"></span><span>0 %</span>` +
-    [0, 0.25, 0.5, 0.75].map((r) => `<span class="heat" style="--rate:${r}"></span>`).join("") +
-    `<span class="heat is-perfect" style="--rate:1"></span><span>100 %</span>`;
-  return el;
+  return el("div", { class: "heatmap-legend" },
+    el("span", {}, `${from} – ${to}`),
+    el("span", { style: { flex: "1" } }),
+    el("span", {}, "0 %"),
+    ...[0, 0.25, 0.5, 0.75].map((rate) => el("span", { class: "heat", style: { "--rate": String(rate) } })),
+    el("span", { class: "heat is-perfect", style: { "--rate": "1" } }),
+    el("span", {}, "100 %"),
+  );
 }
 
 // ---------- weekdays and months ----------
@@ -130,32 +128,25 @@ function legend(year) {
  * the number of perfect days. `groups` are { label, name, rate, perfect }.
  */
 function barPanel(title, groups) {
-  const panel = document.createElement("section");
-  panel.className = "panel";
-  const heading = document.createElement("h3");
-  heading.textContent = title;
-
-  const list = document.createElement("div");
-  list.className = "day-bars";
-  for (const { label, name, rate, perfect } of groups) {
-    const row = document.createElement("div");
-    row.className = "day-bar";
-    row.innerHTML = `
-      <span class="day-bar-label"></span>
-      <span class="day-bar-track"><span class="day-bar-fill"></span></span>
-      <span class="day-bar-value"></span>`;
-    row.querySelector(".day-bar-label").textContent = label;
-    row.querySelector(".day-bar-fill").style.width = `${Math.round((rate ?? 0) * 100)}%`;
-    row.querySelector(".day-bar-value").textContent = percent(rate);
-    if (rate === null) row.classList.add("is-empty");
-    row.dataset.tip = name;
-    row.dataset.status = rate === null
-      ? t("Nothing due")
-      : `Ø ${percent(rate)} · ${t("Perfect days: {n}", { n: perfect })}`;
-    list.append(row);
-  }
-  panel.append(heading, list);
-  return panel;
+  return el("section", { class: "panel" },
+    el("h3", {}, title),
+    el("div", { class: "day-bars" }, ...groups.map(({ label, name, rate, perfect }) =>
+      el("div", {
+        class: ["day-bar", rate === null && "is-empty"],
+        data: {
+          tip: name,
+          status: rate === null
+            ? t("Nothing due")
+            : `Ø ${percent(rate)} · ${t("Perfect days: {n}", { n: perfect })}`,
+        },
+      },
+        el("span", { class: "day-bar-label" }, label),
+        el("span", { class: "day-bar-track" },
+          el("span", { class: "day-bar-fill", style: { width: `${Math.round((rate ?? 0) * 100)}%` } }),
+        ),
+        el("span", { class: "day-bar-value" }, percent(rate)),
+      ))),
+  );
 }
 
 function weekdays(stats) {

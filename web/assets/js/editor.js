@@ -11,6 +11,7 @@ import {
 import * as H from "./habit.js";
 import { t } from "./i18n.js";
 import { openPage, closePage, guardPage } from "./pages.js";
+import { el, markup } from "./dom.js";
 
 let dialog;
 let form;
@@ -68,33 +69,29 @@ function onEdit() {
 /** Shows the selected category on its button. */
 function paintCategory() {
   const none = selectedCategory === "";
-  const label = document.createElement("span");
-  label.className = none ? "picker-value is-empty" : "picker-value";
-  // A deleted category is shown by name.
-  label.textContent = none
-    ? t("No category")
-    : categoryById(selectedCategory)?.name ?? t("Deleted category");
-
-  const caret = document.createElement("span");
-  caret.className = "picker-caret";
-  caret.innerHTML = icons.chevron;
-
   const category = none ? null : categoryById(selectedCategory);
   const badge = category && categoryIconBadge(category, "habit-icon is-small");
-  categoryButton.replaceChildren(...(badge ? [badge] : []), label, caret);
+  categoryButton.replaceChildren(
+    ...(badge ? [badge] : []),
+    el("span", { class: ["picker-value", none && "is-empty"] }, none
+      ? t("No category")
+      // A deleted category is shown by name.
+      : category?.name ?? t("Deleted category")),
+    el("span", { class: "picker-caret" }, markup(icons.chevron)),
+  );
 }
 
 function buildWeekdayButtons() {
   const host = document.getElementById("weekday-choices");
   host.replaceChildren(
     ...WEEKDAY_SHORT.map((label, i) => {
-      const b = document.createElement("button");
-      b.type = "button";
-      b.className = "weekday";
-      b.textContent = label;
-      b.dataset.day = String(i);
-      b.setAttribute("aria-pressed", "false");
-      b.setAttribute("aria-label", WEEKDAY_LONG[i]);
+      const b = el("button", {
+        type: "button",
+        class: "weekday",
+        data: { day: i },
+        "aria-pressed": "false",
+        "aria-label": WEEKDAY_LONG[i],
+      }, label);
       b.addEventListener("click", () => {
         b.setAttribute("aria-pressed", b.getAttribute("aria-pressed") === "true" ? "false" : "true");
         // The buttons change the input without an input event.
@@ -109,14 +106,15 @@ function buildSwatches() {
   const host = document.getElementById("color-choices");
   host.replaceChildren(
     ...state.colors.map((color) => {
-      const b = document.createElement("button");
-      b.type = "button";
-      b.className = "swatch";
-      b.style.setProperty("--swatch", colorValue(color));
-      b.dataset.color = color;
-      b.setAttribute("role", "radio");
-      b.setAttribute("aria-label", t("Colour {color}", { color: colorLabel(color) }));
-      b.title = colorLabel(color);
+      const b = el("button", {
+        type: "button",
+        class: "swatch",
+        style: { "--swatch": colorValue(color) },
+        data: { color },
+        role: "radio",
+        "aria-label": t("Colour {color}", { color: colorLabel(color) }),
+        title: colorLabel(color),
+      });
       b.addEventListener("click", () => selectColor(color));
       return b;
     }),
@@ -125,8 +123,8 @@ function buildSwatches() {
 
 function selectColor(color) {
   selectedColor = color;
-  for (const el of document.querySelectorAll("#color-choices .swatch")) {
-    el.setAttribute("aria-checked", String(el.dataset.color === color));
+  for (const node of document.querySelectorAll("#color-choices .swatch")) {
+    node.setAttribute("aria-checked", String(node.dataset.color === color));
   }
   // Show the icons in the selected colour.
   document.getElementById("icon-choices").style.setProperty("--habit-color", colorValue(color));
@@ -157,14 +155,14 @@ function syncVisibility() {
   syncLimit(kind);
   const freq = form.elements.freq.value;
   const repeat = form.elements.weekRepeat.value;
-  for (const el of form.querySelectorAll("[data-when-kind]")) {
+  for (const node of form.querySelectorAll("[data-when-kind]")) {
     // A section may name several kinds, separated by spaces.
-    setSectionActive(el, el.dataset.whenKind.split(" ").includes(kind));
+    setSectionActive(node, node.dataset.whenKind.split(" ").includes(kind));
   }
   // Sections that depend on the repeat mode.
-  for (const el of form.querySelectorAll("[data-when-freq]")) {
-    const repeatMatches = !el.dataset.whenRepeat || el.dataset.whenRepeat === repeat;
-    setSectionActive(el, el.dataset.whenFreq === freq && repeatMatches);
+  for (const node of form.querySelectorAll("[data-when-freq]")) {
+    const repeatMatches = !node.dataset.whenRepeat || node.dataset.whenRepeat === repeat;
+    setSectionActive(node, node.dataset.whenFreq === freq && repeatMatches);
   }
 }
 
@@ -182,8 +180,8 @@ const TARGET_LABELS = {
  */
 function syncLimit(kind) {
   const limit = kind !== "check" && form.elements.targetType.value === "at_most";
-  for (const el of form.querySelectorAll("[data-target-label]")) {
-    el.textContent = TARGET_LABELS[el.dataset.targetLabel][limit ? 1 : 0];
+  for (const node of form.querySelectorAll("[data-target-label]")) {
+    node.textContent = TARGET_LABELS[node.dataset.targetLabel][limit ? 1 : 0];
   }
   for (const fields of Object.values(KIND_FIELDS)) {
     const input = form.elements[fields.target];

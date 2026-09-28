@@ -6,6 +6,7 @@ import { errorText } from "./undo.js";
 import { t } from "./i18n.js";
 import { openPage, closePage, guardPage } from "./pages.js";
 import { buildIconChoices, markIconChoice, colorLabel, colorValue } from "./icons.js";
+import { el } from "./dom.js";
 
 let dialog;
 let form;
@@ -68,15 +69,15 @@ export function openCategoryEditor(id, handler) {
 function buildSwatches() {
   colorHost.replaceChildren(
     ...["", ...state.colors].map((color) => {
-      const b = document.createElement("button");
-      b.type = "button";
-      b.className = color ? "swatch" : "swatch is-none";
-      if (color) b.style.setProperty("--swatch", colorValue(color));
-      b.dataset.color = color;
-      b.setAttribute("role", "radio");
-      b.setAttribute("aria-label",
-        color ? t("Colour {color}", { color: colorLabel(color) }) : t("No colour"));
-      b.title = color ? colorLabel(color) : t("No colour");
+      const b = el("button", {
+        type: "button",
+        class: ["swatch", !color && "is-none"],
+        style: { "--swatch": color ? colorValue(color) : undefined },
+        data: { color },
+        role: "radio",
+        "aria-label": color ? t("Colour {color}", { color: colorLabel(color) }) : t("No colour"),
+        title: color ? colorLabel(color) : t("No colour"),
+      });
       b.addEventListener("click", () => selectColor(color));
       return b;
     }),
@@ -85,8 +86,8 @@ function buildSwatches() {
 
 function selectColor(color) {
   selectedColor = color;
-  for (const el of colorHost.querySelectorAll(".swatch")) {
-    el.setAttribute("aria-checked", String(el.dataset.color === color));
+  for (const node of colorHost.querySelectorAll(".swatch")) {
+    node.setAttribute("aria-checked", String(node.dataset.color === color));
   }
   // Show the icons in the selected colour.
   iconHost.classList.toggle("is-neutral", !color);

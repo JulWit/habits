@@ -11,6 +11,7 @@ import { statRow, factsPanel, factItem, rateLabel, createdItem, changedItem } fr
 import { currentYear, sinceLabel } from "./year.js";
 import { api } from "./api.js";
 import { remote } from "./remote.js";
+import { el } from "./dom.js";
 
 let root;
 let actions;
@@ -19,14 +20,14 @@ export function initCategory(handlers) {
   actions = handlers;
   root = document.getElementById("view-category");
   root.addEventListener("click", (event) => {
-    const el = event.target.closest("[data-action]");
-    if (!el) return;
+    const target = event.target.closest("[data-action]");
+    if (!target) return;
     const id = root.dataset.category;
-    switch (el.dataset.action) {
+    switch (target.dataset.action) {
       case "back": actions.closeCategory(); break;
       case "edit": openCategoryEditor(id, (input) => actions.updateCategory(id, input)); break;
       case "delete": actions.deleteCategory(id); break;
-      case "open-habit": actions.openHabit(el.dataset.habit); break;
+      case "open-habit": actions.openHabit(target.dataset.habit); break;
     }
   });
 }
@@ -103,48 +104,37 @@ function activity(category) {
 }
 
 function habitList(habits) {
-  const panel = document.createElement("section");
-  panel.className = "panel";
-  const title = document.createElement("h3");
-  title.textContent = t("Habits");
-  panel.append(title);
+  return el("section", { class: "panel" },
+    el("h3", {}, t("Habits")),
+    habits.length === 0
+      ? el("p", { class: "block-empty" }, t("No habit in this category yet."))
+      : el("div", { class: "cat-habits" }, ...habits.map(habitItem)),
+  );
+}
 
-  if (habits.length === 0) {
-    const empty = document.createElement("p");
-    empty.className = "block-empty";
-    empty.textContent = t("No habit in this category yet.");
-    panel.append(empty);
-    return panel;
-  }
+/** Builds the entry of a habit in the list, a button that opens the habit. */
+function habitItem(habit) {
+  return el("button", {
+    type: "button",
+    class: "cat-habit",
+    data: { action: "open-habit", habit: habit.id },
+    style: { "--habit-color": colorValue(habit.color) },
+  },
+    // Without an icon, a dot in the habit's colour.
+    habitIconBadge(habit) ?? el("span", { class: "dot" }),
+    el("span", { class: "cat-habit-text" },
+      el("span", { class: "habit-name" }, habit.name),
+      el("span", { class: "habit-meta" }, H.describeHabit(habit)),
+    ),
+    el("span", { class: "cat-habit-streak" }, shortStreak(habit.stats)),
+  );
+}
 
-  const list = document.createElement("div");
-  list.className = "cat-habits";
-  for (const habit of habits) {
-    const row = document.createElement("button");
-    row.type = "button";
-    row.className = "cat-habit";
-    row.dataset.action = "open-habit";
-    row.dataset.habit = habit.id;
-    row.style.setProperty("--habit-color", colorValue(habit.color));
-    row.innerHTML = `
-      <span class="dot"></span>
-      <span class="cat-habit-text">
-        <span class="habit-name"></span>
-        <span class="habit-meta"></span>
-      </span>
-      <span class="cat-habit-streak"></span>`;
-    const badge = habitIconBadge(habit);
-    if (badge) row.querySelector(".dot").replaceWith(badge);
-    row.querySelector(".habit-name").textContent = habit.name;
-    row.querySelector(".habit-meta").textContent = H.describeHabit(habit);
-    const s = habit.stats;
-    // Singular/plural for days; "wk" and "mo" need no plural.
-    let unit = s.currentStreak === 1 ? t("day") : t("days");
-    if (s.streakUnit === "weeks") unit = t("wk");
-    if (s.streakUnit === "months") unit = t("mo");
-    row.querySelector(".cat-habit-streak").textContent = `${s.currentStreak} ${unit}`;
-    list.append(row);
-  }
-  panel.append(list);
-  return panel;
+/** Formats the current streak shortly: "1 day", "5 days", "3 wk", "2 mo". */
+function shortStreak({ currentStreak, streakUnit }) {
+  // Singular/plural for days; "wk" and "mo" need no plural.
+  let unit = currentStreak === 1 ? t("day") : t("days");
+  if (streakUnit === "weeks") unit = t("wk");
+  if (streakUnit === "months") unit = t("mo");
+  return `${currentStreak} ${unit}`;
 }

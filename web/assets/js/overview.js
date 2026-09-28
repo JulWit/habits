@@ -13,6 +13,7 @@ import { icons, categoryIconBadge } from "./icons.js";
 import { enableDragReorder } from "./reorder.js";
 import { initSummary, dayProgress, daySummary, newlyDone, launchOrbs } from "./summary.js";
 import { t } from "./i18n.js";
+import { el, markup } from "./dom.js";
 
 const LONG_PRESS_MS = 450;
 
@@ -333,13 +334,11 @@ function initFilter() {
 
 /** Creates the floating button that returns to today. */
 function initTodayPill() {
-  todayPill = document.createElement("button");
-  todayPill.type = "button";
-  todayPill.className = "button today-pill";
-  todayPill.hidden = true;
-  todayPill.innerHTML = icons.toToday;
-  // The label is set in render(), after a change of language.
-  todayPill.append(document.createElement("span"));
+  todayPill = el("button", { type: "button", class: "button today-pill", hidden: true },
+    markup(icons.toToday),
+    // The label is set in render(), after a change of language.
+    el("span"),
+  );
   todayPill.addEventListener("click", backToToday);
   board.parentElement.append(todayPill);
 }
@@ -413,13 +412,13 @@ export function render() {
  * after re-rendering.
  */
 function focusedControl() {
-  const el = document.activeElement;
-  if (!el || !board.contains(el) || !el.dataset.role) return null;
+  const focused = document.activeElement;
+  if (!focused || !board.contains(focused) || !focused.dataset.role) return null;
   return {
-    role: el.dataset.role,
-    category: el.closest(".block")?.dataset.category ?? "",
-    habit: el.dataset.habit ?? "",
-    date: el.dataset.date ?? "",
+    role: focused.dataset.role,
+    category: focused.closest(".block")?.dataset.category ?? "",
+    habit: focused.dataset.habit ?? "",
+    date: focused.dataset.date ?? "",
   };
 }
 
@@ -466,21 +465,21 @@ function setTabStops() {
 }
 
 /** Makes a cell or header day the tab stop of its group; other controls keep theirs. */
-function makeTabStop(el) {
-  const role = el.dataset?.role;
+function makeTabStop(node) {
+  const role = node.dataset?.role;
   if (role !== "cell" && role !== "select-day") return;
   for (const other of board.querySelectorAll(`[data-role="${role}"][tabindex="0"]`)) {
-    if (other !== el) other.tabIndex = -1;
+    if (other !== node) other.tabIndex = -1;
   }
-  el.tabIndex = 0;
-  if (role === "cell") lastCell = { habit: el.dataset.habit, date: el.dataset.date };
+  node.tabIndex = 0;
+  if (role === "cell") lastCell = { habit: node.dataset.habit, date: node.dataset.date };
 }
 
-/** Focuses `el`, if any, and makes it the tab stop of its group. */
-function rove(el) {
-  if (!el) return;
-  makeTabStop(el);
-  el.focus();
+/** Focuses `node`, if any, and makes it the tab stop of its group. */
+function rove(node) {
+  if (!node) return;
+  makeTabStop(node);
+  node.focus();
 }
 
 /** A cell or day focused by a click or Tab becomes the tab stop too. */
@@ -490,8 +489,8 @@ function onBoardFocus(event) {
 
 function onBoardKeydown(event) {
   if (event.altKey || event.metaKey || event.shiftKey) return;
-  const el = event.target;
-  const role = el.dataset?.role;
+  const target = event.target;
+  const role = target.dataset?.role;
   if (role !== "cell" && role !== "select-day") return;
   const move = MOVES[event.key];
   // The header is a single row: up and down scroll the page as usual.
@@ -499,10 +498,10 @@ function onBoardKeydown(event) {
   event.preventDefault();
   if (role === "select-day") {
     const days = [...board.querySelectorAll('[data-role="select-day"]')];
-    rove(days[clampedStep(days, days.indexOf(el), move)]);
+    rove(days[clampedStep(days, days.indexOf(target), move)]);
     return;
   }
-  moveFromCell(el, move, event.ctrlKey);
+  moveFromCell(target, move, event.ctrlKey);
 }
 
 /**
@@ -583,34 +582,23 @@ async function moveFromCell(cell, { dx = 0, dy = 0, edge = 0 }, ctrl) {
  * second, on a shared grid with explicit placement.
  */
 function dayHeader(dates, active) {
-  const el = document.createElement("div");
-  el.className = "day-header";
-
-  // Backdrop behind the sticky header. An element, as it needs a clipped
-  // layer of its own over a background image.
-  const backdrop = document.createElement("div");
-  backdrop.className = "day-header-backdrop";
-  backdrop.setAttribute("aria-hidden", "true");
-  el.append(backdrop);
-
-  // The paging controls, in the date row above the habit names.
-  const nav = dayNav();
-  nav.style.gridColumn = "1";
-  nav.style.gridRow = "2";
-  el.append(nav);
-
-  for (const label of monthLabels(dates)) el.append(label);
-
-  dates.forEach((iso, i) => {
+  const days = dates.map((iso, i) => {
     const cell = dayCell(iso, { active, selectable: true });
     // Month divider; not on the first column.
     if (i > 0 && dayOfMonth(iso) === 1) cell.classList.add("is-month-start");
     // Column 1 holds the habit names.
     cell.style.gridColumn = String(i + 2);
     cell.style.gridRow = "2";
-    el.append(cell);
+    return cell;
   });
-  return el;
+  return el("div", { class: "day-header" },
+    // Backdrop behind the sticky header. An element, as it needs a clipped
+    // layer of its own over a background image.
+    el("div", { class: "day-header-backdrop", "aria-hidden": "true" }),
+    dayNav(),
+    ...monthLabels(dates),
+    ...days,
+  );
 }
 
 /** Builds a label per month, spanning its columns. */
@@ -628,65 +616,46 @@ function monthLabels(dates) {
     const year = yearOf(dates[start]);
     // Only show the year if it is not the current one.
     const suffix = year === yearOf(state.today) ? "" : ` ${year}`;
-
-    const el = document.createElement("div");
-    el.className = "month-label";
     // Short month name if the span is too narrow.
-    el.textContent = (span >= 5 ? MONTH_LONG[month] : MONTH_SHORT[month]) + suffix;
-    el.title = `${MONTH_LONG[month]} ${year}`;
-    el.style.gridColumn = `${start + 2} / span ${span}`;
-    el.style.gridRow = "1";
-    // Month divider; not on the first label.
-    if (start > 0) el.classList.add("has-divider");
-    out.push(el);
+    const name = (span >= 5 ? MONTH_LONG[month] : MONTH_SHORT[month]) + suffix;
+
+    out.push(el("div", {
+      // Month divider; not on the first label.
+      class: ["month-label", start > 0 && "has-divider"],
+      title: `${MONTH_LONG[month]} ${year}`,
+      style: { "grid-column": `${start + 2} / span ${span}`, "grid-row": "1" },
+    }, name));
 
     start = i;
   }
   return out;
 }
 
+/**
+ * Builds the paging controls, in the date row above the habit names. Back to
+ * today is the floating button (todayPill).
+ */
 function dayNav() {
-  const nav = document.createElement("div");
-  nav.className = "day-nav";
-
-  const older = toolButton("page-older", icons.chevronLeft, t("Earlier days"));
-  const newer = toolButton("page-newer", icons.chevronRight, t("Later days"));
   // Disabled rather than hidden at the limit.
-  newer.disabled = offset <= -MAX_AHEAD_DAYS;
-  older.disabled = offset >= maxBackDays();
-  // Back to today is the floating button (todayPill).
-  nav.append(older, newer);
-  return nav;
+  return el("div", { class: "day-nav", style: { "grid-column": "1", "grid-row": "2" } },
+    toolButton("page-older", icons.chevronLeft, t("Earlier days"), { disabled: offset >= maxBackDays() }),
+    toolButton("page-newer", icons.chevronRight, t("Later days"), { disabled: offset <= -MAX_AHEAD_DAYS }),
+  );
 }
 
 /** Builds the name cell of a row. */
 function nameCell(habit) {
-  const cell = document.createElement("div");
-  cell.className = "habit-cell";
-  cell.append(habitLabel(habit));
-  return cell;
+  return el("div", { class: "habit-cell" }, habitLabel(habit));
 }
 
 function renderBlock({ category, habits, visible }, dates, labelled, active) {
-  const section = document.createElement("section");
-  section.className = "block";
-  if (category) section.dataset.category = category.id;
-  // The heading counts all habits of the category, the rows show the filtered.
-  if (labelled) section.append(blockHead(category, habits, active));
-
-  if (visible.length === 0) {
-    const empty = document.createElement("p");
-    empty.className = "block-empty";
-    empty.textContent = t("No habit in this category yet.");
-    section.append(empty);
-    return section;
-  }
-
-  const list = document.createElement("div");
-  list.className = "block-rows";
-  for (const habit of visible) list.append(habitRow(habit, habits, dates, active));
-  section.append(list);
-  return section;
+  return el("section", { class: "block", data: { category: category?.id } },
+    // The heading counts all habits of the category, the rows show the filtered.
+    labelled && blockHead(category, habits, active),
+    visible.length === 0
+      ? el("p", { class: "block-empty" }, t("No habit in this category yet."))
+      : el("div", { class: "block-rows" }, ...visible.map((habit) => habitRow(habit, habits, dates, active))),
+  );
 }
 
 /**
@@ -708,47 +677,35 @@ function habitRow(habit, siblings, dates, active) {
     siblings.indexOf(habit), siblings.length,
   ].join("|");
   const cached = rowCache.get(habit.id);
-  let row = cached?.el;
+  let row = cached?.row;
   if (!cached || cached.habit !== habit || cached.key !== key) {
-    row = document.createElement("div");
-    row.className = "habit-row";
-    row.dataset.habit = habit.id;
-    row.append(
+    row = el("div", { class: "habit-row", data: { habit: habit.id } },
       nameCell(habit),
       ...dates.map((iso) => dayEntry(habit, iso, active)),
-      habitTools(habit, siblings),
+      // Always rendered, to keep the column width.
+      el("div", { class: "habit-tools" }, ...habitReorderButtons(habit, siblings)),
     );
   }
-  nextRowCache.set(habit.id, { habit, key, el: row });
+  nextRowCache.set(habit.id, { habit, key, row });
   return row;
 }
 
 /**
  * Builds the reorder controls of a row: a drag handle or arrow buttons,
- * depending on the setting. Always rendered, to keep the column width.
+ * depending on the setting. None with a single habit.
  */
-function habitTools(habit, siblings) {
-  const tools = document.createElement("div");
-  tools.className = "habit-tools";
-  // Nothing to reorder with a single habit.
-  if (siblings.length < 2) return tools;
-
+function habitReorderButtons(habit, siblings) {
+  if (siblings.length < 2) return [];
   if (byDragging()) {
-    const grip = toolButton("drag-habit", icons.grip, t("Move habit"));
-    grip.classList.add("drag-handle");
-    grip.dataset.habit = habit.id;
-    tools.append(grip);
-  } else {
-    const at = siblings.indexOf(habit);
-    const up = toolButton("move-habit-up", icons.chevronUp, t("Move habit up"));
-    const down = toolButton("move-habit-down", icons.chevronDown, t("Move habit down"));
-    up.disabled = at === 0;
-    down.disabled = at === siblings.length - 1;
-    up.dataset.habit = habit.id;
-    down.dataset.habit = habit.id;
-    tools.append(up, down);
+    return [toolButton("drag-habit", icons.grip, t("Move habit"), { handle: true, habit: habit.id })];
   }
-  return tools;
+  const at = siblings.indexOf(habit);
+  return [
+    toolButton("move-habit-up", icons.chevronUp, t("Move habit up"),
+      { habit: habit.id, disabled: at === 0 }),
+    toolButton("move-habit-down", icons.chevronDown, t("Move habit down"),
+      { habit: habit.id, disabled: at === siblings.length - 1 }),
+  ];
 }
 
 /** Builds a category's progress bar for `day`. */
@@ -757,100 +714,76 @@ function blockProgress(habits, day) {
   // No bar if nothing is due on the day.
   if (due === 0) return null;
 
-  const wrap = document.createElement("div");
-  wrap.className = "block-progress";
-  wrap.title = `${formatLong(day)}: ${t("{done} of {due} done", { done, due })}`;
-
-  const count = document.createElement("span");
-  count.className = "block-progress-count";
-  count.textContent = `${done}/${due}`;
-
-  // One segment per habit due on the day, followed by the count.
-  const track = document.createElement("span");
-  track.className = "block-progress-track";
-  track.style.setProperty("--segments", String(due));
-  track.setAttribute("role", "progressbar");
-  track.setAttribute("aria-valuemin", "0");
-  track.setAttribute("aria-valuemax", String(due));
-  track.setAttribute("aria-valuenow", String(done));
-  track.setAttribute("aria-label", t("Done on this day"));
-  for (let i = 0; i < due; i++) {
-    const seg = document.createElement("span");
-    seg.className = "block-progress-seg";
-    if (i < done) seg.classList.add("is-done");
-    track.append(seg);
-  }
-
-  if (done === due) wrap.classList.add("is-complete");
-  wrap.append(track, count);
-  return wrap;
+  return el("div", {
+    class: ["block-progress", done === due && "is-complete"],
+    title: `${formatLong(day)}: ${t("{done} of {due} done", { done, due })}`,
+  },
+    // One segment per habit due on the day, followed by the count.
+    el("span", {
+      class: "block-progress-track",
+      style: { "--segments": String(due) },
+      role: "progressbar",
+      "aria-valuemin": "0",
+      "aria-valuemax": String(due),
+      "aria-valuenow": String(done),
+      "aria-label": t("Done on this day"),
+    }, ...Array.from({ length: due }, (_, i) =>
+      el("span", { class: ["block-progress-seg", i < done && "is-done"] }))),
+    el("span", { class: "block-progress-count" }, `${done}/${due}`),
+  );
 }
-
 
 function blockHead(category, habits, day) {
-  const head = document.createElement("header");
-  head.className = "block-head";
-
-  const title = document.createElement("h2");
-  title.className = "block-title";
-  if (category) {
-    // A button, so the category view is keyboard-accessible.
-    const link = document.createElement("button");
-    link.type = "button";
-    link.className = "block-link";
-    link.dataset.role = "open-category";
-    const badge = categoryIconBadge(category);
-    if (badge) link.append(badge);
-    // Separate span, so a long name is truncated without the icon.
-    const name = document.createElement("span");
-    name.className = "block-link-name";
-    name.textContent = category.name;
-    link.append(name);
-    title.append(link);
-  } else {
-    title.textContent = t("No category");
-  }
-  head.append(title);
-
-  // Progress only if enabled for the category; never for uncategorised habits.
-  const progress = category?.showProgress === true ? blockProgress(habits, day) : null;
-  if (progress) head.append(progress);
-
-  // Uncategorised habits have no category controls.
-  if (category) {
-    const tools = document.createElement("div");
-    tools.className = "block-tools";
-    // Reorder controls only with more than one category.
-    if (state.categories.length > 1) {
-      if (byDragging()) {
-        const grip = toolButton("drag-category", icons.grip, t("Move category"));
-        grip.classList.add("drag-handle");
-        tools.append(grip);
-      } else {
-        const at = state.categories.findIndex((c) => c.id === category.id);
-        const up = toolButton("move-category-up", icons.chevronUp, t("Move category up"));
-        const down = toolButton("move-category-down", icons.chevronDown, t("Move category down"));
-        up.disabled = at <= 0;
-        down.disabled = at === state.categories.length - 1;
-        tools.append(up, down);
-      }
-    }
-    // Renaming and deleting are done in the category view.
-    if (tools.childElementCount > 0) head.append(tools);
-  }
-  return head;
+  // Uncategorised habits have no category controls. Renaming and deleting are
+  // done in the category view.
+  const tools = category ? categoryReorderButtons(category) : [];
+  return el("header", { class: "block-head" },
+    el("h2", { class: "block-title" }, category ? categoryLink(category) : t("No category")),
+    // Progress only if enabled for the category; never for uncategorised habits.
+    category?.showProgress === true && blockProgress(habits, day),
+    tools.length > 0 && el("div", { class: "block-tools" }, ...tools),
+  );
 }
 
-function toolButton(role, icon, label) {
-  const b = document.createElement("button");
-  b.type = "button";
-  b.className = "icon-button";
-  b.dataset.role = role;
-  // Constant markup from icons.js.
-  b.innerHTML = icon;
-  b.title = label;
-  b.setAttribute("aria-label", label);
-  return b;
+/** Builds the category's name as a button, so the category view is keyboard-accessible. */
+function categoryLink(category) {
+  return el("button", { type: "button", class: "block-link", data: { role: "open-category" } },
+    categoryIconBadge(category),
+    // Separate span, so a long name is truncated without the icon.
+    el("span", { class: "block-link-name" }, category.name),
+  );
+}
+
+/**
+ * Builds the reorder controls of a category: a drag handle or arrow buttons,
+ * depending on the setting. None with a single category.
+ */
+function categoryReorderButtons(category) {
+  if (state.categories.length < 2) return [];
+  if (byDragging()) {
+    return [toolButton("drag-category", icons.grip, t("Move category"), { handle: true })];
+  }
+  const at = state.categories.findIndex((c) => c.id === category.id);
+  return [
+    toolButton("move-category-up", icons.chevronUp, t("Move category up"), { disabled: at <= 0 }),
+    toolButton("move-category-down", icons.chevronDown, t("Move category down"),
+      { disabled: at === state.categories.length - 1 }),
+  ];
+}
+
+/**
+ * Builds an icon button of the board. `handle` makes it a drag handle,
+ * `habit` names the habit it acts on.
+ */
+function toolButton(role, icon, label, { handle = false, habit, disabled } = {}) {
+  return el("button", {
+    type: "button",
+    class: ["icon-button", handle && "drag-handle"],
+    data: { role, habit },
+    title: label,
+    "aria-label": label,
+    disabled,
+  }, markup(icon));
 }
 
 // ---------- interaction ----------
@@ -861,17 +794,17 @@ function onBoardClick(event) {
     clearTimeout(suppressTimer);
     return;
   }
-  const el = event.target.closest("[data-role]");
-  if (!el) return;
-  const section = el.closest(".block");
+  const target = event.target.closest("[data-role]");
+  if (!target) return;
+  const section = target.closest(".block");
   const categoryId = section?.dataset.category;
 
-  switch (el.dataset.role) {
+  switch (target.dataset.role) {
     case "open":
-      actions.openHabit(el.dataset.habit);
+      actions.openHabit(target.dataset.habit);
       break;
     case "cell":
-      actions.tapEntry(el.dataset.habit, el.dataset.date);
+      actions.tapEntry(target.dataset.habit, target.dataset.date);
       break;
     case "open-category":
       actions.openCategory(categoryId);
@@ -880,10 +813,10 @@ function onBoardClick(event) {
       actions.openDays();
       break;
     case "move-habit-up":
-      actions.moveHabit(el.dataset.habit, -1);
+      actions.moveHabit(target.dataset.habit, -1);
       break;
     case "move-habit-down":
-      actions.moveHabit(el.dataset.habit, 1);
+      actions.moveHabit(target.dataset.habit, 1);
       break;
     case "move-category-up":
       actions.moveCategory(categoryId, -1);
@@ -898,20 +831,20 @@ function onBoardClick(event) {
       showWindow(offset - pageStep(renderedDays));
       break;
     case "select-day":
-      selectDay(el.dataset.date);
+      selectDay(target.dataset.date);
       break;
   }
 }
 
 function onBoardContextMenu(event) {
-  const el = event.target.closest('[data-role="cell"]');
-  if (!el || el.disabled) return;
+  const target = event.target.closest('[data-role="cell"]');
+  if (!target || target.disabled) return;
   event.preventDefault();
   // On touch, a long press also fires contextmenu (Firefox on Android after
   // 500 ms). Only the first of the two counts, or a check would toggle twice.
   if (suppressClick) return;
   cancelLongPress();
-  actions.editEntry(el.dataset.habit, el.dataset.date);
+  actions.editEntry(target.dataset.habit, target.dataset.date);
 }
 
 // A long press opens the value dialog. The click that follows is suppressed;
@@ -941,13 +874,13 @@ function attachLongPress(root) {
   cancelLongPress = cancel;
 
   root.addEventListener("pointerdown", (event) => {
-    const el = event.target.closest('[data-role="cell"]');
-    if (!el || el.disabled || event.button !== 0) return;
+    const target = event.target.closest('[data-role="cell"]');
+    if (!target || target.disabled || event.button !== 0) return;
     origin = { x: event.clientX, y: event.clientY };
     timer = setTimeout(() => {
       timer = null;
       suppressNextClick();
-      actions.editEntry(el.dataset.habit, el.dataset.date);
+      actions.editEntry(target.dataset.habit, target.dataset.date);
     }, LONG_PRESS_MS);
   });
 

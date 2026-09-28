@@ -9,6 +9,7 @@ import {
 import { t } from "./i18n.js";
 import { state } from "./state.js";
 import { showTooltip, hideTooltip } from "./tooltip.js";
+import { el } from "./dom.js";
 
 /** Returns the current year, e.g. "2026". */
 export function currentYear() {
@@ -36,39 +37,28 @@ export function yearGrid(year, square) {
   const firstWeek = startOfWeek(yearStart);
   const weeks = Math.floor(daysBetween(firstWeek, yearEnd) / 7) + 1;
 
-  const months = document.createElement("div");
-  months.className = "heatmap-months";
-  const map = document.createElement("div");
-  map.className = "heatmap";
-
+  const monthLabels = [];
+  const squares = [];
   for (let w = 0; w < weeks; w++) {
     for (let d = 0; d < 7; d++) {
       const iso = addDays(firstWeek, w * 7 + d);
       if (iso < yearStart || iso > yearEnd) {
-        const blank = document.createElement("div");
-        blank.className = "heat is-outside";
-        map.append(blank);
+        squares.push(el("div", { class: "heat is-outside" }));
         continue;
       }
-      map.append(square(iso));
+      squares.push(square(iso));
       if (dayOfMonth(iso) === 1) {
-        const label = document.createElement("span");
-        label.textContent = MONTH_SHORT[monthIndex(iso)];
-        label.style.gridColumn = String(w + 1);
-        months.append(label);
+        monthLabels.push(el("span", { style: { "grid-column": String(w + 1) } }, MONTH_SHORT[monthIndex(iso)]));
       }
     }
   }
 
-  const body = document.createElement("div");
-  body.className = "heatmap-body";
-  body.style.setProperty("--weeks", String(weeks));
-  body.append(months, map);
-
-  const scroll = document.createElement("div");
-  scroll.className = "heatmap-scroll";
-  scroll.append(body);
-  return scroll;
+  return el("div", { class: "heatmap-scroll" },
+    el("div", { class: "heatmap-body", style: { "--weeks": String(weeks) } },
+      el("div", { class: "heatmap-months" }, ...monthLabels),
+      el("div", { class: "heatmap" }, ...squares),
+    ),
+  );
 }
 
 /**
@@ -91,15 +81,12 @@ export function centreToday(root) {
  */
 export function initChartTooltips(container, selector) {
   container.addEventListener("mouseover", (event) => {
-    const el = event.target.closest(selector);
-    if (!el) return;
-    const title = document.createElement("div");
-    title.className = "tip-date";
-    title.textContent = el.dataset.tip ?? formatFull(el.dataset.date);
-    const status = document.createElement("div");
-    status.className = "tip-status";
-    status.textContent = el.dataset.status;
-    showTooltip(el, [title, status]);
+    const target = event.target.closest(selector);
+    if (!target) return;
+    showTooltip(target, [
+      el("div", { class: "tip-date" }, target.dataset.tip ?? formatFull(target.dataset.date)),
+      el("div", { class: "tip-status" }, target.dataset.status),
+    ]);
   });
   container.addEventListener("mouseout", (event) => {
     if (event.target.closest(selector)) hideTooltip();

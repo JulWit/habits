@@ -8,6 +8,7 @@ import * as H from "./habit.js";
 import { errorText, toast } from "./undo.js";
 import { t, locale } from "./i18n.js";
 import { openPage, closePage } from "./pages.js";
+import { el } from "./dom.js";
 
 let dialog;
 let form;
@@ -81,10 +82,8 @@ function paintQuick() {
 
   const offsets = [-jumps[1], -jumps[0], jumps[0], jumps[1]];
   quickEl.replaceChildren(...offsets.map((offset) => {
-    const b = document.createElement("button");
-    b.type = "button";
-    b.className = "button";
-    b.textContent = (offset < 0 ? "−" : "+") + Math.abs(offset).toLocaleString(locale);
+    const b = el("button", { type: "button", class: "button" },
+      (offset < 0 ? "−" : "+") + Math.abs(offset).toLocaleString(locale));
     b.addEventListener("click", () => setValue((Number(input.value) || 0) + offset));
     return b;
   }));

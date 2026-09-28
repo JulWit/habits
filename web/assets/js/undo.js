@@ -6,6 +6,7 @@ import { api } from "./api.js";
 import { state } from "./state.js";
 import { formatRelative } from "./dates.js";
 import { t, locale, errorTemplate } from "./i18n.js";
+import { el } from "./dom.js";
 
 /** Called after every undo and redo, to reload the state. Set by app.js. */
 let onChange = async () => {};
@@ -118,42 +119,29 @@ export function toast(text, opts = {}) {
   container ??= document.getElementById("toasts");
   if (!container) return;
 
-  const el = document.createElement("div");
-  el.className = opts.error ? "toast is-error" : "toast";
-
-  const label = document.createElement("span");
-  label.className = "text";
-  label.textContent = text;
-  el.append(label);
+  const action = opts.actionLabel && opts.onAction
+    ? el("button", { type: "button", class: "button" }, opts.actionLabel)
+    : null;
+  const close = el("button", { type: "button", class: "icon-button", "aria-label": t("Close") }, "×");
+  const box = el("div", { class: ["toast", opts.error && "is-error"] },
+    el("span", { class: "text" }, text),
+    action,
+    close,
+  );
 
   let timer;
   let gone = false;
   const dismiss = () => {
     gone = true;
     clearTimeout(timer);
-    el.remove();
+    box.remove();
   };
-
-  if (opts.actionLabel && opts.onAction) {
-    const action = document.createElement("button");
-    action.type = "button";
-    action.className = "button";
-    action.textContent = opts.actionLabel;
-    action.addEventListener("click", () => {
-      // The action handler shows its own toast.
-      dismiss();
-      opts.onAction();
-    });
-    el.append(action);
-  }
-
-  const close = document.createElement("button");
-  close.type = "button";
-  close.className = "icon-button";
-  close.setAttribute("aria-label", t("Close"));
-  close.textContent = "×";
+  action?.addEventListener("click", () => {
+    // The action handler shows its own toast.
+    dismiss();
+    opts.onAction();
+  });
   close.addEventListener("click", dismiss);
-  el.append(close);
 
   // The timeout pauses while the toast is hovered or focused.
   const timeout = opts.timeout ?? DEFAULT_TIMEOUT;
@@ -165,16 +153,16 @@ export function toast(text, opts = {}) {
     clearTimeout(timer);
     timer = setTimeout(dismiss, timeout);
   };
-  el.addEventListener("pointerenter", () => { hovered = true; hold(); });
-  el.addEventListener("pointerleave", () => { hovered = false; resume(); });
-  el.addEventListener("focusin", () => { focused = true; hold(); });
-  el.addEventListener("focusout", (event) => {
-    if (el.contains(event.relatedTarget)) return;
+  box.addEventListener("pointerenter", () => { hovered = true; hold(); });
+  box.addEventListener("pointerleave", () => { hovered = false; resume(); });
+  box.addEventListener("focusin", () => { focused = true; hold(); });
+  box.addEventListener("focusout", (event) => {
+    if (box.contains(event.relatedTarget)) return;
     focused = false;
     resume();
   });
 
-  container.append(el);
+  container.append(box);
   timer = setTimeout(dismiss, timeout);
   return dismiss;
 }

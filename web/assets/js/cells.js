@@ -5,6 +5,7 @@ import { state } from "./state.js";
 import { habitIconBadge, icons, colorValue } from "./icons.js";
 import * as H from "./habit.js";
 import { t } from "./i18n.js";
+import { el, markup } from "./dom.js";
 
 const CHECK_SVG =
   '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5 10 17.5 19 7" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>';
@@ -15,64 +16,49 @@ const CHECK_SVG =
  * cell is a button that makes its day the active one.
  */
 export function dayCell(iso, { active = state.today, selectable = false } = {}) {
-  const el = document.createElement(selectable ? "button" : "div");
-  const classes = ["grid-head"];
-  if (iso === active) classes.push("is-today");
-  if (iso === state.today) classes.push("is-current");
-  if (selectable) {
-    el.type = "button";
-    el.dataset.role = "select-day";
-    el.dataset.date = iso;
-    el.setAttribute("aria-pressed", String(iso === active));
-    classes.push("is-selectable");
-  }
-  el.className = classes.join(" ");
-  // The full date as tooltip, since the cell only shows the day of the month.
-  el.title = formatLong(iso);
-  el.innerHTML =
-    `<span class="dow">${WEEKDAY_SHORT[weekdayIndex(iso)]}</span>` +
-    `<span class="dom">${dayOfMonth(iso)}</span>`;
-  return el;
+  return el(selectable ? "button" : "div", {
+    class: [
+      "grid-head",
+      iso === active && "is-today",
+      iso === state.today && "is-current",
+      selectable && "is-selectable",
+    ],
+    // The full date as tooltip, since the cell only shows the day of the month.
+    title: formatLong(iso),
+    ...(selectable && {
+      type: "button",
+      data: { role: "select-day", date: iso },
+      "aria-pressed": String(iso === active),
+    }),
+  },
+    el("span", { class: "dow" }, WEEKDAY_SHORT[weekdayIndex(iso)]),
+    el("span", { class: "dom" }, dayOfMonth(iso)),
+  );
 }
 
 export function habitLabel(habit) {
-  const el = document.createElement("button");
-  el.type = "button";
-  el.className = habit.archivedAt ? "habit-main is-archived" : "habit-main";
-  el.dataset.habit = habit.id;
-  el.dataset.role = "open";
-
-  const name = document.createElement("span");
-  name.className = "habit-name";
-  name.textContent = habit.name;
-
-  const meta = document.createElement("span");
-  meta.className = "habit-meta";
   const described = H.describeHabit(habit);
-  const streak = habit.stats?.currentStreak ?? 0;
   // The streak is always shown, even when it is 0.
-  meta.append(streakBadge(streak), described ? ` · ${described}` : "");
-
+  const streak = habit.stats?.currentStreak ?? 0;
   // Tooltip with the full text, including the streak in words.
   const metaText = [H.describeStreak(habit), described].filter(Boolean).join(" · ");
-  el.title = `${habit.name}\n${metaText}`;
 
-  const text = document.createElement("span");
-  text.className = "habit-text";
-  text.append(name, meta);
-
-  const badge = habitIconBadge(habit);
-  if (badge) el.append(badge);
-  el.append(text);
-  return el;
+  return el("button", {
+    type: "button",
+    class: ["habit-main", habit.archivedAt ? "is-archived" : ""],
+    data: { habit: habit.id, role: "open" },
+    title: `${habit.name}\n${metaText}`,
+  },
+    habitIconBadge(habit),
+    el("span", { class: "habit-text" },
+      el("span", { class: "habit-name" }, habit.name),
+      el("span", { class: "habit-meta" }, streakBadge(streak), described && ` · ${described}`),
+    ),
+  );
 }
 
 function streakBadge(count) {
-  const el = document.createElement("span");
-  el.className = "habit-streak";
-  el.innerHTML = icons.streak;
-  el.append(String(count));
-  return el;
+  return el("span", { class: "habit-streak" }, markup(icons.streak), count);
 }
 
 /**
@@ -82,42 +68,48 @@ function streakBadge(count) {
  */
 export function dayEntry(habit, iso, active = state.today) {
   const entry = H.entryOn(habit, iso);
-  const { value } = entry;
   const pending = H.isPending(habit, iso);
   const done = !pending && H.isDone(habit, iso);
-  const future = iso > state.today;
   const scheduled = H.isScheduled(habit, iso);
   // Length of the run this day belongs to; 0 for future days.
   const streakDays = H.streakDaysOn(habit, iso);
-
-  const btn = document.createElement("button");
-  btn.type = "button";
-  btn.className = iso === active ? "cell is-today" : "cell";
-  btn.dataset.habit = habit.id;
-  btn.dataset.date = iso;
-  btn.dataset.role = "cell";
-  btn.style.setProperty("--habit-color", colorValue(habit.color));
   const label = cellLabel(habit, iso, entry, { pending, done, scheduled, streakDays });
-  btn.setAttribute("aria-label", label);
-  // The same text as a tooltip, so the state is not told by the mark's colour
-  // and pattern alone (e.g. hatched: planned ahead).
-  btn.title = label;
-  // Unscheduled days are disabled unless they hold something to clear.
-  if (!scheduled && H.isEmpty(entry)) btn.disabled = true;
 
-  const mark = document.createElement("span");
-  mark.className = "mark";
-  mark.style.setProperty("--habit-color", colorValue(habit.color));
-  mark.style.setProperty("--p", String(H.progress(habit, iso, value)));
+  return el("button", {
+    type: "button",
+    class: ["cell", iso === active && "is-today"],
+    data: { habit: habit.id, date: iso, role: "cell" },
+    style: { "--habit-color": colorValue(habit.color) },
+    "aria-label": label,
+    // The same text as a tooltip, so the state is not told by the mark's colour
+    // and pattern alone (e.g. hatched: planned ahead).
+    title: label,
+    // Unscheduled days are disabled unless they hold something to clear.
+    disabled: !scheduled && H.isEmpty(entry),
+  }, dayMark(habit, iso, entry, { pending, done, scheduled, streakDays }));
+}
 
-  // Unscheduled days without a value are drawn as off.
-  if (!scheduled && value === 0) mark.classList.add("is-off");
-  // Future days are dimmed.
-  if (future) mark.classList.add("is-future");
-  if (pending) mark.classList.add("is-pending");
+/** Builds the mark inside a day cell: ring, check, value or skip icon. */
+function dayMark(habit, iso, entry, { pending, done, scheduled, streakDays }) {
+  const { value } = entry;
+  const mark = el("span", {
+    class: [
+      "mark",
+      // Unscheduled days without a value are drawn as off.
+      !scheduled && value === 0 && "is-off",
+      // Future days are dimmed.
+      iso > state.today && "is-future",
+      pending && "is-pending",
+    ],
+    style: {
+      "--habit-color": colorValue(habit.color),
+      "--p": String(H.progress(habit, iso, value)),
+    },
+  });
+
   if (entry.skipped) {
     mark.classList.add("is-skipped");
-    mark.innerHTML = icons.skip;
+    mark.append(markup(icons.skip));
   } else if (done) {
     mark.classList.add("is-complete");
     // Longer runs are drawn with a stronger streak colour. Level 0 changes
@@ -125,30 +117,24 @@ export function dayEntry(habit, iso, active = state.today) {
     const level = H.streakLevel(streakDays);
     if (level > 0) mark.dataset.streak = String(level);
     // A kept limit without a value is ticked like a check.
-    if (habit.kind === "check" || value === 0) mark.innerHTML = CHECK_SVG;
+    if (habit.kind === "check" || value === 0) mark.append(markup(CHECK_SVG));
     else mark.append(numberLabel(H.cellValue(habit, value)));
   } else if (pending && habit.kind === "check" && value > 0) {
-    mark.innerHTML = CHECK_SVG;
+    mark.append(markup(CHECK_SVG));
   } else if (value > 0) {
     // A value over the limit is marked as such.
     if (!pending && H.isOver(habit, iso)) mark.classList.add("is-over");
     mark.append(numberLabel(H.cellValue(habit, value)));
   }
-
-  btn.append(mark);
-  return btn;
+  return mark;
 }
 
 // Wraps the number in an element so it can be layered above the ring's
 // ::after with z-index.
 function numberLabel(text) {
-  const el = document.createElement("span");
-  el.className = "mark-value";
   // Tighter spacing for four characters ("12,5", "1,5k"); cellValue keeps
   // them short enough for the mark.
-  if (text.length >= 4) el.classList.add("is-long");
-  el.textContent = text;
-  return el;
+  return el("span", { class: ["mark-value", text.length >= 4 && "is-long"] }, text);
 }
 
 function cellLabel(habit, iso, entry, { pending, done, scheduled, streakDays }) {

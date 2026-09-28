@@ -5,6 +5,7 @@ import { categoryIconBadge } from "./icons.js";
 import { errorText } from "./undo.js";
 import { t } from "./i18n.js";
 import { openPage, closePage } from "./pages.js";
+import { el } from "./dom.js";
 
 const NONE = "";
 
@@ -64,24 +65,17 @@ function paintList() {
     options.push({ id: current, name: t("Deleted category"), stale: true });
   }
 
-  list.replaceChildren(...options.map((option) => {
-    const row = document.createElement("button");
-    row.type = "button";
-    row.className = option.stale ? "picker-option is-stale" : "picker-option";
-    row.dataset.value = option.id;
-    row.setAttribute("role", "option");
-    row.setAttribute("aria-selected", String(option.id === current));
-
-    const label = document.createElement("span");
-    label.className = "picker-option-name";
-    label.textContent = option.name;
-
-    // The selection is shown by the accent fill, as in the dropdowns.
-    const badge = categoryIconBadge(option, "habit-icon is-small");
-    if (badge) row.append(badge);
-    row.append(label);
-    return row;
-  }));
+  // The selection is shown by the accent fill, as in the dropdowns.
+  list.replaceChildren(...options.map((option) => el("button", {
+    type: "button",
+    class: ["picker-option", option.stale && "is-stale"],
+    data: { value: option.id },
+    role: "option",
+    "aria-selected": String(option.id === current),
+  },
+    categoryIconBadge(option, "habit-icon is-small"),
+    el("span", { class: "picker-option-name" }, option.name),
+  )));
 }
 
 async function onCreate(event) {

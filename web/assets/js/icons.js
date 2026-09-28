@@ -2,6 +2,7 @@
 // safe to assign with innerHTML.
 
 import { t } from "./i18n.js";
+import { el, markup } from "./dom.js";
 
 const draw = (body) =>
   '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor"' +
@@ -261,12 +262,10 @@ export const habitIcons = {
 function iconBadge(name, color, className) {
   const svg = habitIcons[name];
   if (!svg) return null;
-  const el = document.createElement("span");
-  el.className = className;
-  if (color) el.style.setProperty("--habit-color", colorValue(color));
-  else el.classList.add("is-neutral");
-  el.innerHTML = svg;
-  return el;
+  return el("span", {
+    class: [className, !color && "is-neutral"],
+    style: { "--habit-color": color ? colorValue(color) : undefined },
+  }, markup(svg));
 }
 
 /** Returns the icon tile of a habit, in the habit's colour. */
@@ -317,15 +316,15 @@ export function buildIconChoices(host, names, onPick) {
   const offered = ["", ...(names ?? []).filter((name) => habitIcons[name])];
   host.replaceChildren(
     ...offered.map((name) => {
-      const b = document.createElement("button");
-      b.type = "button";
-      b.className = name ? "icon-choice" : "icon-choice is-none";
-      b.dataset.icon = name;
-      b.setAttribute("role", "radio");
-      b.setAttribute("aria-label", name ? t("Icon {name}", { name: iconLabel(name) }) : t("No icon"));
-      b.title = name ? iconLabel(name) : t("No icon");
       // "No icon" is an empty tile.
-      if (name) b.innerHTML = habitIcons[name];
+      const b = el("button", {
+        type: "button",
+        class: ["icon-choice", !name && "is-none"],
+        data: { icon: name },
+        role: "radio",
+        "aria-label": name ? t("Icon {name}", { name: iconLabel(name) }) : t("No icon"),
+        title: name ? iconLabel(name) : t("No icon"),
+      }, name && markup(habitIcons[name]));
       b.addEventListener("click", () => onPick(name));
       return b;
     }),
@@ -334,8 +333,8 @@ export function buildIconChoices(host, names, onPick) {
 
 /** Selects the choice for `name`. */
 export function markIconChoice(host, name) {
-  for (const el of host.querySelectorAll(".icon-choice")) {
-    el.setAttribute("aria-checked", String(el.dataset.icon === name));
+  for (const node of host.querySelectorAll(".icon-choice")) {
+    node.setAttribute("aria-checked", String(node.dataset.icon === name));
   }
 }
 
@@ -344,10 +343,10 @@ export function markIconChoice(host, name) {
  * that already have their icon are skipped.
  */
 export function paintIcons(root = document) {
-  for (const el of root.querySelectorAll("[data-icon]")) {
-    const svg = icons[el.dataset.icon];
-    if (!svg || el.querySelector("svg")) continue;
-    el.insertAdjacentHTML("afterbegin", svg);
+  for (const node of root.querySelectorAll("[data-icon]")) {
+    const svg = icons[node.dataset.icon];
+    if (!svg || node.querySelector("svg")) continue;
+    node.insertAdjacentHTML("afterbegin", svg);
   }
 }
 

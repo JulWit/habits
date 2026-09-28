@@ -271,10 +271,7 @@ func importHabit(tx *store.Tx, eh exportHabit, catByKey map[string]string) error
 		CreatedAt:  eh.CreatedAt,
 		Schedules:  eh.Schedules,
 	}
-	if eh.Archived {
-		now := tx.Now()
-		h.ArchivedAt = &now
-	}
+	h.SetArchived(eh.Archived, tx.Now())
 	if err := tx.CreateHabit(&h); err != nil {
 		return err
 	}

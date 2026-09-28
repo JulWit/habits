@@ -215,3 +215,46 @@ func TestRateWindowAndYearsOfTheHistory(t *testing.T) {
 		t.Errorf("an unknown window: status %d, want 422", w.Code)
 	}
 }
+
+// "archived" in a PATCH archives a habit as an undo step of its own name;
+// undoing it reactivates the habit, and archiving it again while archived
+// changes nothing.
+func TestPatchArchivesAHabit(t *testing.T) {
+	h := newTestServer(t)
+	id := createHabit(t, h, `{"name":"Read","kind":"check","frequency":{"kind":"daily"}}`)
+	path := "/api/habits/" + id
+	archivedAt := func() *time.Time {
+		t.Helper()
+		var view struct {
+			ArchivedAt *time.Time `json:"archivedAt"`
+		}
+		if err := json.Unmarshal(mustDo(t, h, "GET", path, "", http.StatusOK), &view); err != nil {
+			t.Fatal(err)
+		}
+		return view.ArchivedAt
+	}
+
+	w := do(t, h, "PATCH", path, `{"archived":true}`, "application/json")
+	if w.Code != http.StatusOK || w.Header().Get("Change-Id") == "" {
+		t.Fatalf("archive: %d, Change-Id %q (%s)", w.Code, w.Header().Get("Change-Id"), w.Body)
+	}
+	if archivedAt() == nil {
+		t.Fatal("the habit is not archived")
+	}
+	if w := do(t, h, "PATCH", path, `{"archived":true}`, "application/json"); w.Header().Get("Change-Id") != "" {
+		t.Errorf("archiving again recorded step %s", w.Header().Get("Change-Id"))
+	}
+
+	var undone struct {
+		Label string `json:"label"`
+	}
+	if err := json.Unmarshal(mustDo(t, h, "POST", "/api/undo", `{}`, http.StatusOK), &undone); err != nil {
+		t.Fatal(err)
+	}
+	if undone.Label != `"{name}" archived` {
+		t.Errorf("undone step %q, want the archiving", undone.Label)
+	}
+	if archivedAt() != nil {
+		t.Error("the habit is still archived after undo")
+	}
+}

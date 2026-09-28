@@ -27,6 +27,23 @@ type HabitEdit struct {
 	// Retroactive applies a new target or frequency to the past days as well,
 	// instead of from today on.
 	Retroactive bool `json:"retroactive"`
+	// Archived archives the habit or reactivates it. It is applied with
+	// Habit.SetArchived, as archiving records the time.
+	Archived *bool `json:"archived"`
+}
+
+// SetArchived archives h at now, or reactivates it, and reports whether that
+// changed it. An archived habit keeps the time it was archived at.
+func (h *Habit) SetArchived(archived bool, now time.Time) bool {
+	if archived == (h.ArchivedAt != nil) {
+		return false
+	}
+	if archived {
+		h.ArchivedAt = &now
+	} else {
+		h.ArchivedAt = nil
+	}
+	return true
 }
 
 // changesSchedule reports whether e changes the current schedule.

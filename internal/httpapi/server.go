@@ -66,7 +66,6 @@ func New(cfg config.Config, st *store.Store, log *slog.Logger, webFS fs.FS) (htt
 	mux.HandleFunc("GET /api/habits/{id}", s.handleGetHabit)
 	mux.HandleFunc("PATCH /api/habits/{id}", s.handleUpdateHabit)
 	mux.HandleFunc("DELETE /api/habits/{id}", s.handleDeleteHabit)
-	mux.HandleFunc("PUT /api/habits/{id}/archived", s.handleArchiveHabit)
 	mux.HandleFunc("GET /api/habits/{id}/totals", s.handleHabitTotals)
 	mux.HandleFunc("PUT /api/habits/{id}/entries/{date}", s.handleSetEntry)
 	mux.HandleFunc("POST /api/skips", s.handleSkipDays)

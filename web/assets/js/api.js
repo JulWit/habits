@@ -101,7 +101,7 @@ export const api = {
   // unless `retroactive` is set, a new kind converts the history.
   updateHabit: (id, input) => request("PATCH", `/api/habits/${encodeURIComponent(id)}`, input),
   archiveHabit: (id, archived) =>
-    request("PUT", `/api/habits/${encodeURIComponent(id)}/archived`, { archived }),
+    request("PATCH", `/api/habits/${encodeURIComponent(id)}`, { archived }),
   deleteHabit: (id) => request("DELETE", `/api/habits/${encodeURIComponent(id)}`),
   reorderHabits: (ids) => request("POST", "/api/habits/reorder", { ids }),
   // `change` sets value, skipped or both; answers with the habit's full view.

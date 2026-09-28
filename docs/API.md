@@ -12,8 +12,7 @@ only `/healthz` outside `/api` does not.
 | `GET` | `/api/days` | Day statistics of `?year=` (default: this year) over the habits that are not archived, or those of `?category=`, see [Statistics](#statistics) |
 | `POST` | `/api/habits` | Create a habit |
 | `GET` | `/api/habits/{id}` | A habit with its full history |
-| `PATCH` | `/api/habits/{id}` | Save what the editor shows: name, colour, icon, kind, category, step, unit, target, target type and frequency; `retroactive: true` applies a new target or frequency to past days, a new kind converts the history |
-| `PUT` | `/api/habits/{id}/archived` | Archive (`{"archived": true}`) or reactivate a habit |
+| `PATCH` | `/api/habits/{id}` | Save what the editor shows: name, colour, icon, kind, category, step, unit, target, target type and frequency; `retroactive: true` applies a new target or frequency to past days, a new kind converts the history; `archived: true` archives the habit, `false` reactivates it |
 | `DELETE` | `/api/habits/{id}` | Delete a habit with its history (undo brings it back) |
 | `GET` | `/api/habits/{id}/totals` | The habit's values of `?year=` summed per `?grain=` (`day`, `week`, `month`), see [Statistics](#statistics) |
 | `POST` | `/api/habits/reorder` | Set the order; missing habits keep their relative order after the given ones, duplicate IDs are rejected |

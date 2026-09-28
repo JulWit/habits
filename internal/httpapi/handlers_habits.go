@@ -242,6 +242,9 @@ func (s *Server) handleCreateHabit(w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 		h := domain.NewHabit(in, b.today)
+		if in.Archived != nil {
+			h.SetArchived(*in.Archived, tx.Now())
+		}
 		if err := tx.CreateHabit(&h); err != nil {
 			return err
 		}
@@ -260,7 +263,8 @@ func (s *Server) handleCreateHabit(w http.ResponseWriter, r *http.Request) {
 // handleUpdateHabit changes the fields of a habit given in the request body,
 // as saved in the editor (domain.Habit.Apply): a new target or frequency
 // starts a new schedule from today on unless it is retroactive, and a change
-// of kind converts the recorded history.
+// of kind converts the recorded history. "archived" archives the habit or
+// reactivates it; the undo step is named after that then.
 func (s *Server) handleUpdateHabit(w http.ResponseWriter, r *http.Request) {
 	var in domain.HabitEdit
 	if !decodeJSON(w, r, &in) {
@@ -288,6 +292,14 @@ func (s *Server) handleUpdateHabit(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return err
 		}
+		switch {
+		case in.Archived == nil || !h.SetArchived(*in.Archived, tx.Now()):
+			tx.Record(`"{name}" edited`, "name", name)
+		case *in.Archived:
+			tx.Record(`"{name}" archived`, "name", name)
+		default:
+			tx.Record(`"{name}" reactivated`, "name", name)
+		}
 		if err := tx.SaveHabit(&h); err != nil {
 			return err
 		}
@@ -297,7 +309,6 @@ func (s *Server) handleUpdateHabit(w http.ResponseWriter, r *http.Request) {
 			}
 			entries = converted
 		}
-		tx.Record(`"{name}" edited`, "name", name)
 		view = viewFor(h, computeHistory(h, entries, b), entries, b, domain.Date{})
 		return nil
 	})
@@ -307,47 +318,6 @@ func (s *Server) handleUpdateHabit(w http.ResponseWriter, r *http.Request) {
 	}
 	writeChange(w, changeID)
 	writeJSON(w, http.StatusOK, view)
-}
-
-// handleArchiveHabit archives a habit (PUT …/archived with {"archived":
-// true}) or reactivates it.
-func (s *Server) handleArchiveHabit(w http.ResponseWriter, r *http.Request) {
-	var body struct {
-		Archived *bool `json:"archived"`
-	}
-	if !decodeJSON(w, r, &body) {
-		return
-	}
-	if body.Archived == nil {
-		writeError(w, http.StatusBadRequest, "missing_fields", "archived is required")
-		return
-	}
-	user := auth.MustUser(r.Context())
-
-	changeID, err := s.store.Update(r.Context(), user.ID, func(tx *store.Tx) error {
-		h, err := tx.Habit(r.PathValue("id"))
-		if err != nil {
-			return err
-		}
-		switch {
-		case *body.Archived && h.ArchivedAt == nil:
-			now := time.Now().UTC()
-			h.ArchivedAt = &now
-			tx.Record(`"{name}" archived`, "name", h.Name)
-		case !*body.Archived && h.ArchivedAt != nil:
-			h.ArchivedAt = nil
-			tx.Record(`"{name}" reactivated`, "name", h.Name)
-		default:
-			return nil
-		}
-		return tx.SaveHabit(&h)
-	})
-	if err != nil {
-		s.writeStoreError(w, err, "archiving habit")
-		return
-	}
-	writeChange(w, changeID)
-	w.WriteHeader(http.StatusNoContent)
 }
 
 // handleDeleteHabit deletes a habit with its history. Undo brings it back.

@@ -31,7 +31,7 @@ func TestExportAndImportRestoreTheHistory(t *testing.T) {
 	water := createHabit(t, src, `{"name":"Water","kind":"count","unit":"glasses","stepValue":20,"targetValue":80,
 		"color":"sky","icon":"droplet","categoryId":"`+cat.ID+`","frequency":{"kind":"daily"}}`)
 	read := createHabit(t, src, `{"name":"Read","kind":"time","targetValue":200,"frequency":{"kind":"daily"}}`)
-	mustDo(t, src, "PUT", "/api/habits/"+read+"/archived", `{"archived":true}`, http.StatusNoContent)
+	mustDo(t, src, "PATCH", "/api/habits/"+read, `{"archived":true}`, http.StatusOK)
 	today := domain.Today(time.UTC)
 	yesterday := today.AddDays(-1)
 	mustDo(t, src, "PUT", "/api/habits/"+water+"/entries/"+today.String(), `{"value":30}`, http.StatusOK)

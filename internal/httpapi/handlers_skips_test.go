@@ -30,17 +30,14 @@ func TestSkipDaysAndUndo(t *testing.T) {
 	read := createHabit(t, h, `{"name":"Read","kind":"check","frequency":{"kind":"daily"}}`)
 	createHabit(t, h, `{"name":"Run","kind":"check","frequency":{"kind":"daily"}}`)
 	old := createHabit(t, h, `{"name":"Old","kind":"check","frequency":{"kind":"daily"}}`)
-	w := do(t, h, "PUT", "/api/habits/"+old+"/archived", `{"archived":true}`, "application/json")
-	if w.Code != http.StatusNoContent {
-		t.Fatalf("archive: %d (%s)", w.Code, w.Body)
-	}
+	mustDo(t, h, "PATCH", "/api/habits/"+old, `{"archived":true}`, http.StatusOK)
 
 	today := time.Now().UTC()
 	day := func(n int) string { return today.AddDate(0, 0, n).Format("2006-01-02") }
 	mustDo(t, h, "PUT", "/api/habits/"+read+"/entries/"+day(1), `{"value":1}`, http.StatusOK)
 
 	body := fmt.Sprintf(`{"from":%q,"to":%q}`, day(1), day(3))
-	w = do(t, h, "POST", "/api/skips", body, "application/json")
+	w := do(t, h, "POST", "/api/skips", body, "application/json")
 	// Three days of Run, two of Read (one has a value), none of the archived.
 	if w.Code != http.StatusOK || !strings.Contains(w.Body.String(), `"skipped":5`) {
 		t.Fatalf("skip: %d (%s), want 5 days", w.Code, w.Body)

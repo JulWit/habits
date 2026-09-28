@@ -37,7 +37,12 @@ changes. The detail view loads a habit's full history via
 `/api/habits/{id}`; `?from=` loads older entries for the board.
 
 The time zone is resolved on the server, which sends `today`, so all devices
-of a user agree on the current day.
+of a user agree on the current day. It also sends `nextDayIn`, the time
+until that day ends, and the client reloads the state then, so a board left
+open over midnight moves on to the new day. When the page becomes visible
+again, the client reloads the state if the day has changed or it was loaded
+more than 10 seconds before, e.g. to show changes made on another device.
+A device asleep at midnight delays the timer; that reload covers it.
 
 ## Due days
 

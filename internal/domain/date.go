@@ -33,6 +33,14 @@ func Today(loc *time.Location) Date {
 	return DateFromTime(time.Now().In(loc))
 }
 
+// UntilTomorrow returns the time from now until the next day begins in loc.
+func UntilTomorrow(now time.Time, loc *time.Location) time.Duration {
+	local := now.In(loc)
+	y, m, d := local.Date()
+	// time.Date normalises day d+1 into the next month or year.
+	return time.Date(y, m, d+1, 0, 0, 0, 0, loc).Sub(local)
+}
+
 // ParseDate parses a date in DateLayout format.
 func ParseDate(s string) (Date, error) {
 	t, err := time.ParseInLocation(DateLayout, s, time.UTC)

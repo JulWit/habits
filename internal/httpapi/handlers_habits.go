@@ -27,9 +27,12 @@ type habitView struct {
 
 // stateResponse is the response of GET /api/state.
 type stateResponse struct {
-	User       auth.User         `json:"user"`
-	Settings   store.Settings    `json:"settings"`
-	Today      domain.Date       `json:"today"`
+	User     auth.User      `json:"user"`
+	Settings store.Settings `json:"settings"`
+	Today    domain.Date    `json:"today"`
+	// NextDayIn is the number of milliseconds until the next day begins in
+	// the user's time zone. The client reloads the state then.
+	NextDayIn  int64             `json:"nextDayIn"`
 	Categories []domain.Category `json:"categories"`
 	// ArchivedCount is the number of archived habits, even if they are not
 	// included in Habits.
@@ -92,7 +95,9 @@ func (s *Server) handleState(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	today := domain.Today(s.location(settings))
+	loc := s.location(settings)
+	now := time.Now()
+	today := domain.DateFromTime(now.In(loc))
 	from := today.AddDays(-(entryWindowDays - 1))
 	if v := r.URL.Query().Get("from"); v != "" {
 		asked, err := domain.ParseDate(v)
@@ -114,6 +119,7 @@ func (s *Server) handleState(w http.ResponseWriter, r *http.Request) {
 		User:           user,
 		Settings:       settings,
 		Today:          today,
+		NextDayIn:      domain.UntilTomorrow(now, loc).Milliseconds(),
 		Categories:     categories,
 		ArchivedCount:  archivedCount,
 		Habits:         views,

@@ -164,10 +164,45 @@ async function refresh() {
   }
   rememberState(loaded);
   setOffline(false);
+  lastLoaded = Date.now();
+  reloadAtNextDay(loaded.nextDayIn);
   replaceState(overlay(loaded));
   // The reloaded state only contains the entry window again.
   fullHistoryLoaded.clear();
   if (pending().length > 0) actions.syncOutbox();
+}
+
+/** When the state was last loaded (Date.now()), 0 before the first load. */
+let lastLoaded = 0;
+
+/** When the loaded `today` ends (Date.now()), and the timer reloading then. */
+let dayEndsAt = Infinity;
+let dayTimer = null;
+
+/**
+ * Reloads the state once the day the server called today is over, so a board
+ * left open over midnight moves on to the new day. `ms` comes from the
+ * server, which knows the user's time zone. A sleeping device may delay the
+ * timer; the reload when the page becomes visible covers that.
+ */
+function reloadAtNextDay(ms) {
+  if (typeof ms !== "number") return;
+  clearTimeout(dayTimer);
+  dayEndsAt = Date.now() + ms;
+  // A second later, so the server has surely reached the new day.
+  dayTimer = setTimeout(refresh, ms + 1000);
+}
+
+/**
+ * How old the state may be when the page becomes visible again before it is
+ * reloaded, e.g. to show changes made on another device meanwhile.
+ */
+const STALE_MS = 10_000;
+
+/** Whether the shown state may be outdated: a new day, or loaded a while ago. */
+function isStale() {
+  const now = Date.now();
+  return now >= dayEndsAt || now - lastLoaded > STALE_MS;
 }
 
 /** How often to try again while offline or while writes are waiting. */
@@ -176,7 +211,8 @@ const RETRY_MS = 30_000;
 /**
  * Shows the sync status in the header and retries: when the browser reports
  * a connection, when the page becomes visible, and every RETRY_MS while
- * something is pending.
+ * something is pending. A page that becomes visible also reloads a state
+ * that may be outdated (isStale).
  */
 function initSync() {
   const status = document.getElementById("sync-status");
@@ -195,7 +231,10 @@ function initSync() {
   };
   window.addEventListener("online", retry);
   document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible") retry();
+    if (document.visibilityState !== "visible") return;
+    // Sending the waiting writes reloads the state afterwards.
+    if (pending().length > 0) actions.syncOutbox();
+    else if (isOffline() || isStale()) refresh();
   });
   setInterval(() => {
     if (isOffline() || pending().length > 0) retry();

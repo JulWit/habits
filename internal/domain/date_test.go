@@ -153,3 +153,28 @@ func TestTodayUsesTheGivenLocation(t *testing.T) {
 	// A nil location must not panic.
 	_ = Today(nil)
 }
+
+func TestUntilTomorrow(t *testing.T) {
+	berlin, err := time.LoadLocation("Europe/Berlin")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		name string
+		now  time.Time
+		want time.Duration
+	}{
+		{"evening", time.Date(2026, time.May, 4, 22, 30, 0, 0, berlin), 90 * time.Minute},
+		{"midnight", time.Date(2026, time.May, 4, 0, 0, 0, 0, berlin), 24 * time.Hour},
+		{"end of year", time.Date(2026, time.December, 31, 23, 59, 0, 0, berlin), time.Minute},
+		// The clocks go forward at 2:00 on 29 March 2026: the day has 23 hours.
+		{"short day", time.Date(2026, time.March, 29, 0, 0, 0, 0, berlin), 23 * time.Hour},
+		// The time is converted into the zone first: 23:00 UTC is 1:00 the
+		// next day in Berlin in summer.
+		{"other zone", time.Date(2026, time.May, 4, 23, 0, 0, 0, time.UTC), 23 * time.Hour},
+	} {
+		if got := UntilTomorrow(tc.now, berlin); got != tc.want {
+			t.Errorf("%s: UntilTomorrow = %v, want %v", tc.name, got, tc.want)
+		}
+	}
+}

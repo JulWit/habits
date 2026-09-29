@@ -25,11 +25,14 @@ const (
 	KindDistance Kind = "distance"
 )
 
-// AllKinds lists all kinds in the order the editor offers them.
-var AllKinds = []Kind{KindCheck, KindCount, KindTime, KindDistance}
+// allKinds lists all kinds in the order the editor offers them.
+var allKinds = []Kind{KindCheck, KindCount, KindTime, KindDistance}
+
+// AllKinds returns all kinds in the order the editor offers them.
+func AllKinds() []Kind { return slices.Clone(allKinds) }
 
 // Valid reports whether k is one of AllKinds.
-func (k Kind) Valid() bool { return slices.Contains(AllKinds, k) }
+func (k Kind) Valid() bool { return slices.Contains(allKinds, k) }
 
 // KindInfo describes a kind's value range for the client.
 type KindInfo struct {
@@ -46,8 +49,8 @@ type KindInfo struct {
 // KindDescriptors returns the KindInfo of every kind. It is sent to the client
 // so that the client does not keep its own copy of these values.
 func KindDescriptors() map[Kind]KindInfo {
-	out := make(map[Kind]KindInfo, len(AllKinds))
-	for _, k := range AllKinds {
+	out := make(map[Kind]KindInfo, len(allKinds))
+	for _, k := range allKinds {
 		out[k] = KindInfo{Scale: k.Scale(), Step: k.Step(), Max: k.MaxTarget(), Unit: k.Unit()}
 	}
 	return out
@@ -265,7 +268,7 @@ func (h *Habit) Validate() error {
 	}
 	h.Color = strings.ToLower(strings.TrimSpace(h.Color))
 	if h.Color == "" {
-		h.Color = Colors[0]
+		h.Color = colors[0]
 	}
 	if !ValidColor(h.Color) {
 		return Invalid("unknown_color", `unknown colour "{color}"`, "color", h.Color)
@@ -401,20 +404,23 @@ func (h *Habit) IsComplete(d Date, value int) bool {
 // applies on d. Values can only be recorded on scheduled days.
 func (h *Habit) IsScheduled(d Date) bool { return h.ScheduleOn(d).IsScheduled(d) }
 
-// Colors is the colour palette offered in the editor. Colours are stored as
+// colors is the colour palette offered in the editor. Colours are stored as
 // these names; the client maps each to a CSS custom property (--c-red, …),
 // so the shades can change, or differ per theme, without touching the data.
-var Colors = []string{
+var colors = []string{
 	"red", "orange", "yellow", "lime", "green", "teal",
 	"sky", "blue", "indigo", "violet", "pink", "slate",
 }
 
-// ValidColor reports whether name is one of Colors.
-func ValidColor(name string) bool { return slices.Contains(Colors, name) }
+// Colors returns the colour palette offered in the editor, in its order.
+func Colors() []string { return slices.Clone(colors) }
 
-// HabitIcons lists the valid icon names, in the order the editor offers them.
+// ValidColor reports whether name is one of Colors.
+func ValidColor(name string) bool { return slices.Contains(colors, name) }
+
+// habitIcons lists the valid icon names, in the order the editor offers them.
 // The icons themselves are defined in the client.
-var HabitIcons = []string{
+var habitIcons = []string{
 	"droplet", "apple", "utensils", "coffee", "pill", "heart", "dumbbell", "bike",
 	"mountain", "flame", "bed", "alarm", "morning", "midday", "evening", "moon",
 	"sun", "book", "pencil", "lightbulb", "code", "globe", "music", "palette",
@@ -422,5 +428,9 @@ var HabitIcons = []string{
 	"star", "target", "clock", "hourglass", "calendar", "calendarcheck", "check",
 }
 
+// HabitIcons returns the valid icon names, in the order the editor offers
+// them.
+func HabitIcons() []string { return slices.Clone(habitIcons) }
+
 // ValidIcon reports whether name is one of HabitIcons.
-func ValidIcon(name string) bool { return slices.Contains(HabitIcons, name) }
+func ValidIcon(name string) bool { return slices.Contains(habitIcons, name) }

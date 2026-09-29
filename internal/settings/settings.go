@@ -97,12 +97,12 @@ type Option struct {
 	Lang  string
 }
 
-// Options lists the allowed values of the enumerated settings, keyed by their
+// options lists the allowed values of the enumerated settings, keyed by their
 // JSON names, in the order the settings pages offer them. index.html renders
 // its choices from these lists. Theme "system" follows the device, Language
 // "system" the browser's Accept-Language header and Font "system" is the
 // system font.
-var Options = map[string][]Option{
+var options = map[string][]Option{
 	"theme": {
 		{Value: "system", Label: "System", Icon: "display"},
 		{Value: "light", Label: "Light", Icon: "sun"},
@@ -148,10 +148,21 @@ var Options = map[string][]Option{
 	},
 }
 
+// Options returns the allowed values of the enumerated settings, keyed by
+// their JSON names, in the order the settings pages offer them. The result is
+// a copy the caller may change.
+func Options() map[string][]Option {
+	out := make(map[string][]Option, len(options))
+	for key, opts := range options {
+		out[key] = slices.Clone(opts)
+	}
+	return out
+}
+
 // IsOption reports whether value is one of the options of the setting named
 // key.
 func IsOption(key, value string) bool {
-	return slices.ContainsFunc(Options[key], func(o Option) bool { return o.Value == value })
+	return slices.ContainsFunc(options[key], func(o Option) bool { return o.Value == value })
 }
 
 // checkOption returns an error unless value is one of the options of the
@@ -161,7 +172,7 @@ func checkOption(key, value string) error {
 		return nil
 	}
 	var values []string
-	for _, o := range Options[key] {
+	for _, o := range options[key] {
 		values = append(values, o.Value)
 	}
 	return domain.Invalid("setting_not_option", "{setting} must be one of: {options}",

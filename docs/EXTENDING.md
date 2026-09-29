@@ -24,7 +24,7 @@ Undo restores it without further work, as undo steps keep whole rows (see
 
 ## New habit kind
 
-Add it to `AllKinds` in `internal/domain/habit.go` and handle it in `Scale`,
+Add it to `allKinds` in `internal/domain/habit.go` and handle it in `Scale`,
 `Step`, `MaxTarget` and `Unit`. The client receives these values via `kinds`;
 the editor needs its input fields. Also handle it in `domain.ConvertKind`
 (see [DATAMODEL.md](DATAMODEL.md#kinds)).
@@ -41,8 +41,8 @@ streaks use.
 
 ## New language
 
-A dictionary in `i18n.js`, an entry under `"language"` in `settings.Options` and
-the day and month names in `dates.js`.
+A dictionary in `i18n.js`, an entry under `"language"` in `options`
+(`internal/settings/settings.go`) and the day and month names in `dates.js`.
 
 ## New validation error
 
@@ -55,7 +55,7 @@ trailing full stop. The client capitalises it when it shows it.
 
 A field in `settings.Settings` (`internal/settings`), its default in
 `Default` and, unless any value is fine, its check in `Validate`:
-`checkOption(key, value)` with an entry in `Options` for a choice (the
+`checkOption(key, value)` with an entry in `options` for a choice (the
 settings page renders its options from it), or a check function of its own.
 Then its control in `index.html` and `settings-dialog.js`. No migration is
 needed; stored documents without the field get the default.

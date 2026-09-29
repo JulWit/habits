@@ -160,7 +160,7 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	}{
 		Settings: prefs,
 		Lang:     resolveLanguage(prefs.Language, r.Header.Get("Accept-Language")),
-		Options:  settings.Options,
+		Options:  settings.Options(),
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")

@@ -58,7 +58,7 @@ Besides the habits, categories and settings, the state contains:
 - `colors`: the colour palette as names (`red`, `teal`, …); see
   [DATAMODEL.md](DATAMODEL.md#colours)
 - `kinds`: `scale`, `step`, `max` and `unit` per kind
-- `icons`: valid icon names (`domain.HabitIcons`); `""` means no icon. The
+- `icons`: valid icon names (`domain.HabitIcons()`); `""` means no icon. The
   drawings are in `web/assets/js/icons.js`.
 - `today`: the current day in the user's time zone, and `nextDayIn`: the
   milliseconds until the next day begins there. The client reloads the state

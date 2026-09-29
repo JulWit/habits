@@ -12,7 +12,7 @@ const habitColumns = `id, name, color, icon, kind, step_value, unit,
 	position, archived_at, created_at, updated_at, category_id`
 
 // scanHabit scans a row selected with habitColumns.
-func scanHabit(row interface{ Scan(...any) error }) (domain.Habit, error) {
+func scanHabit(scanner interface{ Scan(...any) error }) (domain.Habit, error) {
 	var (
 		h          domain.Habit
 		archivedAt sql.NullString
@@ -20,7 +20,7 @@ func scanHabit(row interface{ Scan(...any) error }) (domain.Habit, error) {
 		created    string
 		updated    string
 	)
-	err := row.Scan(
+	err := scanner.Scan(
 		&h.ID, &h.Name, &h.Color, &h.Icon, &h.Kind, &h.StepValue, &h.Unit,
 		&h.Position, &archivedAt, &created, &updated, &categoryID,
 	)

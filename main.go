@@ -38,18 +38,18 @@ func main() {
 		return
 	}
 
-	log := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo}))
+	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo}))
 	// Used by helpers that have no logger of their own.
-	slog.SetDefault(log)
-	if err := run(log); err != nil {
-		log.Error("startup failed", "error", err)
+	slog.SetDefault(logger)
+	if err := run(logger); err != nil {
+		logger.Error("startup failed", "error", err)
 		os.Exit(1)
 	}
 }
 
 // run starts the server and blocks until it fails or receives a shutdown
 // signal.
-func run(log *slog.Logger) error {
+func run(logger *slog.Logger) error {
 	cfg, err := config.Load()
 	if err != nil {
 		return err
@@ -73,16 +73,16 @@ func run(log *slog.Logger) error {
 	// Undo steps are removed once their retention period is over: now, and
 	// daily for a server that runs for long. The daily purge ends before the
 	// store closes (deferred calls run in reverse order).
-	purgeSteps(ctx, st, cfg.UndoRetention, log)
+	purgeSteps(ctx, st, cfg.UndoRetention, logger)
 	purgeCtx, stopPurging := context.WithCancel(ctx)
 	var purging sync.WaitGroup
-	purging.Go(func() { purgeDaily(purgeCtx, st, cfg.UndoRetention, log) })
+	purging.Go(func() { purgeDaily(purgeCtx, st, cfg.UndoRetention, logger) })
 	defer func() {
 		stopPurging()
 		purging.Wait()
 	}()
 
-	handler, err := httpapi.New(cfg, st, log, webFS)
+	handler, err := httpapi.New(cfg, st, logger, webFS)
 	if err != nil {
 		return err
 	}
@@ -98,7 +98,7 @@ func run(log *slog.Logger) error {
 
 	errCh := make(chan error, 1)
 	go func() {
-		log.Info("habits started",
+		logger.Info("habits started",
 			"address", cfg.Addr,
 			"database", cfg.DatabasePath,
 			"auth", string(cfg.AuthMode),
@@ -112,7 +112,7 @@ func run(log *slog.Logger) error {
 	case err := <-errCh:
 		return err
 	case <-ctx.Done():
-		log.Info("shutting down...")
+		logger.Info("shutting down...")
 	}
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
@@ -124,7 +124,7 @@ func run(log *slog.Logger) error {
 const purgeInterval = 24 * time.Hour
 
 // purgeDaily calls purgeSteps every purgeInterval until ctx is done.
-func purgeDaily(ctx context.Context, st *store.Store, retention time.Duration, log *slog.Logger) {
+func purgeDaily(ctx context.Context, st *store.Store, retention time.Duration, logger *slog.Logger) {
 	ticker := time.NewTicker(purgeInterval)
 	defer ticker.Stop()
 	for {
@@ -132,18 +132,18 @@ func purgeDaily(ctx context.Context, st *store.Store, retention time.Duration, l
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			purgeSteps(ctx, st, retention, log)
+			purgeSteps(ctx, st, retention, logger)
 		}
 	}
 }
 
 // purgeSteps removes the undo steps older than retention. Failures are
 // logged; the next run tries again.
-func purgeSteps(ctx context.Context, st *store.Store, retention time.Duration, log *slog.Logger) {
+func purgeSteps(ctx context.Context, st *store.Store, retention time.Duration, logger *slog.Logger) {
 	if n, err := st.PurgeSteps(ctx, retention); err != nil {
-		log.Warn("purging undo steps failed", "error", err)
+		logger.Warn("purging undo steps failed", "error", err)
 	} else if n > 0 {
-		log.Info("expired undo steps removed", "count", n)
+		logger.Info("expired undo steps removed", "count", n)
 	}
 }
 
@@ -155,18 +155,18 @@ func healthcheck() error {
 	if err != nil {
 		return err
 	}
-	url, err := healthcheckURL(cfg.Addr)
+	healthURL, err := healthcheckURL(cfg.Addr)
 	if err != nil {
 		return err
 	}
 	client := &http.Client{Timeout: 5 * time.Second}
-	res, err := client.Get(url)
+	res, err := client.Get(healthURL)
 	if err != nil {
 		return err
 	}
 	res.Body.Close()
 	if res.StatusCode != http.StatusOK {
-		return fmt.Errorf("%s answered %s", url, res.Status)
+		return fmt.Errorf("%s answered %s", healthURL, res.Status)
 	}
 	return nil
 }

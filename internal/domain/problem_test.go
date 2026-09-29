@@ -70,3 +70,28 @@ func TestValueTooLargeNamesTheUnit(t *testing.T) {
 		}
 	}
 }
+
+// A mistake in the params of Invalid or Record fails loudly instead of losing
+// a value.
+func TestNamedParamsPanicsOnMalformedParams(t *testing.T) {
+	for _, params := range [][]any{
+		{"max"},
+		{"max", 7, "min"},
+		{7, "max"},
+	} {
+		t.Run(fmt.Sprint(params), func(t *testing.T) {
+			defer func() {
+				if recover() == nil {
+					t.Errorf("NamedParams(%v) did not panic", params)
+				}
+			}()
+			NamedParams(params...)
+		})
+	}
+}
+
+func TestNamedParamsIsNeverNil(t *testing.T) {
+	if NamedParams() == nil {
+		t.Error("NamedParams() = nil, want an empty map")
+	}
+}

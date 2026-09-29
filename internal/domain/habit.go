@@ -5,7 +5,6 @@
 package domain
 
 import (
-	"errors"
 	"slices"
 	"strings"
 	"time"
@@ -193,9 +192,6 @@ type Habit struct {
 	CreatedAt  time.Time  `json:"createdAt"`
 	UpdatedAt  time.Time  `json:"updatedAt"`
 }
-
-// ErrValidation is matched by every validation error (see Problem).
-var ErrValidation = errors.New("validation error")
 
 // Maximum lengths of a habit's name and unit, in characters.
 const (

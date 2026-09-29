@@ -1,9 +1,13 @@
 package domain
 
 import (
+	"errors"
 	"fmt"
 	"regexp"
 )
+
+// ErrValidation is matched by every validation error (see Problem).
+var ErrValidation = errors.New("validation error")
 
 // Problem is a validation error with a user-facing message.
 //
@@ -19,18 +23,30 @@ type Problem struct {
 
 var placeholder = regexp.MustCompile(`\{\w+\}`)
 
-// Invalid returns a Problem. params holds alternating names and values:
+// Invalid returns a Problem. params holds alternating names and values, as
+// for NamedParams:
 //
 //	Invalid("name_too_long", "name is longer than {max} characters", "max", MaxNameLen)
 func Invalid(code, template string, params ...any) error {
-	p := &Problem{Code: code, Template: template}
-	if len(params) > 0 {
-		p.Params = make(map[string]any, len(params)/2)
-		for i := 0; i+1 < len(params); i += 2 {
-			p.Params[params[i].(string)] = params[i+1]
-		}
+	return &Problem{Code: code, Template: template, Params: NamedParams(params...)}
+}
+
+// NamedParams returns the values of a message's placeholders by name, from
+// alternating names and values. It never returns nil. It panics if a name is
+// not a string or a name has no value, as both are mistakes of the caller.
+func NamedParams(params ...any) map[string]any {
+	if len(params)%2 != 0 {
+		panic(fmt.Sprintf("domain: odd number of params: %v", params))
 	}
-	return p
+	named := make(map[string]any, len(params)/2)
+	for i := 0; i < len(params); i += 2 {
+		name, ok := params[i].(string)
+		if !ok {
+			panic(fmt.Sprintf("domain: param name %v is not a string", params[i]))
+		}
+		named[name] = params[i+1]
+	}
+	return named
 }
 
 // Message returns the English message with the placeholders filled in.

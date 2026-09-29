@@ -232,7 +232,7 @@ func importFile(tx *store.Tx, in exportFile) (importResult, error) {
 		}
 		c := domain.Category{Name: ec.Name, Icon: ec.Icon, Color: ec.Color, ShowProgress: ec.ShowProgress}
 		if err := tx.CreateCategory(&c); err != nil {
-			return result, importProblem{err, "category", ec.Name}
+			return result, importProblem{error: err, param: "category", name: ec.Name}
 		}
 		catByName[nameKey(c.Name)] = c.ID
 		catByKey[ec.Key] = c.ID
@@ -249,7 +249,7 @@ func importFile(tx *store.Tx, in exportFile) (importResult, error) {
 			continue
 		}
 		if err := importHabit(tx, eh, catByKey); err != nil {
-			return result, importProblem{err, "habit", eh.Name}
+			return result, importProblem{error: err, param: "habit", name: eh.Name}
 		}
 		taken[nameKey(eh.Name)] = true
 		result.Habits++

@@ -24,6 +24,8 @@ import (
 	"slices"
 	"strings"
 	"time"
+
+	"github.com/JulWit/habits/internal/domain"
 )
 
 // maxSteps is the number of undo steps kept per user; older ones are
@@ -45,14 +47,11 @@ type Step struct {
 }
 
 // Record makes the transaction's change an undo step labelled with template
-// and params, alternating names and values. Recording a step drops the steps
-// that are undone, as they can no longer be redone.
+// and params, alternating names and values (see domain.NamedParams).
+// Recording a step drops the steps that are undone, as they can no longer be
+// redone.
 func (t *Tx) Record(template string, params ...any) {
-	label := Label{Template: template, Params: map[string]any{}}
-	for i := 0; i+1 < len(params); i += 2 {
-		label.Params[params[i].(string)] = params[i+1]
-	}
-	t.log.label = &label
+	t.log.label = &Label{Template: template, Params: domain.NamedParams(params...)}
 }
 
 // row is a table row by column name, with the values as the driver returns
@@ -127,7 +126,7 @@ func rowKey(table string, r row) string {
 // change and remembers their state before.
 func (t *Tx) watch(table, where string, args ...any) error {
 	if t.log == nil {
-		return errors.New("store: writing in a read-only transaction")
+		return errors.New("writing in a read-only transaction")
 	}
 	w := watch{table: table, where: where, args: args}
 	for _, known := range t.log.watches {
@@ -450,7 +449,7 @@ func (s *Store) turn(ctx context.Context, userID string, id int64, redo bool) (S
 			return err
 		}
 		// The step keeps its diff from the undone to the done state.
-		undoneAt := any(nil)
+		var undoneAt any
 		if !redo {
 			changed = inverse(changed)
 			undoneAt = formatTime(t.now)

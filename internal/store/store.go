@@ -70,6 +70,9 @@ func (s *Store) Close() error { return s.db.Close() }
 
 // Tx is a transaction of one user. Its methods are scoped to that user.
 type Tx struct {
+	// ctx is the context of View or Update. A Tx lives only as long as their
+	// callback, so its methods take the context from here rather than as a
+	// parameter each.
 	ctx    context.Context
 	tx     *sql.Tx
 	userID string

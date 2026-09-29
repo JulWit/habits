@@ -185,6 +185,12 @@ func formatTime(t time.Time) string { return t.UTC().Format(storedTimeLayout) }
 // parseTime parses a stored timestamp.
 func parseTime(s string) (time.Time, error) { return time.Parse(time.RFC3339Nano, s) }
 
+// scanner is a single row to scan: a *sql.Row, or *sql.Rows at its current
+// row.
+type scanner interface {
+	Scan(dest ...any) error
+}
+
 // expectOneRow returns ErrNotFound if res affected no rows.
 func expectOneRow(res sql.Result) error {
 	n, err := res.RowsAffected()

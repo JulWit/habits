@@ -12,13 +12,13 @@ import (
 const categoryColumns = `id, name, icon, color, show_progress, position, created_at, updated_at`
 
 // scanCategory scans a row selected with categoryColumns.
-func scanCategory(row interface{ Scan(...any) error }) (domain.Category, error) {
+func scanCategory(sc scanner) (domain.Category, error) {
 	var (
 		c       domain.Category
 		created string
 		updated string
 	)
-	if err := row.Scan(&c.ID, &c.Name, &c.Icon, &c.Color, &c.ShowProgress, &c.Position, &created, &updated); err != nil {
+	if err := sc.Scan(&c.ID, &c.Name, &c.Icon, &c.Color, &c.ShowProgress, &c.Position, &created, &updated); err != nil {
 		return domain.Category{}, err
 	}
 	var err error

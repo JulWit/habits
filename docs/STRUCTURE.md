@@ -9,6 +9,7 @@ internal/settings           User settings: defaults, options and rules
 internal/store              SQLite: transactions, schema, migrations, undo steps
 internal/httpapi            Routing, JSON API, frontend delivery
 scripts/genicons.go         Generates the PNG app icons
+.clang-format               Formatting of the frontend JS (Google style)
 web/                        Frontend (ES modules, no build step)
   index.html                  App shell, rendered as a Go template
   sw.js                       Service worker for offline start
@@ -19,7 +20,7 @@ web/                        Frontend (ES modules, no build step)
                               *-view for a view, *-editor, *-picker or *-dialog
                               for a dialog
     app.js                      Entry point, routing, appearance, shortcuts
-    state.js                    Client-side state
+    state.js                    Client-side state; typedefs Habit, Category, Entry, …
     api.js                      API client
     actions.js                  All data changes
     undo.js                     Undo/redo through the server, and toasts

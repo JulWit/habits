@@ -89,7 +89,7 @@ days are shown: if they do not fit, the board is compacted (`data-tight`, set
 in `board-view.js`). A fixed number below seven is respected.
 
 **Language**: The server sets `<html lang>`; `web/assets/js/i18n.js`
-translates using the English text as key (`t("New habit")`). Untranslated
+translates using the English text as key (`t('New habit')`). Untranslated
 texts are shown in English. Changing the language reloads the page.
 
 **Time zone**: Determines the server's `today`, and thus the last day of the

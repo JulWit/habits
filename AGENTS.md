@@ -86,7 +86,7 @@ server after changing files in `web/`).
 - **Errors** are created with `domain.Invalid(code, template, params...)`. Each
   new `code` needs a German entry in `deErrors` in `web/assets/js/i18n.js`;
   `TestEveryProblemCodeIsTranslated` enforces this.
-- **UI text** is written in English and wrapped in `t("...")`; the English text
+- **UI text** is written in English and wrapped in `t('...')`; the English text
   is the key. Add the German translation to `de` in `i18n.js`.
 - **Writing endpoints** require `Content-Type: application/json` (CSRF
   protection). Keep it that way.
@@ -99,12 +99,23 @@ server after changing files in `web/`).
 ## Style
 
 - Match the surrounding code: small functions, a doc comment on each exported
-  Go identifier and on non-obvious JS functions, comments that explain why.
-- Go: standard library first, `gofmt`, tests in `_test.go` files next to the
-  code.
+  Go identifier and on every JS function (see below), comments that explain
+  why.
+- Go follows the [Google Go style
+  guide](https://google.github.io/styleguide/go/guide): standard library
+  first, `gofmt`, tests in `_test.go` files next to the code.
 - JS: ES modules, no framework, no classes unless the file already uses them.
   File names in kebab-case, with a suffix for views (`-view`) and dialogs
   (`-editor`, `-picker`, `-dialog`); see `docs/STRUCTURE.md`.
+- JS follows the [Google JavaScript style
+  guide](https://google.github.io/styleguide/jsguide.html): single quotes,
+  80 columns, braces around every block except a one-line `if` without `else`,
+  a trailing comma in wrapped array and object literals. Format with
+  `uvx clang-format -i web/sw.js web/assets/js/*.js` (`.clang-format`; a
+  developer tool, not a build step). Long UI texts in `t('…')` and `i18n.js`
+  stay on one line, so they can be searched for.
+- Every function has a JSDoc comment with Closure types (`@param {string}`,
+  `@return {?Habit}`); the shared data types are typedefs in `state.js`.
 - Element IDs in `index.html` follow the same names: a view or dialog has the
   name of its module (`habit-view`, `day-editor`), and the elements inside it
   are prefixed with that name, without a trailing `-dialog`

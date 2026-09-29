@@ -55,8 +55,8 @@ func (s *server) writeError(w http.ResponseWriter, status int, code, detail stri
 // writeProblem writes an error response for err, with its code and parameters
 // if err is a *domain.Problem.
 func (s *server) writeProblem(w http.ResponseWriter, status int, err error) {
-	var p *domain.Problem
-	if !errors.As(err, &p) {
+	p, ok := errors.AsType[*domain.Problem](err)
+	if !ok {
 		s.writeError(w, status, "error", err.Error())
 		return
 	}

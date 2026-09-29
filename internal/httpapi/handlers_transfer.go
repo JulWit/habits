@@ -195,12 +195,11 @@ func (s *server) handleImport(w http.ResponseWriter, r *http.Request, user auth.
 		}
 		return nil
 	})
-	var problem importProblem
-	switch {
-	case errors.As(err, &problem) && errors.Is(err, domain.ErrValidation):
+	if problem, ok := errors.AsType[importProblem](err); ok && errors.Is(err, domain.ErrValidation) {
 		s.writeImportProblem(w, problem.error, problem.param, problem.name)
 		return
-	case err != nil:
+	}
+	if err != nil {
 		s.writeStoreError(w, err, "importing")
 		return
 	}

@@ -42,7 +42,8 @@ func main() {
 	}
 
 	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo}))
-	// Used by helpers that have no logger of their own.
+	// Also routes the log package through logger, e.g. the errors net/http
+	// logs itself.
 	slog.SetDefault(logger)
 	if err := run(logger); err != nil {
 		logger.Error("startup failed", "error", err)

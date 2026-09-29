@@ -188,7 +188,7 @@ func TestLanguageAndTimeZoneSettings(t *testing.T) {
 		t.Errorf("today is not the zone's %s: %s", want, w.Body.String())
 	}
 	if !strings.Contains(w.Body.String(), `"serverTimeZone":"UTC"`) {
-		t.Errorf("state without the server zone")
+		t.Error("state without the server zone")
 	}
 }
 

@@ -25,7 +25,7 @@ func TestSettingsRoundTrip(t *testing.T) {
 	want.ShowBand = false
 	update(t, st, "alice", func(tx *Tx) error { return tx.SaveSettings(t.Context(), want) })
 	if got := read(t, st, "alice", settingsOf); got != want {
-		t.Errorf("round trip: %+v != %+v", got, want)
+		t.Errorf("Settings after SaveSettings = %+v, want %+v", got, want)
 	}
 
 	bad := settings.Default()

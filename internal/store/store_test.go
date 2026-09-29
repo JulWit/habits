@@ -174,7 +174,7 @@ func TestStoredTimestampsSortChronologically(t *testing.T) {
 			continue
 		}
 		if !got.Equal(want) {
-			t.Errorf("round trip: %v != %v", got, want)
+			t.Errorf("parseTime(formatTime(%v)) = %v, want %v", want, got, want)
 		}
 	}
 }

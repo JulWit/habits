@@ -172,7 +172,7 @@ func (t *Tx) snapshot(ctx context.Context, w watch) (map[string]row, error) {
 func scanRow(rows *sql.Rows) (row, error) {
 	columns, err := rows.Columns()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("reading columns: %w", err)
 	}
 	values := make([]any, len(columns))
 	pointers := make([]any, len(columns))
@@ -180,7 +180,7 @@ func scanRow(rows *sql.Rows) (row, error) {
 		pointers[i] = &values[i]
 	}
 	if err := rows.Scan(pointers...); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("scanning a row: %w", err)
 	}
 	r := row{}
 	for i, c := range columns {
@@ -296,19 +296,22 @@ func (t *Tx) saveChange(ctx context.Context) (int64, error) {
 		return 0, nil
 	}
 	diff, err := t.diff(ctx)
-	if err != nil || len(diff) == 0 {
+	if err != nil {
 		return 0, err
 	}
+	if len(diff) == 0 {
+		return 0, nil
+	}
 	if _, err := t.exec(ctx, `DELETE FROM changes WHERE user_id = ? AND undone_at IS NOT NULL`, t.userID); err != nil {
-		return 0, err
+		return 0, fmt.Errorf("dropping undone steps: %w", err)
 	}
 	params, err := json.Marshal(t.log.label.Params)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("encoding the undo step's params: %w", err)
 	}
 	encoded, err := json.Marshal(diff)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("encoding the undo step's diff: %w", err)
 	}
 	res, err := t.exec(ctx,
 		`INSERT INTO changes (user_id, label, params, diff, created_at) VALUES (?,?,?,?,?)`,
@@ -318,12 +321,14 @@ func (t *Tx) saveChange(ctx context.Context) (int64, error) {
 	}
 	id, err := res.LastInsertId()
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("recording the undo step: %w", err)
 	}
-	_, err = t.exec(ctx, `DELETE FROM changes WHERE user_id = ? AND id NOT IN (
+	if _, err := t.exec(ctx, `DELETE FROM changes WHERE user_id = ? AND id NOT IN (
 		SELECT id FROM changes WHERE user_id = ? ORDER BY id DESC LIMIT ?)`,
-		t.userID, t.userID, maxSteps)
-	return id, err
+		t.userID, t.userID, maxSteps); err != nil {
+		return 0, fmt.Errorf("dropping the oldest undo steps: %w", err)
+	}
+	return id, nil
 }
 
 // storedStep is an undo step as stored.
@@ -359,7 +364,7 @@ func (t *Tx) loadStep(ctx context.Context, id int64, undone bool) (storedStep, e
 		return storedStep{}, ErrNotFound
 	}
 	if err != nil {
-		return storedStep{}, err
+		return storedStep{}, fmt.Errorf("loading the undo step: %w", err)
 	}
 	if err := json.Unmarshal([]byte(params), &s.Params); err != nil {
 		return storedStep{}, fmt.Errorf("undo step %d: %w", s.ID, err)
@@ -438,8 +443,10 @@ func (s *Store) turn(ctx context.Context, userID string, id int64, redo bool) (S
 		}
 		if !applies {
 			conflict = true
-			_, err := t.exec(ctx, `DELETE FROM changes WHERE id = ?`, step.ID)
-			return err
+			if _, err := t.exec(ctx, `DELETE FROM changes WHERE id = ?`, step.ID); err != nil {
+				return fmt.Errorf("dropping undo step %d: %w", step.ID, err)
+			}
+			return nil
 		}
 		if err := t.applyStep(ctx, step.diff, redo); err != nil {
 			return err
@@ -456,11 +463,13 @@ func (s *Store) turn(ctx context.Context, userID string, id int64, redo bool) (S
 		}
 		encoded, err := json.Marshal(changed)
 		if err != nil {
-			return err
+			return fmt.Errorf("encoding undo step %d: %w", step.ID, err)
 		}
-		_, err = t.exec(ctx, `UPDATE changes SET diff = ?, undone_at = ? WHERE id = ?`,
-			string(encoded), undoneAt, step.ID)
-		return err
+		if _, err := t.exec(ctx, `UPDATE changes SET diff = ?, undone_at = ? WHERE id = ?`,
+			string(encoded), undoneAt, step.ID); err != nil {
+			return fmt.Errorf("saving undo step %d: %w", step.ID, err)
+		}
+		return nil
 	})
 	switch {
 	case err != nil:
@@ -538,7 +547,7 @@ func (t *Tx) current(ctx context.Context, table string, r row) (row, error) {
 	where, args := keyWhere(table, r)
 	rows, err := t.query(ctx, `SELECT * FROM `+table+` WHERE `+where, args...)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("reading %s: %w", table, err)
 	}
 	defer rows.Close()
 	if !rows.Next() {
@@ -606,7 +615,7 @@ func (t *Tx) applyStep(ctx context.Context, diff []rowChange, redo bool) error {
 		if from, to := ends(rc, redo); from != nil && to == nil {
 			where, args := keyWhere(rc.Table, from)
 			if _, err := t.exec(ctx, `DELETE FROM `+rc.Table+` WHERE `+where, args...); err != nil {
-				return err
+				return fmt.Errorf("removing a row of %s: %w", rc.Table, err)
 			}
 		}
 	}
@@ -635,8 +644,10 @@ func (t *Tx) insertRow(ctx context.Context, table string, r row) error {
 		args[i] = normalize(r[c])
 	}
 	marks := strings.TrimSuffix(strings.Repeat("?,", len(columns)), ",")
-	_, err := t.exec(ctx, `INSERT INTO `+table+` (`+strings.Join(columns, ", ")+`) VALUES (`+marks+`)`, args...)
-	return err
+	if _, err := t.exec(ctx, `INSERT INTO `+table+` (`+strings.Join(columns, ", ")+`) VALUES (`+marks+`)`, args...); err != nil {
+		return fmt.Errorf("putting back a row of %s: %w", table, err)
+	}
+	return nil
 }
 
 // updateRow sets the columns of the stored row with the key of r to the
@@ -656,8 +667,10 @@ func (t *Tx) updateRow(ctx context.Context, table string, r row, columns []strin
 		return nil
 	}
 	where, keyArgs := keyWhere(table, r)
-	_, err := t.exec(ctx, `UPDATE `+table+` SET `+strings.Join(sets, ", ")+` WHERE `+where, append(args, keyArgs...)...)
-	return err
+	if _, err := t.exec(ctx, `UPDATE `+table+` SET `+strings.Join(sets, ", ")+` WHERE `+where, append(args, keyArgs...)...); err != nil {
+		return fmt.Errorf("updating a row of %s: %w", table, err)
+	}
+	return nil
 }
 
 // PurgeSteps removes undo steps older than olderThan and returns their

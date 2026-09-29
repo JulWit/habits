@@ -75,19 +75,21 @@ func (t *Tx) CreateCategory(ctx context.Context, c *domain.Category) error {
 	}
 	var last sql.NullInt64
 	if err := t.queryRow(ctx, `SELECT MAX(position) FROM categories WHERE user_id = ?`, t.userID).Scan(&last); err != nil {
-		return err
+		return fmt.Errorf("finding the last category position: %w", err)
 	}
 	c.Position = int(last.Int64) + 1
 
 	if err := t.watch(ctx, "categories", "id = ?", c.ID); err != nil {
 		return err
 	}
-	_, err := t.exec(ctx, `
+	if _, err := t.exec(ctx, `
 		INSERT INTO categories (id, user_id, name, icon, color, show_progress, position, created_at, updated_at)
 		VALUES (?,?,?,?,?,?,?,?,?)`,
 		c.ID, t.userID, c.Name, c.Icon, c.Color, c.ShowProgress, c.Position,
-		formatTime(c.CreatedAt), formatTime(c.UpdatedAt))
-	return err
+		formatTime(c.CreatedAt), formatTime(c.UpdatedAt)); err != nil {
+		return fmt.Errorf("creating category: %w", err)
+	}
+	return nil
 }
 
 // SaveCategory validates the category and stores all its fields except the

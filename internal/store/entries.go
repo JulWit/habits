@@ -88,7 +88,10 @@ func (t *Tx) Entry(ctx context.Context, habitID string, date domain.Date) (domai
 	if errors.Is(err, sql.ErrNoRows) {
 		return domain.Entry{}, nil
 	}
-	return e, err
+	if err != nil {
+		return domain.Entry{}, fmt.Errorf("loading entry: %w", err)
+	}
+	return e, nil
 }
 
 // SetEntries stores the entries of the habit h on their days, deleting those
@@ -114,8 +117,10 @@ func (t *Tx) SetEntries(ctx context.Context, h domain.Habit, entries map[domain.
 			return err
 		}
 	}
-	_, err := t.exec(ctx, `UPDATE habits SET updated_at = ? WHERE id = ? AND user_id = ?`, now, h.ID, t.userID)
-	return err
+	if _, err := t.exec(ctx, `UPDATE habits SET updated_at = ? WHERE id = ? AND user_id = ?`, now, h.ID, t.userID); err != nil {
+		return fmt.Errorf("touching habit %s: %w", h.ID, err)
+	}
+	return nil
 }
 
 // ReplaceEntries replaces all entries of the habit h with entries, e.g. with
@@ -130,7 +135,7 @@ func (t *Tx) ReplaceEntries(ctx context.Context, h domain.Habit, entries map[dom
 		return err
 	}
 	if _, err := t.exec(ctx, `DELETE FROM entries WHERE habit_id = ?`, h.ID); err != nil {
-		return err
+		return fmt.Errorf("deleting entries of habit %s: %w", h.ID, err)
 	}
 	now := formatTime(t.now)
 	for d, e := range entries {
@@ -145,13 +150,17 @@ func (t *Tx) ReplaceEntries(ctx context.Context, h domain.Habit, entries map[dom
 // if e records nothing.
 func (t *Tx) writeEntry(ctx context.Context, habitID string, date domain.Date, e domain.Entry, now string) error {
 	if e.IsZero() {
-		_, err := t.exec(ctx, `DELETE FROM entries WHERE habit_id = ? AND date = ?`, habitID, date.String())
-		return err
+		if _, err := t.exec(ctx, `DELETE FROM entries WHERE habit_id = ? AND date = ?`, habitID, date.String()); err != nil {
+			return fmt.Errorf("deleting entry of %s: %w", date, err)
+		}
+		return nil
 	}
-	_, err := t.exec(ctx, `
+	if _, err := t.exec(ctx, `
 		INSERT INTO entries (habit_id, date, value, skipped, updated_at) VALUES (?,?,?,?,?)
 		ON CONFLICT(habit_id, date) DO UPDATE SET
 			value = excluded.value, skipped = excluded.skipped, updated_at = excluded.updated_at`,
-		habitID, date.String(), e.Value, e.Skipped, now)
-	return err
+		habitID, date.String(), e.Value, e.Skipped, now); err != nil {
+		return fmt.Errorf("saving entry of %s: %w", date, err)
+	}
+	return nil
 }

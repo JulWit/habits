@@ -201,6 +201,8 @@ func (s *Store) migrate(ctx context.Context) error {
 // setVersion sets the database's user_version. PRAGMA does not support
 // placeholders.
 func setVersion(ctx context.Context, tx *sql.Tx, version int) error {
-	_, err := tx.ExecContext(ctx, fmt.Sprintf("PRAGMA user_version = %d", version))
-	return err
+	if _, err := tx.ExecContext(ctx, fmt.Sprintf("PRAGMA user_version = %d", version)); err != nil {
+		return fmt.Errorf("setting schema version %d: %w", version, err)
+	}
+	return nil
 }

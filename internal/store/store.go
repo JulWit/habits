@@ -162,8 +162,10 @@ func (t *Tx) ensureUser(ctx context.Context) error {
 // settings, categories, habits, schedules, entries and undo steps. The user
 // is recorded again on their next write. It cannot be undone.
 func (t *Tx) DeleteUser(ctx context.Context) error {
-	_, err := t.exec(ctx, `DELETE FROM users WHERE id = ?`, t.userID)
-	return err
+	if _, err := t.exec(ctx, `DELETE FROM users WHERE id = ?`, t.userID); err != nil {
+		return fmt.Errorf("deleting user: %w", err)
+	}
+	return nil
 }
 
 // NewID returns a random 128-bit ID in hex.

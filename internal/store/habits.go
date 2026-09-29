@@ -126,7 +126,7 @@ func (t *Tx) CreateHabit(ctx context.Context, h *domain.Habit) error {
 	}
 	var last sql.NullInt64
 	if err := t.queryRow(ctx, `SELECT MAX(position) FROM habits WHERE user_id = ?`, t.userID).Scan(&last); err != nil {
-		return err
+		return fmt.Errorf("finding the last habit position: %w", err)
 	}
 	h.Position = int(last.Int64) + 1
 
@@ -140,7 +140,7 @@ func (t *Tx) CreateHabit(ctx context.Context, h *domain.Habit) error {
 		h.ID, t.userID, h.Name, h.Color, h.Icon, h.Kind, h.StepValue, h.Unit,
 		h.Position, archivedAt(h), formatTime(h.CreatedAt), formatTime(h.UpdatedAt), nullableID(h.CategoryID),
 	); err != nil {
-		return err
+		return fmt.Errorf("creating habit: %w", err)
 	}
 	return t.saveSchedules(ctx, h)
 }
@@ -167,7 +167,7 @@ func (t *Tx) SaveHabit(ctx context.Context, h *domain.Habit) error {
 		archivedAt(h), formatTime(h.UpdatedAt), nullableID(h.CategoryID),
 		h.ID, t.userID)
 	if err != nil {
-		return err
+		return fmt.Errorf("updating habit: %w", err)
 	}
 	if err := expectOneRow(res); err != nil {
 		return err

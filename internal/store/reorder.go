@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"fmt"
 	"slices"
 
 	"github.com/JulWit/habits/internal/domain"
@@ -20,20 +21,20 @@ func (t *Tx) reorder(ctx context.Context, table string, ids []string) error {
 
 	rows, err := t.query(ctx, `SELECT id FROM `+table+` WHERE user_id = ? ORDER BY position, created_at`, t.userID)
 	if err != nil {
-		return err
+		return fmt.Errorf("loading the order of %s: %w", table, err)
 	}
 	var current []string
 	for rows.Next() {
 		var id string
 		if err := rows.Scan(&id); err != nil {
 			rows.Close()
-			return err
+			return fmt.Errorf("reading the order of %s: %w", table, err)
 		}
 		current = append(current, id)
 	}
 	rows.Close()
 	if err := rows.Err(); err != nil {
-		return err
+		return fmt.Errorf("reading the order of %s: %w", table, err)
 	}
 
 	// First the named rows in their new order, then the others.
@@ -51,7 +52,7 @@ func (t *Tx) reorder(ctx context.Context, table string, ids []string) error {
 
 	for position, id := range order {
 		if _, err := t.exec(ctx, `UPDATE `+table+` SET position = ? WHERE id = ?`, position, id); err != nil {
-			return err
+			return fmt.Errorf("saving the order of %s: %w", table, err)
 		}
 	}
 	return nil

@@ -39,11 +39,13 @@ func (t *Tx) SaveSettings(ctx context.Context, s settings.Settings) error {
 	}
 	data, err := json.Marshal(s)
 	if err != nil {
-		return err
+		return fmt.Errorf("encoding settings: %w", err)
 	}
-	_, err = t.exec(ctx, `
+	if _, err := t.exec(ctx, `
 		INSERT INTO user_settings (user_id, data, updated_at) VALUES (?,?,?)
 		ON CONFLICT(user_id) DO UPDATE SET data = excluded.data, updated_at = excluded.updated_at`,
-		t.userID, string(data), formatTime(t.now))
-	return err
+		t.userID, string(data), formatTime(t.now)); err != nil {
+		return fmt.Errorf("saving settings: %w", err)
+	}
+	return nil
 }

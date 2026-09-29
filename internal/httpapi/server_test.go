@@ -25,7 +25,8 @@ import (
 var testWeb = fstest.MapFS{
 	"index.html": &fstest.MapFile{Data: []byte(
 		`<!doctype html><html lang="{{.Lang}}" data-theme="{{.Theme}}" data-font="{{.Font}}"></html>`)},
-	"assets/js/app.js": &fstest.MapFile{Data: []byte("export const x = 1;\n")},
+	"assets/js/app.js":        &fstest.MapFile{Data: []byte("export const x = 1;\n")},
+	"assets/fonts/test.woff2": &fstest.MapFile{Data: []byte("wOF2")},
 	"manifest.webmanifest": &fstest.MapFile{Data: []byte(
 		`{"name":"Habits","theme_color":"#e6e8ec","background_color":"#e6e8ec"}`)},
 }
@@ -201,6 +202,19 @@ func TestAssetDirectoriesAreNotListed(t *testing.T) {
 	}
 	if w := do(t, h, "GET", "/assets/js/app.js", "", ""); w.Code != http.StatusOK {
 		t.Errorf("GET /assets/js/app.js: status %d, want 200", w.Code)
+	}
+}
+
+// Fonts are served as font/woff2 even where the host's MIME table lacks the
+// extension.
+func TestFontsHaveTheirContentType(t *testing.T) {
+	h := newTestServer(t)
+	w := do(t, h, "GET", "/assets/fonts/test.woff2", "", "")
+	if w.Code != http.StatusOK {
+		t.Fatalf("GET /assets/fonts/test.woff2: status %d, want 200", w.Code)
+	}
+	if ct := w.Header().Get("Content-Type"); ct != "font/woff2" {
+		t.Errorf("Content-Type = %q, want font/woff2", ct)
 	}
 }
 

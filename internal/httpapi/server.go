@@ -10,7 +10,6 @@ import (
 	"html/template"
 	"io/fs"
 	"log/slog"
-	"mime"
 	"net/http"
 	"path"
 	"runtime/debug"
@@ -320,17 +319,16 @@ func (r *statusRecorder) Write(b []byte) (int, error) {
 	return r.ResponseWriter.Write(b)
 }
 
+// assetTypes are the content types of asset extensions that may be missing
+// from the host's MIME table (e.g. on Windows). The asset handler sets them
+// itself instead of changing the process-wide table (mime.AddExtensionType).
+var assetTypes = map[string]string{
+	".woff2": "font/woff2",
+}
+
 // newAssetHandler serves the files of webFS with an ETag derived from their
 // content, since embedded files have no modification time.
 func newAssetHandler(webFS fs.FS) (http.Handler, error) {
-	// Register MIME types that may be missing on the host (e.g. on Windows).
-	if err := mime.AddExtensionType(".woff2", "font/woff2"); err != nil {
-		return nil, fmt.Errorf("registering mime type: %w", err)
-	}
-	if err := mime.AddExtensionType(".webmanifest", "application/manifest+json"); err != nil {
-		return nil, fmt.Errorf("registering mime type: %w", err)
-	}
-
 	etags := map[string]string{}
 	err := fs.WalkDir(webFS, ".", func(name string, d fs.DirEntry, err error) error {
 		if err != nil || d.IsDir() {
@@ -351,10 +349,15 @@ func newAssetHandler(webFS fs.FS) (http.Handler, error) {
 	files := http.FileServerFS(webFS)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Serve files only, no directory listings.
-		tag, ok := etags[strings.TrimPrefix(path.Clean(r.URL.Path), "/")]
+		name := strings.TrimPrefix(path.Clean(r.URL.Path), "/")
+		tag, ok := etags[name]
 		if !ok {
 			http.NotFound(w, r)
 			return
+		}
+		// A Content-Type set here takes precedence over the file server's guess.
+		if contentType, ok := assetTypes[path.Ext(name)]; ok {
+			w.Header().Set("Content-Type", contentType)
 		}
 		w.Header().Set("ETag", tag)
 		w.Header().Set("Cache-Control", "no-cache")

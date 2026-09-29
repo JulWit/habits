@@ -8,9 +8,16 @@ import {el} from './dom.js';
 import {errorTemplate, locale, t} from './i18n.js';
 import {state} from './state.js';
 
-/** Called after every undo and redo, to reload the state. Set by app.js. */
+/**
+ * Called after every undo and redo, to reload the state. Set by app.js.
+ * @type {function(): !Promise<void>}
+ */
 let onChange = async () => {};
 
+/**
+ * Sets the function called after every undo and redo.
+ * @param {function(): !Promise<void>} fn
+ */
 export function setChangeHandler(fn) {
   onChange = fn;
 }
@@ -18,6 +25,8 @@ export function setChangeHandler(fn) {
 /**
  * Shows `text` in a toast with a button that undoes the step `changeId`. A
  * change without a step (e.g. one waiting offline) shows the text only.
+ * @param {number|undefined} changeId
+ * @param {string} text
  */
 export function offerUndo(changeId, text) {
   if (!changeId) {
@@ -27,17 +36,27 @@ export function offerUndo(changeId, text) {
   toast(text, {actionLabel: t('Undo'), onAction: () => undoStep(changeId)});
 }
 
-/** Undoes the latest step, e.g. for Ctrl+Z. */
+/**
+ * Undoes the latest step, e.g. for Ctrl+Z.
+ * @return {!Promise<void>}
+ */
 export function undoLast() {
   return undoStep(0);
 }
 
-/** Redoes the step undone last, e.g. for Ctrl+Y. */
+/**
+ * Redoes the step undone last, e.g. for Ctrl+Y.
+ * @return {!Promise<void>}
+ */
 export function redoLast() {
   return redoStep(0);
 }
 
-/** Undoes the step `id` (0 for the latest) and offers to redo it. */
+/**
+ * Undoes the step `id` (0 for the latest) and offers to redo it.
+ * @param {number} id
+ * @return {!Promise<void>}
+ */
 async function undoStep(id) {
   try {
     const step = await api.undo(id);
@@ -51,7 +70,11 @@ async function undoStep(id) {
   }
 }
 
-/** Redoes the step `id` (0 for the one undone last) and offers to undo it. */
+/**
+ * Redoes the step `id` (0 for the one undone last) and offers to undo it.
+ * @param {number} id
+ * @return {!Promise<void>}
+ */
 async function redoStep(id) {
   try {
     const step = await api.redo(id);
@@ -68,6 +91,8 @@ async function redoStep(id) {
 /**
  * Shows why a step could not be turned. If the data was changed elsewhere
  * meanwhile (409), the server has dropped the step and the state is reloaded.
+ * @param {*} err
+ * @return {!Promise<void>}
  */
 async function failed(err) {
   toast(errorText(err), {error: true});
@@ -78,6 +103,8 @@ async function failed(err) {
  * Returns the label of a step in the UI language: its English template,
  * translated like any text, with its parameters; a date is shown relative to
  * today.
+ * @param {{id: number, label: string, params: ?Object<string, *>}} step
+ * @return {string}
  */
 function stepLabel(step) {
   const vars = {};
@@ -97,6 +124,8 @@ function stepLabel(step) {
  * Returns the message of an error in the UI language. Problems from the server
  * are translated by their code; without a translation, the English message is
  * shown.
+ * @param {*} err
+ * @return {string}
  */
 export function errorText(err) {
   if (!err?.message) return t('Unknown error');
@@ -112,19 +141,32 @@ export function errorText(err) {
   return t(template, vars);
 }
 
-/** Returns `text` with its first letter in upper case. */
+/**
+ * Returns `text` with its first letter in upper case.
+ * @param {string} text
+ * @return {string}
+ */
 function capitalize(text) {
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
 const DEFAULT_TIMEOUT = 7000;
+/**
+ * @type {?HTMLElement}
+ */
 let container = null;
 
 /**
  * Shows a toast.
  * @param {string} text
- * @param {{actionLabel?: string, onAction?: () => unknown, error?: boolean,
- *          timeout?: number}} [opts]
+ * @param {{
+ *   actionLabel: (string|undefined),
+ *   onAction: (function(): *|undefined),
+ *   error: (boolean|undefined),
+ *   timeout: (number|undefined),
+ * }=} opts
+ * @return {function(): void|undefined} a function that closes the toast,
+ *     or undefined if there is no place for toasts
  */
 export function toast(text, opts = {}) {
   container ??= document.getElementById('toasts');

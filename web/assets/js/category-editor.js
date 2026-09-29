@@ -8,18 +8,37 @@ import {closePage, guardPage, openPage} from './page-stack.js';
 import {categoryById, state} from './state.js';
 import {errorText} from './undo.js';
 
+/**
+ * What the editor sends.
+ * @typedef {{name: string, color: string, icon: string, showProgress: boolean}}
+ */
+let CategoryInput;
+
+/** @type {!HTMLDialogElement} */
 let dialog;
+/** @type {!HTMLFormElement} */
 let form;
+/** @type {!HTMLElement} */
 let errorBox;
+/** @type {!HTMLButtonElement} */
 let submitButton;
+/** @type {!HTMLElement} */
 let colorHost;
+/** @type {!HTMLElement} */
 let iconHost;
 let selectedColor = '';
 let selectedIcon = '';
+/**
+ * Saves the input; set when the editor opens.
+ * @type {?function(!CategoryInput): !Promise<void>}
+ */
 let onSubmit = null;
 /** The input as opened, to detect unsaved changes. */
 let initial = '';
 
+/**
+ * Initialises the category editor.
+ */
 export function initCategoryEditor() {
   dialog = document.getElementById('category-editor');
   form = document.getElementById('category-editor-form');
@@ -47,9 +66,8 @@ export function initCategoryEditor() {
 
 /**
  * Opens the editor for a category.
- * @param {string} id  the category to edit
- * @param {(input: {name: string, color: string, icon: string, showProgress:
- *     boolean}) => Promise<void>} handler
+ * @param {string} id the category to edit
+ * @param {function(!CategoryInput): !Promise<void>} handler saves the input
  */
 export function openCategoryEditor(id, handler) {
   const category = categoryById(id);
@@ -71,7 +89,9 @@ export function openCategoryEditor(id, handler) {
   form.elements.name.select();
 }
 
-/** Builds the colour swatches: "no colour" followed by the habit palette. */
+/**
+ * Builds the colour swatches: "no colour" followed by the habit palette.
+ */
 function buildSwatches() {
   colorHost.replaceChildren(
       ...['', ...state.colors].map((color) => {
@@ -92,6 +112,10 @@ function buildSwatches() {
   );
 }
 
+/**
+ * Selects a colour; "" for none.
+ * @param {string} color
+ */
 function selectColor(color) {
   selectedColor = color;
   for (const node of colorHost.querySelectorAll('.swatch')) {
@@ -106,12 +130,19 @@ function selectColor(color) {
   }
 }
 
+/**
+ * Selects an icon; "" for none.
+ * @param {string} name
+ */
 function selectIcon(name) {
   selectedIcon = name;
   markIconChoice(iconHost, name);
 }
 
-/** Returns the input of the form. */
+/**
+ * Returns the input of the form.
+ * @return {!CategoryInput}
+ */
 function collect() {
   return {
     name: form.elements.name.value.trim(),
@@ -121,6 +152,11 @@ function collect() {
   };
 }
 
+/**
+ * Saves the input and closes the editor, or shows why it failed.
+ * @param {!Event} event
+ * @return {!Promise<void>}
+ */
 async function handleSubmit(event) {
   // Keep the dialog open until the server accepts the input.
   event.preventDefault();

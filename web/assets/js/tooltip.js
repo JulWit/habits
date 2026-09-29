@@ -17,10 +17,25 @@ const WARM = 600;
 /** Distance from the element and from the window's edges, in px. */
 const MARGIN = 8;
 
+/**
+ * The tooltip pane, created on first use.
+ * @type {?HTMLElement}
+ */
 let pane = null;
-/** The element the shown or pending tooltip belongs to. */
+/**
+ * The element the shown or pending tooltip belongs to.
+ * @type {?Element}
+ */
 let owner = null;
+/**
+ * The timer of a tooltip about to appear.
+ * @type {number}
+ */
 let timer = 0;
+/**
+ * Until when the next tooltip appears at once, as performance.now().
+ * @type {number}
+ */
 let warmUntil = 0;
 
 /** Registers the listeners for title tooltips. */
@@ -69,6 +84,8 @@ export function initTooltips() {
 /**
  * Shows `content` (text, or nodes) next to `anchor`: centred above it, or
  * below if there is no room above.
+ * @param {!Element} anchor
+ * @param {string|!Array<!Node>} content
  */
 export function showTooltip(anchor, content) {
   clearTimeout(timer);
@@ -107,6 +124,10 @@ export function hideTooltip() {
   }
 }
 
+/**
+ * Returns the tooltip pane, creating it on first use.
+ * @return {!HTMLElement}
+ */
 function paneElement() {
   if (!pane) {
     pane = document.createElement('div');
@@ -122,6 +143,8 @@ function paneElement() {
 /**
  * Moves the title of `el` to data-tooltip and returns the tooltip text. A
  * title set again later (e.g. when a toggle changes) replaces the old text.
+ * @param {!Element} el
+ * @return {string}
  */
 function takeTitle(el) {
   const title = el.getAttribute('title');

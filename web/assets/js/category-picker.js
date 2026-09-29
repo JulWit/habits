@@ -7,21 +7,42 @@ import {closePage, openPage} from './page-stack.js';
 import {state} from './state.js';
 import {errorText} from './undo.js';
 
+/**
+ * The value of "no category".
+ * @const {string}
+ */
 const NONE = '';
 
+/** @type {!HTMLDialogElement} */
 let dialog;
+/** @type {!HTMLElement} */
 let list;
+/** @type {!HTMLFormElement} */
 let createForm;
+/** @type {!HTMLInputElement} */
 let nameInput;
+/** @type {!HTMLElement} */
 let errorBox;
 
-/** Resolves the promise returned by openCategoryPicker. */
+/**
+ * Resolves the promise returned by openCategoryPicker.
+ * @type {?function(?string): void}
+ */
 let settle = null;
+/** The ID of the selected category, NONE for none. */
 let current = NONE;
 
-/** Callbacks set by app.js. */
+/**
+ * Callbacks set by app.js.
+ * @type {{createCategory: function(string): !Promise<(!Category|undefined)>}}
+ */
 let deps;
 
+/**
+ * Initialises the category picker.
+ * @param {{createCategory: function(string): !Promise<(!Category|undefined)>}}
+ *     handlers
+ */
 export function initCategoryPicker(handlers) {
   deps = handlers;
   dialog = document.getElementById('category-picker');
@@ -42,8 +63,8 @@ export function initCategoryPicker(handlers) {
 
 /**
  * Opens the category picker.
- * @param {string} selected  the current category ID, "" for none
- * @returns {Promise<string|null>} the chosen ID, or null if cancelled
+ * @param {string} selected the current category ID, "" for none
+ * @return {!Promise<?string>} the chosen ID, or null if cancelled
  */
 export function openCategoryPicker(selected) {
   current = selected ?? NONE;
@@ -56,6 +77,9 @@ export function openCategoryPicker(selected) {
   });
 }
 
+/**
+ * Lists the categories to choose from, "no category" first.
+ */
 function paintList() {
   const options = [{id: NONE, name: t('No category')}, ...state.categories];
 
@@ -81,6 +105,11 @@ function paintList() {
           )));
 }
 
+/**
+ * Creates a category from the form and chooses it.
+ * @param {!Event} event
+ * @return {!Promise<void>}
+ */
 async function onCreate(event) {
   event.preventDefault();
   const name = nameInput.value.trim();
@@ -103,11 +132,19 @@ async function onCreate(event) {
   }
 }
 
+/**
+ * Chooses a category and closes the picker.
+ * @param {string} value
+ */
 function choose(value) {
   finish(value);
   closePage(dialog);
 }
 
+/**
+ * Resolves the open picker's promise, once.
+ * @param {?string} value
+ */
 function finish(value) {
   const resolve = settle;
   settle = null;

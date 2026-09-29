@@ -31,6 +31,10 @@ const categoryView = document.getElementById('category-view');
 const dayStatsView = document.getElementById('day-stats-view');
 const styleGuideView = document.getElementById('style-guide-view');
 
+/**
+ * The actions the views call, by name.
+ * @const {!Object<string, !Function>}
+ */
 const handlers = {
   openHabit: (id) => openView(`#/habit/${id}`),
   closeHabit: goHome,
@@ -56,6 +60,9 @@ const handlers = {
       openSkipDialog(habitId ? habitById(habitId) : null, actions.skipDays),
 };
 
+/**
+ * Connects the reorder mode switch in the settings.
+ */
 function initEditMode() {
   // The reorder mode switch in the settings dialog.
   const input = document.getElementById('settings-edit');
@@ -94,6 +101,10 @@ function initServiceWorker() {
   });
 }
 
+/**
+ * Initialises the app and loads the state.
+ * @return {!Promise<void>}
+ */
 async function main() {
   actions.configureActions({refresh, currentHabitId, goHome});
   // Translate first, so views read translated texts from the markup.
@@ -139,6 +150,7 @@ async function main() {
 /**
  * The start date of the loaded entries, or null for the default window. Kept
  * for all subsequent reloads.
+ * @type {?string}
  */
 let historyFrom = null;
 
@@ -146,6 +158,7 @@ let historyFrom = null;
  * Loads the state from the server. Writes still waiting in the outbox are laid
  * over it and sent. Without a connection, the last loaded state is shown
  * instead (on startup), or the current one is kept.
+ * @return {!Promise<void>}
  */
 async function refresh() {
   let loaded;
@@ -182,15 +195,21 @@ async function refresh() {
 /** When the state was last loaded (Date.now()), 0 before the first load. */
 let lastLoaded = 0;
 
-/** When the loaded `today` ends (Date.now()), and the timer reloading then. */
+/** When the loaded `today` ends (Date.now()). */
 let dayEndsAt = Infinity;
-let dayTimer = null;
+
+/**
+ * The timer that reloads the state when the loaded `today` ends.
+ * @type {number|undefined}
+ */
+let dayTimer;
 
 /**
  * Reloads the state once the day the server called today is over, so a board
  * left open over midnight moves on to the new day. `ms` comes from the
  * server, which knows the user's time zone. A sleeping device may delay the
  * timer; the reload when the page becomes visible covers that.
+ * @param {number|undefined} ms
  */
 function reloadAtNextDay(ms) {
   if (typeof ms !== 'number') return;
@@ -208,6 +227,7 @@ const STALE_MS = 10_000;
 
 /**
  * Whether the shown state may be outdated: a new day, or loaded a while ago.
+ * @return {boolean}
  */
 function isStale() {
   const now = Date.now();
@@ -256,7 +276,11 @@ function initSync() {
   }, RETRY_MS);
 }
 
-/** Loads entries back to `from`, unless they are already loaded. */
+/**
+ * Loads entries back to `from`, unless they are already loaded.
+ * @param {string} from
+ * @return {!Promise<void>}
+ */
 async function extendHistory(from) {
   if (historyFrom !== null && from >= historyFrom) return;
   historyFrom = from;
@@ -266,9 +290,15 @@ async function extendHistory(from) {
 /**
  * IDs of habits whose complete history has been loaded. /api/state only
  * contains recent entries; the detail view loads the rest per habit.
+ * @const {!Set<string>}
  */
 const fullHistoryLoaded = new Set();
 
+/**
+ * Loads the complete history of a habit, once.
+ * @param {string} id
+ * @return {!Promise<void>}
+ */
 async function ensureFullHistory(id) {
   if (fullHistoryLoaded.has(id)) return;
   fullHistoryLoaded.add(id);
@@ -283,9 +313,13 @@ async function ensureFullHistory(id) {
 
 // ---------- styleguide ----------
 
-/** Loads (dynamic import) and renders the style guide on first use. */
+/** Whether the style guide has been rendered. */
 let styleguideDrawn = false;
 
+/**
+ * Loads (dynamic import) and renders the style guide on first use.
+ * @return {!Promise<void>}
+ */
 async function showStyleguide() {
   if (styleguideDrawn) return;
   styleguideDrawn = true;
@@ -300,11 +334,19 @@ async function showStyleguide() {
 
 // ---------- routing ----------
 
+/**
+ * Returns the ID of the habit the route shows, or null.
+ * @return {?string}
+ */
 function currentHabitId() {
   const match = location.hash.match(/^#\/habit\/([\w-]+)$/);
   return match ? match[1] : null;
 }
 
+/**
+ * Returns the ID of the category the route shows, or null.
+ * @return {?string}
+ */
 function currentCategoryId() {
   const match = location.hash.match(/^#\/category\/([\w-]+)$/);
   return match ? match[1] : null;
@@ -313,6 +355,7 @@ function currentCategoryId() {
 /**
  * Opens a habit or category view as a new history entry, marked as opened by
  * the app, so that its back button can return through the history.
+ * @param {string} hash
  */
 function openView(hash) {
   history.pushState({view: true}, '', hash);
@@ -341,6 +384,7 @@ function goHome() {
 /**
  * Shows `view` and hides the others. The route classes on <html> hide the
  * app's title bar on the views that have their own (see components.css).
+ * @param {!HTMLElement} view
  */
 function showView(view) {
   for (const other
@@ -362,6 +406,9 @@ function replaceWithOverview() {
   history.replaceState(null, '', location.pathname + location.search);
 }
 
+/**
+ * Shows the view the route names.
+ */
 function syncRoute() {
   // The style guide needs no data.
   if (location.hash === '#/styleguide') {
@@ -449,17 +496,19 @@ function rememberColorScheme() {
   const query = window.matchMedia?.('(prefers-color-scheme: dark)');
   if (!query) return;
   const store = () => {
+    const scheme = query.matches ? 'dark' : 'light';
     const secure = location.protocol === 'https:' ? '; Secure' : '';
-    document.cookie = `color_scheme=${
-        query.matches ?
-            'dark' :
-            'light'}; Path=/; Max-Age=31536000; SameSite=Lax${secure}`;
+    document.cookie = `color_scheme=${scheme}; Path=/; Max-Age=31536000; ` +
+        `SameSite=Lax${secure}`;
   };
   query.addEventListener('change', store);
   store();
 }
 
-// Colours of the system bars, matching --bg in base.css and index.html.
+/**
+ * Colours of the system bars, matching --bg in base.css and index.html.
+ * @const {!Object<string, string>}
+ */
 const THEME_COLORS = {
   light: '#e6e8ec',
   dark: '#0f0f0f',
@@ -468,6 +517,7 @@ const THEME_COLORS = {
 /**
  * Sets the theme-color entries in <head>. A chosen theme gives both entries
  * its colour; "system" gives each entry the colour of its colour scheme.
+ * @param {string} theme
  */
 function applyThemeColor(theme) {
   for (const meta of document.querySelectorAll('meta[name="theme-color"]')) {
@@ -478,6 +528,9 @@ function applyThemeColor(theme) {
 
 // ---------- keyboard ----------
 
+/**
+ * Registers the keyboard shortcuts.
+ */
 function initShortcuts() {
   document.addEventListener('keydown', (event) => {
     if (event.defaultPrevented) return;

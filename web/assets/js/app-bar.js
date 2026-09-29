@@ -10,14 +10,24 @@ import {t} from './i18n.js';
 import {icons} from './icons.js';
 
 /**
- * Builds the title bar.
- * @param {object} bar
- * @param {string} bar.title  the name of the habit or category
- * @param {string} [bar.sub]  a detail shown after the title, set off by a dot
- * @param {Node|null} [bar.badge]  shown before the title
- * @param {boolean} [bar.edit]  whether the bar has an edit button
- * @param {Array} bar.menu  the overflow menu's items, see overflowMenu; an
- *   empty list omits the menu
+ * An item of the overflow menu.
+ * @typedef {{action: string, label: string, icon: string, danger: boolean}}
+ */
+let MenuItem;
+
+/**
+ * Builds the title bar: `title` is the name of the habit or category, `sub` a
+ * detail shown after it, set off by a dot, and `badge` is shown before it.
+ * `edit` adds an edit button, and `menu` holds the overflow menu's items; an
+ * empty list omits the menu.
+ * @param {{
+ *   title: string,
+ *   sub: (string|undefined),
+ *   badge: (?Node|undefined),
+ *   edit: (boolean|undefined),
+ *   menu: !Array<!MenuItem>,
+ * }} bar
+ * @return {!HTMLElement}
  */
 export function appBar({title, sub = '', badge = null, edit = true, menu}) {
   return el(
@@ -41,7 +51,13 @@ export function appBar({title, sub = '', badge = null, edit = true, menu}) {
   );
 }
 
-/** Builds an icon button with its label. */
+/**
+ * Builds an icon button with its label.
+ * @param {string} action
+ * @param {string} icon SVG markup
+ * @param {string} label
+ * @return {!HTMLElement}
+ */
 function iconButton(action, icon, label) {
   return el(
       'button', {
@@ -54,15 +70,18 @@ function iconButton(action, icon, label) {
       markup(icon));
 }
 
+/** The number of menus built, for their IDs. */
 let count = 0;
 
 /**
- * Returns the ⋮ button and its menu, to be inserted side by side. Items are
- * { action, label, icon, danger }. A chosen item closes the menu; its click
- * then bubbles with its data-action like any other button of the view.
+ * Returns the ⋮ button and its menu, to be inserted side by side. A chosen item
+ * closes the menu; its click then bubbles with its data-action like any other
+ * button of the view.
  *
  * The menu is a popover: it closes on a click outside, on Escape and on the
  * system back gesture, and returns the focus to its button.
+ * @param {!Array<!MenuItem>} items
+ * @return {!Array<!HTMLElement>}
  */
 function overflowMenu(items) {
   const id = `overflow-menu-${++count}`;
@@ -116,7 +135,11 @@ function overflowMenu(items) {
   return [button, menu];
 }
 
-/** Aligns the menu's right edge with the button, just below it. */
+/**
+ * Aligns the menu's right edge with the button, just below it.
+ * @param {!HTMLElement} menu
+ * @param {!HTMLElement} button
+ */
 function place(menu, button) {
   const box = button.getBoundingClientRect();
   menu.style.top = `${Math.round(box.bottom + 4)}px`;
@@ -124,7 +147,10 @@ function place(menu, button) {
       `${Math.round(document.documentElement.clientWidth - box.right)}px`;
 }
 
-/** Arrow keys move between the items; Escape stays with the menu. */
+/**
+ * Arrow keys move between the items; Escape stays with the menu.
+ * @param {!KeyboardEvent} event
+ */
 function onKey(event) {
   const items = [...event.currentTarget.querySelectorAll('[role="menuitem"]')];
   const at = items.indexOf(document.activeElement);

@@ -7,7 +7,11 @@ import {STREAK_LEVELS} from './habit-helpers.js';
 import {colorValue, paintIcons} from './icons.js';
 import {state} from './state.js';
 
-/** Returns the date `back` days before today. */
+/**
+ * Returns the date `back` days before today.
+ * @param {number} back
+ * @return {string}
+ */
 const day = (back) => addDays(state.today, -back);
 
 /**
@@ -15,6 +19,9 @@ const day = (back) => addDays(state.today, -back);
  * tomorrow, in the form the server sends them (domain.DayStatus): `isDue`
  * decides the due days, the entries whether they are done. The real ones come
  * from the server only.
+ * @param {!Object} habit
+ * @param {function(string): boolean=} isDue
+ * @return {!Habit}
  */
 function withDays(habit, isDue = () => true) {
   const from = day(400);
@@ -30,7 +37,10 @@ function withDays(habit, isDue = () => true) {
   return {...habit, daysFrom: from, days};
 }
 
-/** Returns sample habits, one per kind and state. */
+/**
+ * Returns sample habits, one per kind and state.
+ * @return {!Object<string, !Habit>}
+ */
 function samples() {
   // A single schedule since the first sample day.
   const schedules = (targetValue, frequency) => [{
@@ -133,6 +143,14 @@ function samples() {
 
 // ---------- small builders ----------
 
+/**
+ * Creates an element with a class and text. Simpler than el() in dom.js, as the
+ * samples need no more.
+ * @param {string} tag
+ * @param {?string=} className
+ * @param {string=} text
+ * @return {!HTMLElement}
+ */
 function el(tag, className, text) {
   const node = document.createElement(tag);
   if (className) node.className = className;
@@ -140,13 +158,26 @@ function el(tag, className, text) {
   return node;
 }
 
-/** Creates an element from constant markup (never user input). */
+/**
+ * Creates an element from constant markup (never user input).
+ * @param {string} tag
+ * @param {string} className
+ * @param {string} markup
+ * @return {!HTMLElement}
+ */
 function html(tag, className, markup) {
   const node = el(tag, className);
   node.innerHTML = markup;
   return node;
 }
 
+/**
+ * Builds a section with a title, an optional note and its specimens.
+ * @param {string} title
+ * @param {string} note
+ * @param {...!Node} items
+ * @return {!HTMLElement}
+ */
 function section(title, note, ...items) {
   const s = el('section', 'sg-section');
   s.append(el('h3', 'sg-title', title));
@@ -157,7 +188,12 @@ function section(title, note, ...items) {
   return s;
 }
 
-/** Returns a labelled specimen. */
+/**
+ * Returns a labelled specimen.
+ * @param {string} label
+ * @param {!Node} node
+ * @return {!HTMLElement}
+ */
 function specimen(label, node) {
   const box = el('div', 'sg-specimen');
   box.append(node, el('span', 'sg-label', label));
@@ -166,6 +202,10 @@ function specimen(label, node) {
 
 // ---------- the sections ----------
 
+/**
+ * Builds the section of the buttons.
+ * @return {!HTMLElement}
+ */
 function buttons() {
   const b = (cls, text, over = {}) => {
     const node = el('button', cls, text);
@@ -182,7 +222,8 @@ function buttons() {
   };
   return section(
       'Buttons',
-      'Primary carries the single accent colour of the interface: dark grey on light, light on dark.',
+      'Primary carries the single accent colour of the interface: ' +
+          'dark grey on light, light on dark.',
       specimen('.button.primary', b('button primary', 'Create')),
       specimen('.button', b('button', 'Cancel')),
       specimen('.button.ghost', b('button ghost', 'Later')),
@@ -198,6 +239,10 @@ function buttons() {
   );
 }
 
+/**
+ * Builds the section of the form fields.
+ * @return {!HTMLElement}
+ */
 function fields() {
   const field = (label, control, hint) => {
     const wrap = el('label', 'field');
@@ -208,10 +253,14 @@ function fields() {
   const input = (over) => Object.assign(el('input'), {type: 'text', ...over});
 
   const segmented = html('div', 'segmented', `
-    <label><input type="radio" name="sg-kind" value="check" checked><span data-icon="check">Check</span></label>
-    <label><input type="radio" name="sg-kind" value="count"><span data-icon="calculator">Count</span></label>
-    <label><input type="radio" name="sg-kind" value="time"><span data-icon="clock">Time</span></label>
-    <label><input type="radio" name="sg-kind" value="distance"><span data-icon="navigation">Distance</span></label>`);
+    <label><input type="radio" name="sg-kind" value="check" checked>
+      <span data-icon="check">Check</span></label>
+    <label><input type="radio" name="sg-kind" value="count">
+      <span data-icon="calculator">Count</span></label>
+    <label><input type="radio" name="sg-kind" value="time">
+      <span data-icon="clock">Time</span></label>
+    <label><input type="radio" name="sg-kind" value="distance">
+      <span data-icon="navigation">Distance</span></label>`);
   segmented.setAttribute('role', 'radiogroup');
   segmented.setAttribute('aria-label', 'Kind');
 
@@ -269,6 +318,11 @@ function fields() {
   );
 }
 
+/**
+ * Builds the section of the board's building blocks.
+ * @param {!Object<string, !Habit>} s the sample habits
+ * @return {!HTMLElement}
+ */
 function board(s) {
   // Uses the overview's render functions.
   const cells = (habit, dates) => {
@@ -286,7 +340,8 @@ function board(s) {
 
   return section(
       'Board',
-      'Built with the same functions as the overview — dayCell(), habitLabel(), dayEntry().',
+      'Built with the same functions as the overview — ' +
+          'dayCell(), habitLabel(), dayEntry().',
       specimen('dayCell: today / normal', header),
       specimen('habitLabel()', habitLabel(s.time)),
       specimen('habitLabel(): archived', habitLabel(s.archived)),
@@ -303,6 +358,8 @@ function board(s) {
 /**
  * Returns one completed cell per streak level, each with a run of matching
  * length.
+ * @param {!Habit} habit
+ * @return {!HTMLElement}
  */
 function streakScale(habit) {
   const row = el('div', 'sg-cells');
@@ -320,6 +377,10 @@ function streakScale(habit) {
   return row;
 }
 
+/**
+ * Builds the section of the heatmap levels.
+ * @return {!HTMLElement}
+ */
 function heatmap() {
   const row = el('div', 'heatmap-sample');
   for (const level of [0, 1, 2, 3, 4]) {
@@ -338,6 +399,10 @@ function heatmap() {
   );
 }
 
+/**
+ * Builds the section of the toasts and messages.
+ * @return {!HTMLElement}
+ */
 function feedback() {
   const toast = (cls, text, withAction) => {
     const node = el('div', cls);
@@ -355,7 +420,8 @@ function feedback() {
   };
   return section(
       'Messages',
-      'In the running app toasts sit at the bottom right; here they stand in the flow.',
+      'In the running app toasts sit at the bottom right; ' +
+          'here they stand in the flow.',
       specimen('.toast', toast('toast', 'Habit deleted.', true)),
       specimen(
           '.toast.is-error',
@@ -363,6 +429,10 @@ function feedback() {
   );
 }
 
+/**
+ * Builds the section of the text styles.
+ * @return {!HTMLElement}
+ */
 function typography() {
   return section(
       'Text',
@@ -375,7 +445,10 @@ function typography() {
   );
 }
 
-/** Returns the names of the design tokens declared for the light theme. */
+/**
+ * Returns the names of the design tokens declared for the light theme.
+ * @return {!Array<string>}
+ */
 function tokenNames() {
   const names = [];
   for (const sheet of document.styleSheets) {
@@ -396,6 +469,12 @@ function tokenNames() {
   return names;
 }
 
+/**
+ * Builds the section listing the design tokens; their values are filled in
+ * later.
+ * @param {!Array<string>} names
+ * @return {!HTMLElement}
+ */
 function tokens(names) {
   const list = el('div', 'sg-tokens');
   for (const name of names) {
@@ -414,7 +493,11 @@ function tokens(names) {
   return s;
 }
 
-/** Fills in the resolved token values of a panel. */
+/**
+ * Fills in the resolved token values of a panel.
+ * @param {!HTMLElement} panel
+ * @param {!Array<string>} names
+ */
 function fillTokenValues(panel, names) {
   const styles = getComputedStyle(panel);
   const rows = panel.querySelectorAll('.sg-token');
@@ -431,6 +514,12 @@ function fillTokenValues(panel, names) {
 
 // ---------- assembly ----------
 
+/**
+ * Builds every section in one theme.
+ * @param {string} theme light or dark
+ * @param {!Array<string>} names the design tokens
+ * @return {!HTMLElement}
+ */
 function panel(theme, names) {
   const wrap = el('div', 'sg-theme');
   wrap.dataset.theme = theme;
@@ -443,6 +532,10 @@ function panel(theme, names) {
   return wrap;
 }
 
+/**
+ * Renders the style guide into `root`, both themes side by side.
+ * @param {!HTMLElement} root
+ */
 export function renderStyleguide(root) {
   const names = tokenNames();
 

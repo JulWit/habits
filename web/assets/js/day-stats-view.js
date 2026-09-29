@@ -14,9 +14,18 @@ import {state} from './state.js';
 import {hideTooltip} from './tooltip.js';
 import {centreToday, currentYear, initChartTooltips, sinceLabel, yearGrid} from './year-grid.js';
 
+/** @type {!HTMLElement} */
 let root;
+/**
+ * The handlers of app.js.
+ * @type {!Object<string, !Function>}
+ */
 let actions;
 
+/**
+ * Initialises the day statistics view.
+ * @param {!Object<string, !Function>} handlers the handlers of app.js
+ */
 export function initDays(handlers) {
   actions = handlers;
   root = document.getElementById('day-stats-view');
@@ -27,6 +36,9 @@ export function initDays(handlers) {
   initChartTooltips(root, '.heat[data-date], .day-bar[data-tip]');
 }
 
+/**
+ * Renders the day statistics of the current year.
+ */
 export function renderDays() {
   // Nothing to count before the state is loaded.
   if (!root || !state.today) return;
@@ -54,9 +66,25 @@ export function renderDays() {
   centreToday(root);
 }
 
+/**
+ * Formats a rate as a percentage, or a dash for none.
+ * @param {?number} rate
+ * @return {string}
+ */
 const percent = (rate) => (rate === null ? '–' : `${Math.round(rate * 100)} %`);
+/**
+ * Formats a number of days.
+ * @param {number} n
+ * @return {string}
+ */
 const dayCount = (n) => (n === 1 ? t('1 day') : t('{n} days', {n}));
 
+/**
+ * Builds the stat tiles of the year.
+ * @param {!Object} stats the server's day statistics
+ * @param {string} from the first day counted
+ * @return {!HTMLElement}
+ */
 function statTiles(stats, from) {
   return statRow([
     [
@@ -72,6 +100,12 @@ function statTiles(stats, from) {
 
 // ---------- heatmap ----------
 
+/**
+ * Builds the heatmap of the year from the day totals.
+ * @param {!Array<{date: string, due: number, done: number}>} totals
+ * @param {string} year
+ * @return {!HTMLElement}
+ */
 function heatmap(totals, year) {
   const byDate = new Map(totals.map((d) => [d.date, d]));
   return el(
@@ -83,7 +117,12 @@ function heatmap(totals, year) {
   );
 }
 
-/** Builds the square of a day from its total ({due, done}). */
+/**
+ * Builds the square of a day from its total ({due, done}).
+ * @param {string} iso
+ * @param {{due: number, done: number}} total
+ * @return {!HTMLElement}
+ */
 function heatCell(iso, {due, done}) {
   const ahead = iso > state.today;
   const counted = !ahead && due > 0;
@@ -108,6 +147,13 @@ function heatCell(iso, {due, done}) {
   });
 }
 
+/**
+ * Describes a day of the heatmap.
+ * @param {number} due
+ * @param {number} done
+ * @param {boolean} ahead whether the day is in the future
+ * @return {string}
+ */
 function heatStatus(due, done, ahead) {
   if (due === 0) return t('Nothing due on this day');
   if (ahead) {
@@ -116,6 +162,11 @@ function heatStatus(due, done, ahead) {
   return `${t('{done} of {due} done', {done, due})} · ${percent(done / due)}`;
 }
 
+/**
+ * Builds the legend of the heatmap.
+ * @param {string} year
+ * @return {!HTMLElement}
+ */
 function legend(year) {
   const from = formatDayMonth(`${year}-01-01`);
   const to = `${formatDayMonth(`${year}-12-31`)} ${year}`;
@@ -138,61 +189,76 @@ function legend(year) {
 /**
  * Builds a panel of horizontal bars, one per group: the average share and
  * the number of perfect days. `groups` are { label, name, rate, perfect }.
+ * @param {string} title
+ * @param {!Array<{label: string, name: string, rate: ?number, perfect:
+ *     number}>} groups
+ * @return {!HTMLElement}
  */
 function barPanel(title, groups) {
   return el(
       'section',
       {class: 'panel'},
       el('h3', {}, title),
-      el('div', {class: 'day-bars'},
-         ...groups.map(
-             ({label, name, rate, perfect}) => el(
-                 'div',
-                 {
-                   class: ['day-bar', rate === null && 'is-empty'],
-                   data: {
-                     tip: name,
-                     status: rate === null ?
-                         t('Nothing due') :
-                         `Ø ${percent(rate)} · ${
-                             t('Perfect days: {n}', {n: perfect})}`,
-                   },
-                 },
-                 el('span', {class: 'day-bar-label'}, label),
-                 el(
-                     'span',
-                     {class: 'day-bar-track'},
-                     el('span', {
-                       class: 'day-bar-fill',
-                       style: {width: `${Math.round((rate ?? 0) * 100)}%`},
-                     }),
-                     ),
-                 el('span', {class: 'day-bar-value'}, percent(rate)),
-                 ))),
+      el('div', {class: 'day-bars'}, ...groups.map(bar)),
   );
 }
 
-function weekdays(stats) {
-  return barPanel(t('By weekday'), stats.weekdays.map((group, i) => ({
-                                                        label: WEEKDAY_SHORT[i],
-                                                        name: WEEKDAY_LONG[i],
-                                                        ...group,
-                                                      })));
+/**
+ * Builds the bar of a group: its average share, with the number of perfect
+ * days in the tooltip.
+ * @param {{label: string, name: string, rate: ?number, perfect: number}} group
+ * @return {!HTMLElement}
+ */
+function bar({label, name, rate, perfect}) {
+  const perfectDays = t('Perfect days: {n}', {n: perfect});
+  const status =
+      rate === null ? t('Nothing due') : `Ø ${percent(rate)} · ${perfectDays}`;
+  const width = `${Math.round((rate ?? 0) * 100)}%`;
+  return el(
+      'div',
+      {
+        class: ['day-bar', rate === null && 'is-empty'],
+        data: {tip: name, status},
+      },
+      el('span', {class: 'day-bar-label'}, label),
+      el('span', {class: 'day-bar-track'},
+         el('span', {class: 'day-bar-fill', style: {width}})),
+      el('span', {class: 'day-bar-value'}, percent(rate)),
+  );
 }
 
+/**
+ * Builds the bars per weekday.
+ * @param {!Object} stats
+ * @return {!HTMLElement}
+ */
+function weekdays(stats) {
+  const groups = stats.weekdays.map((group, i) => {
+    return {label: WEEKDAY_SHORT[i], name: WEEKDAY_LONG[i], ...group};
+  });
+  return barPanel(t('By weekday'), groups);
+}
+
+/**
+ * Builds the bars per month.
+ * @param {!Object} stats
+ * @return {!HTMLElement}
+ */
 function months(stats) {
   // The server's months run from the first with due habits; firstMonth is 1
   // for January.
-  return barPanel(
-      t('By month'),
-      (stats.months ?? []).map((group, i) => ({
-                                 label: MONTH_SHORT[stats.firstMonth - 1 + i],
-                                 name: MONTH_LONG[stats.firstMonth - 1 + i],
-                                 ...group,
-                               })));
+  const groups = (stats.months ?? []).map((group, i) => {
+    const month = stats.firstMonth - 1 + i;
+    return {label: MONTH_SHORT[month], name: MONTH_LONG[month], ...group};
+  });
+  return barPanel(t('By month'), groups);
 }
 
-/** Facts: completed habits, days without any, best weekday and month. */
+/**
+ * Facts: completed habits, days without any, best weekday and month.
+ * @param {!Object} stats
+ * @return {!HTMLElement}
+ */
 function highlights(stats) {
   const items = [
     factItem(t('Habits completed'), String(stats.completed)),

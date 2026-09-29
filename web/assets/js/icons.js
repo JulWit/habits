@@ -4,12 +4,21 @@
 import {el, markup} from './dom.js';
 import {t} from './i18n.js';
 
+/**
+ * Wraps the shapes of an icon in its SVG element.
+ * @param {string} body
+ * @return {string}
+ */
 const draw = (body) =>
     '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" ' +
     'stroke="currentColor"' +
     ' stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">' +
     body + '</svg>';
 
+/**
+ * The interface icons as SVG markup, keyed by name.
+ * @const {!Object<string, string>}
+ */
 export const icons = {
   sun: draw(
       '<circle cx="12" cy="12" r="4.1"/>' +
@@ -337,6 +346,10 @@ export const habitIcons = {
 /**
  * Returns the tile for an icon, or null if there is no drawing for `name`.
  * Without a colour, the tile is neutral.
+ * @param {string} name
+ * @param {?string} color
+ * @param {string} className
+ * @return {?HTMLElement}
  */
 function iconBadge(name, color, className) {
   const svg = habitIcons[name];
@@ -349,12 +362,22 @@ function iconBadge(name, color, className) {
       markup(svg));
 }
 
-/** Returns the icon tile of a habit, in the habit's colour. */
+/**
+ * Returns the icon tile of a habit, in the habit's colour.
+ * @param {!Habit} habit
+ * @param {string=} className
+ * @return {?HTMLElement}
+ */
 export function habitIconBadge(habit, className = 'habit-icon') {
   return iconBadge(habit.icon, habit.color, className);
 }
 
-/** Returns the icon tile of a category, in its colour or neutral. */
+/**
+ * Returns the icon tile of a category, in its colour or neutral.
+ * @param {!Category} category
+ * @param {string=} className
+ * @return {?HTMLElement}
+ */
 export function categoryIconBadge(category, className = 'habit-icon') {
   return iconBadge(category.icon, category.color || null, className);
 }
@@ -418,10 +441,20 @@ const COLOR_LABELS = {
   slate: 'Slate',
 };
 
+/**
+ * Returns the name of an icon in the UI language.
+ * @param {string} name
+ * @return {string}
+ */
 export function iconLabel(name) {
   return t(ICON_LABELS[name] ?? name);
 }
 
+/**
+ * Returns the name of a palette colour in the UI language.
+ * @param {string} name
+ * @return {string}
+ */
 export function colorLabel(name) {
   const label = COLOR_LABELS[name];
   return label ? t(label) : name;
@@ -431,6 +464,9 @@ export function colorLabel(name) {
  * Fills `host` with a radio button per icon, preceded by "no icon", and calls
  * `onPick` with the chosen name ("" for none). Names without a drawing are
  * skipped.
+ * @param {!Element} host
+ * @param {?Array<string>|undefined} names
+ * @param {function(string): void} onPick
  */
 export function buildIconChoices(host, names, onPick) {
   const offered = ['', ...(names ?? []).filter((name) => habitIcons[name])];
@@ -454,7 +490,11 @@ export function buildIconChoices(host, names, onPick) {
   );
 }
 
-/** Selects the choice for `name`. */
+/**
+ * Selects the choice for `name`.
+ * @param {!Element} host
+ * @param {string} name
+ */
 export function markIconChoice(host, name) {
   for (const node of host.querySelectorAll('.icon-choice')) {
     node.setAttribute('aria-checked', String(node.dataset.icon === name));
@@ -464,6 +504,7 @@ export function markIconChoice(host, name) {
 /**
  * Inserts the icon named in data-icon into each element below `root`. Elements
  * that already have their icon are skipped.
+ * @param {!ParentNode=} root
  */
 export function paintIcons(root = document) {
   for (const node of root.querySelectorAll('[data-icon]')) {
@@ -477,6 +518,8 @@ export function paintIcons(root = document) {
  * Returns the CSS value of a palette colour. Habits, categories and the accent
  * store palette names (domain.Colors); base.css defines their shades as
  * --c-red and so on.
+ * @param {string} name
+ * @return {string}
  */
 export function colorValue(name) {
   return `var(--c-${name})`;

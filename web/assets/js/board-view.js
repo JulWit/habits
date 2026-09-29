@@ -17,14 +17,27 @@ const LONG_PRESS_MS = 450;
 // Number of additional days loaded when paging back beyond the loaded entries.
 const PREFETCH_DAYS = 180;
 
+/** @type {!HTMLElement} */
 let board;
+/** @type {!HTMLElement} */
 let emptyState;
+/** @type {!HTMLElement} */
 let noMatch;
+/**
+ * The handlers of app.js.
+ * @type {!Object<string, !Function>}
+ */
 let actions;
-/** Floating "back to today" button at the bottom centre of the screen. */
+/**
+ * Floating "back to today" button at the bottom centre of the screen.
+ * @type {!HTMLElement}
+ */
 let todayPill;
 
-/** Reports whether reordering uses drag and drop (otherwise arrow buttons). */
+/**
+ * Reports whether reordering uses drag and drop (otherwise arrow buttons).
+ * @return {boolean}
+ */
 const byDragging = () => (state.settings?.reorderMode ?? 'drag') === 'drag';
 
 /** The number of day columns rendered last. */
@@ -42,15 +55,22 @@ let offset = 0;
 /**
  * The day chosen in the day header, or null for today. Marker, band and day
  * summary refer to it. Not persisted; null follows a change of date.
+ * @type {?string}
  */
 let selectedDay = null;
 
-/** Returns the active day: the selected one, or today. */
+/**
+ * Returns the active day: the selected one, or today.
+ * @return {string}
+ */
 function activeDay() {
   return selectedDay ?? state.today;
 }
 
-/** Makes `iso` the active day; today resets the selection. */
+/**
+ * Makes `iso` the active day; today resets the selection.
+ * @param {string} iso
+ */
 function selectDay(iso) {
   const next = iso === state.today ? null : iso;
   if (next === selectedDay) return;
@@ -69,7 +89,10 @@ function backToToday() {
   }
 }
 
-/** Returns the last day of the window, before week alignment. */
+/**
+ * Returns the last day of the window, before week alignment.
+ * @return {string}
+ */
 function windowEnd() {
   return addDays(state.today, -offset);
 }
@@ -78,6 +101,8 @@ function windowEnd() {
  * Returns the first day of a window of `days` columns. With week alignment,
  * the start moves forward to the next Monday, so the current week is shown in
  * full. Week alignment requires at least seven columns.
+ * @param {number} days
+ * @return {string}
  */
 function windowStart(days) {
   const plain = addDays(windowEnd(), -(days - 1));
@@ -86,16 +111,28 @@ function windowStart(days) {
   return weekday === 0 ? plain : addDays(plain, 7 - weekday);
 }
 
-/** Reports whether the columns are aligned to calendar weeks. */
+/**
+ * Reports whether the columns are aligned to calendar weeks.
+ * @param {number} days
+ * @return {boolean}
+ */
 function alignsWeeks(days) {
   return (state.settings?.alignWeeks ?? false) && days >= 7;
 }
 
-/** Returns the paging step in days: whole weeks when aligned. */
+/**
+ * Returns the paging step in days: whole weeks when aligned.
+ * @param {number} days
+ * @return {number}
+ */
 function pageStep(days) {
   return alignsWeeks(days) ? Math.floor(days / 7) * 7 : days;
 }
 
+/**
+ * Initialises the overview.
+ * @param {!Object<string, !Function>} handlers the handlers of app.js
+ */
 export function initOverview(handlers) {
   actions = handlers;
   board = document.getElementById('board-grid');
@@ -164,6 +201,7 @@ export function initOverview(handlers) {
  * width depends on the number of columns. While the overview is hidden, the
  * width it would have: the window, up to its maximum width, less its padding.
  * Not measured on the other views, as they are only as wide as the board.
+ * @return {number}
  */
 function availableWidth() {
   const parent = board.parentElement;
@@ -179,7 +217,11 @@ function availableWidth() {
 /** Minimum number of day columns. */
 const MIN_DAYS = 7;
 
-/** Returns a size token of <html> in pixels, or 0 if it is not set. */
+/**
+ * Returns a size token of <html> in pixels, or 0 if it is not set.
+ * @param {string} name
+ * @return {number}
+ */
 function token(name) {
   return parseFloat(getComputedStyle(document.documentElement)
                         .getPropertyValue(name)) ||
@@ -190,6 +232,8 @@ function token(name) {
  * Returns the width of `width` left for the name and day columns: without the
  * card's padding and border, and without the reorder column (zero without
  * handles; as --tools-track).
+ * @param {number} width
+ * @return {number}
  */
 function roomForColumns(width) {
   const padX = token('--block-pad-x');
@@ -199,7 +243,11 @@ function roomForColumns(width) {
   return width - track - card;
 }
 
-/** Returns the maximum number of day columns that fit into `width`. */
+/**
+ * Returns the maximum number of day columns that fit into `width`.
+ * @param {number} width
+ * @return {number}
+ */
 function fittingDays(width) {
   // Same tokens as the grid template; each column has a 2px gap.
   const cell = token('--cell') || 40;
@@ -212,6 +260,8 @@ function fittingDays(width) {
  * Returns the number of day columns to render: the setting, limited to what
  * fits, or as many as fit in automatic mode. Tightens the board if fewer than
  * a week would fit.
+ * @param {number} width
+ * @return {number}
  */
 function visibleDays(width) {
   // Measure at normal sizes.
@@ -241,6 +291,8 @@ function loosen() {
  * Shrinks the board so that `days` columns fit into `width`: first the day
  * columns down to --cell-tight-min, then the name column down to
  * --label-tight-min. Sets data-tight and the size tokens on <html>.
+ * @param {number} width
+ * @param {number} days
  */
 function tighten(width, days) {
   const root = document.documentElement;
@@ -257,7 +309,10 @@ function tighten(width, days) {
   root.style.setProperty('--label-min', `${label}px`);
 }
 
-/** Returns the number of day columns currently shown. */
+/**
+ * Returns the number of day columns currently shown.
+ * @return {number}
+ */
 export function currentDays() {
   return renderedDays;
 }
@@ -265,6 +320,7 @@ export function currentDays() {
 /**
  * Returns the largest offset whose window starts no earlier than
  * earliestEntry.
+ * @return {number}
  */
 function maxBackDays() {
   if (!state.earliestEntry) return Infinity;
@@ -275,6 +331,8 @@ function maxBackDays() {
 /**
  * Moves the window to `next` days before today, clamped to the allowed range.
  * Loads missing entries before rendering.
+ * @param {number} next
+ * @return {!Promise<void>}
  */
 async function showWindow(next) {
   const wanted = Math.min(maxBackDays(), Math.max(-MAX_AHEAD_DAYS, next));
@@ -298,7 +356,11 @@ const FILTER_KEY = 'habits.filterOpen';
  */
 let onlyOpen = loadFilter();
 
-// localStorage can be unavailable; the filter then starts off and is not kept.
+/**
+ * Reads the stored filter. localStorage can be unavailable; the filter then
+ * starts off and is not kept.
+ * @return {boolean}
+ */
 function loadFilter() {
   try {
     return localStorage.getItem(FILTER_KEY) === '1';
@@ -307,6 +369,9 @@ function loadFilter() {
   }
 }
 
+/**
+ * Stores the filter, if localStorage is available.
+ */
 function saveFilter() {
   try {
     localStorage.setItem(FILTER_KEY, onlyOpen ? '1' : '0');
@@ -318,6 +383,8 @@ function saveFilter() {
 /**
  * Reports whether a habit passes the filter: with it, only habits due on the
  * active day (as counted by the day summary) and not yet complete.
+ * @param {!Habit} habit
+ * @return {boolean}
  */
 function matches(habit) {
   if (!onlyOpen) return true;
@@ -359,6 +426,9 @@ function initTodayPill() {
   board.parentElement.append(todayPill);
 }
 
+/**
+ * Renders the board, unless it is hidden or a drag is in progress.
+ */
 export function render() {
   if (!board || dragging) return;
   todayPill.hidden = offset === 0 && selectedDay === null;
@@ -431,6 +501,7 @@ export function render() {
 /**
  * Describes the focused control of the board, so that focus can be restored
  * after re-rendering.
+ * @return {?{role: string, category: string, habit: string, date: string}}
  */
 function focusedControl() {
   const focused = document.activeElement;
@@ -445,6 +516,11 @@ function focusedControl() {
   };
 }
 
+/**
+ * Focuses the control that `target` describes, if it is still there.
+ * @param {?{role: string, category: string, habit: string, date: string}}
+ *     target
+ */
 function restoreFocus(target) {
   if (!target) return;
   const scope = target.category ?
@@ -467,7 +543,10 @@ function restoreFocus(target) {
 // Otherwise every day of every habit would be a tab stop of its own. Disabled
 // cells cannot take focus and are skipped.
 
-/** The day cell focused last, as {habit, date}; kept across renders. */
+/**
+ * The day cell focused last, as {habit, date}; kept across renders.
+ * @type {?{habit: string, date: string}}
+ */
 let lastCell = null;
 
 /** Gives the cells and the header days their single tab stop. */
@@ -496,6 +575,7 @@ function setTabStops() {
 /**
  * Makes a cell or header day the tab stop of its group; other controls keep
  * theirs.
+ * @param {!Element} node
  */
 function makeTabStop(node) {
   const role = node.dataset?.role;
@@ -510,18 +590,28 @@ function makeTabStop(node) {
   }
 }
 
-/** Focuses `node`, if any, and makes it the tab stop of its group. */
+/**
+ * Focuses `node`, if any, and makes it the tab stop of its group.
+ * @param {?Element|undefined} node
+ */
 function rove(node) {
   if (!node) return;
   makeTabStop(node);
   node.focus();
 }
 
-/** A cell or day focused by a click or Tab becomes the tab stop too. */
+/**
+ * A cell or day focused by a click or Tab becomes the tab stop too.
+ * @param {!FocusEvent} event
+ */
 function onBoardFocus(event) {
   makeTabStop(event.target);
 }
 
+/**
+ * Moves the focus between the cells and header days with the arrow keys.
+ * @param {!KeyboardEvent} event
+ */
 function onBoardKeydown(event) {
   if (event.altKey || event.metaKey || event.shiftKey) return;
   const target = event.target;
@@ -542,6 +632,8 @@ function onBoardKeydown(event) {
 /**
  * Arrow keys and what they do: dx moves along the row, dy between rows,
  * edge jumps to the first (-1) or last (1) day.
+ * @const {!Object<string, {dx: (number|undefined), dy: (number|undefined),
+ * edge: (number|undefined)}>}
  */
 const MOVES = {
   ArrowLeft: {dx: -1},
@@ -552,13 +644,24 @@ const MOVES = {
   End: {edge: 1},
 };
 
-/** Returns the index `move` leads to from `at` in `list`, within its bounds. */
+/**
+ * Returns the index `move` leads to from `at` in `list`, within its bounds.
+ * @param {!Array<*>} list
+ * @param {number} at
+ * @param {{dx: (number|undefined), dy: (number|undefined), edge:
+ *     (number|undefined)}} move
+ * @return {number}
+ */
 function clampedStep(list, at, {dx = 0, edge = 0}) {
   if (edge) return edge < 0 ? 0 : list.length - 1;
   return Math.min(list.length - 1, Math.max(0, at + dx));
 }
 
-/** The enabled day cells of a row, oldest first. */
+/**
+ * The enabled day cells of a row, oldest first.
+ * @param {!Element} row
+ * @return {!Array<!HTMLButtonElement>}
+ */
 function rowCells(row) {
   return [...row.querySelectorAll('[data-role="cell"]:not(:disabled)')];
 }
@@ -568,6 +671,11 @@ function rowCells(row) {
  * earlier or later days at its end; up and down keep the day and skip habits
  * with that day disabled; Home and End go to the row's first and last day,
  * with Ctrl to the first and last habit.
+ * @param {!HTMLElement} cell
+ * @param {{dx: (number|undefined), dy: (number|undefined), edge:
+ *     (number|undefined)}} move
+ * @param {boolean} ctrl
+ * @return {!Promise<void>}
  */
 async function moveFromCell(cell, {dx = 0, dy = 0, edge = 0}, ctrl) {
   const row = cell.closest('.habit-row');
@@ -618,6 +726,9 @@ async function moveFromCell(cell, {dx = 0, dy = 0, edge = 0}, ctrl) {
 /**
  * Builds the day header: month names in the first row, weekday and day in the
  * second, on a shared grid with explicit placement.
+ * @param {!Array<string>} dates
+ * @param {string} active
+ * @return {!HTMLElement}
  */
 function dayHeader(dates, active) {
   const days = dates.map((iso, i) => {
@@ -641,7 +752,11 @@ function dayHeader(dates, active) {
   );
 }
 
-/** Builds a label per month, spanning its columns. */
+/**
+ * Builds a label per month, spanning its columns.
+ * @param {!Array<string>} dates
+ * @return {!Array<!HTMLElement>}
+ */
 function monthLabels(dates) {
   const out = [];
   let start = 0;
@@ -677,6 +792,7 @@ function monthLabels(dates) {
 /**
  * Builds the paging controls, in the date row above the habit names. Back to
  * today is the floating button (todayPill).
+ * @return {!HTMLElement}
  */
 function dayNav() {
   // Disabled rather than hidden at the limit.
@@ -692,11 +808,25 @@ function dayNav() {
   );
 }
 
-/** Builds the name cell of a row. */
+/**
+ * Builds the name cell of a row.
+ * @param {!Habit} habit
+ * @return {!HTMLElement}
+ */
 function nameCell(habit) {
   return el('div', {class: 'habit-cell'}, habitLabel(habit));
 }
 
+/**
+ * Builds the block of a category: its heading and the rows of the visible
+ * habits.
+ * @param {{category: ?Category, habits: !Array<!Habit>, visible:
+ *     !Array<!Habit>}} block
+ * @param {!Array<string>} dates
+ * @param {boolean} labelled whether the block has a heading
+ * @param {string} active
+ * @return {!HTMLElement}
+ */
 function renderBlock({category, habits, visible}, dates, labelled, active) {
   return el(
       'section',
@@ -712,17 +842,33 @@ function renderBlock({category, habits, visible}, dates, labelled, active) {
 }
 
 /**
+ * A row of the board with what it was built from.
+ * @typedef {{habit: !Habit, key: string, row: !HTMLElement}}
+ */
+let CachedRow;
+
+/**
  * The rows of the last render by habit ID, with what they were built from.
  * A tap changes one habit, so the board reuses the rows of the others instead
  * of building every cell again.
+ * @type {!Map<string, !CachedRow>}
  */
 let rowCache = new Map();
+/**
+ * The rows of the render in progress, which become rowCache.
+ * @type {!Map<string, !CachedRow>}
+ */
 let nextRowCache = new Map();
 
 /**
  * Returns the row of a habit: the one of the last render if the habit (which
  * the state replaces on every change, see state.js) and everything else the
  * row shows are the same, or a new one.
+ * @param {!Habit} habit
+ * @param {!Array<!Habit>} siblings the habits of its category
+ * @param {!Array<string>} dates
+ * @param {string} active
+ * @return {!HTMLElement}
  */
 function habitRow(habit, siblings, dates, active) {
   const key = [
@@ -754,6 +900,9 @@ function habitRow(habit, siblings, dates, active) {
 /**
  * Builds the reorder controls of a row: a drag handle or arrow buttons,
  * depending on the setting. None with a single habit.
+ * @param {!Habit} habit
+ * @param {!Array<!Habit>} siblings
+ * @return {!Array<!HTMLElement>}
  */
 function habitReorderButtons(habit, siblings) {
   if (siblings.length < 2) return [];
@@ -773,7 +922,12 @@ function habitReorderButtons(habit, siblings) {
   ];
 }
 
-/** Builds a category's progress bar for `day`. */
+/**
+ * Builds a category's progress bar for `day`.
+ * @param {!Array<!Habit>} habits
+ * @param {string} day
+ * @return {?HTMLElement}
+ */
 function blockProgress(habits, day) {
   const {due, done} = dayProgress(habits, day);
   // No bar if nothing is due on the day.
@@ -804,6 +958,14 @@ function blockProgress(habits, day) {
   );
 }
 
+/**
+ * Builds the heading of a block: the category, its progress and its reorder
+ * controls.
+ * @param {?Category} category
+ * @param {!Array<!Habit>} habits
+ * @param {string} day
+ * @return {!HTMLElement}
+ */
 function blockHead(category, habits, day) {
   // Uncategorised habits have no category controls. Renaming and deleting are
   // done in the category view.
@@ -823,6 +985,8 @@ function blockHead(category, habits, day) {
 /**
  * Builds the category's name as a button, so the category view is
  * keyboard-accessible.
+ * @param {!Category} category
+ * @return {!HTMLElement}
  */
 function categoryLink(category) {
   return el(
@@ -837,6 +1001,8 @@ function categoryLink(category) {
 /**
  * Builds the reorder controls of a category: a drag handle or arrow buttons,
  * depending on the setting. None with a single category.
+ * @param {!Category} category
+ * @return {!Array<!HTMLElement>}
  */
 function categoryReorderButtons(category) {
   if (state.categories.length < 2) return [];
@@ -858,6 +1024,12 @@ function categoryReorderButtons(category) {
 /**
  * Builds an icon button of the board. `handle` makes it a drag handle,
  * `habit` names the habit it acts on.
+ * @param {string} role
+ * @param {string} icon SVG markup
+ * @param {string} label
+ * @param {{handle: (boolean|undefined), habit: (string|undefined), disabled:
+ *     (boolean|undefined)}=} options
+ * @return {!HTMLElement}
  */
 function toolButton(role, icon, label, {handle = false, habit, disabled} = {}) {
   return el(
@@ -874,6 +1046,10 @@ function toolButton(role, icon, label, {handle = false, habit, disabled} = {}) {
 
 // ---------- interaction ----------
 
+/**
+ * Handles a click on a control of the board, by its data-role.
+ * @param {!MouseEvent} event
+ */
 function onBoardClick(event) {
   if (suppressClick) {
     suppressClick = false;
@@ -922,6 +1098,10 @@ function onBoardClick(event) {
   }
 }
 
+/**
+ * Opens the value dialog on a right-click, or on a long press on touch.
+ * @param {!MouseEvent} event
+ */
 function onBoardContextMenu(event) {
   const target = event.target.closest('[data-role="cell"]');
   if (!target || target.disabled) return;
@@ -933,11 +1113,18 @@ function onBoardContextMenu(event) {
   actions.editEntry(target.dataset.habit, target.dataset.date);
 }
 
-// A long press opens the value dialog. The click that follows is suppressed;
-// the flag is reset by a timer, as a long press may end without a click.
+/**
+ * Whether the next click is suppressed. A long press opens the value dialog,
+ * and the click that follows is suppressed; the flag is reset by a timer, as a
+ * long press may end without a click.
+ */
 let suppressClick = false;
-let suppressTimer = null;
+/** @type {number|undefined} */
+let suppressTimer;
 
+/**
+ * Suppresses the click that follows a long press.
+ */
 function suppressNextClick() {
   suppressClick = true;
   clearTimeout(suppressTimer);
@@ -947,9 +1134,16 @@ function suppressNextClick() {
   }, 700);
 }
 
-/** Cancels a pending long press; set by attachLongPress. */
+/**
+ * Cancels a pending long press; set by attachLongPress.
+ * @type {function(): void}
+ */
 let cancelLongPress = () => {};
 
+/**
+ * Opens the value dialog when a cell is pressed for LONG_PRESS_MS.
+ * @param {!HTMLElement} root
+ */
 function attachLongPress(root) {
   let timer = null;
   let origin = null;

@@ -8,9 +8,16 @@ import {t} from './i18n.js';
 import {colorValue, icons} from './icons.js';
 import {state} from './state.js';
 
-/** The board element, which holds the summary. Set by initSummary. */
+/**
+ * The board element, which holds the summary. Set by initSummary.
+ * @type {!HTMLElement}
+ */
 let board;
 
+/**
+ * Sets the board element.
+ * @param {!HTMLElement} boardElement
+ */
 export function initSummary(boardElement) {
   board = boardElement;
 }
@@ -18,6 +25,9 @@ export function initSummary(boardElement) {
 /**
  * Counts the habits due on `day` and how many of them are complete, by the
  * statuses the server sent.
+ * @param {!Array<!Habit>} habits
+ * @param {string} day
+ * @return {{due: number, done: number}}
  */
 export function dayProgress(habits, day) {
   const due = habits.filter((h) => !h.archivedAt && habitHelpers.isDue(h, day));
@@ -28,6 +38,9 @@ export function dayProgress(habits, day) {
 /**
  * Builds the day summary below the header: the active day's date, progress
  * and ring. Refers to all habits, regardless of paging and filter.
+ * @param {!Array<!Habit>} habits
+ * @param {string} day
+ * @return {!HTMLElement}
  */
 export function daySummary(habits, day) {
   const {due, done} = dayProgress(habits, day);
@@ -64,7 +77,13 @@ export function daySummary(habits, day) {
   return summary;
 }
 
-/** Describes the day's progress; a complete day gets a check. */
+/**
+ * Describes the day's progress; a complete day gets a check.
+ * @param {number} due
+ * @param {number} done
+ * @param {boolean} isToday
+ * @return {!Array<string|!Node>}
+ */
 function progressText(due, done, isToday) {
   if (due === 0) return [t('Nothing due on this day')];
   if (done < due) return [t('{done} of {due} done', {done, due})];
@@ -75,7 +94,10 @@ function progressText(due, done, isToday) {
   ];
 }
 
-/** Messages for a completed day; the date selects one, so it stays stable. */
+/**
+ * Messages for a completed day; the date selects one, so it stays stable.
+ * @const {!Array<function(number): string>}
+ */
 const COMPLETE_TEXTS = [
   () => t('All habits done!'),
   () => t('Everything ticked off. Well done!'),
@@ -84,13 +106,20 @@ const COMPLETE_TEXTS = [
   () => t('A clean sweep today!'),
 ];
 
+/**
+ * Returns the message for a completed day.
+ * @param {number} due
+ * @return {string}
+ */
 function completeText(due) {
   const pick = daysBetween('2000-01-01', state.today) % COMPLETE_TEXTS.length;
   return COMPLETE_TEXTS[pick](due);
 }
 
-// Ring geometry in viewBox units (0 0 40 40): radius, wave amplitude and number
-// of waves. RING_WAVES must be a whole number so the wave closes smoothly.
+/*
+ * Ring geometry in viewBox units (0 0 40 40): radius, wave amplitude and number
+ * of waves. RING_WAVES must be a whole number so the wave closes smoothly.
+ */
 const RING_R = 15.5;
 const RING_WAVE = 0.9;
 const RING_WAVES = 16;
@@ -98,6 +127,7 @@ const RING_WAVES = 16;
 /**
  * SVG path of the wavy ring around RING_R, starting at twelve o'clock and
  * running clockwise.
+ * @const {string}
  */
 const WAVY_RING_PATH = (() => {
   const steps = 240;
@@ -116,6 +146,7 @@ const WAVY_RING_PATH = (() => {
 /**
  * The ring's value at the last render. A new ring animates from there to its
  * new value.
+ * @type {?number}
  */
 let lastRingPercent = null;
 
@@ -123,6 +154,9 @@ let lastRingPercent = null;
  * Builds the progress ring filled to `percent`, with the number in its centre
  * and `name` as its accessible label.
  * pathLength="100" allows dash lengths in percent.
+ * @param {number} percent
+ * @param {string} name
+ * @return {!Element}
  */
 function progressRing(percent, name) {
   const ns = 'http://www.w3.org/2000/svg';
@@ -174,7 +208,11 @@ function progressRing(percent, name) {
   return ring;
 }
 
-/** Sets an existing ring to `percent`. */
+/**
+ * Sets an existing ring to `percent`.
+ * @param {!Element} ring
+ * @param {number} percent
+ */
 function showRing(ring, percent) {
   const fill = ring.querySelector('.day-summary-ring-fill');
   fill.style.setProperty('--to', String(percent));
@@ -189,19 +227,39 @@ function showRing(ring, percent) {
  * State of the ring while orbs are in flight, or null. `shown` is the
  * displayed value, `planned` the value after all launched orbs, `target` the
  * actual value and `pending` the number of orbs in flight.
+ * @type {?{shown: number, planned: number, target: number, pending: number}}
  */
 let ringHold = null;
 
-/** The habits complete on the active day at the last render, and the day. */
+/**
+ * The IDs of the habits complete on the active day at the last render.
+ * @type {?Set<string>}
+ */
 let lastDone = null;
+/**
+ * The active day of the last render.
+ * @type {?string}
+ */
 let lastDoneDay = null;
 
+/**
+ * An orb flight: the habit's colour and the centre of its cell.
+ * @typedef {{color: string, x: number, y: number}}
+ */
+let Flight;
+
+/**
+ * The number of orbs sent per completed habit.
+ */
 const ORBS_PER_HABIT = 6;
 
 /**
  * Returns the habits completed on the active day since the last render, each
  * with the position of its cell on the old board. Returns nothing on the first
  * render and after a change of the active day.
+ * @param {!Array<!Habit>} habits
+ * @param {string} day
+ * @return {!Array<!Flight>}
  */
 export function newlyDone(habits, day) {
   const due = habits.filter((h) => !h.archivedAt && habitHelpers.isDue(h, day));
@@ -240,12 +298,20 @@ export function newlyDone(habits, day) {
   return flights;
 }
 
+/**
+ * Reports whether the user asked for less motion.
+ * @return {boolean}
+ */
 function prefersReducedMotion() {
   return window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ??
       false;
 }
 
-/** Returns the screen position of the wave at `percent`, or null. */
+/**
+ * Returns the screen position of the wave at `percent`, or null.
+ * @param {number} percent
+ * @return {?{x: number, y: number}}
+ */
 function ringPoint(percent) {
   const ring = board.querySelector('.day-summary-ring');
   const r = ring?.getBoundingClientRect();
@@ -259,7 +325,10 @@ function ringPoint(percent) {
   };
 }
 
-/** Returns the top of the visible board area, below the sticky header. */
+/**
+ * Returns the top of the visible board area, below the sticky header.
+ * @return {number}
+ */
 function visibleTop() {
   let top = 0;
   for (const bar
@@ -273,6 +342,10 @@ function visibleTop() {
 /**
  * Shows a short flash where an orb leaves the visible area. `color` is a CSS
  * colour value, taken from the orb.
+ * @param {number} x
+ * @param {number} y
+ * @param {number} size
+ * @param {string} color
  */
 function flash(x, y, size, color) {
   const spark = document.createElement('span');
@@ -293,7 +366,10 @@ function flash(x, y, size, color) {
       .onfinish = () => spark.remove();
 }
 
-/** Returns the layer for the orbs, above the board and below dialogs. */
+/**
+ * Returns the layer for the orbs, above the board and below dialogs.
+ * @return {!HTMLElement}
+ */
 function orbLayer() {
   let layer = document.getElementById('orb-layer');
   if (!layer) {
@@ -307,6 +383,7 @@ function orbLayer() {
 /**
  * Sends orbs in the habit's colour from its cell to the ring. Each orb
  * advances the ring when it lands.
+ * @param {!Flight} flight
  */
 export function launchOrbs({color, x, y}) {
   const hold = ringHold;
@@ -340,6 +417,13 @@ export function launchOrbs({color, x, y}) {
   }
 }
 
+/**
+ * Moves an orb along a curve from its cell to the ring.
+ * @param {!HTMLElement} orb
+ * @param {{x: number, y: number, size: number, landing: number, delay: number,
+ *     duration: number, bend: number}} flight where it starts, its size, the
+ *     ring value it lands at, and the timing and bend of its curve
+ */
 function flyOrb(orb, {x, y, size, landing, delay, duration, bend}) {
   let start = null;
 
@@ -389,7 +473,11 @@ function flyOrb(orb, {x, y, size, landing, delay, duration, bend}) {
   requestAnimationFrame(frame);
 }
 
-/** Advances the ring when an orb lands. */
+/**
+ * Advances the ring when an orb lands.
+ * @param {number} landing the ring value the orb lands at
+ * @param {boolean} visible whether the ring is visible
+ */
 function landOrb(landing, visible) {
   const hold = ringHold;
   if (!hold) return;

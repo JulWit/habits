@@ -5,9 +5,16 @@
 
 import {state} from './state.js';
 
+/**
+ * The UI language, "de" or "en".
+ * @const {string}
+ */
 export const lang = document.documentElement.lang === 'de' ? 'de' : 'en';
 
-/** Locale for formatting numbers and dates. */
+/**
+ * Locale for formatting numbers and dates.
+ * @const {string}
+ */
 export const locale = lang === 'de' ? 'de-DE' : 'en-GB';
 
 /**
@@ -630,17 +637,26 @@ const deErrors = {
 /**
  * Returns the message template for a problem code in the UI language, or
  * undefined if there is none (then the server's English message is shown).
+ * @param {string} code
+ * @return {string|undefined}
  */
 export function errorTemplate(code) {
   return lang === 'de' ? deErrors[code] : undefined;
 }
 
+/**
+ * The translations of the UI language; empty for English.
+ * @const {!Object<string, (string|!Array<string>)>}
+ */
 const dictionary = lang === 'de' ? de : {};
 
 /**
  * Translates `text` and fills in its {placeholders} from `vars`. Unknown texts
  * are returned unchanged. `vars.context` selects a variant of an ambiguous
  * text, keyed as "context|text" (e.g. "verb|Archive").
+ * @param {string} text
+ * @param {!Object<string, *>=} vars
+ * @return {string}
  */
 export function t(text, vars = {}) {
   const inContext =
@@ -654,6 +670,7 @@ export function t(text, vars = {}) {
 /**
  * Returns the user's time zone, the server's, or undefined (browser default)
  * if the browser does not know either.
+ * @return {string|undefined}
  */
 export function userTimeZone() {
   for (const zone of [state.settings?.timeZone, state.serverTimeZone]) {
@@ -674,6 +691,7 @@ const TRANSLATED_ATTRIBUTES = ['title', 'aria-label', 'placeholder'];
 /**
  * Translates the text nodes and TRANSLATED_ATTRIBUTES below `root` in place.
  * Elements with translate="no" are skipped.
+ * @param {!Element=} root
  */
 export function translateDocument(root = document.body) {
   if (lang === 'en') return;

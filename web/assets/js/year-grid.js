@@ -8,12 +8,19 @@ import {t} from './i18n.js';
 import {state} from './state.js';
 import {hideTooltip, showTooltip} from './tooltip.js';
 
-/** Returns the current year, e.g. "2026". */
+/**
+ * Returns the current year, e.g. "2026".
+ * @return {string}
+ */
 export function currentYear() {
   return state.today.slice(0, 4);
 }
 
-/** Returns "(2026)" for a full year, "(since 12 Mar)" otherwise. */
+/**
+ * Returns "(2026)" for a full year, "(since 12 Mar)" otherwise.
+ * @param {string} from the first day counted
+ * @return {string}
+ */
 export function sinceLabel(from) {
   const year = currentYear();
   if (from === `${year}-01-01`) return `(${year})`;
@@ -27,6 +34,9 @@ export function sinceLabel(from) {
  * week of 1 January to the week of 31 December, with the month names above
  * the week of each month's first day. `square(iso)` builds the square of a day
  * of the year; days of the neighbouring years are left blank.
+ * @param {string} year
+ * @param {function(string): !HTMLElement} square
+ * @return {!HTMLElement}
  */
 export function yearGrid(year, square) {
   const yearStart = `${year}-01-01`;
@@ -67,6 +77,7 @@ export function yearGrid(year, square) {
 /**
  * Scrolls the year grid below `root` so that today's square is centred, if
  * the grid overflows. Must be called once the grid is in the document.
+ * @param {!Element} root
  */
 export function centreToday(root) {
   const scroller = root.querySelector('.heatmap-scroll');
@@ -81,6 +92,8 @@ export function centreToday(root) {
  * Shows a tooltip at once for the chart elements below `container` that match
  * `selector`: their data-tip, or for a heatmap square its date, above their
  * data-status.
+ * @param {!Element} container
+ * @param {string} selector
  */
 export function initChartTooltips(container, selector) {
   container.addEventListener('mouseover', (event) => {

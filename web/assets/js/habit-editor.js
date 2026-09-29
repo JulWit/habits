@@ -11,24 +11,42 @@ import {closePage, guardPage, openPage} from './page-stack.js';
 import {categoryById, state} from './state.js';
 import {errorText} from './undo.js';
 
+/** @type {!HTMLDialogElement} */
 let dialog;
+/** @type {!HTMLFormElement} */
 let form;
+/** @type {!HTMLElement} */
 let errorBox;
+/** @type {!HTMLButtonElement} */
 let submitButton;
+/** @type {!HTMLElement} */
 let titleEl;
+/** @type {!HTMLButtonElement} */
 let categoryButton;
+/** @type {!HTMLElement} */
 let retroactiveBox;
+/** @type {?string} */
 let selectedColor = null;
 let selectedIcon = '';
 let selectedCategory = '';
+/**
+ * Saves the input; set when the editor opens.
+ * @type {?function(!Object): !Promise<void>}
+ */
 let onSubmit = null;
 /** The input as opened, to detect unsaved changes. */
 let initial = '';
-/** The habit being edited, or null when creating one. */
+/**
+ * The habit being edited, or null when creating one.
+ * @type {?Habit}
+ */
 let editing = null;
 /** Target and frequency as opened, to offer applying a change retroactively. */
 let initialSchedule = '';
 
+/**
+ * Initialises the habit editor.
+ */
 export function initEditor() {
   dialog = document.getElementById('habit-editor');
   form = document.getElementById('habit-editor-form');
@@ -80,6 +98,9 @@ function paintCategory() {
   );
 }
 
+/**
+ * Builds the toggle buttons of the weekdays.
+ */
 function buildWeekdayButtons() {
   const host = document.getElementById('habit-editor-weekdays');
   host.replaceChildren(
@@ -105,6 +126,9 @@ function buildWeekdayButtons() {
   );
 }
 
+/**
+ * Builds the colour swatches of the habit palette.
+ */
 function buildSwatches() {
   const host = document.getElementById('habit-editor-colors');
   host.replaceChildren(
@@ -124,6 +148,10 @@ function buildSwatches() {
   );
 }
 
+/**
+ * Selects a colour.
+ * @param {string} color
+ */
 function selectColor(color) {
   selectedColor = color;
   for (const node of document.querySelectorAll(
@@ -135,6 +163,10 @@ function selectColor(color) {
       .style.setProperty('--habit-color', colorValue(color));
 }
 
+/**
+ * Selects an icon; "" for none.
+ * @param {string} name
+ */
 function selectIcon(name) {
   selectedIcon = name;
   markIconChoice(document.getElementById('habit-editor-icons'), name);
@@ -144,6 +176,8 @@ function selectIcon(name) {
  * Each measured kind has its own target and step field, so switching the kind
  * keeps what was typed for the others. Targets are prefilled with a default;
  * an empty step field means the kind's default step.
+ * @const {!Object<string, {target: string, step: string, defaultTarget:
+ * number}>}
  */
 const KIND_FIELDS = {
   count: {target: 'targetCount', step: 'stepCount', defaultTarget: 8},
@@ -172,7 +206,10 @@ function syncVisibility() {
   }
 }
 
-/** Labels of the target fields, as a target and as a limit. */
+/**
+ * Labels of the target fields, as a target and as a limit.
+ * @const {!Object<string, !Array<string>>}
+ */
 const TARGET_LABELS = {
   count: [t('Daily target'), t('Daily limit')],
   time: [t('Daily target in minutes'), t('Daily limit in minutes')],
@@ -183,6 +220,7 @@ const TARGET_LABELS = {
  * Adapts the form to a limit (at most) of a measured kind: the target fields
  * are labelled as a limit and accept 0 ("none at all"), and the frequencies
  * counting days per week or month are off, as a limit needs fixed days.
+ * @param {string} kind
  */
 function syncLimit(kind) {
   const limit =
@@ -204,6 +242,11 @@ function syncLimit(kind) {
   document.getElementById('habit-editor-limit-hint').hidden = !limit;
 }
 
+/**
+ * Shows or hides a section of the form, and enables its fields with it.
+ * @param {!HTMLElement} section
+ * @param {boolean} active
+ */
 function setSectionActive(section, active) {
   section.hidden = !active;
   for (const input of section.querySelectorAll('input, textarea, select')) {
@@ -213,8 +256,8 @@ function setSectionActive(section, active) {
 
 /**
  * Opens the habit dialog.
- * @param {object|null} habit  the habit to edit, or null to create one
- * @param {(input: object) => Promise<void>} handler
+ * @param {?Habit} habit the habit to edit, or null to create one
+ * @param {function(!Object): !Promise<void>} handler saves the input
  */
 export function openEditor(habit, handler) {
   onSubmit = handler;
@@ -287,6 +330,10 @@ export function openEditor(habit, handler) {
   f.name.focus();
 }
 
+/**
+ * Returns the input of the form, as the API takes it.
+ * @return {!Object}
+ */
 function collect() {
   const f = form.elements;
   const kind = f.kind.value;
@@ -361,6 +408,11 @@ function collect() {
   return input;
 }
 
+/**
+ * Saves the input and closes the editor, or shows why it failed.
+ * @param {!Event} event
+ * @return {!Promise<void>}
+ */
 async function handleSubmit(event) {
   // Keep the dialog open until the server accepts the input.
   event.preventDefault();
@@ -382,6 +434,10 @@ async function handleSubmit(event) {
   }
 }
 
+/**
+ * Shows an error message above the buttons.
+ * @param {string} message
+ */
 function showError(message) {
   errorBox.textContent = message;
   errorBox.hidden = false;
@@ -389,7 +445,11 @@ function showError(message) {
   errorBox.scrollIntoView({block: 'nearest'});
 }
 
-/** Returns the part of the input that makes up the schedule. */
+/**
+ * Returns the part of the input that makes up the schedule.
+ * @param {!Object} input
+ * @return {string}
+ */
 function scheduleKey(input) {
   return JSON.stringify(
       [input.kind, input.targetValue, input.targetType, input.frequency]);
@@ -412,6 +472,7 @@ function syncRetroactive() {
 /**
  * Explains what happens to the recorded days when the kind of a habit with
  * entries changes (domain.ConvertKind).
+ * @param {string} kind
  */
 function syncKindHint(kind) {
   const hint = document.getElementById('habit-editor-kind-hint');
@@ -430,12 +491,7 @@ function syncKindHint(kind) {
   } else {
     hint.textContent = t(
         'Recorded values keep their number in the new unit, e.g. 5 becomes 5 {unit}.',
-        {
-          unit:
-              t(kind === 'time'         ? 'minutes' :
-                    kind === 'distance' ? 'km' :
-                                          'times'),
-        });
+        {unit: t({time: 'minutes', distance: 'km'}[kind] ?? 'times')});
   }
   hint.hidden = false;
 }

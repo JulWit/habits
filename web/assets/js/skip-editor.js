@@ -7,14 +7,34 @@ import {closePage, openPage} from './page-stack.js';
 import {state} from './state.js';
 import {errorText} from './undo.js';
 
+/**
+ * The range of days to skip and the habits; no habitIds means all habits.
+ * @typedef {{from: string, to: string, habitIds: !Array<string>}}
+ */
+let SkipInput;
+
+/** @type {!HTMLDialogElement} */
 let dialog;
+/** @type {!HTMLFormElement} */
 let form;
+/** @type {!HTMLElement} */
 let errorBox;
+/** @type {!HTMLButtonElement} */
 let submitButton;
+/**
+ * Skips the days; set when the page opens.
+ * @type {?function(!SkipInput): !Promise<void>}
+ */
 let onSubmit = null;
-/** The habit the page was opened for, or null for all habits. */
+/**
+ * The habit the page was opened for, or null for all habits.
+ * @type {?Habit}
+ */
 let habit = null;
 
+/**
+ * Initialises the page for skipping days.
+ */
 export function initSkipDialog() {
   dialog = document.getElementById('skip-editor');
   form = document.getElementById('skip-editor-form');
@@ -38,6 +58,8 @@ export function initSkipDialog() {
  * Opens the page for `target`, with the choice of all habits, or for all
  * habits if `target` is null. `handler` receives {from, to, habitIds}; no
  * habitIds means all habits.
+ * @param {?Habit} target
+ * @param {function(!SkipInput): !Promise<void>} handler
  */
 export function openSkipDialog(target, handler) {
   habit = target;
@@ -59,6 +81,10 @@ export function openSkipDialog(target, handler) {
   f.from.focus();
 }
 
+/**
+ * Returns the input of the form.
+ * @return {!SkipInput}
+ */
 function collect() {
   const f = form.elements;
   const one = habit !== null && f.scope.value === 'one';
@@ -69,6 +95,11 @@ function collect() {
   };
 }
 
+/**
+ * Skips the days and closes the page, or shows why it failed.
+ * @param {!Event} event
+ * @return {!Promise<void>}
+ */
 async function handleSubmit(event) {
   // Keep the page open until the server accepts the input.
   event.preventDefault();

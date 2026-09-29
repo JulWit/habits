@@ -13,9 +13,18 @@ import {habitById, state} from './state.js';
 import {hideTooltip} from './tooltip.js';
 import {centreToday, currentYear, initChartTooltips, yearGrid} from './year-grid.js';
 
+/** @type {!HTMLElement} */
 let root;
+/**
+ * The handlers of app.js.
+ * @type {!Object<string, !Function>}
+ */
 let actions;
 
+/**
+ * Initialises the habit view.
+ * @param {!Object<string, !Function>} handlers the handlers of app.js
+ */
 export function initDetail(handlers) {
   actions = handlers;
   root = document.getElementById('habit-view');
@@ -54,18 +63,30 @@ export function initDetail(handlers) {
  * The year the heatmap and the cumulative chart show, e.g. "2025", and the
  * habit it was chosen for. Another habit opens with the current year; the
  * choice is not kept beyond the session.
+ * @type {?string}
  */
 let shownYear = null;
+/**
+ * The ID of the habit `shownYear` was chosen for.
+ * @type {?string}
+ */
 let shownFor = null;
 
-/** Returns the first and the last year of the habit's history, as numbers. */
+/**
+ * Returns the first and the last year of the habit's history, as numbers.
+ * @param {!Habit} habit
+ * @return {!Array<number>}
+ */
 function yearRange(habit) {
   const last = Number(currentYear());
   const first = Number(habit.historyStart?.slice(0, 4)) || last;
   return [Math.min(first, last), last];
 }
 
-/** Shows the year before (-1) or after (+1) the one shown. */
+/**
+ * Shows the year before (-1) or after (+1) the one shown.
+ * @param {number} delta
+ */
 function showYear(delta) {
   const habit = habitById(root.dataset.habit);
   if (!habit) return;
@@ -81,6 +102,10 @@ function showYear(delta) {
       ?.focus();
 }
 
+/**
+ * Renders the habit view.
+ * @param {!Habit} habit
+ */
 export function renderDetail(habit) {
   if (!root || !habit) return;
   // The tooltip's target is about to be replaced.
@@ -110,6 +135,8 @@ export function renderDetail(habit) {
 /**
  * The view's title bar: back, name, edit, and the overflow menu with archive
  * and delete. Frequency and target are in the details panel.
+ * @param {!Habit} habit
+ * @return {!HTMLElement}
  */
 function header(habit) {
   const archived = habit.archivedAt != null;
@@ -132,7 +159,12 @@ function header(habit) {
   });
 }
 
-/** Formats a streak with its unit: "1 day", "6 days", "1 week", "2 months". */
+/**
+ * Formats a streak with its unit: "1 day", "6 days", "1 week", "2 months".
+ * @param {number} count
+ * @param {string} unit days, weeks or months
+ * @return {string}
+ */
 function streakText(count, unit) {
   if (unit === 'months') {
     return count === 1 ? t('1 month') : t('{n} months', {n: count});
@@ -143,6 +175,11 @@ function streakText(count, unit) {
   return count === 1 ? t('1 day') : t('{n} days', {n: count});
 }
 
+/**
+ * Builds the stat tiles from the server's statistics of the habit.
+ * @param {!Habit} habit
+ * @return {!HTMLElement}
+ */
 function stats(habit) {
   const s = habit.stats;
   return statRow([
@@ -156,6 +193,8 @@ function stats(habit) {
 /**
  * Shows how the habit is set up: frequency, daily target (not for check
  * habits), category and, if archived, its status.
+ * @param {!Habit} habit
+ * @return {!HTMLElement}
  */
 function details(habit) {
   const all = habit.schedules;
@@ -182,7 +221,12 @@ function details(habit) {
   return factsPanel(t('Details'), items);
 }
 
-/** Describes a schedule of the habit: its frequency and, if any, its target. */
+/**
+ * Describes a schedule of the habit: its frequency and, if any, its target.
+ * @param {!Habit} habit
+ * @param {!Schedule} schedule
+ * @return {string}
+ */
 function describeSchedule(habit, schedule) {
   return [
     habitHelpers.describeFrequency(schedule.frequency),
@@ -194,6 +238,8 @@ function describeSchedule(habit, schedule) {
 /**
  * Shows when the habit was created, last completed and last changed (the
  * server's updatedAt).
+ * @param {!Habit} habit
+ * @return {!HTMLElement}
  */
 function activity(habit) {
   // The server leaves it empty if the habit was never done.
@@ -210,6 +256,11 @@ function activity(habit) {
       'activity');
 }
 
+/**
+ * Builds the heatmap of the year shown.
+ * @param {!Habit} habit
+ * @return {!HTMLElement}
+ */
 function heatmap(habit) {
   const year = shownYear;
   return el(
@@ -229,6 +280,8 @@ function heatmap(habit) {
 /**
  * Builds the arrows to the year before and after the one shown, from the
  * first year of the habit's history to the current one.
+ * @param {!Habit} habit
+ * @return {!HTMLElement}
  */
 function yearNav(habit) {
   const [first, last] = yearRange(habit);
@@ -252,6 +305,12 @@ function yearNav(habit) {
   );
 }
 
+/**
+ * Builds the square of a day in the heatmap.
+ * @param {!Habit} habit
+ * @param {string} iso
+ * @return {!HTMLElement}
+ */
 function heatCell(habit, iso) {
   const {value} = habitHelpers.entryOn(habit, iso);
   const ahead = iso > state.today;
@@ -287,7 +346,13 @@ function heatCell(habit, iso) {
   });
 }
 
-/** Describes a day of the heatmap. Future days only show planned values. */
+/**
+ * Describes a day of the heatmap. Future days only show planned values.
+ * @param {!Habit} habit
+ * @param {string} iso
+ * @param {number} value
+ * @return {string}
+ */
 function heatStatus(habit, iso, value) {
   if (habitHelpers.isSkipped(habit, iso)) return t('skipped');
   const vars = {
@@ -310,6 +375,11 @@ function heatStatus(habit, iso, value) {
                                                 t('not scheduled');
 }
 
+/**
+ * Builds the legend of the heatmap.
+ * @param {string} year
+ * @return {!HTMLElement}
+ */
 function legend(year) {
   const from = formatDayMonth(`${year}-01-01`);
   // The grid covers the whole year.
@@ -329,6 +399,7 @@ function legend(year) {
 /**
  * Chart granularities, each covering the year to date. `barMin` is the minimum
  * bar width before the chart scrolls; `every` is the label interval.
+ * @const {!Object<string, {label: string, barMin: string, every: number}>}
  */
 const GRAINS = {
   day: {label: t('Day'), barMin: '9px', every: 7},
@@ -343,6 +414,8 @@ let grain = 'month';
  * Builds the cumulative chart: each bar is the running total at the end of its
  * day, week or month, with the period's own sum highlighted at the top. The
  * server sums the values (GET /api/habits/{id}/totals).
+ * @param {!Habit} habit
+ * @return {!HTMLElement}
  */
 function cumulative(habit) {
   return el(
@@ -353,6 +426,7 @@ function cumulative(habit) {
 /**
  * Rebuilds the chart of the habit shown, e.g. once its totals have arrived,
  * keeping the heatmap's scroll position.
+ * @param {string} id
  */
 function redrawCumulative(id) {
   const panel = root.querySelector('.cum-panel');
@@ -365,13 +439,18 @@ function redrawCumulative(id) {
 /**
  * Scrolls a chart to its end (today). Must be called after the panel has been
  * inserted into the document.
+ * @param {!Element} panel
  */
 function showNewest(panel) {
   const scroller = panel.querySelector('.cum-scroll');
   if (scroller) scroller.scrollLeft = scroller.scrollWidth;
 }
 
-/** Builds the chart heading with the day/week/month switch. */
+/**
+ * Builds the chart heading with the day/week/month switch.
+ * @param {!Habit} habit
+ * @return {!HTMLElement}
+ */
 function grainHead(habit) {
   const choices = Object.entries(GRAINS).map(([key, {label}]) => {
     const input = el(
@@ -396,6 +475,12 @@ function grainHead(habit) {
   );
 }
 
+/**
+ * Builds the chart's content from the loaded totals; empty until they have
+ * arrived.
+ * @param {!Habit} habit
+ * @return {!HTMLElement}
+ */
 function cumulativeBody(habit) {
   // The year shown, to today in the current year.
   const year = shownYear;
@@ -426,6 +511,15 @@ function cumulativeBody(habit) {
   );
 }
 
+/**
+ * Builds the line above the chart: the total, the average per active day and
+ * the best day.
+ * @param {!Habit} habit
+ * @param {{buckets: !Array<{start: string, sum: number, cumulative: number}>,
+ *     total: number, best: number, activeDays: number}} summary
+ * @param {string} scopeIn the time the total covers, e.g. "in 2026"
+ * @return {!HTMLElement}
+ */
 function cumulativeSummary(habit, {total, best, activeDays}, scopeIn) {
   // Average per day with an entry.
   const average = Math.round(total / activeDays);
@@ -441,6 +535,13 @@ function cumulativeSummary(habit, {total, best, activeDays}, scopeIn) {
   );
 }
 
+/**
+ * Builds the bars of the chart with their labels.
+ * @param {!Habit} habit
+ * @param {{buckets: !Array<{start: string, sum: number, cumulative: number}>,
+ *     total: number, best: number, activeDays: number}} summary
+ * @return {!HTMLElement}
+ */
 function cumulativeChart(habit, {buckets, total}) {
   return el(
       'div',
@@ -472,16 +573,19 @@ function cumulativeChart(habit, {buckets, total}) {
 /**
  * Builds the bar of a bucket: its height is the running total, the period's
  * own sum is highlighted at its top.
+ * @param {!Habit} habit
+ * @param {{start: string, sum: number, cumulative: number}} bucket
+ * @param {number} total
+ * @return {!HTMLElement}
  */
 function cumulativeColumn(habit, {start, sum, cumulative: running}, total) {
   // Shown by the shared tooltip.
   const tip = bucketName(start);
-  const status = sum > 0 ? t('{total} · of that +{sum}', {
-    total: habitHelpers.formatTotal(habit, running),
-    sum: habitHelpers.formatTotal(habit, sum),
-  }) :
-                           t('{total} · nothing added',
-                             {total: habitHelpers.formatTotal(habit, running)});
+  const runningTotal = habitHelpers.formatTotal(habit, running);
+  const status = sum > 0 ?
+      t('{total} · of that +{sum}',
+        {total: runningTotal, sum: habitHelpers.formatTotal(habit, sum)}) :
+      t('{total} · nothing added', {total: runningTotal});
 
   return el(
       'div',
@@ -507,7 +611,11 @@ function cumulativeColumn(habit, {start, sum, cumulative: running}, total) {
   );
 }
 
-/** Returns the tooltip label of a bucket. */
+/**
+ * Returns the tooltip label of a bucket.
+ * @param {string} start
+ * @return {string}
+ */
 function bucketName(start) {
   if (grain === 'month') {
     return t('End of {month}', {month: MONTH_LONG[monthIndex(start)]});
@@ -521,6 +629,8 @@ function bucketName(start) {
 /**
  * Builds the labels below the bars. For fine granularities only every n-th
  * bucket is labelled.
+ * @param {!Array<{start: string}>} buckets
+ * @return {!HTMLElement}
  */
 function bucketLabels(buckets) {
   const {every} = GRAINS[grain];

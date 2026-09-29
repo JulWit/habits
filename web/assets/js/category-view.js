@@ -13,9 +13,18 @@ import {changedItem, createdItem, factItem, factsPanel, rateLabel, statRow} from
 import {categoryById, state} from './state.js';
 import {currentYear, sinceLabel} from './year-grid.js';
 
+/** @type {!HTMLElement} */
 let root;
+/**
+ * The handlers of app.js.
+ * @type {!Object<string, !Function>}
+ */
 let actions;
 
+/**
+ * Initialises the category view.
+ * @param {!Object<string, !Function>} handlers the handlers of app.js
+ */
 export function initCategory(handlers) {
   actions = handlers;
   root = document.getElementById('category-view');
@@ -40,6 +49,10 @@ export function initCategory(handlers) {
   });
 }
 
+/**
+ * Renders the category view.
+ * @param {?Category} category
+ */
 export function renderCategory(category) {
   if (!root || !category) return;
   root.dataset.category = category.id;
@@ -54,7 +67,11 @@ export function renderCategory(category) {
   );
 }
 
-/** Returns the category's habits in board order. */
+/**
+ * Returns the category's habits in board order.
+ * @param {string} id
+ * @return {!Array<!Habit>}
+ */
 function habitsOf(id) {
   return state.habits.filter((h) => h.categoryId === id && !h.archivedAt);
 }
@@ -62,6 +79,8 @@ function habitsOf(id) {
 /**
  * The view's title bar: back, name, edit, and delete in the menu. The habit
  * count is a stat tile; other details are in the details panel.
+ * @param {!Category} category
+ * @return {!HTMLElement}
  */
 function header(category) {
   return appBar({
@@ -74,6 +93,8 @@ function header(category) {
 /**
  * Builds the stat tiles from the server's day statistics of the category's
  * habits this year (GET /api/days?category=); dashes until they have arrived.
+ * @param {!Category} category
+ * @return {!HTMLElement}
  */
 function stats(category) {
   const year = currentYear();
@@ -114,7 +135,11 @@ function stats(category) {
   ]);
 }
 
-/** Shows whether the category's progress is shown on the board. */
+/**
+ * Shows whether the category's progress is shown on the board.
+ * @param {!Category} category
+ * @return {!HTMLElement}
+ */
 function details(category) {
   return factsPanel(
       t('Details'),
@@ -123,7 +148,11 @@ function details(category) {
           category.showProgress ? t('Shown on the board') : t('Not shown'))]);
 }
 
-/** Shows when the category was created and last changed, as for a habit. */
+/**
+ * Shows when the category was created and last changed, as for a habit.
+ * @param {!Category} category
+ * @return {!HTMLElement}
+ */
 function activity(category) {
   return factsPanel(
       t('Activity'),
@@ -134,6 +163,11 @@ function activity(category) {
       'activity');
 }
 
+/**
+ * Builds the list of the category's habits.
+ * @param {!Array<!Habit>} habits
+ * @return {!HTMLElement}
+ */
 function habitList(habits) {
   return el(
       'section',
@@ -145,7 +179,11 @@ function habitList(habits) {
   );
 }
 
-/** Builds the entry of a habit in the list, a button that opens the habit. */
+/**
+ * Builds the entry of a habit in the list, a button that opens the habit.
+ * @param {!Habit} habit
+ * @return {!HTMLElement}
+ */
 function habitItem(habit) {
   return el(
       'button',
@@ -167,7 +205,11 @@ function habitItem(habit) {
   );
 }
 
-/** Formats the current streak shortly: "1 day", "5 days", "3 wk", "2 mo". */
+/**
+ * Formats the current streak shortly: "1 day", "5 days", "3 wk", "2 mo".
+ * @param {{currentStreak: number, streakUnit: string}} stats
+ * @return {string}
+ */
 function shortStreak({currentStreak, streakUnit}) {
   // Singular/plural for days; "wk" and "mo" need no plural.
   let unit = currentStreak === 1 ? t('day') : t('days');

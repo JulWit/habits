@@ -11,38 +11,75 @@ import {factItem} from './stat-panels.js';
 import {archivedCount, replaceState, state, subscribe} from './state.js';
 import {errorText, toast} from './undo.js';
 
+/** @type {!HTMLDialogElement} */
 let dialog;
+/** @type {!Array<!HTMLInputElement>} */
 let themeInputs;
+/** @type {!HTMLSelectElement} */
 let fontSelect;
+/** @type {!Array<!HTMLInputElement>} */
 let densityInputs;
+/** @type {!HTMLSelectElement} */
 let patternSelect;
+/** @type {!HTMLSelectElement} */
 let rateWindowSelect;
+/** @type {!HTMLElement} */
 let bandChoices;
+/** @type {!HTMLInputElement} */
 let bandOpacity;
+/** @type {!HTMLOutputElement} */
 let bandOpacityOut;
+/** @type {!HTMLInputElement} */
 let bandFillOpacity;
+/** @type {!HTMLOutputElement} */
 let bandFillOpacityOut;
+/** @type {!HTMLInputElement} */
 let showBandInput;
+/** @type {!Array<!HTMLInputElement>} */
 let reorderInputs;
+/** @type {!HTMLElement} */
 let reorderHint;
+/** @type {!Array<!HTMLInputElement>} */
 let dayInputs;
+/** @type {!HTMLElement} */
 let daysHint;
+/** @type {!HTMLInputElement} */
 let archivedInput;
+/** @type {!HTMLInputElement} */
 let alignInput;
+/** @type {!HTMLElement} */
 let alignHint;
+/** @type {!HTMLElement} */
 let archiveItem;
+/** @type {!HTMLElement} */
 let archiveHint;
+/** @type {!HTMLElement} */
 let errorBox;
+/** @type {!HTMLSelectElement} */
 let languageSelect;
+/** @type {!HTMLSelectElement} */
 let timeZoneSelect;
+/** @type {!HTMLElement} */
 let timeZoneHint;
+/** @type {!HTMLButtonElement} */
 let timeZoneDevice;
 
-/** Returns the number of day columns actually shown. Set by app.js. */
+/**
+ * Returns the number of day columns actually shown. Set by app.js.
+ * @type {function(): number}
+ */
 let effectiveDays;
-/** Reloads the state from the server. Set by app.js. */
+/**
+ * Reloads the state from the server. Set by app.js.
+ * @type {function(): !Promise<void>}
+ */
 let reload;
 
+/**
+ * Initialises the settings page.
+ * @param {{effectiveDays: function(): number, reload: function():
+ *     !Promise<void>, skipDays: function(?string): void}} handlers
+ */
 export function initSettings(handlers) {
   effectiveDays = handlers.effectiveDays;
   reload = handlers.reload;
@@ -149,6 +186,9 @@ export function initSettings(handlers) {
   subscribe(paint);
 }
 
+/**
+ * Shows the current settings in the controls.
+ */
 function paint() {
   // Before the state is loaded, there is nothing to show.
   if (!dialog || !state.user) return;
@@ -242,7 +282,11 @@ function paintAccount() {
   groupsEl.hidden = groups.length === 0;
 }
 
-/** Up to two initials: first and last word, or the first letter alone. */
+/**
+ * Up to two initials: first and last word, or the first letter alone.
+ * @param {string} name
+ * @return {string}
+ */
 function initials(name) {
   const words = name.split(/[\s._@-]+/).filter(Boolean);
   const letters =
@@ -274,7 +318,11 @@ function paintVersion() {
           ...facts.map(([label, value]) => factItem(label, value)));
 }
 
-/** Formats the RFC 3339 build time in the user's language, or "Unknown". */
+/**
+ * Formats the RFC 3339 build time in the user's language, or "Unknown".
+ * @param {string} time
+ * @return {string}
+ */
 function formatBuildTime(time) {
   const date = time ? new Date(time) : null;
   if (!date || Number.isNaN(date.getTime())) return t('Unknown');
@@ -336,7 +384,11 @@ function initTransfer() {
   });
 }
 
-/** Describes the result of an import. */
+/**
+ * Describes the result of an import.
+ * @param {{habits: number, categories: number, skipped: number}} result
+ * @return {string}
+ */
 function importSummary({habits, categories, skipped}) {
   const parts = [
     habits === 1 ? t('1 habit imported.') :
@@ -382,7 +434,11 @@ function initDeleteAll() {
   });
 }
 
-/** Offers `text` as a JSON file to save. */
+/**
+ * Offers `text` as a JSON file to save.
+ * @param {string} name
+ * @param {string} text
+ */
 function download(name, text) {
   const url = URL.createObjectURL(new Blob([text], {type: 'application/json'}));
   const link = document.createElement('a');
@@ -397,7 +453,10 @@ function download(name, text) {
 
 // ---------- region & language ----------
 
-/** Returns the browser's time zone, or "". */
+/**
+ * Returns the browser's time zone, or "".
+ * @return {string}
+ */
 function deviceTimeZone() {
   try {
     return Intl.DateTimeFormat().resolvedOptions().timeZone ?? '';
@@ -409,6 +468,7 @@ function deviceTimeZone() {
 /**
  * Returns all time zones known to the browser, or a short fallback list for
  * browsers without Intl.supportedValuesOf.
+ * @return {!Array<string>}
  */
 function knownTimeZones() {
   try {
@@ -446,6 +506,9 @@ function buildTimeZoneOptions() {
   }
 }
 
+/**
+ * Shows the language and time zone settings.
+ */
 function paintRegion() {
   languageSelect.value = state.settings.language;
 
@@ -473,7 +536,10 @@ function paintRegion() {
       t('Use this device\'s time zone ({zone})', {zone: device});
 }
 
-/** Returns the time zone hint, including the current time there. */
+/**
+ * Returns the time zone hint, including the current time there.
+ * @return {string}
+ */
 function timeZoneText() {
   let now = '';
   try {
@@ -486,15 +552,25 @@ function timeZoneText() {
   return now ? `${lead} ${t('It is {time} there now.', {time: now})}` : lead;
 }
 
-/** Saves the time zone and reloads the state, as it changes "today". */
+/**
+ * Saves the time zone and reloads the state, as it changes "today".
+ * @param {string} zone
+ * @return {!Promise<void>}
+ */
 async function saveTimeZone(zone) {
   if (await saveSetting({timeZone: zone})) await reload();
 }
 
-/** Band colour for a grey today band, as store.NeutralBand. */
+/**
+ * Band colour for a grey today band, as store.NeutralBand.
+ * @const {string}
+ */
 const NEUTRAL_BAND = 'neutral';
 
-/** Builds the band colour choices: neutral, followed by the habit palette. */
+/**
+ * Builds the band colour choices: neutral, followed by the habit palette.
+ * @param {string} chosen
+ */
 function paintBandChoices(chosen) {
   const wanted = [NEUTRAL_BAND, ...state.colors];
   if (bandChoices.childElementCount !== wanted.length) {
@@ -522,6 +598,8 @@ function paintBandChoices(chosen) {
  * Saves settings. The state is updated immediately via replaceState and
  * restored if the server rejects the change. Resolves to whether the change
  * was saved.
+ * @param {!Object<string, *>} patch
+ * @return {!Promise<boolean>}
  */
 async function saveSetting(patch) {
   const before = {...state.settings};
@@ -538,7 +616,11 @@ async function saveSetting(patch) {
   }
 }
 
-/** Shows a slider's value, in percent, next to it. */
+/**
+ * Shows a slider's value, in percent, next to it.
+ * @param {!HTMLOutputElement} out
+ * @param {number|string} value
+ */
 function showPercent(out, value) {
   out.textContent = `${value}%`;
 }
@@ -547,6 +629,10 @@ function showPercent(out, value) {
  * Wires a percent slider: while it moves, it shows its value in `out` and
  * previews it through the custom property `cssVar`; on release, it saves the
  * value as the setting `key`.
+ * @param {!HTMLInputElement} slider
+ * @param {!HTMLOutputElement} out
+ * @param {string} key
+ * @param {string} cssVar
  */
 function bindSlider(slider, out, key, cssVar) {
   slider.addEventListener('input', () => {
@@ -557,7 +643,10 @@ function bindSlider(slider, out, key, cssVar) {
       'change', () => saveSetting({[key]: Number(slider.value)}));
 }
 
-/** Shows an error in the open settings page, since pages cover the toasts. */
+/**
+ * Shows an error in the open settings page, since pages cover the toasts.
+ * @param {string} message
+ */
 function report(message) {
   const page = topPage();
   if (page?.id.startsWith('settings-')) {

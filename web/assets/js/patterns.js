@@ -8,7 +8,25 @@ import {habitIcons} from './icons.js';
 
 const INK = 'color="#808080" fill="#808080" opacity=".12"';
 
+/**
+ * Returns an SVG image as a CSS url() value.
+ * @param {string} svg
+ * @return {string}
+ */
 const url = (svg) => `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
+
+/**
+ * Returns an SVG tile of the given size with `shapes` drawn in INK.
+ * @param {number} width
+ * @param {number} height
+ * @param {string} shapes
+ * @return {string}
+ */
+function tile(width, height, shapes) {
+  const size = `width="${width}" height="${height}"`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" ${size}>` +
+      `<g ${INK}>${shapes}</g></svg>`;
+}
 
 // Icon grid: every habit icon at least once per tile, in rows of COLS, each
 // second row shifted by half a column. A last row not filled by the icons is
@@ -18,7 +36,10 @@ const STEP_X = 76;
 const STEP_Y = 66;
 const ICON = 22;
 
-/** Returns the icon tile and its size in pixels. */
+/**
+ * Returns the icon tile and its size in pixels.
+ * @return {{image: string, size: string}}
+ */
 function iconTile() {
   const names = Object.keys(habitIcons);
   // An even number of rows, so the shift continues across the tile edge.
@@ -38,9 +59,7 @@ function iconTile() {
     return x + ICON > width ? [place(name, x, y), place(name, x - width, y)] :
                               [place(name, x, y)];
   });
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${
-                  width}" height="${height}">` +
-      `<g ${INK}>${icons.join('')}</g></svg>`;
+  const svg = tile(width, height, icons.join(''));
   return {image: url(svg), size: `${width}px ${height}px`};
 }
 
@@ -50,6 +69,10 @@ const DOT_STEP = 16;
 const HALFTONE_TILE = 256;
 const DOT_MAX = 5.2;
 
+/**
+ * Returns the halftone tile and its size in pixels.
+ * @return {{image: string, size: string}}
+ */
 function halftoneTile() {
   const dots = [];
   for (let row = 0; row < HALFTONE_TILE / DOT_STEP; row++) {
@@ -68,13 +91,14 @@ function halftoneTile() {
       }
     }
   }
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${
-                  HALFTONE_TILE}" height="${HALFTONE_TILE}">` +
-      `<g ${INK}>${dots.join('')}</g></svg>`;
+  const svg = tile(HALFTONE_TILE, HALFTONE_TILE, dots.join(''));
   return {image: url(svg), size: `${HALFTONE_TILE}px ${HALFTONE_TILE}px`};
 }
 
-/** Sets the pattern images as custom properties on `root`. */
+/**
+ * Sets the pattern images as custom properties on `root`.
+ * @param {!HTMLElement} root
+ */
 export function definePatterns(root) {
   const icons = iconTile();
   root.style.setProperty('--pattern-icons', icons.image);

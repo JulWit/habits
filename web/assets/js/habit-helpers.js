@@ -7,7 +7,10 @@ import {daysBetween, WEEKDAY_SHORT} from './dates.js';
 import {locale, t} from './i18n.js';
 import {state} from './state.js';
 
-/** The statuses of domain.DayStatus. */
+/**
+ * The statuses of domain.DayStatus.
+ * @enum {string}
+ */
 const STATUS = {
   off: '-',
   offDone: '+',
@@ -20,6 +23,9 @@ const STATUS = {
 /**
  * Returns the server's status of the habit on `iso`. Days outside the sent
  * range count as not due.
+ * @param {!Habit} habit
+ * @param {string} iso
+ * @return {string}
  */
 export function statusOn(habit, iso) {
   if (!habit.days || !habit.daysFrom) return STATUS.off;
@@ -31,6 +37,9 @@ export function statusOn(habit, iso) {
  * Returns the schedule ({from, targetValue, targetType, frequency}) that
  * applies on `iso`, for describing the day. The first schedule also covers
  * the days before it.
+ * @param {!Habit} habit
+ * @param {string} iso
+ * @return {!Schedule}
  */
 export function scheduleOn(habit, iso) {
   const all = habit.schedules;
@@ -41,12 +50,21 @@ export function scheduleOn(habit, iso) {
   return all[0];
 }
 
-/** Returns the current schedule, the last one. */
+/**
+ * Returns the current schedule, the last one.
+ * @param {!Habit} habit
+ * @return {!Schedule}
+ */
 export function currentSchedule(habit) {
   return habit.schedules.at(-1);
 }
 
-/** Reports whether values can be recorded on `iso`: it is due or skipped. */
+/**
+ * Reports whether values can be recorded on `iso`: it is due or skipped.
+ * @param {!Habit} habit
+ * @param {string} iso
+ * @return {boolean}
+ */
 export function isScheduled(habit, iso) {
   const s = statusOn(habit, iso);
   return s !== STATUS.off && s !== STATUS.offDone;
@@ -55,6 +73,9 @@ export function isScheduled(habit, iso) {
 /**
  * Returns what is shown for `iso` ({value, skipped}): a write still waiting
  * for the server (isPending), or what the server sent.
+ * @param {!Habit} habit
+ * @param {string} iso
+ * @return {!Entry}
  */
 export function entryOn(habit, iso) {
   const pending = habit.pending?.[iso];
@@ -68,16 +89,29 @@ export function entryOn(habit, iso) {
 /**
  * Reports whether a write of `iso` waits for the server. Its status is not
  * known until the server answers.
+ * @param {!Habit} habit
+ * @param {string} iso
+ * @return {boolean}
  */
 export function isPending(habit, iso) {
   return habit.pending?.[iso] !== undefined;
 }
 
-/** Reports whether nothing is recorded in `entry`. */
+/**
+ * Reports whether nothing is recorded in `entry`.
+ * @param {!Entry} entry
+ * @return {boolean}
+ */
 export function isEmpty(entry) {
   return entry.value === 0 && !entry.skipped;
 }
 
+/**
+ * Reports whether the day is skipped.
+ * @param {!Habit} habit
+ * @param {string} iso
+ * @return {boolean}
+ */
 export function isSkipped(habit, iso) {
   return entryOn(habit, iso).skipped;
 }
@@ -85,30 +119,52 @@ export function isSkipped(habit, iso) {
 /**
  * Reports whether the habit is due on `iso` and the day is not skipped. These
  * are the days the day summary, the filter and the progress bars count.
+ * @param {!Habit} habit
+ * @param {string} iso
+ * @return {boolean}
  */
 export function isDue(habit, iso) {
   const s = statusOn(habit, iso);
   return s === STATUS.open || s === STATUS.done || s === STATUS.over;
 }
 
-/** Reports whether the day is complete: its value meets the target. */
+/**
+ * Reports whether the day is complete: its value meets the target.
+ * @param {!Habit} habit
+ * @param {string} iso
+ * @return {boolean}
+ */
 export function isDone(habit, iso) {
   const s = statusOn(habit, iso);
   return s === STATUS.done || s === STATUS.offDone;
 }
 
-/** Reports whether the day's value exceeds its limit. */
+/**
+ * Reports whether the day's value exceeds its limit.
+ * @param {!Habit} habit
+ * @param {string} iso
+ * @return {boolean}
+ */
 export function isOver(habit, iso) {
   return statusOn(habit, iso) === STATUS.over;
 }
 
-/** Reports whether the target on `iso` is a limit (at most). */
+/**
+ * Reports whether the target on `iso` is a limit (at most).
+ * @param {!Habit} habit
+ * @param {string} iso
+ * @return {boolean}
+ */
 export function isLimit(habit, iso) {
   return habit.kind !== 'check' &&
       scheduleOn(habit, iso).targetType === 'at_most';
 }
 
-/** Returns the server's description of a kind (domain.KindInfo). */
+/**
+ * Returns the server's description of a kind (domain.KindInfo).
+ * @param {string} kind
+ * @return {{scale: number, step: number, max: number, unit: string}}
+ */
 export function kindInfo(kind) {
   return state.kinds[kind];
 }
@@ -116,12 +172,19 @@ export function kindInfo(kind) {
 /**
  * Returns the number of stored units per displayed unit of a kind: 10 for
  * counts and minutes, 1000 for distances (metres), 1 otherwise.
+ * @param {string} kind
+ * @return {number}
  */
 export function scale(kind) {
   return kindInfo(kind).scale;
 }
 
-/** Formats a stored value in displayed units, with at most one decimal. */
+/**
+ * Formats a stored value in displayed units, with at most one decimal.
+ * @param {!Habit} habit
+ * @param {number} value
+ * @return {string}
+ */
 function written(habit, value) {
   return (value / scale(habit.kind)).toLocaleString(locale, {
     maximumFractionDigits: 1,
@@ -131,6 +194,9 @@ function written(habit, value) {
 /**
  * Returns the target that applies on `iso`, in stored units: the value to
  * reach, or for a limit the largest value that still meets it.
+ * @param {!Habit} habit
+ * @param {string} iso
+ * @return {number}
  */
 export function target(habit, iso) {
   return scheduleOn(habit, iso).targetValue;
@@ -139,6 +205,10 @@ export function target(habit, iso) {
 /**
  * Returns the progress towards the target of `iso`, 0…1, for drawing the
  * ring. For a limit it is the share of the limit used up.
+ * @param {!Habit} habit
+ * @param {string} iso
+ * @param {number} value
+ * @return {number}
  */
 export function progress(habit, iso, value) {
   const goal = target(habit, iso);
@@ -146,7 +216,11 @@ export function progress(habit, iso, value) {
   return Math.max(0, Math.min(1, (value || 0) / goal));
 }
 
-/** Returns the increment per tap, in stored units. */
+/**
+ * Returns the increment per tap, in stored units.
+ * @param {!Habit} habit
+ * @return {number}
+ */
 export function step(habit) {
   if (habit.stepValue > 0) return habit.stepValue;
   return kindInfo(habit.kind).step;
@@ -155,17 +229,29 @@ export function step(habit) {
 /**
  * Returns the value after a tap: toggles KindCheck, otherwise adds one step up
  * to the kind's maximum. Values may exceed the target.
+ * @param {!Habit} habit
+ * @param {number} current
+ * @return {number}
  */
 export function nextValue(habit, current) {
   if (habit.kind === 'check') return current > 0 ? 0 : 1;
   return Math.min((current || 0) + step(habit), maxValue(habit));
 }
 
+/**
+ * Returns the unit shown after a value: the kind's own or the habit's.
+ * @param {!Habit} habit
+ * @return {string}
+ */
 export function unitLabel(habit) {
   return kindInfo(habit.kind).unit || habit.unit || '';
 }
 
-/** Formats metres: "800 m", "5 km", "12.5 km". */
+/**
+ * Formats metres: "800 m", "5 km", "12.5 km".
+ * @param {number} metres
+ * @return {string}
+ */
 export function formatDistance(metres) {
   if (metres < 1000) return `${metres} m`;
   return `${(Math.round(metres / 100) / 10).toLocaleString(locale)} km`;
@@ -177,6 +263,9 @@ export function formatDistance(metres) {
  * minimum text size: longer values lose their decimal ("123,4" → "123"), and
  * from 1000 on minutes are shown in hours ("24h") and other values in
  * thousands ("1,5k"). The cell's label keeps the exact value.
+ * @param {!Habit} habit
+ * @param {number} value
+ * @return {string}
  */
 export function cellValue(habit, value) {
   const n =
@@ -189,12 +278,16 @@ export function cellValue(habit, value) {
   if (Math.round(n) < 1000) return String(Math.round(n));
   if (habit.kind === 'time') return `${Math.round(n / 60)}h`;
   const thousands = n / 1000;
-  return `${
-      thousands < 10 ? short(Math.round(thousands * 10) / 10) :
-                       Math.round(thousands)}k`;
+  if (thousands < 10) return `${short(Math.round(thousands * 10) / 10)}k`;
+  return `${Math.round(thousands)}k`;
 }
 
-/** Formats a day's value with its unit. */
+/**
+ * Formats a day's value with its unit.
+ * @param {!Habit} habit
+ * @param {number} value
+ * @return {string}
+ */
 export function formatValue(habit, value) {
   switch (habit.kind) {
     case 'distance':
@@ -213,6 +306,9 @@ export function formatValue(habit, value) {
 /**
  * Formats a total with its unit. Times of an hour or more include hours: "3 h
  * 45 min".
+ * @param {!Habit} habit
+ * @param {number} total
+ * @return {string}
  */
 export function formatTotal(habit, total) {
   const minutes = total / scale(habit.kind);
@@ -222,7 +318,11 @@ export function formatTotal(habit, total) {
   return `${Math.floor(minutes / 60)} h ${rest} min`;
 }
 
-/** Reports whether the habit's values can be summed. */
+/**
+ * Reports whether the habit's values can be summed.
+ * @param {!Habit} habit
+ * @return {boolean}
+ */
 export function isCountable(habit) {
   return habit.kind === 'count' || habit.kind === 'time' ||
       habit.kind === 'distance';
@@ -232,6 +332,9 @@ export function isCountable(habit) {
  * Formats the daily target of a schedule with its unit, by default of the
  * current one: "8 glasses", or for a limit "at most 2 cups" and "none";
  * "" for check habits.
+ * @param {!Habit} habit
+ * @param {!Schedule=} schedule
+ * @return {string}
  */
 export function describeTarget(habit, schedule = currentSchedule(habit)) {
   if (habit.kind === 'check') return '';
@@ -243,7 +346,11 @@ export function describeTarget(habit, schedule = currentSchedule(habit)) {
       'at most {value}', {value: formatValue(habit, schedule.targetValue)});
 }
 
-/** Describes a frequency, e.g. "daily" or "Mon, Wed". */
+/**
+ * Describes a frequency, e.g. "daily" or "Mon, Wed".
+ * @param {!Object} f
+ * @return {string}
+ */
 export function describeFrequency(f) {
   switch (f.kind) {
     case 'daily':
@@ -281,7 +388,11 @@ export function describeFrequency(f) {
   }
 }
 
-/** Returns the subtitle below a habit's name. */
+/**
+ * Returns the subtitle below a habit's name.
+ * @param {!Habit} habit
+ * @return {string}
+ */
 export function describeHabit(habit) {
   const parts = [];
   // Mark archived habits explicitly.
@@ -293,7 +404,11 @@ export function describeHabit(habit) {
   return parts.join(' · ');
 }
 
-/** Describes the current streak, e.g. "12-day streak" or "3-week streak". */
+/**
+ * Describes the current streak, e.g. "12-day streak" or "3-week streak".
+ * @param {!Habit} habit
+ * @return {string}
+ */
 export function describeStreak(habit) {
   const s = habit.stats;
   const n = s?.currentStreak ?? 0;
@@ -305,10 +420,15 @@ export function describeStreak(habit) {
 /**
  * Minimum run lengths in calendar days for streak levels 1 to 6: a week, two
  * weeks, a month, a quarter, half a year, a year.
+ * @const {!Array<number>}
  */
 export const STREAK_LEVELS = [7, 14, 30, 90, 180, 365];
 
-/** Returns the streak level 0…6 for a run of `days` calendar days. */
+/**
+ * Returns the streak level 0…6 for a run of `days` calendar days.
+ * @param {number} days
+ * @return {number}
+ */
 export function streakLevel(days) {
   let level = 0;
   for (const needed of STREAK_LEVELS) {
@@ -320,6 +440,9 @@ export function streakLevel(days) {
 /**
  * Returns the number of days the run containing `iso` had lasted on that day,
  * or 0 if `iso` is not part of a run.
+ * @param {!Habit} habit
+ * @param {string} iso
+ * @return {number}
  */
 export function streakDaysOn(habit, iso) {
   for (const run of habit.streakRuns ?? []) {
@@ -334,6 +457,10 @@ export function streakDaysOn(habit, iso) {
  * Returns the heat level 0…4 for the calendar heatmap: 4 for a complete day,
  * otherwise by the progress towards the target. A limit shows 1 once it is
  * exceeded.
+ * @param {!Habit} habit
+ * @param {string} iso
+ * @param {number} value
+ * @return {number}
  */
 export function heatLevel(habit, iso, value) {
   if (isDone(habit, iso)) return 4;
@@ -345,7 +472,11 @@ export function heatLevel(habit, iso, value) {
   return 1;
 }
 
-/** Returns the maximum value of a day, as enforced by the server. */
+/**
+ * Returns the maximum value of a day, as enforced by the server.
+ * @param {!Habit} habit
+ * @return {number}
+ */
 export function maxValue(habit) {
   return kindInfo(habit.kind).max;
 }

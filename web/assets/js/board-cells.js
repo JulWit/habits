@@ -7,13 +7,18 @@ import {t} from './i18n.js';
 import {colorValue, habitIconBadge, icons} from './icons.js';
 import {state} from './state.js';
 
-const CHECK_SVG =
-    '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5 10 17.5 19 7" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const CHECK_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true">' +
+    '<path d="M5 12.5 10 17.5 19 7" fill="none" stroke="currentColor"' +
+    ' stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
 /**
  * Builds a day in the header. `active` is the highlighted day (is-today), by
  * default today; the actual today keeps is-current. With `selectable`, the
  * cell is a button that makes its day the active one.
+ * @param {string} iso
+ * @param {{active: (string|undefined), selectable: (boolean|undefined)}=}
+ *     options
+ * @return {!HTMLElement}
  */
 export function dayCell(iso, {active = state.today, selectable = false} = {}) {
   return el(
@@ -39,6 +44,11 @@ export function dayCell(iso, {active = state.today, selectable = false} = {}) {
   );
 }
 
+/**
+ * Builds the label of a row: icon, name, streak and target; opens the habit.
+ * @param {!Habit} habit
+ * @return {!HTMLElement}
+ */
 export function habitLabel(habit) {
   const described = habitHelpers.describeHabit(habit);
   // The streak is always shown, even when it is 0.
@@ -68,6 +78,11 @@ export function habitLabel(habit) {
   );
 }
 
+/**
+ * Builds the streak count with its flame.
+ * @param {number} count
+ * @return {!HTMLElement}
+ */
 function streakBadge(count) {
   return el('span', {class: 'habit-streak'}, markup(icons.streak), count);
 }
@@ -76,6 +91,10 @@ function streakBadge(count) {
  * Builds a day cell of a row; `active` is the day of the band. The cell shows
  * the server's status of the day (habit-helpers.js); a write still waiting for
  * the server is shown with its value only.
+ * @param {!Habit} habit
+ * @param {string} iso
+ * @param {string=} active
+ * @return {!HTMLElement}
  */
 export function dayEntry(habit, iso, active = state.today) {
   const entry = habitHelpers.entryOn(habit, iso);
@@ -103,7 +122,15 @@ export function dayEntry(habit, iso, active = state.today) {
       dayMark(habit, iso, entry, {pending, done, scheduled, streakDays}));
 }
 
-/** Builds the mark inside a day cell: ring, check, value or skip icon. */
+/**
+ * Builds the mark inside a day cell: ring, check, value or skip icon.
+ * @param {!Habit} habit
+ * @param {string} iso
+ * @param {!Entry} entry
+ * @param {{pending: boolean, done: boolean, scheduled: boolean, streakDays:
+ *     number}} flags
+ * @return {!HTMLElement}
+ */
 function dayMark(habit, iso, entry, {pending, done, scheduled, streakDays}) {
   const {value} = entry;
   const mark = el('span', {
@@ -148,8 +175,12 @@ function dayMark(habit, iso, entry, {pending, done, scheduled, streakDays}) {
   return mark;
 }
 
-// Wraps the number in an element so it can be layered above the ring's
-// ::after with z-index.
+/**
+ * Wraps the number in an element so it can be layered above the ring's
+ * ::after with z-index.
+ * @param {string} text
+ * @return {!HTMLElement}
+ */
 function numberLabel(text) {
   // Tighter spacing for four characters ("12,5", "1,5k"); cellValue keeps
   // them short enough for the mark.
@@ -157,6 +188,15 @@ function numberLabel(text) {
       'span', {class: ['mark-value', text.length >= 4 && 'is-long']}, text);
 }
 
+/**
+ * Returns the label of a day cell for screen readers and the tooltip.
+ * @param {!Habit} habit
+ * @param {string} iso
+ * @param {!Entry} entry
+ * @param {{pending: boolean, done: boolean, scheduled: boolean, streakDays:
+ *     number}} flags
+ * @return {string}
+ */
 function cellLabel(habit, iso, entry, {pending, done, scheduled, streakDays}) {
   const when = formatRelative(iso, state.today);
   const status = pending ? pendingStatus(habit, entry) :
@@ -168,7 +208,12 @@ function cellLabel(habit, iso, entry, {pending, done, scheduled, streakDays}) {
   return `${habit.name}, ${when}: ${status}${run}`;
 }
 
-/** Describes a write that waits for the server. */
+/**
+ * Describes a write that waits for the server.
+ * @param {!Habit} habit
+ * @param {!Entry} entry
+ * @return {string}
+ */
 function pendingStatus(habit, {value, skipped}) {
   if (skipped) return t('skipped');
   if (value > 0) {
@@ -179,7 +224,15 @@ function pendingStatus(habit, {value, skipped}) {
   return t('cleared, not saved yet');
 }
 
-/** Describes a day's entry. Future days are announced as planned. */
+/**
+ * Describes a day's entry. Future days are announced as planned.
+ * @param {!Habit} habit
+ * @param {string} iso
+ * @param {!Entry} entry
+ * @param {boolean} done
+ * @param {boolean} scheduled
+ * @return {string}
+ */
 function cellStatus(habit, iso, {value, skipped}, done, scheduled) {
   if (skipped) return t('skipped');
   if (habitHelpers.isLimit(habit, iso)) {
@@ -202,7 +255,15 @@ function cellStatus(habit, iso, {value, skipped}, done, scheduled) {
   return scheduled ? t('open') : t('not scheduled');
 }
 
-/** Describes a day of a limit: within it, over it, or planned. */
+/**
+ * Describes a day of a limit: within it, over it, or planned.
+ * @param {!Habit} habit
+ * @param {string} iso
+ * @param {number} value
+ * @param {boolean} done
+ * @param {boolean} scheduled
+ * @return {string}
+ */
 function limitStatus(habit, iso, value, done, scheduled) {
   const vars = {
     value: habitHelpers.formatValue(habit, value),

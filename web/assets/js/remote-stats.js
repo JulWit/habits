@@ -7,7 +7,10 @@ import {isConnectionError} from './outbox.js';
 import {stateRevision} from './state.js';
 import {errorText, toast} from './undo.js';
 
-/** The loaded answers by key: {value, revision, loading}. */
+/**
+ * The loaded answers by key.
+ * @type {!Map<string, {value: *, revision: number, loading: boolean}>}
+ */
 const loaded = new Map();
 
 /**
@@ -15,6 +18,11 @@ const loaded = new Map();
  * arrived. Loads it with `fetch` if there is none yet or the state has changed
  * since, and calls `onLoad` once a new answer has arrived, for the view to
  * render again.
+ * @param {string} key
+ * @param {function(): !Promise<T>} fetch
+ * @param {function(): void} onLoad
+ * @return {T|undefined}
+ * @template T
  */
 export function remote(key, fetch, onLoad) {
   let entry = loaded.get(key);

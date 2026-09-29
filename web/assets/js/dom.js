@@ -16,6 +16,10 @@
  * Children are nodes or text; null, undefined, false and "" are left out, so
  * optional children can be passed as `cond && child`. Numbers, including 0,
  * are shown as text.
+ * @param {string} tag
+ * @param {!Object<string, *>=} props
+ * @param {...(?Node|string|number|boolean|undefined)} children
+ * @return {!HTMLElement}
  */
 export function el(tag, props = {}, ...children) {
   const node = document.createElement(tag);
@@ -44,6 +48,8 @@ export function el(tag, props = {}, ...children) {
 
 /**
  * Returns the entries of `object` whose value is neither null nor undefined.
+ * @param {!Object<string, *>} object
+ * @return {!Array<!Array<*>>}
  */
 function defined(object) {
   return Object.entries(object).filter(([, v]) => v != null);
@@ -52,6 +58,8 @@ function defined(object) {
 /**
  * Parses trusted markup, such as the icons in icons.js, into nodes that can be
  * passed as children to `el`. Never pass user input.
+ * @param {string} html
+ * @return {!DocumentFragment}
  */
 export function markup(html) {
   const template = document.createElement('template');

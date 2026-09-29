@@ -3,7 +3,10 @@
 
 const CACHE = 'habits-v8';
 
-// Files cached on install. Other files are cached on first use.
+/**
+ * Files cached on install. Other files are cached on first use.
+ * @const {!Array<string>}
+ */
 const SHELL = [
   '/',
   '/assets/js/app.js',

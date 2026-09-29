@@ -8,19 +8,46 @@ import {categoryIconBadge, colorValue, habitIconBadge} from './icons.js';
 import {closePage, openPage} from './page-stack.js';
 import {groupedHabits, subscribe} from './state.js';
 
+/**
+ * A search result: a habit with its category, or a category with its habits.
+ * @typedef {{
+ *   kind: string,
+ *   item: (!Habit|!Category),
+ *   category: (?Category|undefined),
+ *   habits: (!Array<!Habit>|undefined),
+ * }}
+ */
+let SearchEntry;
+
+/** @type {!HTMLDialogElement} */
 let dialog;
+/** @type {!HTMLInputElement} */
 let input;
+/** @type {!HTMLElement} */
 let list;
+/** @type {!HTMLElement} */
 let empty;
+/** @type {!HTMLButtonElement} */
 let clear;
 
-/** The displayed results and the index of the selected one. */
+/**
+ * The displayed results.
+ * @type {!Array<!SearchEntry>}
+ */
 let results = [];
+/** The index of the selected result. */
 let active = 0;
 
-/** Callbacks set by app.js. */
+/**
+ * Callbacks set by app.js.
+ * @type {!Object<string, !Function>}
+ */
 let deps;
 
+/**
+ * Initialises the search.
+ * @param {!Object<string, !Function>} handlers the handlers of app.js
+ */
 export function initSearch(handlers) {
   deps = handlers;
   dialog = document.getElementById('search-dialog');
@@ -71,6 +98,9 @@ export function initSearch(handlers) {
   });
 }
 
+/**
+ * Opens the search with an empty query.
+ */
 export function openSearch() {
   if (dialog.open) return;
   input.value = '';
@@ -81,7 +111,10 @@ export function openSearch() {
   input.focus();
 }
 
-/** Returns all searchable entries in board order. */
+/**
+ * Returns all searchable entries in board order.
+ * @return {!Array<!SearchEntry>}
+ */
 function candidates() {
   const out = [];
   for (const {category, habits} of groupedHabits()) {
@@ -93,6 +126,12 @@ function candidates() {
   return out;
 }
 
+/**
+ * Reports whether an entry matches the query, which is in lower case.
+ * @param {!SearchEntry} entry
+ * @param {string} query
+ * @return {boolean}
+ */
 function matches(entry, query) {
   if (query === '') return true;
   // Habits also match the name of their category.
@@ -102,6 +141,9 @@ function matches(entry, query) {
   return text.toLowerCase().includes(query);
 }
 
+/**
+ * Lists the results of the query.
+ */
 function draw() {
   const query = input.value.trim().toLowerCase();
   clear.hidden = input.value === '';
@@ -117,13 +159,15 @@ function draw() {
   mark();
 }
 
+/**
+ * Builds the option of a result.
+ * @param {!SearchEntry} entry
+ * @param {number} index
+ * @return {!HTMLElement}
+ */
 function option(entry, index) {
   const isHabit = entry.kind === 'habit';
-  const meta = isHabit ?
-      entry.category?.name ?? habitHelpers.describeHabit(entry.item) :
-      entry.habits.length === 1 ?
-      t('Category · 1 habit') :
-      t('Category · {n} habits', {n: entry.habits.length});
+  const meta = isHabit ? habitMeta(entry) : categoryMeta(entry);
 
   return el(
       'div',
@@ -142,7 +186,31 @@ function option(entry, index) {
   );
 }
 
-/** Returns the icon of a result, or a dot if it has none. */
+/**
+ * Returns the detail shown after a habit: its category, or without one its
+ * target.
+ * @param {!SearchEntry} entry
+ * @return {string}
+ */
+function habitMeta(entry) {
+  return entry.category?.name ?? habitHelpers.describeHabit(entry.item);
+}
+
+/**
+ * Returns the detail shown after a category: its number of habits.
+ * @param {!SearchEntry} entry
+ * @return {string}
+ */
+function categoryMeta(entry) {
+  const n = entry.habits.length;
+  return n === 1 ? t('Category · 1 habit') : t('Category · {n} habits', {n});
+}
+
+/**
+ * Returns the icon of a result, or a dot if it has none.
+ * @param {!SearchEntry} entry
+ * @return {!HTMLElement}
+ */
 function optionDot({kind, item}) {
   if (kind === 'habit') {
     return habitIconBadge(item, 'habit-icon is-small') ??
@@ -168,6 +236,10 @@ function mark() {
   }
 }
 
+/**
+ * Moves the selection with the arrow keys and chooses it with Enter.
+ * @param {!KeyboardEvent} event
+ */
 function onKey(event) {
   if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
     event.preventDefault();
@@ -181,6 +253,11 @@ function onKey(event) {
   }
 }
 
+/**
+ * Closes the search and opens the chosen habit or category.
+ * @param {!SearchEntry|undefined} entry
+ * @return {!Promise<void>}
+ */
 async function choose(entry) {
   if (!entry) return;
   // The view takes the search's place in the history once its entry is gone.

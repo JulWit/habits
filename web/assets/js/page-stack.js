@@ -11,22 +11,35 @@
 
 import {t} from './i18n.js';
 
-/** Open pages, bottom first. */
+/**
+ * Open pages, bottom first.
+ * @type {!Array<!HTMLDialogElement>}
+ */
 const stack = [];
 
 /**
  * History steps taken by closePage, which popstate must not handle again: the
  * function that resolves each one's promise.
+ * @type {!Array<function(): void>}
  */
 const ownPops = [];
 
-/** Pages whose close event is watched. */
+/**
+ * Pages whose close event is watched.
+ * @type {!WeakSet<!HTMLDialogElement>}
+ */
 const watched = new WeakSet();
 
-/** Guards by page: return true while the page has unsaved changes. */
+/**
+ * Guards by page: return true while the page has unsaved changes.
+ * @type {!WeakMap<!HTMLDialogElement, function(): boolean>}
+ */
 const guards = new WeakMap();
 
-/** Opens `dialog` as a page on top of the stack. */
+/**
+ * Opens `dialog` as a page on top of the stack.
+ * @param {!HTMLDialogElement} dialog
+ */
 export function openPage(dialog) {
   if (stack.includes(dialog)) return;
   if (!watched.has(dialog)) {
@@ -54,6 +67,8 @@ export function openPage(dialog) {
 /**
  * Registers `dirty`, which returns true while `dialog` has unsaved changes.
  * Closing the page then asks whether to discard them.
+ * @param {!HTMLDialogElement} dialog
+ * @param {function(): boolean} dirty
  */
 export function guardPage(dialog, dirty) {
   guards.set(dialog, dirty);
@@ -64,6 +79,9 @@ export function guardPage(dialog, dirty) {
  * unsaved changes, unless `force` is set (e.g. after saving). Resolves once
  * the history has gone back, so a view opened then is not removed by the step
  * back.
+ * @param {!HTMLDialogElement} dialog
+ * @param {{force: (boolean|undefined)}=} options
+ * @return {!Promise<void>}
  */
 export function closePage(dialog, {force = false} = {}) {
   const index = stack.indexOf(dialog);
@@ -83,21 +101,36 @@ export function closePage(dialog, {force = false} = {}) {
   return done;
 }
 
-/** The topmost open page, or null. */
+/**
+ * The topmost open page, or null.
+ * @return {?HTMLDialogElement}
+ */
 export function topPage() {
   return stack.at(-1) ?? null;
 }
 
+/**
+ * Reports whether `page` has unsaved changes.
+ * @param {!HTMLDialogElement} page
+ * @return {boolean}
+ */
 function isDirty(page) {
   return guards.get(page)?.() === true;
 }
 
-/** Asks whether to discard the changes; closes `page` if so. */
+/**
+ * Asks whether to discard the changes; closes `page` if so.
+ * @param {!HTMLDialogElement} page
+ * @return {!Promise<void>}
+ */
 async function askToDiscard(page) {
   if (await confirmDiscard()) closePage(page, {force: true});
 }
 
-/** Resolves to true if the user chooses to discard the changes. */
+/**
+ * Resolves to true if the user chooses to discard the changes.
+ * @return {!Promise<boolean>}
+ */
 function confirmDiscard() {
   const dialog = document.getElementById('discard-dialog');
   if (dialog.open) return Promise.resolve(false);
@@ -111,7 +144,10 @@ function confirmDiscard() {
   });
 }
 
-/** Closes the pages from `index` up, topmost first. */
+/**
+ * Closes the pages from `index` up, topmost first.
+ * @param {number} index
+ */
 function drop(index) {
   for (const page of stack.splice(index).reverse()) {
     if (page.open) page.close();

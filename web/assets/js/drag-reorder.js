@@ -6,25 +6,33 @@
 const THRESHOLD = 4;
 
 /**
- * Enables drag-and-drop reordering.
- * @param {object} options
- * @param {HTMLElement} options.container  the list
- * @param {string} options.item            selector of an entry
- * @param {string} options.handle          selector of the drag handle
- * @param {() => void} options.onStart     called when a drag starts
- * @param {string} options.key             dataset field holding an entry's ID
- * @param {(ids: string[]) => void} options.onDrop  called with the new order if
- *     it changed
- * @param {() => void} options.onCancel    called if the order did not change or
- *     the drag was aborted
+ * Enables drag-and-drop reordering of the entries of `container` that match
+ * the selector `item`, by their drag handles (the selector `handle`). `key`
+ * names the dataset field holding an entry's ID. `onStart` is called when a
+ * drag starts, `onDrop` with the new order if it changed, and `onCancel` if
+ * the order did not change or the drag was aborted.
+ * @param {{
+ *   container: !HTMLElement,
+ *   item: string,
+ *   handle: string,
+ *   key: string,
+ *   onStart: (function(): void|undefined),
+ *   onDrop: function(!Array<string>): void,
+ *   onCancel: (function(): void|undefined),
+ * }} options
  */
 export function enableDragReorder(
     {container, item, handle, key, onStart, onDrop, onCancel}) {
+  /**
+   * The drag in progress, from the press on a handle on.
+   * @type {?Object}
+   */
   let drag = null;
 
   /**
    * Returns the siblings of the dragged element, so that entries cannot be
    * moved between lists.
+   * @return {!Array<!HTMLElement>}
    */
   const items =
       () => [...(drag?.element.parentElement ?? container).children].filter(
@@ -88,7 +96,10 @@ export function enableDragReorder(
     finish(false);
   });
 
-  /** Moves the dragged element past every neighbour whose middle it crossed. */
+  /**
+   * Moves the dragged element past every neighbour whose middle it crossed.
+   * @param {number} dy the pointer's distance from where the drag started
+   */
   function crossNeighbours(dy) {
     const element = drag.element;
     const middle = centre(element);
@@ -103,6 +114,13 @@ export function enableDragReorder(
     }
   }
 
+  /**
+   * Moves the dragged element before or after `other`, keeping it under the
+   * pointer.
+   * @param {!Element} other
+   * @param {string} where before or after
+   * @param {number} dy
+   */
   function settle(other, where, dy) {
     const element = drag.element;
     const before = element.getBoundingClientRect().top;
@@ -117,12 +135,19 @@ export function enableDragReorder(
     element.style.transform = `translateY(${dy - jump}px)`;
   }
 
+  /**
+   * Puts the entries back in the order the drag started with.
+   */
   function restore() {
     for (const element of drag.order) {
       drag.list.append(element);
     }
   }
 
+  /**
+   * Ends the drag; reports the new order if `committed` and it changed.
+   * @param {boolean} committed
+   */
   function finish(committed) {
     const {element, grip, pointerId, active, order, list} = drag;
     if (grip.hasPointerCapture?.(pointerId)) {
@@ -149,6 +174,11 @@ export function enableDragReorder(
   }
 }
 
+/**
+ * Returns the vertical centre of an element on the screen.
+ * @param {!Element} element
+ * @return {number}
+ */
 const centre = (element) => {
   const box = element.getBoundingClientRect();
   return box.top + box.height / 2;

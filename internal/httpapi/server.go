@@ -305,18 +305,18 @@ type statusRecorder struct {
 }
 
 // WriteHeader records the status of the first call and passes it on.
-func (r *statusRecorder) WriteHeader(code int) {
-	if !r.written {
-		r.status, r.written = code, true
+func (rec *statusRecorder) WriteHeader(code int) {
+	if !rec.written {
+		rec.status, rec.written = code, true
 	}
-	r.ResponseWriter.WriteHeader(code)
+	rec.ResponseWriter.WriteHeader(code)
 }
 
 // Write passes b on; a body written first implies the status 200, which the
 // recorder keeps.
-func (r *statusRecorder) Write(b []byte) (int, error) {
-	r.written = true
-	return r.ResponseWriter.Write(b)
+func (rec *statusRecorder) Write(b []byte) (int, error) {
+	rec.written = true
+	return rec.ResponseWriter.Write(b)
 }
 
 // assetTypes are the content types of asset extensions that may be missing

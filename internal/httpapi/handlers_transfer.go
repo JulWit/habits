@@ -156,12 +156,15 @@ func exportHabitOf(h domain.Habit, entries map[domain.Date]domain.Entry) exportH
 // importProblem is an invalid habit or category of an import file, which
 // the answer names in the parameter param.
 type importProblem struct {
-	error
+	err         error
 	param, name string
 }
 
+// Error returns the message of the validation error.
+func (p importProblem) Error() string { return p.err.Error() }
+
 // Unwrap returns the validation error, so errors.Is and errors.As see it.
-func (p importProblem) Unwrap() error { return p.error }
+func (p importProblem) Unwrap() error { return p.err }
 
 // handleImport adds the habits and categories of an export file, with the
 // habits' schedules and entries. The import is one undo step.
@@ -196,7 +199,7 @@ func (s *server) handleImport(w http.ResponseWriter, r *http.Request, user auth.
 		return nil
 	})
 	if problem, ok := errors.AsType[importProblem](err); ok && errors.Is(err, domain.ErrValidation) {
-		s.writeImportProblem(w, problem.error, problem.param, problem.name)
+		s.writeImportProblem(w, problem.err, problem.param, problem.name)
 		return
 	}
 	if err != nil {
@@ -232,7 +235,7 @@ func importFile(ctx context.Context, tx *store.Tx, in exportFile) (importResult,
 		}
 		c := domain.Category{Name: ec.Name, Icon: ec.Icon, Color: ec.Color, ShowProgress: ec.ShowProgress}
 		if err := tx.CreateCategory(ctx, &c); err != nil {
-			return importResult{}, importProblem{error: err, param: "category", name: ec.Name}
+			return importResult{}, importProblem{err: err, param: "category", name: ec.Name}
 		}
 		catByName[nameKey(c.Name)] = c.ID
 		catByKey[ec.Key] = c.ID
@@ -249,7 +252,7 @@ func importFile(ctx context.Context, tx *store.Tx, in exportFile) (importResult,
 			continue
 		}
 		if err := importHabit(ctx, tx, eh, catByKey); err != nil {
-			return importResult{}, importProblem{error: err, param: "habit", name: eh.Name}
+			return importResult{}, importProblem{err: err, param: "habit", name: eh.Name}
 		}
 		taken[nameKey(eh.Name)] = true
 		result.Habits++

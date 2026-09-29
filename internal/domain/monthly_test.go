@@ -73,7 +73,7 @@ func TestScheduleRulesForLimitsAndMonths(t *testing.T) {
 		"never in the month": {KindCheck, Schedule{Frequency: Frequency{Kind: FreqTimesPerMonth}}, "times_per_month_range"},
 	} {
 		tc.s.From = friday
-		_, err := tc.s.normalised(tc.kind)
+		_, err := tc.s.normalized(tc.kind)
 		var p *Problem
 		if !errors.As(err, &p) || p.Code != tc.code {
 			t.Errorf("%s: %v, want %s", name, err, tc.code)
@@ -81,11 +81,11 @@ func TestScheduleRulesForLimitsAndMonths(t *testing.T) {
 	}
 
 	// A check habit has no limit, and a missing type is a plain target.
-	s, err := Schedule{From: friday, TargetValue: 5, TargetType: TargetAtMost, Frequency: daily}.normalised(KindCheck)
+	s, err := Schedule{From: friday, TargetValue: 5, TargetType: TargetAtMost, Frequency: daily}.normalized(KindCheck)
 	if err != nil || s.TargetType != TargetAtLeast || s.TargetValue != 1 {
 		t.Errorf("check: %+v, %v; want a plain target of 1", s, err)
 	}
-	s, err = Schedule{From: friday, TargetValue: 5, Frequency: daily}.normalised(KindCount)
+	s, err = Schedule{From: friday, TargetValue: 5, Frequency: daily}.normalized(KindCount)
 	if err != nil || s.TargetType != TargetAtLeast {
 		t.Errorf("no type: %+v, %v; want at_least", s, err)
 	}

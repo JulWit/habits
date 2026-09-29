@@ -19,7 +19,7 @@ func baseHabit() Habit {
 	}
 }
 
-func TestValidateNormalises(t *testing.T) {
+func TestValidateNormalizes(t *testing.T) {
 	h := baseHabit()
 	h.Name = "  Lesen  "
 	h.Color = "Green"

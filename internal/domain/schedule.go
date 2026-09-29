@@ -21,18 +21,18 @@ func (s Schedule) sameRules(o Schedule) bool {
 // without a target type has a plain target.
 func (s Schedule) isLimit() bool { return s.TargetType == TargetAtMost }
 
-// normalised validates s for a habit of kind k and returns it with only the
+// normalized validates s for a habit of kind k and returns it with only the
 // frequency fields its kind uses. A missing anchor defaults to From, a
 // missing target type to TargetAtLeast.
-func (s Schedule) normalised(k Kind) (Schedule, error) {
+func (s Schedule) normalized(k Kind) (Schedule, error) {
 	if s.From.IsZero() {
 		return Schedule{}, Invalid("schedule_start_missing", "a schedule needs a start day")
 	}
-	s, err := s.normalisedTarget(k)
+	s, err := s.normalizedTarget(k)
 	if err != nil {
 		return Schedule{}, err
 	}
-	if s.Frequency, err = s.normalisedFrequency(); err != nil {
+	if s.Frequency, err = s.normalizedFrequency(); err != nil {
 		return Schedule{}, err
 	}
 	// A limit is kept day by day: an empty day meets it, so counting days
@@ -43,10 +43,10 @@ func (s Schedule) normalised(k Kind) (Schedule, error) {
 	return s, nil
 }
 
-// normalisedTarget validates the target and its type and returns s with them
+// normalizedTarget validates the target and its type and returns s with them
 // normalised. A check habit always has the target 1; a limit may be 0 ("none
 // at all").
-func (s Schedule) normalisedTarget(k Kind) (Schedule, error) {
+func (s Schedule) normalizedTarget(k Kind) (Schedule, error) {
 	switch s.TargetType {
 	case "":
 		s.TargetType = TargetAtLeast
@@ -74,9 +74,9 @@ func (f Frequency) isPeriodic() bool {
 	return f.Kind == FreqTimesPerWeek || f.Kind == FreqTimesPerMonth
 }
 
-// normalisedFrequency validates the frequency and returns it with only the
+// normalizedFrequency validates the frequency and returns it with only the
 // fields its kind uses.
-func (s Schedule) normalisedFrequency() (Frequency, error) {
+func (s Schedule) normalizedFrequency() (Frequency, error) {
 	f := s.Frequency
 	switch f.Kind {
 	case FreqDaily:

@@ -184,14 +184,14 @@ func scanRow(rows *sql.Rows) (row, error) {
 	}
 	r := row{}
 	for i, c := range columns {
-		r[c] = normalise(values[i])
+		r[c] = normalize(values[i])
 	}
 	return r, nil
 }
 
-// normalise maps a value from the driver or from JSON to int64, string or
+// normalize maps a value from the driver or from JSON to int64, string or
 // nil, so that values compare alike from either source.
-func normalise(v any) any {
+func normalize(v any) any {
 	switch v := v.(type) {
 	case int:
 		return int64(v)
@@ -281,7 +281,7 @@ func changedColumns(a, b row) []string {
 		if slices.Contains(ignoredColumns, c) {
 			continue
 		}
-		if normalise(a[c]) != normalise(b[c]) {
+		if normalize(a[c]) != normalize(b[c]) {
 			out = append(out, c)
 		}
 	}
@@ -578,7 +578,7 @@ func (t *Tx) stepApplies(ctx context.Context, diff []rowChange, redo bool) (bool
 				if slices.Contains(ignoredColumns, c) {
 					continue
 				}
-				if normalise(cur[c]) != normalise(from[c]) {
+				if normalize(cur[c]) != normalize(from[c]) {
 					return false, nil
 				}
 			}
@@ -632,7 +632,7 @@ func (t *Tx) insertRow(ctx context.Context, table string, r row) error {
 	columns := slices.Sorted(maps.Keys(r))
 	args := make([]any, len(columns))
 	for i, c := range columns {
-		args[i] = normalise(r[c])
+		args[i] = normalize(r[c])
 	}
 	marks := strings.TrimSuffix(strings.Repeat("?,", len(columns)), ",")
 	_, err := t.exec(ctx, `INSERT INTO `+table+` (`+strings.Join(columns, ", ")+`) VALUES (`+marks+`)`, args...)
@@ -646,7 +646,7 @@ func (t *Tx) updateRow(ctx context.Context, table string, r row, columns []strin
 	var args []any
 	for _, c := range columns {
 		sets = append(sets, c+" = ?")
-		args = append(args, normalise(r[c]))
+		args = append(args, normalize(r[c]))
 	}
 	if _, ok := r["updated_at"]; ok {
 		sets = append(sets, "updated_at = ?")

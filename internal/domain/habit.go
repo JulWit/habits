@@ -296,7 +296,7 @@ func (h *Habit) Validate() error {
 		return Invalid("schedules_empty", "at least one schedule is required")
 	}
 	for i, s := range h.Schedules {
-		s, err := s.normalised(h.Kind)
+		s, err := s.normalized(h.Kind)
 		if err != nil {
 			return err
 		}
@@ -320,7 +320,7 @@ func (h *Habit) Current() Schedule { return h.Schedules[len(h.Schedules)-1] }
 // back to the previous schedule merges both.
 func (h *Habit) Reschedule(rules Schedule, day Date, retroactive bool) error {
 	rules.From = day
-	next, err := rules.normalised(h.Kind)
+	next, err := rules.normalized(h.Kind)
 	if err != nil {
 		return err
 	}

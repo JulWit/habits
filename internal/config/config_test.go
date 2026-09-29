@@ -32,16 +32,16 @@ func TestLoadDefaultsToSingleUser(t *testing.T) {
 		t.Errorf("AuthMode = %q, want single-user", cfg.AuthMode)
 	}
 	if cfg.Addr != ":8080" || cfg.DatabasePath != "habits.db" || cfg.DefaultUser != "local" {
-		t.Errorf("Defaults: %+v", cfg)
+		t.Errorf(`Addr, DatabasePath, DefaultUser = %q, %q, %q; want ":8080", "habits.db", "local"`, cfg.Addr, cfg.DatabasePath, cfg.DefaultUser)
 	}
 	if cfg.UserHeader != "Remote-User" {
-		t.Errorf("UserHeader = %q", cfg.UserHeader)
+		t.Errorf("UserHeader = %q, want Remote-User", cfg.UserHeader)
 	}
 	if cfg.Location == nil {
 		t.Error("Location is nil")
 	}
 	if cfg.UndoRetention <= 0 {
-		t.Errorf("UndoRetention = %v", cfg.UndoRetention)
+		t.Errorf("UndoRetention = %v, want > 0", cfg.UndoRetention)
 	}
 }
 
@@ -53,10 +53,10 @@ func TestBlankEnvFallsBackToTheDefault(t *testing.T) {
 		t.Fatalf("Load: %v", err)
 	}
 	if cfg.Addr != ":8080" {
-		t.Errorf("Addr = %q, want the default", cfg.Addr)
+		t.Errorf(`Addr = %q, want ":8080"`, cfg.Addr)
 	}
 	if cfg.DatabasePath != "data.db" {
-		t.Errorf("DatabasePath = %q, want trimmed", cfg.DatabasePath)
+		t.Errorf(`DatabasePath = %q, want "data.db"`, cfg.DatabasePath)
 	}
 }
 
@@ -82,7 +82,7 @@ func TestTrustedHeaderParsesTrustedProxies(t *testing.T) {
 		t.Fatalf("Load: %v", err)
 	}
 	if cfg.AuthMode != AuthModeTrustedHeader {
-		t.Errorf("AuthMode = %q", cfg.AuthMode)
+		t.Errorf("AuthMode = %q, want trusted-header", cfg.AuthMode)
 	}
 	if len(cfg.TrustedProxies) != 3 {
 		t.Fatalf("%d prefixes, want 3: %v", len(cfg.TrustedProxies), cfg.TrustedProxies)
@@ -134,6 +134,6 @@ func TestNamedTimezoneResolves(t *testing.T) {
 		t.Fatalf("Load: %v", err)
 	}
 	if cfg.Location.String() != "Europe/Berlin" {
-		t.Errorf("Location = %q", cfg.Location)
+		t.Errorf("Location = %q, want Europe/Berlin", cfg.Location)
 	}
 }

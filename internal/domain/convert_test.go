@@ -46,7 +46,7 @@ func TestConvertBetweenMeasuredKindsKeepsTheNumbers(t *testing.T) {
 	schedules, got := ConvertKind(h, valued(entries), KindDistance, 0)
 	// 6 glasses become 6 km, 3.5 become 3.5 km.
 	if got[friday].Value != 6000 || got[friday.AddDays(-1)].Value != 3500 {
-		t.Errorf("entries = %v", got)
+		t.Errorf("entries = %v, want 6000 on friday and 3500 the day before", got)
 	}
 	if schedules[0].TargetValue != 6000 {
 		t.Errorf("target = %d, want 6000", schedules[0].TargetValue)

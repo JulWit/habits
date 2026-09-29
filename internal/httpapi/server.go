@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"html/template"
 	"io/fs"
@@ -117,12 +118,18 @@ const contentSecurityPolicy = "default-src 'self'; " +
 func (s *Server) authenticate(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		user, err := auth.Resolve(s.cfg, r)
-		if err != nil {
+		var refused *auth.Error
+		if errors.As(err, &refused) {
 			s.log.Warn("authentication refused",
-				"reason", err.Reason,
+				"reason", refused.Reason,
 				"peer", r.RemoteAddr,
 				"path", r.URL.Path)
-			writeError(w, err.Status, err.Code, err.Message)
+			writeError(w, refused.Status, refused.Code, refused.Message)
+			return
+		}
+		if err != nil {
+			s.log.Error("authentication failed", "error", err, "path", r.URL.Path)
+			writeError(w, http.StatusInternalServerError, "internal", "Internal server error")
 			return
 		}
 		next.ServeHTTP(w, r.WithContext(auth.WithUser(r.Context(), user)))

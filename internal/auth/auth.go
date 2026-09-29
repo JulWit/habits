@@ -52,8 +52,8 @@ func (e *Error) Error() string { return e.Reason }
 
 // Resolve determines the user of r according to cfg.AuthMode. In
 // trusted-header mode, identity headers are accepted only from trusted
-// proxies.
-func Resolve(cfg config.Config, r *http.Request) (User, *Error) {
+// proxies. A rejected request yields an *Error.
+func Resolve(cfg config.Config, r *http.Request) (User, error) {
 	if cfg.AuthMode == config.AuthModeSingleUser {
 		return User{ID: cfg.DefaultUser, Name: cfg.DefaultUser}, nil
 	}

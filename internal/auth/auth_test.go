@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"net/netip"
@@ -40,7 +41,11 @@ func run(cfg config.Config, prepare func(*http.Request)) (status int, user User,
 	prepare(r)
 	user, err := Resolve(cfg, r)
 	if err != nil {
-		return err.Status, User{}, false
+		var refused *Error
+		if !errors.As(err, &refused) {
+			return http.StatusInternalServerError, User{}, false
+		}
+		return refused.Status, User{}, false
 	}
 	return http.StatusOK, user, true
 }

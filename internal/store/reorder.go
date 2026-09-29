@@ -13,7 +13,7 @@ import (
 func (t *Tx) reorder(table string, ids []string) error {
 	for i, id := range ids {
 		if slices.Contains(ids[:i], id) {
-			return domain.Invalid("order_duplicate", "The new order names the same entry twice.")
+			return domain.Invalid("order_duplicate", "the new order names the same entry twice")
 		}
 	}
 

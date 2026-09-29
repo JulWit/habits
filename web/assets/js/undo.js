@@ -97,13 +97,19 @@ function stepLabel(step) {
 export function errorText(err) {
   if (!err?.message) return t("Unknown error");
   const template = err.code ? errorTemplate(err.code) : undefined;
-  if (!template) return String(err.message);
+  // The server's messages are error strings, which start in lower case.
+  if (!template) return capitalize(String(err.message));
   const vars = {};
   for (const [name, value] of Object.entries(err.params ?? {})) {
     // Numbers are formatted for the locale, strings are translated.
     vars[name] = typeof value === "number" ? value.toLocaleString(locale) : t(String(value));
   }
   return t(template, vars);
+}
+
+/** Returns `text` with its first letter in upper case. */
+function capitalize(text) {
+  return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
 const DEFAULT_TIMEOUT = 7000;

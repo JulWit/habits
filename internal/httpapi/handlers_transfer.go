@@ -279,7 +279,7 @@ func importHabit(tx *store.Tx, eh exportHabit, catByKey map[string]string) error
 	for day, value := range eh.Entries {
 		d, err := domain.ParseDate(day)
 		if err != nil {
-			return domain.Invalid("invalid_date", "Invalid date, expected YYYY-MM-DD")
+			return domain.Invalid("invalid_date", "invalid date, expected YYYY-MM-DD")
 		}
 		entries[d] = domain.Entry{Value: value}
 	}

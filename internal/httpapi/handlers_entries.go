@@ -67,7 +67,7 @@ func checkEntryDay(h domain.Habit, date, today domain.Date, records bool) error 
 		return err
 	}
 	if records && !h.IsScheduled(date) {
-		return domain.Invalid("not_scheduled", "The habit is not scheduled on this day")
+		return domain.Invalid("not_scheduled", "the habit is not scheduled on this day")
 	}
 	return nil
 }
@@ -78,12 +78,12 @@ func checkEntryDay(h domain.Habit, date, today domain.Date, records bool) error 
 func checkEntryDate(date, today domain.Date, records bool) error {
 	switch {
 	case date.After(today.AddDays(domain.EntryHorizonDays)):
-		return domain.Invalid("entry_too_far_ahead", "Entries may be at most one year in the future")
+		return domain.Invalid("entry_too_far_ahead", "entries may be at most one year in the future")
 	case records && date.Before(domain.EarliestEntry):
 		// The year is passed as a string so the client does not format it as
 		// a number.
 		return domain.Invalid("entry_too_early",
-			"Entries may not be dated before {year}", "year", strconv.Itoa(domain.EarliestEntry.Year))
+			"entries may not be dated before {year}", "year", strconv.Itoa(domain.EarliestEntry.Year))
 	}
 	return nil
 }

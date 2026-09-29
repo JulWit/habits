@@ -48,7 +48,8 @@ the day and month names in `dates.js`.
 
 Use `domain.Invalid(code, template, params...)` and add an entry to
 `deErrors` in `i18n.js`; `TestEveryProblemCodeIsTranslated` checks that every
-code has one.
+code has one. The template is an error string: lower case and without a
+trailing full stop. The client capitalises it when it shows it.
 
 ## New setting
 

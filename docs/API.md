@@ -45,8 +45,10 @@ English message:
 ```
 
 The client translates by `code` (`deErrors` in `i18n.js`) and fills in
-`params`; without a translation it shows `detail`. A new validation error uses
-`domain.Invalid(code, template, params...)` and needs an entry in `deErrors`;
+`params`; without a translation it shows `detail` with its first letter in
+upper case. A new validation error uses `domain.Invalid(code, template,
+params...)` with a template in lower case and without a trailing full stop, as
+it is an error string, and needs an entry in `deErrors`;
 `TestEveryProblemCodeIsTranslated` checks that every code has one.
 
 ## `/api/state`

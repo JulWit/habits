@@ -293,11 +293,11 @@ func (h *Habit) Validate() error {
 		return Invalid("schedules_empty", "at least one schedule is required")
 	}
 	for i, s := range h.Schedules {
-		s, err := s.normalized(h.Kind)
+		normalized, err := s.normalized(h.Kind)
 		if err != nil {
 			return err
 		}
-		h.Schedules[i] = s
+		h.Schedules[i] = normalized
 		if i > 0 && !h.Schedules[i-1].From.Before(h.Schedules[i].From) {
 			return Invalid("schedules_unordered", "schedules must start on different days, oldest first")
 		}

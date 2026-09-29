@@ -356,9 +356,9 @@ func (h *Habit) ScheduleOn(d Date) Schedule {
 	return h.Schedules[0]
 }
 
-// ValidateEntryValue checks that a day's value lies between 0 and the kind's
+// validateEntryValue checks that a day's value lies between 0 and the kind's
 // MaxTarget.
-func ValidateEntryValue(k Kind, value int) error {
+func validateEntryValue(k Kind, value int) error {
 	if !k.Valid() {
 		return Invalid("unknown_kind", `unknown habit kind "{kind}"`, "kind", k)
 	}

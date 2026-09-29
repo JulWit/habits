@@ -278,13 +278,13 @@ func TestValidateEntryValue(t *testing.T) {
 		{KindDistance, -1, true},
 		{Kind("gewicht"), 1, true},
 	} {
-		err := ValidateEntryValue(tc.kind, tc.value)
+		err := validateEntryValue(tc.kind, tc.value)
 		if (err != nil) != tc.wantErr {
-			t.Errorf("ValidateEntryValue(%q, %d) = %v, wantErr %v",
+			t.Errorf("validateEntryValue(%q, %d) = %v, wantErr %v",
 				tc.kind, tc.value, err, tc.wantErr)
 		}
 		if err != nil && !errors.Is(err, ErrValidation) {
-			t.Errorf("ValidateEntryValue(%q, %d): not ErrValidation: %v", tc.kind, tc.value, err)
+			t.Errorf("validateEntryValue(%q, %d): not ErrValidation: %v", tc.kind, tc.value, err)
 		}
 	}
 }

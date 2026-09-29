@@ -16,7 +16,7 @@ func (e Entry) IsZero() bool { return e == Entry{} }
 // Validate returns a validation error if e is not a valid entry of a habit of
 // kind k.
 func (e Entry) Validate(k Kind) error {
-	if err := ValidateEntryValue(k, e.Value); err != nil {
+	if err := validateEntryValue(k, e.Value); err != nil {
 		return err
 	}
 	if e.Skipped && e.Value > 0 {

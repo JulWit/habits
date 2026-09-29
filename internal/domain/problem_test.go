@@ -16,10 +16,10 @@ func TestProblemFillsItsTemplate(t *testing.T) {
 		t.Errorf("Message() = %q, want %q", got, want)
 	}
 	if p.Template != "name is longer than {max} characters" {
-		t.Errorf("Template = %q", p.Template)
+		t.Errorf("Template = %q, want %q", p.Template, "name is longer than {max} characters")
 	}
 	if p.Code != "name_too_long" {
-		t.Errorf("Code = %q", p.Code)
+		t.Errorf("Code = %q, want %q", p.Code, "name_too_long")
 	}
 	if got, want := err.Error(), "validation error: name is longer than 80 characters"; got != want {
 		t.Errorf("Error() = %q, want %q", got, want)

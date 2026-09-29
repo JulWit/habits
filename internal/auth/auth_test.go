@@ -145,10 +145,10 @@ func TestOptionalHeadersAreCarriedThrough(t *testing.T) {
 		r.Header.Set("Remote-Groups", " admins , users ,, ")
 	})
 	if !reached {
-		t.Fatal("rejected")
+		t.Fatal("Resolve rejected a trusted peer with an identity, want it accepted")
 	}
 	if user.Name != "Alice Example" || user.Email != "alice@example.com" {
-		t.Errorf("Name/Email: %q / %q", user.Name, user.Email)
+		t.Errorf(`Name, Email = %q, %q; want "Alice Example", "alice@example.com"`, user.Name, user.Email)
 	}
 	if len(user.Groups) != 2 || user.Groups[0] != "admins" || user.Groups[1] != "users" {
 		t.Errorf("Groups = %#v, want [admins users] — empty entries are dropped", user.Groups)

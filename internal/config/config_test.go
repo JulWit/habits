@@ -38,7 +38,7 @@ func TestLoadDefaultsToSingleUser(t *testing.T) {
 		t.Errorf("UserHeader = %q, want Remote-User", cfg.UserHeader)
 	}
 	if cfg.Location == nil {
-		t.Error("Location is nil")
+		t.Error("Location = nil, want a time zone")
 	}
 	if cfg.UndoRetention <= 0 {
 		t.Errorf("UndoRetention = %v, want > 0", cfg.UndoRetention)
@@ -65,10 +65,10 @@ func TestTrustedHeaderRefusesToStartWithoutTrustedProxies(t *testing.T) {
 	withEnv(t, map[string]string{"HABITS_AUTH_MODE": "trusted-header"})
 	_, err := Load()
 	if err == nil {
-		t.Fatal("trusted-header without HABITS_TRUSTED_PROXIES was accepted")
+		t.Fatal("Load() = nil error in trusted-header mode without HABITS_TRUSTED_PROXIES, want an error")
 	}
 	if !strings.Contains(err.Error(), "HABITS_TRUSTED_PROXIES") {
-		t.Errorf("the error message does not name the variable: %v", err)
+		t.Errorf("Load() error = %v, want it to name HABITS_TRUSTED_PROXIES", err)
 	}
 }
 
@@ -92,7 +92,7 @@ func TestTrustedHeaderParsesTrustedProxies(t *testing.T) {
 		t.Errorf("first prefix = %v, want 127.0.0.1/32", got)
 	}
 	if !cfg.TrustedProxies[1].Contains(netip.MustParseAddr("172.18.5.9")) {
-		t.Errorf("172.18.0.0/16 does not cover 172.18.5.9")
+		t.Errorf("second prefix %v does not contain 172.18.5.9, want 172.18.0.0/16", cfg.TrustedProxies[1])
 	}
 }
 
@@ -117,10 +117,10 @@ func TestLoadRejects(t *testing.T) {
 			withEnv(t, tc.env)
 			_, err := Load()
 			if err == nil {
-				t.Fatal("was accepted")
+				t.Fatalf("Load() with %v = nil error, want an error", tc.env)
 			}
 			if !strings.Contains(err.Error(), tc.says) {
-				t.Errorf("message does not mention %q: %v", tc.says, err)
+				t.Errorf("Load() error = %v, want it to mention %q", err, tc.says)
 			}
 		})
 	}

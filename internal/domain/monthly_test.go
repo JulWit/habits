@@ -52,7 +52,7 @@ func TestMonthPeriod(t *testing.T) {
 		}
 	}
 	if got := monthPeriod.startOf(friday); got != (Date{2026, time.September, 1}) {
-		t.Errorf("startOf = %v", got)
+		t.Errorf("startOf(%v) = %v, want 2026-09-01", friday, got)
 	}
 }
 

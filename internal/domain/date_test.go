@@ -14,7 +14,7 @@ func TestParseDateRoundTrip(t *testing.T) {
 			continue
 		}
 		if d.String() != s {
-			t.Errorf("round trip: %q -> %q", s, d.String())
+			t.Errorf("ParseDate(%q).String() = %q, want %q", s, d.String(), s)
 		}
 	}
 }
@@ -25,7 +25,7 @@ func TestParseDateRejects(t *testing.T) {
 		"18.09.2026", "2026-9-8", "2026-09-8x", "+026-09-08", "heute",
 	} {
 		if _, err := ParseDate(s); err == nil {
-			t.Errorf("ParseDate(%q) was accepted", s)
+			t.Errorf("ParseDate(%q) = nil error, want an error", s)
 		}
 	}
 }
@@ -39,10 +39,10 @@ func TestDayArithmeticIgnoresDaylightSaving(t *testing.T) {
 	} {
 		next := around.AddDays(1)
 		if next.DaysSince(around) != 1 {
-			t.Errorf("%v -> %v is not one day", around, next)
+			t.Errorf("%v.DaysSince(%v) = %d, want 1", next, around, next.DaysSince(around))
 		}
 		if back := next.AddDays(-1); back != around {
-			t.Errorf("round trip across the changeover: %v != %v", back, around)
+			t.Errorf("%v.AddDays(-1) = %v, want %v", next, back, around)
 		}
 	}
 }
@@ -107,7 +107,7 @@ func TestDateJSON(t *testing.T) {
 		t.Fatalf("Marshal: %v", err)
 	}
 	if string(raw) != `{"d":"2026-09-18"}` {
-		t.Errorf("Marshal = %s", raw)
+		t.Errorf(`Marshal = %s, want {"d":"2026-09-18"}`, raw)
 	}
 
 	var back wrapper
@@ -115,7 +115,7 @@ func TestDateJSON(t *testing.T) {
 		t.Fatalf("Unmarshal: %v", err)
 	}
 	if back.D != (Date{2026, time.September, 18}) {
-		t.Errorf("Unmarshal = %v", back.D)
+		t.Errorf("Unmarshal = %v, want 2026-09-18", back.D)
 	}
 
 	// "" decodes to the zero Date.
@@ -127,7 +127,7 @@ func TestDateJSON(t *testing.T) {
 	}
 
 	if err := json.Unmarshal([]byte(`{"d":"not-a-date"}`), &back); err == nil {
-		t.Error("a broken date was accepted")
+		t.Error(`Unmarshal("not-a-date") = nil error, want an error`)
 	}
 }
 
@@ -207,6 +207,6 @@ func TestAddDaysAcrossMonths(t *testing.T) {
 func TestCompare(t *testing.T) {
 	a, b := Date{2025, time.December, 31}, Date{2026, time.January, 1}
 	if a.Compare(b) != -1 || b.Compare(a) != 1 || a.Compare(a) != 0 || !a.Before(b) || !b.After(a) {
-		t.Errorf("comparing %v and %v", a, b)
+		t.Errorf("Compare, Before, After of %v and %v disagree with their order: a.Compare(b) = %d, b.Compare(a) = %d, a.Compare(a) = %d; want -1, 1, 0", a, b, a.Compare(b), b.Compare(a), a.Compare(a))
 	}
 }

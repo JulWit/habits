@@ -292,10 +292,12 @@ func (h *Habit) Validate() error {
 	if len(h.Schedules) == 0 {
 		return Invalid("schedules_empty", "at least one schedule is required")
 	}
-	for i := range h.Schedules {
-		if err := h.Schedules[i].normalise(h.Kind); err != nil {
+	for i, s := range h.Schedules {
+		s, err := s.normalised(h.Kind)
+		if err != nil {
 			return err
 		}
+		h.Schedules[i] = s
 		if i > 0 && !h.Schedules[i-1].From.Before(h.Schedules[i].From) {
 			return Invalid("schedules_unordered", "schedules must start on different days, oldest first")
 		}
@@ -304,7 +306,7 @@ func (h *Habit) Validate() error {
 }
 
 // Current returns the current schedule, the last one.
-func (h Habit) Current() Schedule { return h.Schedules[len(h.Schedules)-1] }
+func (h *Habit) Current() Schedule { return h.Schedules[len(h.Schedules)-1] }
 
 // Reschedule makes the target, target type and frequency of rules the habit's
 // schedule from day on; rules.From is ignored. Earlier days keep the schedule
@@ -314,9 +316,9 @@ func (h Habit) Current() Schedule { return h.Schedules[len(h.Schedules)-1] }
 // Several changes on one day leave one schedule for that day, and changing
 // back to the previous schedule merges both.
 func (h *Habit) Reschedule(rules Schedule, day Date, retroactive bool) error {
-	next := rules
-	next.From = day
-	if err := next.normalise(h.Kind); err != nil {
+	rules.From = day
+	next, err := rules.normalised(h.Kind)
+	if err != nil {
 		return err
 	}
 	// A copy, so that other copies of the habit keep their history.
@@ -345,7 +347,7 @@ func (h *Habit) Reschedule(rules Schedule, day Date, retroactive bool) error {
 }
 
 // ScheduleOn returns the schedule that applies on d.
-func (h Habit) ScheduleOn(d Date) Schedule {
+func (h *Habit) ScheduleOn(d Date) Schedule {
 	for i := len(h.Schedules) - 1; i > 0; i-- {
 		if !d.Before(h.Schedules[i].From) {
 			return h.Schedules[i]
@@ -371,7 +373,7 @@ func ValidateEntryValue(k Kind, value int) error {
 
 // Target returns the target that applies on d: the value at which d counts
 // as completed, or for a limit the largest value that still does.
-func (h Habit) Target(d Date) int {
+func (h *Habit) Target(d Date) int {
 	if h.Kind == KindCheck {
 		return 1
 	}
@@ -384,7 +386,7 @@ func (h Habit) Target(d Date) int {
 
 // IsComplete reports whether value meets the target that applies on d:
 // reaches it, or for a limit stays within it.
-func (h Habit) IsComplete(d Date, value int) bool {
+func (h *Habit) IsComplete(d Date, value int) bool {
 	if h.ScheduleOn(d).isLimit() {
 		return value <= h.Target(d)
 	}
@@ -393,7 +395,7 @@ func (h Habit) IsComplete(d Date, value int) bool {
 
 // IsScheduled reports whether the habit is due on d, by the schedule that
 // applies on d. Values can only be recorded on scheduled days.
-func (h Habit) IsScheduled(d Date) bool { return h.ScheduleOn(d).IsScheduled(d) }
+func (h *Habit) IsScheduled(d Date) bool { return h.ScheduleOn(d).IsScheduled(d) }
 
 // Colors is the colour palette offered in the editor. Colours are stored as
 // these names; the client maps each to a CSS custom property (--c-red, …),

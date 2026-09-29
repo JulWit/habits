@@ -110,7 +110,8 @@ func TestNarrowedWeekdaysRoundTrip(t *testing.T) {
 		h := countHabit(domain.KindCheck, 1)
 		h.Schedules[0].Frequency = freq
 		h = mustCreateHabit(t, st, "alice", h)
-		if got := habitOf(t, st, "alice", h.ID).Current().Frequency; got != freq {
+		stored := habitOf(t, st, "alice", h.ID)
+		if got := stored.Current().Frequency; got != freq {
 			t.Errorf("frequency = %+v, want %+v", got, freq)
 		}
 	}

@@ -39,7 +39,8 @@ func TestMonthlyStreakCountsMonths(t *testing.T) {
 
 // Every day is due, and a month has its own number of days.
 func TestMonthPeriod(t *testing.T) {
-	if !monthlyHabit(3, longAgo).IsScheduled(friday) {
+	h := monthlyHabit(3, longAgo)
+	if !h.IsScheduled(friday) {
 		t.Error("a times-per-month habit is due every day")
 	}
 	for start, want := range map[Date]Date{
@@ -72,7 +73,7 @@ func TestScheduleRulesForLimitsAndMonths(t *testing.T) {
 		"never in the month": {KindCheck, Schedule{Frequency: Frequency{Kind: FreqTimesPerMonth}}, "times_per_month_range"},
 	} {
 		tc.s.From = friday
-		err := tc.s.normalise(tc.kind)
+		_, err := tc.s.normalised(tc.kind)
 		var p *Problem
 		if !errors.As(err, &p) || p.Code != tc.code {
 			t.Errorf("%s: %v, want %s", name, err, tc.code)
@@ -80,12 +81,12 @@ func TestScheduleRulesForLimitsAndMonths(t *testing.T) {
 	}
 
 	// A check habit has no limit, and a missing type is a plain target.
-	s := Schedule{From: friday, TargetValue: 5, TargetType: TargetAtMost, Frequency: daily}
-	if err := s.normalise(KindCheck); err != nil || s.TargetType != TargetAtLeast || s.TargetValue != 1 {
+	s, err := Schedule{From: friday, TargetValue: 5, TargetType: TargetAtMost, Frequency: daily}.normalised(KindCheck)
+	if err != nil || s.TargetType != TargetAtLeast || s.TargetValue != 1 {
 		t.Errorf("check: %+v, %v; want a plain target of 1", s, err)
 	}
-	s = Schedule{From: friday, TargetValue: 5, Frequency: daily}
-	if err := s.normalise(KindCount); err != nil || s.TargetType != TargetAtLeast {
+	s, err = Schedule{From: friday, TargetValue: 5, Frequency: daily}.normalised(KindCount)
+	if err != nil || s.TargetType != TargetAtLeast {
 		t.Errorf("no type: %+v, %v; want at_least", s, err)
 	}
 }

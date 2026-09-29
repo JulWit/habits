@@ -21,49 +21,51 @@ func (s Schedule) sameRules(o Schedule) bool {
 // without a target type has a plain target.
 func (s Schedule) isLimit() bool { return s.TargetType == TargetAtMost }
 
-// normalise validates s for a habit of kind k and keeps only the frequency
-// fields its kind uses. A missing anchor defaults to From, a missing target
-// type to TargetAtLeast.
-func (s *Schedule) normalise(k Kind) error {
+// normalised validates s for a habit of kind k and returns it with only the
+// frequency fields its kind uses. A missing anchor defaults to From, a
+// missing target type to TargetAtLeast.
+func (s Schedule) normalised(k Kind) (Schedule, error) {
 	if s.From.IsZero() {
-		return Invalid("schedule_start_missing", "a schedule needs a start day")
+		return Schedule{}, Invalid("schedule_start_missing", "a schedule needs a start day")
 	}
-	if err := s.normaliseTarget(k); err != nil {
-		return err
+	s, err := s.normalisedTarget(k)
+	if err != nil {
+		return Schedule{}, err
 	}
-	if err := s.normaliseFrequency(); err != nil {
-		return err
+	if s.Frequency, err = s.normalisedFrequency(); err != nil {
+		return Schedule{}, err
 	}
 	// A limit is kept day by day: an empty day meets it, so counting days
 	// per week or month would always be met.
 	if s.isLimit() && s.Frequency.isPeriodic() {
-		return Invalid("limit_needs_fixed_days", "a limit can only be kept on fixed days, not a number of times per week or month")
+		return Schedule{}, Invalid("limit_needs_fixed_days", "a limit can only be kept on fixed days, not a number of times per week or month")
 	}
-	return nil
+	return s, nil
 }
 
-// normaliseTarget validates the target and its type. A check habit always
-// has the target 1; a limit may be 0 ("none at all").
-func (s *Schedule) normaliseTarget(k Kind) error {
+// normalisedTarget validates the target and its type and returns s with them
+// normalised. A check habit always has the target 1; a limit may be 0 ("none
+// at all").
+func (s Schedule) normalisedTarget(k Kind) (Schedule, error) {
 	switch s.TargetType {
 	case "":
 		s.TargetType = TargetAtLeast
 	case TargetAtLeast, TargetAtMost:
 	default:
-		return Invalid("unknown_target_type", `unknown target type "{type}"`, "type", s.TargetType)
+		return Schedule{}, Invalid("unknown_target_type", `unknown target type "{type}"`, "type", s.TargetType)
 	}
 	if k == KindCheck {
 		s.TargetValue, s.TargetType = 1, TargetAtLeast
 	}
 	switch {
 	case s.TargetType == TargetAtMost && s.TargetValue < 0:
-		return Invalid("limit_negative", "a limit must not be negative")
+		return Schedule{}, Invalid("limit_negative", "a limit must not be negative")
 	case s.TargetType == TargetAtLeast && s.TargetValue < 1:
-		return targetTooSmall(k)
+		return Schedule{}, targetTooSmall(k)
 	case s.TargetValue > k.MaxTarget():
-		return targetTooLarge(k)
+		return Schedule{}, targetTooLarge(k)
 	}
-	return nil
+	return s, nil
 }
 
 // isPeriodic reports whether f counts completed days per week or month
@@ -72,73 +74,71 @@ func (f Frequency) isPeriodic() bool {
 	return f.Kind == FreqTimesPerWeek || f.Kind == FreqTimesPerMonth
 }
 
-// normaliseFrequency validates the frequency and keeps only the fields its
-// kind uses.
-func (s *Schedule) normaliseFrequency() error {
+// normalisedFrequency validates the frequency and returns it with only the
+// fields its kind uses.
+func (s Schedule) normalisedFrequency() (Frequency, error) {
 	f := s.Frequency
 	switch f.Kind {
 	case FreqDaily:
-		s.Frequency = Frequency{Kind: FreqDaily}
+		return Frequency{Kind: FreqDaily}, nil
 
 	case FreqTimesPerWeek:
 		if f.TimesPerWeek < 1 || f.TimesPerWeek > 7 {
-			return Invalid("times_per_week_range", "times per week must be between 1 and 7")
+			return Frequency{}, Invalid("times_per_week_range", "times per week must be between 1 and 7")
 		}
-		s.Frequency = Frequency{Kind: FreqTimesPerWeek, TimesPerWeek: f.TimesPerWeek}
+		return Frequency{Kind: FreqTimesPerWeek, TimesPerWeek: f.TimesPerWeek}, nil
 
 	case FreqTimesPerMonth:
 		// 28 fits every month, so the target never exceeds the month.
 		if f.TimesPerMonth < 1 || f.TimesPerMonth > 28 {
-			return Invalid("times_per_month_range", "times per month must be between 1 and 28")
+			return Frequency{}, Invalid("times_per_month_range", "times per month must be between 1 and 28")
 		}
-		s.Frequency = Frequency{Kind: FreqTimesPerMonth, TimesPerMonth: f.TimesPerMonth}
+		return Frequency{Kind: FreqTimesPerMonth, TimesPerMonth: f.TimesPerMonth}, nil
+
 	case FreqWeekdays:
 		if f.Weekdays == 0 {
-			return Invalid("weekday_missing", "at least one weekday must be selected")
+			return Frequency{}, Invalid("weekday_missing", "at least one weekday must be selected")
 		}
 		if f.Weekdays > 0b1111111 {
-			return Invalid("weekdays_invalid", "invalid weekday selection")
+			return Frequency{}, Invalid("weekdays_invalid", "invalid weekday selection")
 		}
 		// 0 means every week, for clients that do not send a week interval.
 		if f.WeekInterval == 0 {
 			f.WeekInterval = 1
 		}
 		if f.WeekInterval < 1 || f.WeekInterval > 52 {
-			return Invalid("week_interval_range", "week interval must be between 1 and 52 weeks")
+			return Frequency{}, Invalid("week_interval_range", "week interval must be between 1 and 52 weeks")
 		}
 		if f.WeekOfMonth != LastWeekOfMonth && (f.WeekOfMonth < 0 || f.WeekOfMonth > 4) {
-			return Invalid("week_of_month_invalid", "week of the month must be 1 to 4 or the last")
+			return Frequency{}, Invalid("week_of_month_invalid", "week of the month must be 1 to 4 or the last")
 		}
 		if f.WeekInterval > 1 && f.WeekOfMonth != 0 {
-			return Invalid("week_interval_and_month", "a week interval and a week of the month cannot be combined")
+			return Frequency{}, Invalid("week_interval_and_month", "a week interval and a week of the month cannot be combined")
 		}
 		// Only a week interval greater than 1 needs an anchor.
 		anchor := Date{}
 		if f.WeekInterval > 1 {
 			anchor = s.anchorOr(f.AnchorDate)
 		}
-		s.Frequency = Frequency{
+		return Frequency{
 			Kind:         FreqWeekdays,
 			Weekdays:     f.Weekdays,
 			WeekInterval: f.WeekInterval,
 			WeekOfMonth:  f.WeekOfMonth,
 			AnchorDate:   anchor,
-		}
+		}, nil
 
 	case FreqCustomInterval:
 		if f.IntervalDays < 1 || f.IntervalDays > 365 {
-			return Invalid("interval_range", "interval must be between 1 and 365 days")
+			return Frequency{}, Invalid("interval_range", "interval must be between 1 and 365 days")
 		}
-		s.Frequency = Frequency{
+		return Frequency{
 			Kind:         FreqCustomInterval,
 			IntervalDays: f.IntervalDays,
 			AnchorDate:   s.anchorOr(f.AnchorDate),
-		}
-
-	default:
-		return Invalid("unknown_frequency", `unknown frequency "{frequency}"`, "frequency", f.Kind)
+		}, nil
 	}
-	return nil
+	return Frequency{}, Invalid("unknown_frequency", `unknown frequency "{frequency}"`, "frequency", f.Kind)
 }
 
 // anchorOr returns anchor, or the schedule's first day if anchor is zero.

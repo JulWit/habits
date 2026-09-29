@@ -27,7 +27,7 @@ const (
 // first day of its history (HistoryStart). A limit is kept by a day without a
 // value from start up to today, as the statistics count it; a day ahead only
 // keeps a limit once it has come.
-func (h Habit) Status(d Date, e Entry, start, today Date) DayStatus {
+func (h *Habit) Status(d Date, e Entry, start, today Date) DayStatus {
 	if e.Skipped {
 		return StatusSkipped
 	}
@@ -48,7 +48,7 @@ func (h Habit) Status(d Date, e Entry, start, today Date) DayStatus {
 }
 
 // isDone reports whether value completes d, as Status judges it.
-func (h Habit) isDone(d Date, value int, start, today Date) bool {
+func (h *Habit) isDone(d Date, value int, start, today Date) bool {
 	if h.ScheduleOn(d).isLimit() {
 		return !d.After(today) && !d.Before(start) && h.IsComplete(d, value)
 	}

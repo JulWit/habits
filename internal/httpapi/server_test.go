@@ -16,6 +16,9 @@ import (
 
 	"github.com/JulWit/habits/internal/config"
 	"github.com/JulWit/habits/internal/store"
+
+	// SQLite driver, registered by main in the program.
+	_ "modernc.org/sqlite"
 )
 
 // testWeb is a minimal frontend with an index.html template.

@@ -9,6 +9,9 @@ import (
 
 	"github.com/JulWit/habits/internal/domain"
 	"github.com/JulWit/habits/internal/settings"
+
+	// SQLite driver, registered by main in the program.
+	_ "modernc.org/sqlite"
 )
 
 // openTestStore opens a new database in a temporary directory.

@@ -24,6 +24,9 @@ import (
 	"github.com/JulWit/habits/internal/config"
 	"github.com/JulWit/habits/internal/httpapi"
 	"github.com/JulWit/habits/internal/store"
+
+	// SQLite driver for the store, in pure Go so that no cgo is needed.
+	_ "modernc.org/sqlite"
 )
 
 //go:embed all:web

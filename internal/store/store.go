@@ -16,8 +16,6 @@ import (
 	"net/url"
 	"strings"
 	"time"
-
-	_ "modernc.org/sqlite" // pure Go driver, no cgo
 )
 
 var (
@@ -34,7 +32,9 @@ type Store struct {
 }
 
 // Open opens the SQLite database at path and applies pending migrations. The
-// pool uses a single connection, since SQLite allows only one writer.
+// pool uses a single connection, since SQLite allows only one writer. The
+// program has to register the driver "sqlite" by importing
+// modernc.org/sqlite.
 func Open(ctx context.Context, path string) (*Store, error) {
 	dsn := "file:" + url.PathEscape(path) + "?" + url.Values{
 		"_pragma": {

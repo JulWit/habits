@@ -118,8 +118,7 @@ const contentSecurityPolicy = "default-src 'self'; " +
 func (s *server) authenticate(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		user, err := auth.Resolve(s.cfg, r)
-		var refused *auth.Error
-		if errors.As(err, &refused) {
+		if refused, ok := errors.AsType[*auth.Error](err); ok {
 			s.log.Warn("authentication refused",
 				"reason", refused.Reason,
 				"peer", r.RemoteAddr,

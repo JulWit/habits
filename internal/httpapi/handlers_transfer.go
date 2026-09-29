@@ -317,13 +317,10 @@ func nameKey(name string) string { return strings.ToLower(strings.TrimSpace(name
 // category, naming it in the parameter param, so the client can say which one
 // is invalid.
 func (s *server) writeImportProblem(w http.ResponseWriter, err error, param, name string) {
-	var p *domain.Problem
-	if errors.As(err, &p) {
+	if p, ok := errors.AsType[*domain.Problem](err); ok {
 		named := *p
 		named.Params = map[string]any{param: name}
-		for k, v := range p.Params {
-			named.Params[k] = v
-		}
+		maps.Copy(named.Params, p.Params)
 		err = &named
 	}
 	s.writeProblem(w, http.StatusUnprocessableEntity, err)

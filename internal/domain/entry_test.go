@@ -5,8 +5,6 @@ import (
 	"testing"
 )
 
-func ptr[T any](v T) *T { return &v }
-
 // A value ends a skip, and a skip clears the value.
 func TestEntryChangeApply(t *testing.T) {
 	for _, tc := range []struct {
@@ -15,10 +13,10 @@ func TestEntryChangeApply(t *testing.T) {
 		change EntryChange
 		want   Entry
 	}{
-		{"value", Entry{}, EntryChange{Value: ptr(30)}, Entry{Value: 30}},
-		{"value ends a skip", Entry{Skipped: true}, EntryChange{Value: ptr(10)}, Entry{Value: 10}},
-		{"skip clears the value", Entry{Value: 30}, EntryChange{Skipped: ptr(true)}, Entry{Skipped: true}},
-		{"unskip", Entry{Skipped: true}, EntryChange{Skipped: ptr(false)}, Entry{}},
+		{"value", Entry{}, EntryChange{Value: new(30)}, Entry{Value: 30}},
+		{"value ends a skip", Entry{Skipped: true}, EntryChange{Value: new(10)}, Entry{Value: 10}},
+		{"skip clears the value", Entry{Value: 30}, EntryChange{Skipped: new(true)}, Entry{Skipped: true}},
+		{"unskip", Entry{Skipped: true}, EntryChange{Skipped: new(false)}, Entry{}},
 		{"nothing", Entry{Value: 30}, EntryChange{}, Entry{Value: 30}},
 	} {
 		if got := tc.change.Apply(tc.before); got != tc.want {
@@ -33,11 +31,11 @@ func TestEntryChangeRecords(t *testing.T) {
 		change EntryChange
 		want   bool
 	}{
-		{EntryChange{Value: ptr(1)}, true},
-		{EntryChange{Value: ptr(0)}, false},
-		{EntryChange{Skipped: ptr(true)}, true},
-		{EntryChange{Skipped: ptr(false)}, false},
-		{EntryChange{Value: ptr(0), Skipped: ptr(false)}, false},
+		{EntryChange{Value: new(1)}, true},
+		{EntryChange{Value: new(0)}, false},
+		{EntryChange{Skipped: new(true)}, true},
+		{EntryChange{Skipped: new(false)}, false},
+		{EntryChange{Value: new(0), Skipped: new(false)}, false},
 	} {
 		if got := tc.change.Records(); got != tc.want {
 			t.Errorf("%+v: Records = %v, want %v", tc.change, got, tc.want)

@@ -213,11 +213,11 @@ func importFile(ctx context.Context, tx *store.Tx, in exportFile) (importResult,
 	var result importResult
 	existingCats, err := tx.Categories(ctx)
 	if err != nil {
-		return result, err
+		return importResult{}, err
 	}
 	existingHabits, err := tx.Habits(ctx)
 	if err != nil {
-		return result, err
+		return importResult{}, err
 	}
 
 	// Category IDs by normalised name, and by key in the file.
@@ -233,7 +233,7 @@ func importFile(ctx context.Context, tx *store.Tx, in exportFile) (importResult,
 		}
 		c := domain.Category{Name: ec.Name, Icon: ec.Icon, Color: ec.Color, ShowProgress: ec.ShowProgress}
 		if err := tx.CreateCategory(ctx, &c); err != nil {
-			return result, importProblem{error: err, param: "category", name: ec.Name}
+			return importResult{}, importProblem{error: err, param: "category", name: ec.Name}
 		}
 		catByName[nameKey(c.Name)] = c.ID
 		catByKey[ec.Key] = c.ID
@@ -250,7 +250,7 @@ func importFile(ctx context.Context, tx *store.Tx, in exportFile) (importResult,
 			continue
 		}
 		if err := importHabit(ctx, tx, eh, catByKey); err != nil {
-			return result, importProblem{error: err, param: "habit", name: eh.Name}
+			return importResult{}, importProblem{error: err, param: "habit", name: eh.Name}
 		}
 		taken[nameKey(eh.Name)] = true
 		result.Habits++

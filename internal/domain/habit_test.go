@@ -292,10 +292,10 @@ func TestValidateEntryValue(t *testing.T) {
 // KindDescriptors matches the Kind methods.
 func TestKindDescriptorsMatchTheKindMethods(t *testing.T) {
 	got := KindDescriptors()
-	if len(got) != len(AllKinds()) {
-		t.Fatalf("%d descriptors for %d kinds", len(got), len(AllKinds()))
+	if len(got) != len(allKinds) {
+		t.Fatalf("KindDescriptors() has %d entries, want %d", len(got), len(allKinds))
 	}
-	for _, k := range AllKinds() {
+	for _, k := range allKinds {
 		info, ok := got[k]
 		if !ok {
 			t.Errorf("no descriptor for %q", k)
@@ -308,10 +308,10 @@ func TestKindDescriptorsMatchTheKindMethods(t *testing.T) {
 	}
 }
 
-func TestAllKindsAreValidAndNothingElseIs(t *testing.T) {
-	for _, k := range AllKinds() {
+func TestKindsAreValidAndNothingElseIs(t *testing.T) {
+	for _, k := range allKinds {
 		if !k.Valid() {
-			t.Errorf("%q is in AllKinds() but is not Valid()", k)
+			t.Errorf("%q is in allKinds but is not Valid()", k)
 		}
 	}
 	if Kind("gewicht").Valid() {

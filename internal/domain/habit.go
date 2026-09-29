@@ -27,10 +27,7 @@ const (
 // allKinds lists all kinds in the order the editor offers them.
 var allKinds = []Kind{KindCheck, KindCount, KindTime, KindDistance}
 
-// AllKinds returns all kinds in the order the editor offers them.
-func AllKinds() []Kind { return slices.Clone(allKinds) }
-
-// Valid reports whether k is one of AllKinds.
+// Valid reports whether k is a known kind.
 func (k Kind) Valid() bool { return slices.Contains(allKinds, k) }
 
 // KindInfo describes a kind's value range for the client.

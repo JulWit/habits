@@ -45,15 +45,14 @@ func UntilTomorrow(now time.Time, loc *time.Location) time.Duration {
 
 // ParseDate parses a date in DateLayout format.
 func ParseDate(s string) (Date, error) {
-	invalid := fmt.Errorf("%w: %q", ErrInvalidDate, s)
 	if len(s) != len(DateLayout) || s[4] != '-' || s[7] != '-' {
-		return Date{}, invalid
+		return Date{}, fmt.Errorf("%w: %q", ErrInvalidDate, s)
 	}
 	year, okY := digits(s[0:4])
 	month, okM := digits(s[5:7])
 	day, okD := digits(s[8:10])
 	if !okY || !okM || !okD || month < 1 || month > 12 || day < 1 || day > daysIn(year, time.Month(month)) {
-		return Date{}, invalid
+		return Date{}, fmt.Errorf("%w: %q", ErrInvalidDate, s)
 	}
 	return Date{Year: year, Month: time.Month(month), Day: day}, nil
 }

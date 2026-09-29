@@ -18,18 +18,19 @@ import (
 
 // Icon geometry in 24x24 coordinates, matching icon.svg.
 var (
-	background = color.NRGBA{R: 0x25, G: 0x63, B: 0xeb, A: 0xff}
-	ink        = color.NRGBA{R: 0xff, G: 0xff, B: 0xff, A: 0xff}
-	check      = [][2]float64{{8, 12.3}, {10.9, 15.2}, {16.1, 9.2}}
-	ringC      = [2]float64{12, 12}
-	ringR      = 9.6
-	strokeW    = 2.4
+	background  = color.NRGBA{R: 0x25, G: 0x63, B: 0xeb, A: 0xff}
+	ink         = color.NRGBA{R: 0xff, G: 0xff, B: 0xff, A: 0xff}
+	checkMark   = [][2]float64{{8, 12.3}, {10.9, 15.2}, {16.1, 9.2}}
+	ringCenter  = [2]float64{12, 12}
+	ringRadius  = 9.6
+	strokeWidth = 2.4
 	// Gaps in the ring, in degrees clockwise from three o'clock.
 	ringGaps = [][2]float64{{20, 32}, {62.667, 74.667}, {105.333, 117.333}, {148, 160}}
 )
 
-// sample is the number of antialiasing samples per pixel and axis.
-const sample = 4
+// samplesPerAxis is the number of antialiasing samples per pixel along each
+// axis.
+const samplesPerAxis = 4
 
 func main() {
 	out := filepath.Join("web", "assets", "images")
@@ -92,10 +93,10 @@ func pixel(px, py, size int, scale, radius float64) color.NRGBA {
 	unit := float64(size) / 24 * scale
 	offset := float64(size)/2 - 12*unit
 
-	for sy := 0; sy < sample; sy++ {
-		for sx := 0; sx < sample; sx++ {
-			x := float64(px) + (float64(sx)+0.5)/sample
-			y := float64(py) + (float64(sy)+0.5)/sample
+	for sy := 0; sy < samplesPerAxis; sy++ {
+		for sx := 0; sx < samplesPerAxis; sx++ {
+			x := float64(px) + (float64(sx)+0.5)/samplesPerAxis
+			y := float64(py) + (float64(sy)+0.5)/samplesPerAxis
 
 			c := color.NRGBA{}
 			if inRoundedSquare(x, y, float64(size), radius*float64(size)) {
@@ -112,7 +113,7 @@ func pixel(px, py, size int, scale, radius float64) color.NRGBA {
 		}
 	}
 
-	n := float64(sample * sample)
+	n := float64(samplesPerAxis * samplesPerAxis)
 	if a == 0 {
 		return color.NRGBA{}
 	}
@@ -139,12 +140,12 @@ func inRoundedSquare(x, y, size, r float64) bool {
 // onMark reports whether a point in icon coordinates lies on the ring or the
 // check mark.
 func onMark(x, y float64) bool {
-	half := strokeW / 2
+	half := strokeWidth / 2
 	if onRing(x, y, half) {
 		return true
 	}
-	for i := 0; i < len(check)-1; i++ {
-		if distanceToSegment(x, y, check[i], check[i+1]) <= half {
+	for i := 0; i < len(checkMark)-1; i++ {
+		if distanceToSegment(x, y, checkMark[i], checkMark[i+1]) <= half {
 			return true
 		}
 	}
@@ -153,10 +154,10 @@ func onMark(x, y float64) bool {
 
 // onRing reports whether a point lies on the ring stroke outside its gaps.
 func onRing(x, y, half float64) bool {
-	if math.Abs(math.Hypot(x-ringC[0], y-ringC[1])-ringR) > half {
+	if math.Abs(math.Hypot(x-ringCenter[0], y-ringCenter[1])-ringRadius) > half {
 		return false
 	}
-	angle := math.Atan2(y-ringC[1], x-ringC[0]) * 180 / math.Pi
+	angle := math.Atan2(y-ringCenter[1], x-ringCenter[0]) * 180 / math.Pi
 	if angle < 0 {
 		angle += 360
 	}

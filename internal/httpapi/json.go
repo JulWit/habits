@@ -27,10 +27,15 @@ type problemBody struct {
 	Params map[string]any `json:"params,omitempty"`
 }
 
-// writeJSON writes payload as JSON with the given status. API responses are
-// not cached.
+// writeJSON writes payload as JSON with the given status.
 func (s *server) writeJSON(w http.ResponseWriter, status int, payload any) {
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	s.writeBody(w, "application/json; charset=utf-8", status, payload)
+}
+
+// writeBody writes payload encoded as JSON with the given content type and
+// status; a nil payload writes no body. API responses are not cached.
+func (s *server) writeBody(w http.ResponseWriter, contentType string, status int, payload any) {
+	w.Header().Set("Content-Type", contentType)
 	w.Header().Set("Cache-Control", "no-store")
 	w.WriteHeader(status)
 	if payload == nil {
@@ -58,14 +63,11 @@ func (s *server) writeProblem(w http.ResponseWriter, status int, err error) {
 	s.writeProblemBody(w, problemBody{Status: status, Code: p.Code, Detail: p.Message(), Params: p.Params})
 }
 
+// writeProblemBody writes body as a problem details response, titled after
+// its status.
 func (s *server) writeProblemBody(w http.ResponseWriter, body problemBody) {
 	body.Title = http.StatusText(body.Status)
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.Header().Set("Cache-Control", "no-store")
-	w.WriteHeader(body.Status)
-	if err := json.NewEncoder(w).Encode(body); err != nil && !errors.Is(err, io.ErrClosedPipe) {
-		s.log.Error("writing response failed", "error", err)
-	}
+	s.writeBody(w, "application/problem+json", body.Status, body)
 }
 
 // notFoundJSON answers unknown API paths with 404.

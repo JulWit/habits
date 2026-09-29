@@ -268,11 +268,7 @@ func TestStepsAreLimited(t *testing.T) {
 	for value := 1; value <= maxSteps+5; value++ {
 		setEntry(t, st, "alice", h, d, domain.Entry{Value: value})
 	}
-	count := func() int {
-		var n int
-		st.db.QueryRow(`SELECT COUNT(*) FROM changes`).Scan(&n)
-		return n
-	}
+	count := func() int { return queryInt(t, st, `SELECT COUNT(*) FROM changes`) }
 	if n := count(); n != maxSteps {
 		t.Errorf("%d steps kept, want %d", n, maxSteps)
 	}

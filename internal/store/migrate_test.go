@@ -151,9 +151,7 @@ func TestMigrationFromVersion3(t *testing.T) {
 	if got := entriesOf(t, st, "alice", "h1")[day(2026, time.January, 5)]; got != (domain.Entry{Value: 40}) {
 		t.Errorf("entry = %+v, want the value 40", got)
 	}
-	var orphans int
-	st.db.QueryRow(`SELECT COUNT(*) FROM entries WHERE habit_id = 'h2'`).Scan(&orphans)
-	if orphans != 0 {
+	if orphans := queryInt(t, st, `SELECT COUNT(*) FROM entries WHERE habit_id = 'h2'`); orphans != 0 {
 		t.Errorf("%d entries of the deleted habit left", orphans)
 	}
 
@@ -161,9 +159,7 @@ func TestMigrationFromVersion3(t *testing.T) {
 	if got, want := schemaOf(t, st.db), schemaOf(t, fresh.db); got != want {
 		t.Errorf("migrated schema differs from a new one:\n%s\nwant:\n%s", got, want)
 	}
-	var version int
-	st.db.QueryRow("PRAGMA user_version").Scan(&version)
-	if version != latestVersion {
+	if version := queryInt(t, st, "PRAGMA user_version"); version != latestVersion {
 		t.Errorf("user_version = %d, want %d", version, latestVersion)
 	}
 }

@@ -147,9 +147,7 @@ func TestDeleteHabitRemovesItsHistory(t *testing.T) {
 
 	update(t, st, "alice", func(tx *Tx) error { return tx.DeleteHabit(t.Context(), h.ID) })
 	for _, table := range []string{"habits", "habit_schedules", "entries"} {
-		var n int
-		st.db.QueryRow(`SELECT COUNT(*) FROM ` + table).Scan(&n)
-		if n != 0 {
+		if n := queryInt(t, st, `SELECT COUNT(*) FROM `+table); n != 0 {
 			t.Errorf("%s: %d rows left", table, n)
 		}
 	}

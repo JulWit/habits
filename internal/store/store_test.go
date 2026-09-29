@@ -52,6 +52,17 @@ func read[T any](t *testing.T, st *Store, user string, fn func(*Tx) (T, error)) 
 	return out
 }
 
+// queryInt returns the integer that query selects, e.g. a row count, and
+// fails the test if the query fails.
+func queryInt(t *testing.T, st *Store, query string) int {
+	t.Helper()
+	var n int
+	if err := st.db.QueryRow(query).Scan(&n); err != nil {
+		t.Fatalf("QueryRow(%q): %v", query, err)
+	}
+	return n
+}
+
 // mustCreateHabit creates h for user.
 func mustCreateHabit(t *testing.T, st *Store, user string, h domain.Habit) domain.Habit {
 	t.Helper()

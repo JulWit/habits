@@ -42,9 +42,7 @@ func TestEntriesStaySparse(t *testing.T) {
 		t.Errorf("Entry = %+v, want 30", got)
 	}
 	setEntry(t, st, "alice", h, d, domain.Entry{})
-	var n int
-	st.db.QueryRow(`SELECT COUNT(*) FROM entries`).Scan(&n)
-	if n != 0 {
+	if n := queryInt(t, st, `SELECT COUNT(*) FROM entries`); n != 0 {
 		t.Error("a day set to nothing must have no row, not a row holding 0")
 	}
 }

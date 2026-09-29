@@ -26,8 +26,10 @@ func mustDo(t *testing.T, h http.Handler, method, path, body string, want int) [
 func TestExportAndImportRestoreTheHistory(t *testing.T) {
 	src := newTestServer(t)
 	var cat struct{ ID string }
-	json.Unmarshal(mustDo(t, src, "POST", "/api/categories",
-		`{"name":"Health","icon":"heart","color":"red","showProgress":true}`, http.StatusCreated), &cat)
+	if err := json.Unmarshal(mustDo(t, src, "POST", "/api/categories",
+		`{"name":"Health","icon":"heart","color":"red","showProgress":true}`, http.StatusCreated), &cat); err != nil {
+		t.Fatalf("json.Unmarshal(POST /api/categories): %v", err)
+	}
 	water := createHabit(t, src, `{"name":"Water","kind":"count","unit":"glasses","stepValue":20,"targetValue":80,
 		"color":"sky","icon":"droplet","categoryId":"`+cat.ID+`","frequency":{"kind":"daily"}}`)
 	read := createHabit(t, src, `{"name":"Read","kind":"time","targetValue":200,"frequency":{"kind":"daily"}}`)
@@ -53,7 +55,9 @@ func TestExportAndImportRestoreTheHistory(t *testing.T) {
 
 	dst := newTestServer(t)
 	var result importResult
-	json.Unmarshal(mustDo(t, dst, "POST", "/api/import", file, http.StatusOK), &result)
+	if err := json.Unmarshal(mustDo(t, dst, "POST", "/api/import", file, http.StatusOK), &result); err != nil {
+		t.Fatalf("json.Unmarshal(POST /api/import): %v", err)
+	}
 	if result != (importResult{Habits: 2, Categories: 1}) {
 		t.Errorf("result = %+v", result)
 	}
@@ -76,7 +80,9 @@ func TestExportAndImportRestoreTheHistory(t *testing.T) {
 			Days     string
 		}
 	}
-	json.Unmarshal(mustDo(t, dst, "GET", "/api/state", "", http.StatusOK), &state)
+	if err := json.Unmarshal(mustDo(t, dst, "GET", "/api/state", "", http.StatusOK), &state); err != nil {
+		t.Fatalf("json.Unmarshal(GET /api/state): %v", err)
+	}
 	if len(state.Categories) != 1 || len(state.Habits) != 2 {
 		t.Fatalf("imported %d categories, %d habits", len(state.Categories), len(state.Habits))
 	}
@@ -104,7 +110,9 @@ func TestExportAndImportRestoreTheHistory(t *testing.T) {
 	}
 
 	// A second import finds everything in place.
-	json.Unmarshal(mustDo(t, dst, "POST", "/api/import", file, http.StatusOK), &result)
+	if err := json.Unmarshal(mustDo(t, dst, "POST", "/api/import", file, http.StatusOK), &result); err != nil {
+		t.Fatalf("json.Unmarshal(POST /api/import): %v", err)
+	}
 	if result != (importResult{Skipped: 2}) {
 		t.Errorf("second import = %+v", result)
 	}
@@ -123,7 +131,9 @@ func TestImportIsAllOrNothing(t *testing.T) {
 		t.Fatalf("status %d (%s)", w.Code, w.Body)
 	}
 	var problem problemBody
-	json.Unmarshal(w.Body.Bytes(), &problem)
+	if err := json.Unmarshal(w.Body.Bytes(), &problem); err != nil {
+		t.Fatalf("json.Unmarshal(POST /api/import): %v (%s)", err, w.Body)
+	}
 	if problem.Code != "unknown_frequency" || problem.Params["habit"] != "Swim" {
 		t.Errorf("problem = %+v", problem)
 	}
@@ -132,7 +142,9 @@ func TestImportIsAllOrNothing(t *testing.T) {
 		Categories []any
 		Habits     []any
 	}
-	json.Unmarshal(mustDo(t, h, "GET", "/api/state", "", http.StatusOK), &state)
+	if err := json.Unmarshal(mustDo(t, h, "GET", "/api/state", "", http.StatusOK), &state); err != nil {
+		t.Fatalf("json.Unmarshal(GET /api/state): %v", err)
+	}
 	if len(state.Categories) != 0 || len(state.Habits) != 0 {
 		t.Errorf("a failed import saved %d categories, %d habits", len(state.Categories), len(state.Habits))
 	}
@@ -157,26 +169,34 @@ func TestImportChecksTheFormat(t *testing.T) {
 func TestImportReusesCategoriesByName(t *testing.T) {
 	h := newTestServer(t)
 	var cat struct{ ID string }
-	json.Unmarshal(mustDo(t, h, "POST", "/api/categories", `{"name":"Sport"}`, http.StatusCreated), &cat)
+	if err := json.Unmarshal(mustDo(t, h, "POST", "/api/categories", `{"name":"Sport"}`, http.StatusCreated), &cat); err != nil {
+		t.Fatalf("json.Unmarshal(POST /api/categories): %v", err)
+	}
 	file := `{"format":"habits","version":2,"categories":[{"key":"k","name":" sport "}],"habits":[
 		{"name":"Run","kind":"check","category":"k","color":"red","createdAt":"2026-01-01T00:00:00Z",
 		 "schedules":[{"from":"2026-01-01","targetValue":1,"frequency":{"kind":"daily"}}]}]}`
 	w := do(t, h, "POST", "/api/import", file, "application/json")
 	var result importResult
-	json.Unmarshal(w.Body.Bytes(), &result)
+	if err := json.Unmarshal(w.Body.Bytes(), &result); err != nil {
+		t.Fatalf("json.Unmarshal(POST /api/import): %v (%s)", err, w.Body)
+	}
 	if w.Code != http.StatusOK || result != (importResult{Habits: 1}) {
 		t.Errorf("import: %d, %+v", w.Code, result)
 	}
 	var state struct {
 		Habits []struct{ CategoryID string }
 	}
-	json.Unmarshal(mustDo(t, h, "GET", "/api/state", "", http.StatusOK), &state)
+	if err := json.Unmarshal(mustDo(t, h, "GET", "/api/state", "", http.StatusOK), &state); err != nil {
+		t.Fatalf("json.Unmarshal(GET /api/state): %v", err)
+	}
 	if len(state.Habits) != 1 || state.Habits[0].CategoryID != cat.ID {
 		t.Errorf("habits = %+v, want category %s", state.Habits, cat.ID)
 	}
 
 	mustDo(t, h, "POST", "/api/undo", `{"id":`+w.Header().Get("Change-Id")+`}`, http.StatusOK)
-	json.Unmarshal(mustDo(t, h, "GET", "/api/state", "", http.StatusOK), &state)
+	if err := json.Unmarshal(mustDo(t, h, "GET", "/api/state", "", http.StatusOK), &state); err != nil {
+		t.Fatalf("json.Unmarshal(GET /api/state): %v", err)
+	}
 	if len(state.Habits) != 0 {
 		t.Errorf("%d habits left after undoing the import", len(state.Habits))
 	}
@@ -197,7 +217,9 @@ func TestDeleteDataEmptiesTheBoard(t *testing.T) {
 		Habits     []any
 		Settings   struct{ Theme string }
 	}
-	json.Unmarshal(mustDo(t, h, "GET", "/api/state", "", http.StatusOK), &state)
+	if err := json.Unmarshal(mustDo(t, h, "GET", "/api/state", "", http.StatusOK), &state); err != nil {
+		t.Fatalf("json.Unmarshal(GET /api/state): %v", err)
+	}
 	if len(state.Categories) != 0 || len(state.Habits) != 0 || state.Settings.Theme != "system" {
 		t.Errorf("after deleting: %d categories, %d habits, theme %q",
 			len(state.Categories), len(state.Habits), state.Settings.Theme)

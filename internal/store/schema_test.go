@@ -36,9 +36,7 @@ func TestSchemaConstraints(t *testing.T) {
 		t.Fatalf("deleting the user: %v", err)
 	}
 	for _, table := range []string{"habits", "habit_schedules", "entries", "changes"} {
-		var n int
-		st.db.QueryRow(`SELECT COUNT(*) FROM ` + table).Scan(&n)
-		if n != 0 {
+		if n := queryInt(t, st, `SELECT COUNT(*) FROM `+table); n != 0 {
 			t.Errorf("%s: %d rows left after deleting the user", table, n)
 		}
 	}

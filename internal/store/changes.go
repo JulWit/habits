@@ -433,7 +433,11 @@ func (s *Store) turn(ctx context.Context, userID string, id int64, redo bool) (S
 		if err := t.watchStep(step.diff, redo); err != nil {
 			return err
 		}
-		if !t.stepApplies(step.diff, redo) {
+		applies, err := t.stepApplies(step.diff, redo)
+		if err != nil {
+			return err
+		}
+		if !applies {
 			conflict = true
 			_, err := t.exec(`DELETE FROM changes WHERE id = ?`, step.ID)
 			return err
@@ -547,8 +551,8 @@ func (t *Tx) current(table string, r row) (row, error) {
 // stepApplies reports whether every row an undo or redo of diff changes
 // still holds the state the step expects: a row to remove or update still has
 // the values the step left in the columns it changed, and a row to put back
-// does not exist.
-func (t *Tx) stepApplies(diff []rowChange, redo bool) bool {
+// does not exist. A row that cannot be read is an error, not a conflict.
+func (t *Tx) stepApplies(diff []rowChange, redo bool) (bool, error) {
 	for _, rc := range diff {
 		from, to := ends(rc, redo)
 		key := from
@@ -557,15 +561,15 @@ func (t *Tx) stepApplies(diff []rowChange, redo bool) bool {
 		}
 		cur, err := t.current(rc.Table, key)
 		if err != nil {
-			return false
+			return false, err
 		}
 		switch {
 		case from == nil:
 			if cur != nil {
-				return false
+				return false, nil
 			}
 		case cur == nil:
-			return false
+			return false, nil
 		default:
 			columns := changedColumns(from, to)
 			if to == nil {
@@ -576,12 +580,12 @@ func (t *Tx) stepApplies(diff []rowChange, redo bool) bool {
 					continue
 				}
 				if normalise(cur[c]) != normalise(from[c]) {
-					return false
+					return false, nil
 				}
 			}
 		}
 	}
-	return true
+	return true, nil
 }
 
 // applyStep writes the rows of an undo or redo of diff: first it removes

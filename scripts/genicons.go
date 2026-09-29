@@ -59,9 +59,13 @@ func write(path string, size int, maskable bool) error {
 	if err != nil {
 		return fmt.Errorf("creating %s: %w", path, err)
 	}
-	defer f.Close()
 	if err := png.Encode(f, img); err != nil {
+		f.Close()
 		return fmt.Errorf("writing %s: %w", path, err)
+	}
+	// Close flushes the file, so its error means the PNG may be incomplete.
+	if err := f.Close(); err != nil {
+		return fmt.Errorf("closing %s: %w", path, err)
 	}
 	return nil
 }

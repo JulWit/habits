@@ -13,27 +13,37 @@ const THRESHOLD = 4;
  * @param {string} options.handle          selector of the drag handle
  * @param {() => void} options.onStart     called when a drag starts
  * @param {string} options.key             dataset field holding an entry's ID
- * @param {(ids: string[]) => void} options.onDrop  called with the new order if it changed
- * @param {() => void} options.onCancel    called if the order did not change or the drag was aborted
+ * @param {(ids: string[]) => void} options.onDrop  called with the new order if
+ *     it changed
+ * @param {() => void} options.onCancel    called if the order did not change or
+ *     the drag was aborted
  */
-export function enableDragReorder({ container, item, handle, key, onStart, onDrop, onCancel }) {
+export function enableDragReorder(
+    {container, item, handle, key, onStart, onDrop, onCancel}) {
   let drag = null;
 
   /**
    * Returns the siblings of the dragged element, so that entries cannot be
    * moved between lists.
    */
-  const items = () => [...(drag?.element.parentElement ?? container).children]
-    .filter((node) => node.matches(item));
+  const items =
+      () => [...(drag?.element.parentElement ?? container).children].filter(
+          (node) => node.matches(item));
 
-  container.addEventListener("pointerdown", (event) => {
+  container.addEventListener('pointerdown', (event) => {
     // Primary button or touch only.
     if (event.button !== 0 || drag) return;
     const grip = event.target.closest(handle);
     const element = grip?.closest(item);
     if (!element) return;
 
-    drag = { element, grip, pointerId: event.pointerId, startY: event.clientY, active: false };
+    drag = {
+      element,
+      grip,
+      pointerId: event.pointerId,
+      startY: event.clientY,
+      active: false,
+    };
     // Capture the pointer on the handle. Failing to capture is not fatal, as
     // the listeners are on the container.
     try {
@@ -43,7 +53,7 @@ export function enableDragReorder({ container, item, handle, key, onStart, onDro
     }
   });
 
-  container.addEventListener("pointermove", (event) => {
+  container.addEventListener('pointermove', (event) => {
     if (!drag || event.pointerId !== drag.pointerId) return;
     const dy = event.clientY - drag.startY;
 
@@ -54,8 +64,8 @@ export function enableDragReorder({ container, item, handle, key, onStart, onDro
       drag.order = items();
       // The list being reordered.
       drag.list = drag.element.parentElement;
-      drag.element.classList.add("is-dragging");
-      drag.list.classList.add("is-reordering");
+      drag.element.classList.add('is-dragging');
+      drag.list.classList.add('is-reordering');
       onStart?.();
     }
     event.preventDefault();
@@ -63,16 +73,16 @@ export function enableDragReorder({ container, item, handle, key, onStart, onDro
     crossNeighbours(dy);
   });
 
-  for (const type of ["pointerup", "pointercancel"]) {
+  for (const type of ['pointerup', 'pointercancel']) {
     container.addEventListener(type, (event) => {
       if (!drag || event.pointerId !== drag.pointerId) return;
-      finish(type === "pointerup");
+      finish(type === 'pointerup');
     });
   }
 
   // Escape cancels the drag.
-  document.addEventListener("keydown", (event) => {
-    if (event.key !== "Escape" || !drag?.active) return;
+  document.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape' || !drag?.active) return;
     event.preventDefault();
     restore();
     finish(false);
@@ -84,17 +94,23 @@ export function enableDragReorder({ container, item, handle, key, onStart, onDro
     const middle = centre(element);
     for (const other of items()) {
       if (other === element) continue;
-      const follows = element.compareDocumentPosition(other) & Node.DOCUMENT_POSITION_FOLLOWING;
-      if (follows && middle > centre(other)) return settle(other, "after", dy);
-      if (!follows && middle < centre(other)) return settle(other, "before", dy);
+      const follows = element.compareDocumentPosition(other) &
+          Node.DOCUMENT_POSITION_FOLLOWING;
+      if (follows && middle > centre(other)) return settle(other, 'after', dy);
+      if (!follows && middle < centre(other)) {
+        return settle(other, 'before', dy);
+      }
     }
   }
 
   function settle(other, where, dy) {
     const element = drag.element;
     const before = element.getBoundingClientRect().top;
-    if (where === "after") other.after(element);
-    else other.before(element);
+    if (where === 'after') {
+      other.after(element);
+    } else {
+      other.before(element);
+    }
     const jump = element.getBoundingClientRect().top - before;
     // Compensate the layout jump caused by the DOM move.
     drag.startY += jump;
@@ -102,12 +118,16 @@ export function enableDragReorder({ container, item, handle, key, onStart, onDro
   }
 
   function restore() {
-    for (const element of drag.order) drag.list.append(element);
+    for (const element of drag.order) {
+      drag.list.append(element);
+    }
   }
 
   function finish(committed) {
-    const { element, grip, pointerId, active, order, list } = drag;
-    if (grip.hasPointerCapture?.(pointerId)) grip.releasePointerCapture(pointerId);
+    const {element, grip, pointerId, active, order, list} = drag;
+    if (grip.hasPointerCapture?.(pointerId)) {
+      grip.releasePointerCapture(pointerId);
+    }
     if (!active) {
       drag = null;
       return;
@@ -117,12 +137,15 @@ export function enableDragReorder({ container, item, handle, key, onStart, onDro
     const now = items();
     drag = null;
 
-    element.style.transform = "";
-    element.classList.remove("is-dragging");
-    list.classList.remove("is-reordering");
+    element.style.transform = '';
+    element.classList.remove('is-dragging');
+    list.classList.remove('is-reordering');
     const changed = committed && now.some((node, i) => node !== order[i]);
-    if (changed) onDrop(now.map((node) => node.dataset[key]));
-    else onCancel?.();
+    if (changed) {
+      onDrop(now.map((node) => node.dataset[key]));
+    } else {
+      onCancel?.();
+    }
   }
 }
 

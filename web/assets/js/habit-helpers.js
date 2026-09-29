@@ -3,18 +3,18 @@
 // status per day (`days` from `daysFrom`, see domain.DayStatus); nothing here
 // judges a day.
 
-import { daysBetween, WEEKDAY_SHORT } from "./dates.js";
-import { state } from "./state.js";
-import { t, locale } from "./i18n.js";
+import {daysBetween, WEEKDAY_SHORT} from './dates.js';
+import {locale, t} from './i18n.js';
+import {state} from './state.js';
 
 /** The statuses of domain.DayStatus. */
 const STATUS = {
-  off: "-",
-  offDone: "+",
-  open: "o",
-  done: "c",
-  over: "x",
-  skipped: "s",
+  off: '-',
+  offDone: '+',
+  open: 'o',
+  done: 'c',
+  over: 'x',
+  skipped: 's',
 };
 
 /**
@@ -104,7 +104,8 @@ export function isOver(habit, iso) {
 
 /** Reports whether the target on `iso` is a limit (at most). */
 export function isLimit(habit, iso) {
-  return habit.kind !== "check" && scheduleOn(habit, iso).targetType === "at_most";
+  return habit.kind !== 'check' &&
+      scheduleOn(habit, iso).targetType === 'at_most';
 }
 
 /** Returns the server's description of a kind (domain.KindInfo). */
@@ -122,7 +123,9 @@ export function scale(kind) {
 
 /** Formats a stored value in displayed units, with at most one decimal. */
 function written(habit, value) {
-  return (value / scale(habit.kind)).toLocaleString(locale, { maximumFractionDigits: 1 });
+  return (value / scale(habit.kind)).toLocaleString(locale, {
+    maximumFractionDigits: 1,
+  });
 }
 
 /**
@@ -154,12 +157,12 @@ export function step(habit) {
  * to the kind's maximum. Values may exceed the target.
  */
 export function nextValue(habit, current) {
-  if (habit.kind === "check") return current > 0 ? 0 : 1;
+  if (habit.kind === 'check') return current > 0 ? 0 : 1;
   return Math.min((current || 0) + step(habit), maxValue(habit));
 }
 
 export function unitLabel(habit) {
-  return kindInfo(habit.kind).unit || habit.unit || "";
+  return kindInfo(habit.kind).unit || habit.unit || '';
 }
 
 /** Formats metres: "800 m", "5 km", "12.5 km". */
@@ -176,41 +179,53 @@ export function formatDistance(metres) {
  * thousands ("1,5k"). The cell's label keeps the exact value.
  */
 export function cellValue(habit, value) {
-  const n = habit.kind === "distance" ? value / 1000 : value / scale(habit.kind);
+  const n =
+      habit.kind === 'distance' ? value / 1000 : value / scale(habit.kind);
   // Without grouping, so "1.000" is not counted as a short value.
-  const short = (x) => x.toLocaleString(locale, { maximumFractionDigits: 1, useGrouping: false });
+  const short = (x) =>
+      x.toLocaleString(locale, {maximumFractionDigits: 1, useGrouping: false});
   const text = short(Math.round(n * 10) / 10);
-  if (text.replace(/\D/g, "").length <= 3) return text;
+  if (text.replace(/\D/g, '').length <= 3) return text;
   if (Math.round(n) < 1000) return String(Math.round(n));
-  if (habit.kind === "time") return `${Math.round(n / 60)}h`;
+  if (habit.kind === 'time') return `${Math.round(n / 60)}h`;
   const thousands = n / 1000;
-  return `${thousands < 10 ? short(Math.round(thousands * 10) / 10) : Math.round(thousands)}k`;
+  return `${
+      thousands < 10 ? short(Math.round(thousands * 10) / 10) :
+                       Math.round(thousands)}k`;
 }
 
 /** Formats a day's value with its unit. */
 export function formatValue(habit, value) {
   switch (habit.kind) {
-    case "distance": return formatDistance(value);
-    case "time": return `${written(habit, value)} min`;
-    case "count": {
+    case 'distance':
+      return formatDistance(value);
+    case 'time':
+      return `${written(habit, value)} min`;
+    case 'count': {
       const n = written(habit, value);
       return habit.unit ? `${n} ${habit.unit}` : `${n}×`;
     }
-    default: return `${value}×`;
+    default:
+      return `${value}×`;
   }
 }
 
-/** Formats a total with its unit. Times of an hour or more include hours: "3 h 45 min". */
+/**
+ * Formats a total with its unit. Times of an hour or more include hours: "3 h
+ * 45 min".
+ */
 export function formatTotal(habit, total) {
   const minutes = total / scale(habit.kind);
-  if (habit.kind !== "time" || minutes < 60) return formatValue(habit, total);
-  const rest = (minutes % 60).toLocaleString(locale, { maximumFractionDigits: 1 });
+  if (habit.kind !== 'time' || minutes < 60) return formatValue(habit, total);
+  const rest =
+      (minutes % 60).toLocaleString(locale, {maximumFractionDigits: 1});
   return `${Math.floor(minutes / 60)} h ${rest} min`;
 }
 
 /** Reports whether the habit's values can be summed. */
 export function isCountable(habit) {
-  return habit.kind === "count" || habit.kind === "time" || habit.kind === "distance";
+  return habit.kind === 'count' || habit.kind === 'time' ||
+      habit.kind === 'distance';
 }
 
 /**
@@ -219,43 +234,50 @@ export function isCountable(habit) {
  * "" for check habits.
  */
 export function describeTarget(habit, schedule = currentSchedule(habit)) {
-  if (habit.kind === "check") return "";
-  if (schedule.targetType !== "at_most") return formatValue(habit, schedule.targetValue);
-  if (schedule.targetValue === 0) return t("none at all");
-  return t("at most {value}", { value: formatValue(habit, schedule.targetValue) });
+  if (habit.kind === 'check') return '';
+  if (schedule.targetType !== 'at_most') {
+    return formatValue(habit, schedule.targetValue);
+  }
+  if (schedule.targetValue === 0) return t('none at all');
+  return t(
+      'at most {value}', {value: formatValue(habit, schedule.targetValue)});
 }
 
 /** Describes a frequency, e.g. "daily" or "Mon, Wed". */
 export function describeFrequency(f) {
   switch (f.kind) {
-    case "daily":
-      return t("daily");
-    case "times_per_week":
-      return t("{n}× per week", { n: f.timesPerWeek });
-    case "times_per_month":
-      return t("{n}× per month", { n: f.timesPerMonth });
-    case "weekdays": {
+    case 'daily':
+      return t('daily');
+    case 'times_per_week':
+      return t('{n}× per week', {n: f.timesPerWeek});
+    case 'times_per_month':
+      return t('{n}× per month', {n: f.timesPerMonth});
+    case 'weekdays': {
       // Short weekday names.
       const days = WEEKDAY_SHORT.filter((_, i) => f.weekdays & (1 << i));
       if (f.weekOfMonth) {
-        const which = f.weekOfMonth === -1
-          ? t("last")
-          : [t("1st"), t("2nd"), t("3rd"), t("4th")][f.weekOfMonth - 1];
-        return t("{which} {days} of the month", { which, days: days.join(", ") });
+        const which = f.weekOfMonth === -1 ?
+            t('last') :
+            [t('1st'), t('2nd'), t('3rd'), t('4th')][f.weekOfMonth - 1];
+        return t('{which} {days} of the month', {which, days: days.join(', ')});
       }
       if (f.weekInterval > 1) {
-        return t("{days} every {n} weeks", { days: days.join(", "), n: f.weekInterval });
+        return t(
+            '{days} every {n} weeks',
+            {days: days.join(', '), n: f.weekInterval});
       }
-      if (days.length === 7) return t("daily");
-      if (days.length === 5 && !(f.weekdays & (1 << 5)) && !(f.weekdays & (1 << 6))) {
-        return t("Mon–Fri");
+      if (days.length === 7) return t('daily');
+      if (days.length === 5 && !(f.weekdays & (1 << 5)) &&
+          !(f.weekdays & (1 << 6))) {
+        return t('Mon–Fri');
       }
-      return days.join(", ");
+      return days.join(', ');
     }
-    case "custom_interval":
-      return f.intervalDays === 1 ? t("daily") : t("every {n} days", { n: f.intervalDays });
+    case 'custom_interval':
+      return f.intervalDays === 1 ? t('daily') :
+                                    t('every {n} days', {n: f.intervalDays});
     default:
-      return "";
+      return '';
   }
 }
 
@@ -263,21 +285,21 @@ export function describeFrequency(f) {
 export function describeHabit(habit) {
   const parts = [];
   // Mark archived habits explicitly.
-  if (habit.archivedAt) parts.push(t("Archived"));
+  if (habit.archivedAt) parts.push(t('Archived'));
   // Only the daily target; empty for KindCheck. The streak is rendered
   // separately (see habitLabel in board-cells.js).
   const goal = describeTarget(habit);
   if (goal) parts.push(goal);
-  return parts.join(" · ");
+  return parts.join(' · ');
 }
 
 /** Describes the current streak, e.g. "12-day streak" or "3-week streak". */
 export function describeStreak(habit) {
   const s = habit.stats;
   const n = s?.currentStreak ?? 0;
-  if (s?.streakUnit === "months") return t("{n}-month streak", { n });
-  if (s?.streakUnit === "weeks") return t("{n}-week streak", { n });
-  return t("{n}-day streak", { n });
+  if (s?.streakUnit === 'months') return t('{n}-month streak', {n});
+  if (s?.streakUnit === 'weeks') return t('{n}-week streak', {n});
+  return t('{n}-day streak', {n});
 }
 
 /**

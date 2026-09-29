@@ -2,14 +2,11 @@
 // the range counted and the year grid of the heatmaps with its tooltips. Used
 // by the habit, category and day statistics views.
 
-import {
-  addDays, startOfWeek, daysBetween, dayOfMonth, monthIndex, MONTH_SHORT, formatDayMonth,
-  formatFull,
-} from "./dates.js";
-import { t } from "./i18n.js";
-import { state } from "./state.js";
-import { showTooltip, hideTooltip } from "./tooltip.js";
-import { el } from "./dom.js";
+import {addDays, dayOfMonth, daysBetween, formatDayMonth, formatFull, MONTH_SHORT, monthIndex, startOfWeek} from './dates.js';
+import {el} from './dom.js';
+import {t} from './i18n.js';
+import {state} from './state.js';
+import {hideTooltip, showTooltip} from './tooltip.js';
 
 /** Returns the current year, e.g. "2026". */
 export function currentYear() {
@@ -20,7 +17,7 @@ export function currentYear() {
 export function sinceLabel(from) {
   const year = currentYear();
   if (from === `${year}-01-01`) return `(${year})`;
-  return t("(since {date})", { date: formatDayMonth(from) });
+  return t('(since {date})', {date: formatDayMonth(from)});
 }
 
 // ---------- year grid ----------
@@ -43,21 +40,27 @@ export function yearGrid(year, square) {
     for (let d = 0; d < 7; d++) {
       const iso = addDays(firstWeek, w * 7 + d);
       if (iso < yearStart || iso > yearEnd) {
-        squares.push(el("div", { class: "heat is-outside" }));
+        squares.push(el('div', {class: 'heat is-outside'}));
         continue;
       }
       squares.push(square(iso));
       if (dayOfMonth(iso) === 1) {
-        monthLabels.push(el("span", { style: { "grid-column": String(w + 1) } }, MONTH_SHORT[monthIndex(iso)]));
+        monthLabels.push(
+            el('span', {style: {'grid-column': String(w + 1)}},
+               MONTH_SHORT[monthIndex(iso)]));
       }
     }
   }
 
-  return el("div", { class: "heatmap-scroll" },
-    el("div", { class: "heatmap-body", style: { "--weeks": String(weeks) } },
-      el("div", { class: "heatmap-months" }, ...monthLabels),
-      el("div", { class: "heatmap" }, ...squares),
-    ),
+  return el(
+      'div',
+      {class: 'heatmap-scroll'},
+      el(
+          'div',
+          {class: 'heatmap-body', style: {'--weeks': String(weeks)}},
+          el('div', {class: 'heatmap-months'}, ...monthLabels),
+          el('div', {class: 'heatmap'}, ...squares),
+          ),
   );
 }
 
@@ -66,8 +69,8 @@ export function yearGrid(year, square) {
  * the grid overflows. Must be called once the grid is in the document.
  */
 export function centreToday(root) {
-  const scroller = root.querySelector(".heatmap-scroll");
-  const cell = scroller?.querySelector(".heat.is-today");
+  const scroller = root.querySelector('.heatmap-scroll');
+  const cell = scroller?.querySelector('.heat.is-today');
   if (!cell) return;
   const box = scroller.getBoundingClientRect();
   const at = cell.getBoundingClientRect();
@@ -80,18 +83,20 @@ export function centreToday(root) {
  * data-status.
  */
 export function initChartTooltips(container, selector) {
-  container.addEventListener("mouseover", (event) => {
+  container.addEventListener('mouseover', (event) => {
     const target = event.target.closest(selector);
     if (!target) return;
     showTooltip(target, [
-      el("div", { class: "tip-date" }, target.dataset.tip ?? formatFull(target.dataset.date)),
-      el("div", { class: "tip-status" }, target.dataset.status),
+      el('div', {class: 'tip-date'},
+         target.dataset.tip ?? formatFull(target.dataset.date)),
+      el('div', {class: 'tip-status'}, target.dataset.status),
     ]);
   });
-  container.addEventListener("mouseout", (event) => {
+  container.addEventListener('mouseout', (event) => {
     if (event.target.closest(selector)) hideTooltip();
   });
   // Hide the tooltip when a chart scrolls.
-  container.addEventListener("scroll", hideTooltip, { capture: true, passive: true });
-  container.addEventListener("mouseleave", hideTooltip);
+  container.addEventListener(
+      'scroll', hideTooltip, {capture: true, passive: true});
+  container.addEventListener('mouseleave', hideTooltip);
 }

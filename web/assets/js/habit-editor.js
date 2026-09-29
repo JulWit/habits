@@ -1,17 +1,15 @@
 // Habit page for creating and editing. It builds the request body and passes
 // it to its caller.
 
-import { WEEKDAY_SHORT, WEEKDAY_LONG } from "./dates.js";
-import { state, categoryById } from "./state.js";
-import { errorText } from "./undo.js";
-import { openCategoryPicker } from "./category-picker.js";
-import {
-  icons, buildIconChoices, markIconChoice, categoryIconBadge, colorLabel, colorValue,
-} from "./icons.js";
-import * as H from "./habit-helpers.js";
-import { t } from "./i18n.js";
-import { openPage, closePage, guardPage } from "./page-stack.js";
-import { el, markup } from "./dom.js";
+import {openCategoryPicker} from './category-picker.js';
+import {WEEKDAY_LONG, WEEKDAY_SHORT} from './dates.js';
+import {el, markup} from './dom.js';
+import * as habitHelpers from './habit-helpers.js';
+import {t} from './i18n.js';
+import {buildIconChoices, categoryIconBadge, colorLabel, colorValue, icons, markIconChoice} from './icons.js';
+import {closePage, guardPage, openPage} from './page-stack.js';
+import {categoryById, state} from './state.js';
+import {errorText} from './undo.js';
 
 let dialog;
 let form;
@@ -21,33 +19,33 @@ let titleEl;
 let categoryButton;
 let retroactiveBox;
 let selectedColor = null;
-let selectedIcon = "";
-let selectedCategory = "";
+let selectedIcon = '';
+let selectedCategory = '';
 let onSubmit = null;
 /** The input as opened, to detect unsaved changes. */
-let initial = "";
+let initial = '';
 /** The habit being edited, or null when creating one. */
 let editing = null;
 /** Target and frequency as opened, to offer applying a change retroactively. */
-let initialSchedule = "";
+let initialSchedule = '';
 
 export function initEditor() {
-  dialog = document.getElementById("habit-editor");
-  form = document.getElementById("habit-editor-form");
-  errorBox = document.getElementById("habit-editor-error");
-  submitButton = document.getElementById("habit-editor-submit");
-  titleEl = document.getElementById("habit-editor-title");
-  categoryButton = document.getElementById("habit-editor-category");
-  retroactiveBox = document.getElementById("habit-editor-retroactive");
+  dialog = document.getElementById('habit-editor');
+  form = document.getElementById('habit-editor-form');
+  errorBox = document.getElementById('habit-editor-error');
+  submitButton = document.getElementById('habit-editor-submit');
+  titleEl = document.getElementById('habit-editor-title');
+  categoryButton = document.getElementById('habit-editor-category');
+  retroactiveBox = document.getElementById('habit-editor-retroactive');
 
   buildWeekdayButtons();
-  form.addEventListener("change", syncVisibility);
-  form.addEventListener("input", onEdit);
-  form.addEventListener("change", onEdit);
-  form.addEventListener("submit", handleSubmit);
+  form.addEventListener('change', syncVisibility);
+  form.addEventListener('input', onEdit);
+  form.addEventListener('change', onEdit);
+  form.addEventListener('submit', handleSubmit);
   guardPage(dialog, () => JSON.stringify(collect()) !== initial);
 
-  categoryButton.addEventListener("click", async () => {
+  categoryButton.addEventListener('click', async () => {
     // null means the picker was cancelled.
     const chosen = await openCategoryPicker(selectedCategory);
     if (chosen !== null) {
@@ -68,71 +66,78 @@ function onEdit() {
 
 /** Shows the selected category on its button. */
 function paintCategory() {
-  const none = selectedCategory === "";
+  const none = selectedCategory === '';
   const category = none ? null : categoryById(selectedCategory);
-  const badge = category && categoryIconBadge(category, "habit-icon is-small");
+  const badge = category && categoryIconBadge(category, 'habit-icon is-small');
   categoryButton.replaceChildren(
-    ...(badge ? [badge] : []),
-    el("span", { class: ["picker-value", none && "is-empty"] }, none
-      ? t("No category")
-      // A deleted category is shown by name.
-      : category?.name ?? t("Deleted category")),
-    el("span", { class: "picker-caret" }, markup(icons.chevron)),
+      ...(badge ? [badge] : []),
+      el('span', {class: ['picker-value', none && 'is-empty']},
+         none ? t('No category')
+                // A deleted category is shown by name.
+                :
+                category?.name ?? t('Deleted category')),
+      el('span', {class: 'picker-caret'}, markup(icons.chevron)),
   );
 }
 
 function buildWeekdayButtons() {
-  const host = document.getElementById("habit-editor-weekdays");
+  const host = document.getElementById('habit-editor-weekdays');
   host.replaceChildren(
-    ...WEEKDAY_SHORT.map((label, i) => {
-      const b = el("button", {
-        type: "button",
-        class: "weekday",
-        data: { day: i },
-        "aria-pressed": "false",
-        "aria-label": WEEKDAY_LONG[i],
-      }, label);
-      b.addEventListener("click", () => {
-        b.setAttribute("aria-pressed", b.getAttribute("aria-pressed") === "true" ? "false" : "true");
-        // The buttons change the input without an input event.
-        onEdit();
-      });
-      return b;
-    }),
+      ...WEEKDAY_SHORT.map((label, i) => {
+        const b =
+            el('button', {
+              type: 'button',
+              class: 'weekday',
+              data: {day: i},
+              'aria-pressed': 'false',
+              'aria-label': WEEKDAY_LONG[i],
+            },
+               label);
+        b.addEventListener('click', () => {
+          b.setAttribute(
+              'aria-pressed',
+              b.getAttribute('aria-pressed') === 'true' ? 'false' : 'true');
+          // The buttons change the input without an input event.
+          onEdit();
+        });
+        return b;
+      }),
   );
 }
 
 function buildSwatches() {
-  const host = document.getElementById("habit-editor-colors");
+  const host = document.getElementById('habit-editor-colors');
   host.replaceChildren(
-    ...state.colors.map((color) => {
-      const b = el("button", {
-        type: "button",
-        class: "swatch",
-        style: { "--swatch": colorValue(color) },
-        data: { color },
-        role: "radio",
-        "aria-label": t("Colour {color}", { color: colorLabel(color) }),
-        title: colorLabel(color),
-      });
-      b.addEventListener("click", () => selectColor(color));
-      return b;
-    }),
+      ...state.colors.map((color) => {
+        const b = el('button', {
+          type: 'button',
+          class: 'swatch',
+          style: {'--swatch': colorValue(color)},
+          data: {color},
+          role: 'radio',
+          'aria-label': t('Colour {color}', {color: colorLabel(color)}),
+          title: colorLabel(color),
+        });
+        b.addEventListener('click', () => selectColor(color));
+        return b;
+      }),
   );
 }
 
 function selectColor(color) {
   selectedColor = color;
-  for (const node of document.querySelectorAll("#habit-editor-colors .swatch")) {
-    node.setAttribute("aria-checked", String(node.dataset.color === color));
+  for (const node of document.querySelectorAll(
+           '#habit-editor-colors .swatch')) {
+    node.setAttribute('aria-checked', String(node.dataset.color === color));
   }
   // Show the icons in the selected colour.
-  document.getElementById("habit-editor-icons").style.setProperty("--habit-color", colorValue(color));
+  document.getElementById('habit-editor-icons')
+      .style.setProperty('--habit-color', colorValue(color));
 }
 
 function selectIcon(name) {
   selectedIcon = name;
-  markIconChoice(document.getElementById("habit-editor-icons"), name);
+  markIconChoice(document.getElementById('habit-editor-icons'), name);
 }
 
 /**
@@ -141,9 +146,9 @@ function selectIcon(name) {
  * an empty step field means the kind's default step.
  */
 const KIND_FIELDS = {
-  count: { target: "targetCount", step: "stepCount", defaultTarget: 8 },
-  time: { target: "targetTime", step: "stepTime", defaultTarget: 20 },
-  distance: { target: "targetDistance", step: "stepDistance", defaultTarget: 5 },
+  count: {target: 'targetCount', step: 'stepCount', defaultTarget: 8},
+  time: {target: 'targetTime', step: 'stepTime', defaultTarget: 20},
+  distance: {target: 'targetDistance', step: 'stepDistance', defaultTarget: 5},
 };
 
 /**
@@ -155,22 +160,23 @@ function syncVisibility() {
   syncLimit(kind);
   const freq = form.elements.freq.value;
   const repeat = form.elements.weekRepeat.value;
-  for (const node of form.querySelectorAll("[data-when-kind]")) {
+  for (const node of form.querySelectorAll('[data-when-kind]')) {
     // A section may name several kinds, separated by spaces.
-    setSectionActive(node, node.dataset.whenKind.split(" ").includes(kind));
+    setSectionActive(node, node.dataset.whenKind.split(' ').includes(kind));
   }
   // Sections that depend on the repeat mode.
-  for (const node of form.querySelectorAll("[data-when-freq]")) {
-    const repeatMatches = !node.dataset.whenRepeat || node.dataset.whenRepeat === repeat;
+  for (const node of form.querySelectorAll('[data-when-freq]')) {
+    const repeatMatches =
+        !node.dataset.whenRepeat || node.dataset.whenRepeat === repeat;
     setSectionActive(node, node.dataset.whenFreq === freq && repeatMatches);
   }
 }
 
 /** Labels of the target fields, as a target and as a limit. */
 const TARGET_LABELS = {
-  count: [t("Daily target"), t("Daily limit")],
-  time: [t("Daily target in minutes"), t("Daily limit in minutes")],
-  distance: [t("Daily target in km"), t("Daily limit in km")],
+  count: [t('Daily target'), t('Daily limit')],
+  time: [t('Daily target in minutes'), t('Daily limit in minutes')],
+  distance: [t('Daily target in km'), t('Daily limit in km')],
 };
 
 /**
@@ -179,26 +185,28 @@ const TARGET_LABELS = {
  * counting days per week or month are off, as a limit needs fixed days.
  */
 function syncLimit(kind) {
-  const limit = kind !== "check" && form.elements.targetType.value === "at_most";
-  for (const node of form.querySelectorAll("[data-target-label]")) {
+  const limit =
+      kind !== 'check' && form.elements.targetType.value === 'at_most';
+  for (const node of form.querySelectorAll('[data-target-label]')) {
     node.textContent = TARGET_LABELS[node.dataset.targetLabel][limit ? 1 : 0];
   }
   for (const fields of Object.values(KIND_FIELDS)) {
     const input = form.elements[fields.target];
     input.dataset.min ??= input.min;
-    input.min = limit ? "0" : input.dataset.min;
+    input.min = limit ? '0' : input.dataset.min;
   }
   for (const radio of form.querySelectorAll('input[name="freq"]')) {
-    const periodic = radio.value === "times_per_week" || radio.value === "times_per_month";
+    const periodic =
+        radio.value === 'times_per_week' || radio.value === 'times_per_month';
     radio.disabled = limit && periodic;
-    if (radio.disabled && radio.checked) form.elements.freq.value = "daily";
+    if (radio.disabled && radio.checked) form.elements.freq.value = 'daily';
   }
-  document.getElementById("habit-editor-limit-hint").hidden = !limit;
+  document.getElementById('habit-editor-limit-hint').hidden = !limit;
 }
 
 function setSectionActive(section, active) {
   section.hidden = !active;
-  for (const input of section.querySelectorAll("input, textarea, select")) {
+  for (const input of section.querySelectorAll('input, textarea, select')) {
     input.disabled = !active;
   }
 }
@@ -213,29 +221,33 @@ export function openEditor(habit, handler) {
   editing = habit;
   errorBox.hidden = true;
   buildSwatches();
-  buildIconChoices(document.getElementById("habit-editor-icons"), state.icons, selectIcon);
-  selectedCategory = habit?.categoryId ?? "";
+  buildIconChoices(
+      document.getElementById('habit-editor-icons'), state.icons, selectIcon);
+  selectedCategory = habit?.categoryId ?? '';
   paintCategory();
 
-  const schedule = habit ? H.currentSchedule(habit) : null;
+  const schedule = habit ? habitHelpers.currentSchedule(habit) : null;
   const f = form.elements;
-  titleEl.textContent = habit ? t("Edit habit") : t("New habit");
-  submitButton.textContent = habit ? t("Save") : t("Create");
+  titleEl.textContent = habit ? t('Edit habit') : t('New habit');
+  submitButton.textContent = habit ? t('Save') : t('Create');
 
-  f.name.value = habit?.name ?? "";
-  f.kind.value = habit?.kind ?? "check";
-  f.targetType.value = schedule?.targetType === "at_most" ? "at_most" : "at_least";
+  f.name.value = habit?.name ?? '';
+  f.kind.value = habit?.kind ?? 'check';
+  f.targetType.value =
+      schedule?.targetType === 'at_most' ? 'at_most' : 'at_least';
   for (const [kind, fields] of Object.entries(KIND_FIELDS)) {
     f[fields.target].value = fields.defaultTarget;
-    f[fields.step].value = "";
+    f[fields.step].value = '';
     if (habit?.kind === kind) {
-      f[fields.target].value = schedule.targetValue / H.scale(kind);
-      if (habit.stepValue) f[fields.step].value = habit.stepValue / H.scale(kind);
+      f[fields.target].value = schedule.targetValue / habitHelpers.scale(kind);
+      if (habit.stepValue) {
+        f[fields.step].value = habit.stepValue / habitHelpers.scale(kind);
+      }
     }
   }
-  f.unit.value = habit?.kind === "count" ? habit.unit : "";
+  f.unit.value = habit?.kind === 'count' ? habit.unit : '';
 
-  const freq = schedule?.frequency ?? { kind: "daily" };
+  const freq = schedule?.frequency ?? {kind: 'daily'};
   f.freq.value = freq.kind;
   f.timesPerWeek.value = freq.timesPerWeek || 3;
   f.timesPerMonth.value = freq.timesPerMonth || 2;
@@ -244,26 +256,28 @@ export function openEditor(habit, handler) {
 
   // Weekday schedules repeat every week, every n-th week, or in one week of
   // the month.
-  f.weekRepeat.value = "weekly";
+  f.weekRepeat.value = 'weekly';
   f.weekInterval.value = 4;
-  f.weekOfMonth.value = "1";
+  f.weekOfMonth.value = '1';
   f.weekAnchorDate.value = state.today;
-  if (freq.kind === "weekdays" && freq.weekOfMonth) {
-    f.weekRepeat.value = "monthly";
+  if (freq.kind === 'weekdays' && freq.weekOfMonth) {
+    f.weekRepeat.value = 'monthly';
     f.weekOfMonth.value = String(freq.weekOfMonth);
-  } else if (freq.kind === "weekdays" && freq.weekInterval > 1) {
-    f.weekRepeat.value = "interval";
+  } else if (freq.kind === 'weekdays' && freq.weekInterval > 1) {
+    f.weekRepeat.value = 'interval';
     f.weekInterval.value = freq.weekInterval;
     f.weekAnchorDate.value = freq.anchorDate || state.today;
   }
 
   const mask = freq.weekdays || 0;
-  for (const b of document.querySelectorAll("#habit-editor-weekdays .weekday")) {
-    b.setAttribute("aria-pressed", String((mask & (1 << Number(b.dataset.day))) !== 0));
+  for (const b of document.querySelectorAll(
+           '#habit-editor-weekdays .weekday')) {
+    b.setAttribute(
+        'aria-pressed', String((mask & (1 << Number(b.dataset.day))) !== 0));
   }
 
   selectColor(habit?.color ?? state.colors[0]);
-  selectIcon(habit?.icon ?? "");
+  selectIcon(habit?.icon ?? '');
   syncVisibility();
   f.retroactive.checked = false;
   initialSchedule = scheduleKey(collect());
@@ -282,12 +296,18 @@ function collect() {
     icon: selectedIcon,
     kind,
     categoryId: selectedCategory,
-    unit: kind === "count" ? f.unit.value.trim() : "",
+    unit: kind === 'count' ? f.unit.value.trim() : '',
     targetValue: 1,
-    targetType: "at_least",
+    targetType: 'at_least',
     frequency: {
-      kind: f.freq.value, timesPerWeek: 0, timesPerMonth: 0, weekdays: 0, intervalDays: 0,
-      weekInterval: 0, weekOfMonth: 0, anchorDate: "",
+      kind: f.freq.value,
+      timesPerWeek: 0,
+      timesPerMonth: 0,
+      weekdays: 0,
+      intervalDays: 0,
+      weekInterval: 0,
+      weekOfMonth: 0,
+      anchorDate: '',
     },
   };
 
@@ -300,31 +320,40 @@ function collect() {
   // i.e. the kind's default step.
   const fields = KIND_FIELDS[kind];
   if (fields) {
-    input.targetValue = Math.round(Number(f[fields.target].value) * H.scale(kind));
-    input.stepValue = Math.round(Number(f[fields.step].value) * H.scale(kind));
+    input.targetValue =
+        Math.round(Number(f[fields.target].value) * habitHelpers.scale(kind));
+    input.stepValue =
+        Math.round(Number(f[fields.step].value) * habitHelpers.scale(kind));
     input.targetType = f.targetType.value;
   }
 
   switch (input.frequency.kind) {
-    case "times_per_week":
+    case 'times_per_week':
       input.frequency.timesPerWeek = Number(f.timesPerWeek.value);
       break;
-    case "times_per_month":
+    case 'times_per_month':
       input.frequency.timesPerMonth = Number(f.timesPerMonth.value);
       break;
-    case "weekdays": {
+    case 'weekdays': {
       let mask = 0;
-      for (const b of document.querySelectorAll("#habit-editor-weekdays .weekday")) {
-        if (b.getAttribute("aria-pressed") === "true") mask |= 1 << Number(b.dataset.day);
+      for (const b of document.querySelectorAll(
+               '#habit-editor-weekdays .weekday')) {
+        if (b.getAttribute('aria-pressed') === 'true') {
+          mask |= 1 << Number(b.dataset.day);
+        }
       }
       input.frequency.weekdays = mask;
       const repeat = f.weekRepeat.value;
-      input.frequency.weekInterval = repeat === "interval" ? Number(f.weekInterval.value) : 1;
-      input.frequency.weekOfMonth = repeat === "monthly" ? Number(f.weekOfMonth.value) : 0;
-      if (repeat === "interval") input.frequency.anchorDate = f.weekAnchorDate.value || state.today;
+      input.frequency.weekInterval =
+          repeat === 'interval' ? Number(f.weekInterval.value) : 1;
+      input.frequency.weekOfMonth =
+          repeat === 'monthly' ? Number(f.weekOfMonth.value) : 0;
+      if (repeat === 'interval') {
+        input.frequency.anchorDate = f.weekAnchorDate.value || state.today;
+      }
       break;
     }
-    case "custom_interval":
+    case 'custom_interval':
       input.frequency.intervalDays = Number(f.intervalDays.value);
       input.frequency.anchorDate = f.anchorDate.value || state.today;
       break;
@@ -338,14 +367,14 @@ async function handleSubmit(event) {
   if (!form.reportValidity()) return;
 
   const input = collect();
-  if (input.frequency.kind === "weekdays" && input.frequency.weekdays === 0) {
-    return showError(t("Please select at least one weekday."));
+  if (input.frequency.kind === 'weekdays' && input.frequency.weekdays === 0) {
+    return showError(t('Please select at least one weekday.'));
   }
 
   submitButton.disabled = true;
   try {
     await onSubmit(input);
-    closePage(dialog, { force: true });
+    closePage(dialog, {force: true});
   } catch (err) {
     showError(errorText(err));
   } finally {
@@ -357,12 +386,13 @@ function showError(message) {
   errorBox.textContent = message;
   errorBox.hidden = false;
   // The error message may be outside the visible area.
-  errorBox.scrollIntoView({ block: "nearest" });
+  errorBox.scrollIntoView({block: 'nearest'});
 }
 
 /** Returns the part of the input that makes up the schedule. */
 function scheduleKey(input) {
-  return JSON.stringify([input.kind, input.targetValue, input.targetType, input.frequency]);
+  return JSON.stringify(
+      [input.kind, input.targetValue, input.targetType, input.frequency]);
 }
 
 /**
@@ -374,7 +404,7 @@ function syncRetroactive() {
   const input = collect();
   syncKindHint(input.kind);
   const changed = editing !== null && input.kind === editing.kind &&
-    scheduleKey(input) !== initialSchedule;
+      scheduleKey(input) !== initialSchedule;
   retroactiveBox.hidden = !changed;
   if (!changed) form.elements.retroactive.checked = false;
 }
@@ -384,20 +414,28 @@ function syncRetroactive() {
  * entries changes (domain.ConvertKind).
  */
 function syncKindHint(kind) {
-  const hint = document.getElementById("habit-editor-kind-hint");
+  const hint = document.getElementById('habit-editor-kind-hint');
   const recorded = editing !== null &&
-    (Object.keys(editing.entries ?? {}).length > 0 || (editing.stats?.total ?? 0) > 0);
+      (Object.keys(editing.entries ?? {}).length > 0 ||
+       (editing.stats?.total ?? 0) > 0);
   if (!recorded || kind === editing.kind) {
     hint.hidden = true;
     return;
   }
-  if (kind === "check") {
-    hint.textContent = t("Days that reached their target stay ticked; the others are cleared. The recorded values are not kept.");
-  } else if (editing.kind === "check") {
-    hint.textContent = t("Ticked days get the new daily target.");
+  if (kind === 'check') {
+    hint.textContent = t(
+        'Days that reached their target stay ticked; the others are cleared. The recorded values are not kept.');
+  } else if (editing.kind === 'check') {
+    hint.textContent = t('Ticked days get the new daily target.');
   } else {
-    hint.textContent = t("Recorded values keep their number in the new unit, e.g. 5 becomes 5 {unit}.",
-      { unit: t(kind === "time" ? "minutes" : kind === "distance" ? "km" : "times") });
+    hint.textContent = t(
+        'Recorded values keep their number in the new unit, e.g. 5 becomes 5 {unit}.',
+        {
+          unit:
+              t(kind === 'time'         ? 'minutes' :
+                    kind === 'distance' ? 'km' :
+                                          'times'),
+        });
   }
   hint.hidden = false;
 }

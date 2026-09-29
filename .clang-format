@@ -1,0 +1,10 @@
+# Formatting of the frontend after the Google JavaScript style guide
+# (https://google.github.io/styleguide/jsguide.html). Not part of the build:
+#   uvx clang-format -i web/sw.js web/assets/js/*.js
+---
+Language: JavaScript
+BasedOnStyle: Google
+ColumnLimit: 80
+JavaScriptQuotes: Single
+JavaScriptWrapImports: false
+MaxEmptyLinesToKeep: 1

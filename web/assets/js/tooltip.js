@@ -25,37 +25,44 @@ let warmUntil = 0;
 
 /** Registers the listeners for title tooltips. */
 export function initTooltips() {
-  document.addEventListener("pointerover", (event) => {
-    if (event.pointerType !== "mouse") return;
-    const el = event.target.closest?.("[title], [data-tooltip]");
+  document.addEventListener('pointerover', (event) => {
+    if (event.pointerType !== 'mouse') return;
+    const el = event.target.closest?.('[title], [data-tooltip]');
     if (!el || el === owner) return;
     const text = takeTitle(el);
     if (!text) return;
     hideTooltip();
     owner = el;
     const show = () => showTooltip(el, text);
-    if (performance.now() < warmUntil) show();
-    else timer = setTimeout(show, DELAY);
+    if (performance.now() < warmUntil) {
+      show();
+    } else {
+      timer = setTimeout(show, DELAY);
+    }
   });
 
-  document.addEventListener("pointerout", (event) => {
-    if (owner && event.target.closest?.("[data-tooltip]") === owner &&
-        !owner.contains(event.relatedTarget)) hideTooltip();
+  document.addEventListener('pointerout', (event) => {
+    if (owner && event.target.closest?.('[data-tooltip]') === owner &&
+        !owner.contains(event.relatedTarget)) {
+      hideTooltip();
+    }
   });
 
-  document.addEventListener("focusin", (event) => {
+  document.addEventListener('focusin', (event) => {
     const el = event.target;
-    if (!el.matches?.(":focus-visible")) return;
-    const text = el.closest("[title], [data-tooltip]") === el ? takeTitle(el) : "";
+    if (!el.matches?.(':focus-visible')) return;
+    const text =
+        el.closest('[title], [data-tooltip]') === el ? takeTitle(el) : '';
     if (text) showTooltip(el, text);
   });
 
-  document.addEventListener("focusout", hideTooltip);
-  document.addEventListener("pointerdown", hideTooltip, true);
-  document.addEventListener("scroll", hideTooltip, { capture: true, passive: true });
-  window.addEventListener("blur", hideTooltip);
-  document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") hideTooltip();
+  document.addEventListener('focusout', hideTooltip);
+  document.addEventListener('pointerdown', hideTooltip, true);
+  document.addEventListener(
+      'scroll', hideTooltip, {capture: true, passive: true});
+  window.addEventListener('blur', hideTooltip);
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') hideTooltip();
   });
 }
 
@@ -66,10 +73,13 @@ export function initTooltips() {
 export function showTooltip(anchor, content) {
   clearTimeout(timer);
   const tip = paneElement();
-  if (typeof content === "string") tip.textContent = content;
-  else tip.replaceChildren(...content);
+  if (typeof content === 'string') {
+    tip.textContent = content;
+  } else {
+    tip.replaceChildren(...content);
+  }
   // Reopened, so it lies above a dialog opened since.
-  if (tip.matches(":popover-open")) tip.hidePopover();
+  if (tip.matches(':popover-open')) tip.hidePopover();
   tip.showPopover();
   owner = anchor;
 
@@ -77,7 +87,10 @@ export function showTooltip(anchor, content) {
   const at = anchor.getBoundingClientRect();
   const box = tip.getBoundingClientRect();
   const width = document.documentElement.clientWidth;
-  const left = Math.max(MARGIN, Math.min(at.left + at.width / 2 - box.width / 2, width - box.width - MARGIN));
+  const left = Math.max(
+      MARGIN,
+      Math.min(
+          at.left + at.width / 2 - box.width / 2, width - box.width - MARGIN));
   let top = at.top - box.height - MARGIN;
   if (top < MARGIN) top = at.bottom + MARGIN;
   tip.style.left = `${Math.round(left)}px`;
@@ -88,7 +101,7 @@ export function showTooltip(anchor, content) {
 export function hideTooltip() {
   clearTimeout(timer);
   owner = null;
-  if (pane?.matches(":popover-open")) {
+  if (pane?.matches(':popover-open')) {
     pane.hidePopover();
     warmUntil = performance.now() + WARM;
   }
@@ -96,11 +109,11 @@ export function hideTooltip() {
 
 function paneElement() {
   if (!pane) {
-    pane = document.createElement("div");
-    pane.className = "tooltip";
-    pane.popover = "manual";
+    pane = document.createElement('div');
+    pane.className = 'tooltip';
+    pane.popover = 'manual';
     // The text is announced through the element's own label or description.
-    pane.setAttribute("aria-hidden", "true");
+    pane.setAttribute('aria-hidden', 'true');
     document.body.append(pane);
   }
   return pane;
@@ -111,13 +124,14 @@ function paneElement() {
  * title set again later (e.g. when a toggle changes) replaces the old text.
  */
 function takeTitle(el) {
-  const title = el.getAttribute("title");
+  const title = el.getAttribute('title');
   if (title !== null) {
-    el.removeAttribute("title");
+    el.removeAttribute('title');
     el.dataset.tooltip = title;
     // Keep the text for screen readers if the title was the only source.
-    const labelled = el.hasAttribute("aria-label") || el.hasAttribute("aria-labelledby");
-    if (!labelled) el.setAttribute("aria-description", title);
+    const labelled =
+        el.hasAttribute('aria-label') || el.hasAttribute('aria-labelledby');
+    if (!labelled) el.setAttribute('aria-description', title);
   }
-  return el.dataset.tooltip ?? "";
+  return el.dataset.tooltip ?? '';
 }

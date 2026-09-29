@@ -1,12 +1,12 @@
 // Search dialog for habits and categories, opened from the title bar or with
 // "/". Selecting a result opens it.
 
-import { subscribe, groupedHabits } from "./state.js";
-import { habitIconBadge, categoryIconBadge, colorValue } from "./icons.js";
-import * as H from "./habit-helpers.js";
-import { t } from "./i18n.js";
-import { openPage, closePage } from "./page-stack.js";
-import { el } from "./dom.js";
+import {el} from './dom.js';
+import * as habitHelpers from './habit-helpers.js';
+import {t} from './i18n.js';
+import {categoryIconBadge, colorValue, habitIconBadge} from './icons.js';
+import {closePage, openPage} from './page-stack.js';
+import {groupedHabits, subscribe} from './state.js';
 
 let dialog;
 let input;
@@ -23,37 +23,37 @@ let deps;
 
 export function initSearch(handlers) {
   deps = handlers;
-  dialog = document.getElementById("search-dialog");
-  input = document.getElementById("search-input");
-  list = document.getElementById("search-results");
-  empty = document.getElementById("search-empty");
+  dialog = document.getElementById('search-dialog');
+  input = document.getElementById('search-input');
+  list = document.getElementById('search-results');
+  empty = document.getElementById('search-empty');
 
-  const button = document.getElementById("open-search");
-  button.addEventListener("click", openSearch);
+  const button = document.getElementById('open-search');
+  button.addEventListener('click', openSearch);
   // Without a keyboard the shortcut in the title means nothing; screen readers
   // would still read it out.
-  if (matchMedia("(pointer: coarse)").matches) button.title = t("Search");
-  input.addEventListener("input", () => {
+  if (matchMedia('(pointer: coarse)').matches) button.title = t('Search');
+  input.addEventListener('input', () => {
     active = 0;
     draw();
   });
-  input.addEventListener("keydown", onKey);
+  input.addEventListener('keydown', onKey);
 
-  clear = document.getElementById("search-clear");
-  clear.addEventListener("click", () => {
-    input.value = "";
+  clear = document.getElementById('search-clear');
+  clear.addEventListener('click', () => {
+    input.value = '';
     active = 0;
     draw();
     input.focus();
   });
 
-  list.addEventListener("click", (event) => {
-    const option = event.target.closest("[data-index]");
+  list.addEventListener('click', (event) => {
+    const option = event.target.closest('[data-index]');
     if (option) choose(results[Number(option.dataset.index)]);
   });
   // Pointer and arrow keys move the same selection.
-  list.addEventListener("pointermove", (event) => {
-    const option = event.target.closest("[data-index]");
+  list.addEventListener('pointermove', (event) => {
+    const option = event.target.closest('[data-index]');
     if (option && Number(option.dataset.index) !== active) {
       active = Number(option.dataset.index);
       mark();
@@ -61,7 +61,7 @@ export function initSearch(handlers) {
   });
 
   // Close on a click on the backdrop.
-  dialog.addEventListener("click", (event) => {
+  dialog.addEventListener('click', (event) => {
     if (event.target === dialog) closePage(dialog);
   });
 
@@ -73,7 +73,7 @@ export function initSearch(handlers) {
 
 export function openSearch() {
   if (dialog.open) return;
-  input.value = "";
+  input.value = '';
   active = 0;
   // Open first, so that draw() can measure the list.
   openPage(dialog);
@@ -84,25 +84,27 @@ export function openSearch() {
 /** Returns all searchable entries in board order. */
 function candidates() {
   const out = [];
-  for (const { category, habits } of groupedHabits()) {
-    if (category) out.push({ kind: "category", item: category, habits });
-    for (const habit of habits) out.push({ kind: "habit", item: habit, category });
+  for (const {category, habits} of groupedHabits()) {
+    if (category) out.push({kind: 'category', item: category, habits});
+    for (const habit of habits) {
+      out.push({kind: 'habit', item: habit, category});
+    }
   }
   return out;
 }
 
 function matches(entry, query) {
-  if (query === "") return true;
+  if (query === '') return true;
   // Habits also match the name of their category.
-  const text = entry.kind === "habit"
-    ? `${entry.item.name} ${entry.category?.name ?? ""}`
-    : entry.item.name;
+  const text = entry.kind === 'habit' ?
+      `${entry.item.name} ${entry.category?.name ?? ''}` :
+      entry.item.name;
   return text.toLowerCase().includes(query);
 }
 
 function draw() {
   const query = input.value.trim().toLowerCase();
-  clear.hidden = input.value === "";
+  clear.hidden = input.value === '';
   results = candidates().filter((entry) => matches(entry, query));
   active = Math.min(active, Math.max(0, results.length - 1));
 
@@ -110,62 +112,70 @@ function draw() {
   list.hidden = results.length === 0;
   empty.hidden = results.length > 0;
   // Measure without the class's padding.
-  list.classList.remove("is-scrolling");
-  list.classList.toggle("is-scrolling", list.scrollHeight > list.clientHeight);
+  list.classList.remove('is-scrolling');
+  list.classList.toggle('is-scrolling', list.scrollHeight > list.clientHeight);
   mark();
 }
 
 function option(entry, index) {
-  const isHabit = entry.kind === "habit";
-  const meta = isHabit
-    ? entry.category?.name ?? H.describeHabit(entry.item)
-    : entry.habits.length === 1
-      ? t("Category · 1 habit")
-      : t("Category · {n} habits", { n: entry.habits.length });
+  const isHabit = entry.kind === 'habit';
+  const meta = isHabit ?
+      entry.category?.name ?? habitHelpers.describeHabit(entry.item) :
+      entry.habits.length === 1 ?
+      t('Category · 1 habit') :
+      t('Category · {n} habits', {n: entry.habits.length});
 
-  return el("div", {
-    class: ["search-option", isHabit && entry.item.archivedAt ? "is-archived" : ""],
-    id: `search-option-${index}`,
-    data: { index },
-    role: "option",
-  },
-    optionDot(entry),
-    el("span", { class: "search-option-name" }, entry.item.name),
-    el("span", { class: "search-option-meta" }, meta),
+  return el(
+      'div',
+      {
+        class: [
+          'search-option',
+          isHabit && entry.item.archivedAt ? 'is-archived' : '',
+        ],
+        id: `search-option-${index}`,
+        data: {index},
+        role: 'option',
+      },
+      optionDot(entry),
+      el('span', {class: 'search-option-name'}, entry.item.name),
+      el('span', {class: 'search-option-meta'}, meta),
   );
 }
 
 /** Returns the icon of a result, or a dot if it has none. */
-function optionDot({ kind, item }) {
-  if (kind === "habit") {
-    return habitIconBadge(item, "habit-icon is-small") ??
-      el("span", { class: "dot", style: { "--habit-color": colorValue(item.color) } });
+function optionDot({kind, item}) {
+  if (kind === 'habit') {
+    return habitIconBadge(item, 'habit-icon is-small') ??
+        el('span',
+           {class: 'dot', style: {'--habit-color': colorValue(item.color)}});
   }
-  return categoryIconBadge(item, "habit-icon is-small") ?? el("span", { class: "dot is-category" });
+  return categoryIconBadge(item, 'habit-icon is-small') ??
+      el('span', {class: 'dot is-category'});
 }
 
 /** Highlights the selected result and scrolls it into view. */
 function mark() {
   for (const node of list.children) {
-    node.setAttribute("aria-selected", String(Number(node.dataset.index) === active));
+    node.setAttribute(
+        'aria-selected', String(Number(node.dataset.index) === active));
   }
   const current = list.children[active];
   if (current) {
-    input.setAttribute("aria-activedescendant", current.id);
-    current.scrollIntoView({ block: "nearest" });
+    input.setAttribute('aria-activedescendant', current.id);
+    current.scrollIntoView({block: 'nearest'});
   } else {
-    input.removeAttribute("aria-activedescendant");
+    input.removeAttribute('aria-activedescendant');
   }
 }
 
 function onKey(event) {
-  if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+  if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
     event.preventDefault();
     if (results.length === 0) return;
-    const step = event.key === "ArrowDown" ? 1 : -1;
+    const step = event.key === 'ArrowDown' ? 1 : -1;
     active = (active + step + results.length) % results.length;
     mark();
-  } else if (event.key === "Enter") {
+  } else if (event.key === 'Enter') {
     event.preventDefault();
     if (results[active]) choose(results[active]);
   }
@@ -175,6 +185,9 @@ async function choose(entry) {
   if (!entry) return;
   // The view takes the search's place in the history once its entry is gone.
   await closePage(dialog);
-  if (entry.kind === "habit") deps.openHabit(entry.item.id);
-  else deps.openCategory(entry.item.id);
+  if (entry.kind === 'habit') {
+    deps.openHabit(entry.item.id);
+  } else {
+    deps.openCategory(entry.item.id);
+  }
 }

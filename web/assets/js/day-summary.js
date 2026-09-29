@@ -1,12 +1,12 @@
 // Day summary above the board: the active day's date, how many habits are
 // done, and a progress ring that the orbs of newly completed habits fly into.
 
-import { daysBetween, yearOf, formatFull } from "./dates.js";
-import { state } from "./state.js";
-import * as H from "./habit-helpers.js";
-import { icons, colorValue } from "./icons.js";
-import { t } from "./i18n.js";
-import { el, markup } from "./dom.js";
+import {daysBetween, formatFull, yearOf} from './dates.js';
+import {el, markup} from './dom.js';
+import * as habitHelpers from './habit-helpers.js';
+import {t} from './i18n.js';
+import {colorValue, icons} from './icons.js';
+import {state} from './state.js';
 
 /** The board element, which holds the summary. Set by initSummary. */
 let board;
@@ -20,9 +20,9 @@ export function initSummary(boardElement) {
  * statuses the server sent.
  */
 export function dayProgress(habits, day) {
-  const due = habits.filter((h) => !h.archivedAt && H.isDue(h, day));
-  const done = due.filter((h) => H.isDone(h, day));
-  return { due: due.length, done: done.length };
+  const due = habits.filter((h) => !h.archivedAt && habitHelpers.isDue(h, day));
+  const done = due.filter((h) => habitHelpers.isDone(h, day));
+  return {due: due.length, done: done.length};
 }
 
 /**
@@ -30,29 +30,34 @@ export function dayProgress(habits, day) {
  * and ring. Refers to all habits, regardless of paging and filter.
  */
 export function daySummary(habits, day) {
-  const { due, done } = dayProgress(habits, day);
+  const {due, done} = dayProgress(habits, day);
   const percent = due === 0 ? 0 : Math.round((done / due) * 100);
   // The year only if it is not the current one.
   const date = formatFull(day, yearOf(day) !== yearOf(state.today));
 
-  const summary = el("section", {
-    class: ["day-summary", due > 0 && done === due && "is-complete"],
-    // Opens the day statistics (board-view.js handles the click).
-    data: { role: "open-days" },
-    role: "button",
-    tabIndex: 0,
-    title: t("Show day statistics"),
-    "aria-label": `${date} — ${t("Show day statistics")}`,
-  },
-    el("div", { class: "day-summary-text" },
-      el("h2", { class: "day-summary-date" }, date),
-      el("p", { class: "day-summary-count" }, ...progressText(due, done, day === state.today)),
-    ),
-    // No ring if nothing is due on the day.
-    due > 0 && progressRing(percent, t("Done on this day")),
+  const summary = el(
+      'section',
+      {
+        class: ['day-summary', due > 0 && done === due && 'is-complete'],
+        // Opens the day statistics (board-view.js handles the click).
+        data: {role: 'open-days'},
+        role: 'button',
+        tabIndex: 0,
+        title: t('Show day statistics'),
+        'aria-label': `${date} — ${t('Show day statistics')}`,
+      },
+      el(
+          'div',
+          {class: 'day-summary-text'},
+          el('h2', {class: 'day-summary-date'}, date),
+          el('p', {class: 'day-summary-count'},
+             ...progressText(due, done, day === state.today)),
+          ),
+      // No ring if nothing is due on the day.
+      due > 0 && progressRing(percent, t('Done on this day')),
   );
-  summary.addEventListener("keydown", (event) => {
-    if (event.key !== "Enter" && event.key !== " ") return;
+  summary.addEventListener('keydown', (event) => {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
     event.preventDefault();
     summary.click();
   });
@@ -61,23 +66,26 @@ export function daySummary(habits, day) {
 
 /** Describes the day's progress; a complete day gets a check. */
 function progressText(due, done, isToday) {
-  if (due === 0) return [t("Nothing due on this day")];
-  if (done < due) return [t("{done} of {due} done", { done, due })];
+  if (due === 0) return [t('Nothing due on this day')];
+  if (done < due) return [t('{done} of {due} done', {done, due})];
   // Everything due on the day is done. The varying messages speak of today.
-  return [markup(icons.check), el("span", {}, isToday ? completeText(due) : t("All habits done!"))];
+  return [
+    markup(icons.check),
+    el('span', {}, isToday ? completeText(due) : t('All habits done!')),
+  ];
 }
 
 /** Messages for a completed day; the date selects one, so it stays stable. */
 const COMPLETE_TEXTS = [
-  () => t("All habits done!"),
-  () => t("Everything ticked off. Well done!"),
-  () => t("Done for today – enjoy the rest of it."),
-  (n) => t("{n} of {n}. Nothing left to do today.", { n }),
-  () => t("A clean sweep today!"),
+  () => t('All habits done!'),
+  () => t('Everything ticked off. Well done!'),
+  () => t('Done for today – enjoy the rest of it.'),
+  (n) => t('{n} of {n}. Nothing left to do today.', {n}),
+  () => t('A clean sweep today!'),
 ];
 
 function completeText(due) {
-  const pick = daysBetween("2000-01-01", state.today) % COMPLETE_TEXTS.length;
+  const pick = daysBetween('2000-01-01', state.today) % COMPLETE_TEXTS.length;
   return COMPLETE_TEXTS[pick](due);
 }
 
@@ -102,7 +110,7 @@ const WAVY_RING_PATH = (() => {
     const y = 20 + r * Math.sin(t - Math.PI / 2);
     points.push(`${x.toFixed(2)} ${y.toFixed(2)}`);
   }
-  return `M${points.join("L")}Z`;
+  return `M${points.join('L')}Z`;
 })();
 
 /**
@@ -117,37 +125,39 @@ let lastRingPercent = null;
  * pathLength="100" allows dash lengths in percent.
  */
 function progressRing(percent, name) {
-  const ns = "http://www.w3.org/2000/svg";
-  const svg = document.createElementNS(ns, "svg");
-  svg.setAttribute("viewBox", "0 0 40 40");
-  svg.setAttribute("aria-hidden", "true");
+  const ns = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(ns, 'svg');
+  svg.setAttribute('viewBox', '0 0 40 40');
+  svg.setAttribute('aria-hidden', 'true');
 
-  const track = document.createElementNS(ns, "circle");
-  track.setAttribute("class", "day-summary-ring-track");
-  track.setAttribute("cx", "20");
-  track.setAttribute("cy", "20");
-  track.setAttribute("r", String(RING_R));
+  const track = document.createElementNS(ns, 'circle');
+  track.setAttribute('class', 'day-summary-ring-track');
+  track.setAttribute('cx', '20');
+  track.setAttribute('cy', '20');
+  track.setAttribute('r', String(RING_R));
 
-  const fill = document.createElementNS(ns, "path");
-  fill.setAttribute("class", "day-summary-ring-fill");
-  fill.setAttribute("d", WAVY_RING_PATH);
-  fill.setAttribute("pathLength", "100");
+  const fill = document.createElementNS(ns, 'path');
+  fill.setAttribute('class', 'day-summary-ring-fill');
+  fill.setAttribute('d', WAVY_RING_PATH);
+  fill.setAttribute('pathLength', '100');
   svg.append(track, fill);
 
-  const label = el("span", { class: "day-summary-percent" });
-  const ring = el("div", {
-    class: "day-summary-ring",
-    role: "progressbar",
-    "aria-valuemin": "0",
-    "aria-valuemax": "100",
-    "aria-valuenow": String(percent),
-    "aria-label": name,
-  }, svg, label);
+  const label = el('span', {class: 'day-summary-percent'});
+  const ring =
+      el('div', {
+        class: 'day-summary-ring',
+        role: 'progressbar',
+        'aria-valuemin': '0',
+        'aria-valuemax': '100',
+        'aria-valuenow': String(percent),
+        'aria-label': name,
+      },
+         svg, label);
 
   // While orbs are in flight, they advance the ring as they land.
   if (ringHold) {
     ringHold.target = percent;
-    fill.classList.add("is-filling");
+    fill.classList.add('is-filling');
     showRing(ring, ringHold.shown);
     return ring;
   }
@@ -155,21 +165,22 @@ function progressRing(percent, name) {
   // A keyframe animation starts as soon as the element is inserted.
   const from = lastRingPercent ?? 0;
   lastRingPercent = percent;
-  fill.style.setProperty("--from", String(from));
-  fill.style.setProperty("--to", String(percent));
+  fill.style.setProperty('--from', String(from));
+  fill.style.setProperty('--to', String(percent));
   // Fade in from 0, as a round cap would show a dot at zero length.
-  fill.style.setProperty("--from-opacity", from === 0 ? "0" : "1");
-  fill.classList.toggle("is-empty", percent === 0);
+  fill.style.setProperty('--from-opacity', from === 0 ? '0' : '1');
+  fill.classList.toggle('is-empty', percent === 0);
   label.textContent = `${percent}%`;
   return ring;
 }
 
 /** Sets an existing ring to `percent`. */
 function showRing(ring, percent) {
-  const fill = ring.querySelector(".day-summary-ring-fill");
-  fill.style.setProperty("--to", String(percent));
-  fill.classList.toggle("is-empty", percent === 0);
-  ring.querySelector(".day-summary-percent").textContent = `${Math.round(percent)}%`;
+  const fill = ring.querySelector('.day-summary-ring-fill');
+  fill.style.setProperty('--to', String(percent));
+  fill.classList.toggle('is-empty', percent === 0);
+  ring.querySelector('.day-summary-percent').textContent =
+      `${Math.round(percent)}%`;
 }
 
 // ---------- ticking off: orbs into the ring ----------
@@ -193,8 +204,9 @@ const ORBS_PER_HABIT = 6;
  * render and after a change of the active day.
  */
 export function newlyDone(habits, day) {
-  const due = habits.filter((h) => !h.archivedAt && H.isDue(h, day));
-  const done = new Set(due.filter((h) => H.isDone(h, day)).map((h) => h.id));
+  const due = habits.filter((h) => !h.archivedAt && habitHelpers.isDue(h, day));
+  const done =
+      new Set(due.filter((h) => habitHelpers.isDone(h, day)).map((h) => h.id));
   const before = lastDoneDay === day ? lastDone : null;
   lastDone = done;
   lastDoneDay = day;
@@ -203,32 +215,39 @@ export function newlyDone(habits, day) {
 
   const fresh = due.filter((h) => done.has(h.id) && !before.has(h.id));
   // No ring, no orbs.
-  if (fresh.length === 0 || !board.querySelector(".day-summary-ring")) return [];
+  if (fresh.length === 0 || !board.querySelector('.day-summary-ring')) {
+    return [];
+  }
 
   const flights = [];
   for (const habit of fresh) {
     const cell = board.querySelector(
-      `.cell[data-habit="${habit.id}"][data-date="${day}"] .mark`);
+        `.cell[data-habit="${habit.id}"][data-date="${day}"] .mark`);
     const rect = cell?.getBoundingClientRect();
     // Cell not visible.
     if (!rect || rect.width === 0) continue;
-    flights.push({ color: habit.color, x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
+    flights.push({
+      color: habit.color,
+      x: rect.left + rect.width / 2,
+      y: rect.top + rect.height / 2,
+    });
   }
   if (flights.length === 0) return [];
 
   // Keep the ring at its current value.
   const shown = ringHold?.shown ?? lastRingPercent ?? 0;
-  ringHold ??= { shown, planned: shown, target: shown, pending: 0 };
+  ringHold ??= {shown, planned: shown, target: shown, pending: 0};
   return flights;
 }
 
 function prefersReducedMotion() {
-  return window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+  return window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ??
+      false;
 }
 
 /** Returns the screen position of the wave at `percent`, or null. */
 function ringPoint(percent) {
-  const ring = board.querySelector(".day-summary-ring");
+  const ring = board.querySelector('.day-summary-ring');
   const r = ring?.getBoundingClientRect();
   if (!r || r.width === 0) return null;
   // RING_R scaled from the viewBox.
@@ -243,7 +262,9 @@ function ringPoint(percent) {
 /** Returns the top of the visible board area, below the sticky header. */
 function visibleTop() {
   let top = 0;
-  for (const bar of [document.querySelector(".topbar"), board.querySelector(".day-header")]) {
+  for (const bar
+           of [document.querySelector('.topbar'),
+               board.querySelector('.day-header')]) {
     if (bar) top = Math.max(top, bar.getBoundingClientRect().bottom);
   }
   return top;
@@ -254,24 +275,30 @@ function visibleTop() {
  * colour value, taken from the orb.
  */
 function flash(x, y, size, color) {
-  const spark = document.createElement("span");
-  spark.className = "orb orb-flash";
-  spark.style.setProperty("--habit-color", color);
+  const spark = document.createElement('span');
+  spark.className = 'orb orb-flash';
+  spark.style.setProperty('--habit-color', color);
   spark.style.width = spark.style.height = `${size}px`;
   spark.style.left = `${x - size / 2}px`;
   spark.style.top = `${y - size / 2}px`;
   orbLayer().append(spark);
-  spark.animate(
-    [{ transform: "scale(.6)", opacity: 1 }, { transform: "scale(2.6)", opacity: 0 }],
-    { duration: 380, easing: "ease-out" },
-  ).onfinish = () => spark.remove();
+  spark
+      .animate(
+          [
+            {transform: 'scale(.6)', opacity: 1},
+            {transform: 'scale(2.6)', opacity: 0},
+          ],
+          {duration: 380, easing: 'ease-out'},
+          )
+      .onfinish = () => spark.remove();
 }
 
 /** Returns the layer for the orbs, above the board and below dialogs. */
 function orbLayer() {
-  let layer = document.getElementById("orb-layer");
+  let layer = document.getElementById('orb-layer');
   if (!layer) {
-    layer = el("div", { id: "orb-layer", class: "orb-layer", "aria-hidden": "true" });
+    layer =
+        el('div', {id: 'orb-layer', class: 'orb-layer', 'aria-hidden': 'true'});
     document.body.append(layer);
   }
   return layer;
@@ -281,7 +308,7 @@ function orbLayer() {
  * Sends orbs in the habit's colour from its cell to the ring. Each orb
  * advances the ring when it lands.
  */
-export function launchOrbs({ color, x, y }) {
+export function launchOrbs({color, x, y}) {
   const hold = ringHold;
   if (!hold) return;
   const from = hold.planned;
@@ -291,16 +318,19 @@ export function launchOrbs({ color, x, y }) {
 
   const layer = orbLayer();
   for (let i = 0; i < ORBS_PER_HABIT; i++) {
-    const orb = document.createElement("span");
-    orb.className = "orb";
-    orb.style.setProperty("--habit-color", colorValue(color));
+    const orb = document.createElement('span');
+    orb.className = 'orb';
+    orb.style.setProperty('--habit-color', colorValue(color));
     const size = 7 + Math.random() * 5;
     orb.style.width = orb.style.height = `${size}px`;
-    orb.style.transform = `translate(${x - size / 2}px, ${y - size / 2}px) scale(0)`;
+    orb.style.transform =
+        `translate(${x - size / 2}px, ${y - size / 2}px) scale(0)`;
     layer.append(orb);
 
     flyOrb(orb, {
-      x, y, size,
+      x,
+      y,
+      size,
       landing: from + ((to - from) * (i + 1)) / ORBS_PER_HABIT,
       delay: i * 70,
       duration: 650 + Math.random() * 250,
@@ -310,7 +340,7 @@ export function launchOrbs({ color, x, y }) {
   }
 }
 
-function flyOrb(orb, { x, y, size, landing, delay, duration, bend }) {
+function flyOrb(orb, {x, y, size, landing, delay, duration, bend}) {
   let start = null;
 
   const frame = (now) => {
@@ -343,13 +373,16 @@ function flyOrb(orb, { x, y, size, landing, delay, duration, bend }) {
     if (hidden) py = Math.max(py, edge);
     // Grow at the start, then shrink.
     const scale = t < 0.15 ? t / 0.15 : 1 - 0.45 * ((t - 0.15) / 0.85);
-    orb.style.transform = `translate(${px - size / 2}px, ${py - size / 2}px) scale(${scale})`;
+    orb.style.transform =
+        `translate(${px - size / 2}px, ${py - size / 2}px) scale(${scale})`;
 
     if (t < 1) {
       requestAnimationFrame(frame);
     } else {
       orb.remove();
-      if (hidden) flash(end.x, end.y, size, orb.style.getPropertyValue("--habit-color"));
+      if (hidden) {
+        flash(end.x, end.y, size, orb.style.getPropertyValue('--habit-color'));
+      }
       landOrb(landing, !hidden);
     }
   };
@@ -363,13 +396,17 @@ function landOrb(landing, visible) {
   hold.pending--;
   hold.shown = hold.pending === 0 ? hold.target : landing;
 
-  const ring = board.querySelector(".day-summary-ring");
+  const ring = board.querySelector('.day-summary-ring');
   if (ring) {
     showRing(ring, hold.shown);
     if (visible) {
       ring.animate(
-        [{ transform: "scale(1)" }, { transform: "scale(1.07)" }, { transform: "scale(1)" }],
-        { duration: 220, easing: "ease-out" },
+          [
+            {transform: 'scale(1)'},
+            {transform: 'scale(1.07)'},
+            {transform: 'scale(1)'},
+          ],
+          {duration: 220, easing: 'ease-out'},
       );
     }
   }

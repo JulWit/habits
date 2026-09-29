@@ -5,9 +5,9 @@
 // The buttons carry data-action ("back", "edit" and the menu's actions); the
 // view handles their clicks.
 
-import { icons } from "./icons.js";
-import { t } from "./i18n.js";
-import { el, markup } from "./dom.js";
+import {el, markup} from './dom.js';
+import {t} from './i18n.js';
+import {icons} from './icons.js';
 
 /**
  * Builds the title bar.
@@ -19,30 +19,39 @@ import { el, markup } from "./dom.js";
  * @param {Array} bar.menu  the overflow menu's items, see overflowMenu; an
  *   empty list omits the menu
  */
-export function appBar({ title, sub = "", badge = null, edit = true, menu }) {
-  return el("header", { class: "app-bar" },
-    iconButton("back", icons.arrowLeft, t("Back")),
-    el("div", { class: "app-bar-title" },
-      el("h2", {}, badge, el("span", { class: "name" }, title)),
-      // In a span of its own, as the stylesheet draws the dot before it.
-      sub && el("span", { class: "sub" }, el("span", { class: "sub-part" }, sub)),
-    ),
-    el("div", { class: "app-bar-actions" },
-      edit && iconButton("edit", icons.edit, t("Edit")),
-      ...(menu.length > 0 ? overflowMenu(menu) : []),
-    ),
+export function appBar({title, sub = '', badge = null, edit = true, menu}) {
+  return el(
+      'header',
+      {class: 'app-bar'},
+      iconButton('back', icons.arrowLeft, t('Back')),
+      el(
+          'div',
+          {class: 'app-bar-title'},
+          el('h2', {}, badge, el('span', {class: 'name'}, title)),
+          // In a span of its own, as the stylesheet draws the dot before it.
+          sub &&
+              el('span', {class: 'sub'}, el('span', {class: 'sub-part'}, sub)),
+          ),
+      el(
+          'div',
+          {class: 'app-bar-actions'},
+          edit && iconButton('edit', icons.edit, t('Edit')),
+          ...(menu.length > 0 ? overflowMenu(menu) : []),
+          ),
   );
 }
 
 /** Builds an icon button with its label. */
 function iconButton(action, icon, label) {
-  return el("button", {
-    class: "icon-button",
-    type: "button",
-    data: { action },
-    title: label,
-    "aria-label": label,
-  }, markup(icon));
+  return el(
+      'button', {
+        class: 'icon-button',
+        type: 'button',
+        data: {action},
+        title: label,
+        'aria-label': label,
+      },
+      markup(icon));
 }
 
 let count = 0;
@@ -58,43 +67,51 @@ let count = 0;
 function overflowMenu(items) {
   const id = `overflow-menu-${++count}`;
 
-  const button = el("button", {
-    type: "button",
-    class: "icon-button",
-    title: t("More options"),
-    "aria-label": t("More options"),
-    "aria-haspopup": "menu",
-    "aria-expanded": "false",
-    popovertarget: id,
-  }, markup(icons.moreVertical));
+  const button =
+      el('button', {
+        type: 'button',
+        class: 'icon-button',
+        title: t('More options'),
+        'aria-label': t('More options'),
+        'aria-haspopup': 'menu',
+        'aria-expanded': 'false',
+        popovertarget: id,
+      },
+         markup(icons.moreVertical));
 
-  const menu = el("div", { id, class: "overflow-menu", popover: "auto", role: "menu" },
-    ...items.map((item) => el("button", {
-      type: "button",
-      class: ["overflow-item", item.danger && "is-danger"],
-      data: { action: item.action },
-      role: "menuitem",
-    }, icons[item.icon] && markup(icons[item.icon]), el("span", {}, item.label))),
+  const menu = el(
+      'div',
+      {id, class: 'overflow-menu', popover: 'auto', role: 'menu'},
+      ...items.map(
+          (item) =>
+              el('button', {
+                type: 'button',
+                class: ['overflow-item', item.danger && 'is-danger'],
+                data: {action: item.action},
+                role: 'menuitem',
+              },
+                 icons[item.icon] && markup(icons[item.icon]),
+                 el('span', {}, item.label))),
   );
 
-  menu.addEventListener("toggle", (event) => {
-    const open = event.newState === "open";
-    button.setAttribute("aria-expanded", String(open));
+  menu.addEventListener('toggle', (event) => {
+    const open = event.newState === 'open';
+    button.setAttribute('aria-expanded', String(open));
     if (!open) return;
     place(menu, button);
     menu.querySelector('[role="menuitem"]')?.focus();
   });
   // Escape returns the focus to the button. The browser does so only if the
   // button had it before, which a tap does not guarantee.
-  menu.addEventListener("beforetoggle", (event) => {
-    if (event.newState === "closed" && menu.contains(document.activeElement)) {
-      button.focus({ preventScroll: true });
+  menu.addEventListener('beforetoggle', (event) => {
+    if (event.newState === 'closed' && menu.contains(document.activeElement)) {
+      button.focus({preventScroll: true});
     }
   });
-  menu.addEventListener("click", (event) => {
+  menu.addEventListener('click', (event) => {
     if (event.target.closest('[role="menuitem"]')) menu.hidePopover();
   });
-  menu.addEventListener("keydown", onKey);
+  menu.addEventListener('keydown', onKey);
 
   return [button, menu];
 }
@@ -103,7 +120,8 @@ function overflowMenu(items) {
 function place(menu, button) {
   const box = button.getBoundingClientRect();
   menu.style.top = `${Math.round(box.bottom + 4)}px`;
-  menu.style.right = `${Math.round(document.documentElement.clientWidth - box.right)}px`;
+  menu.style.right =
+      `${Math.round(document.documentElement.clientWidth - box.right)}px`;
 }
 
 /** Arrow keys move between the items; Escape stays with the menu. */
@@ -112,19 +130,32 @@ function onKey(event) {
   const at = items.indexOf(document.activeElement);
   let next = -1;
   switch (event.key) {
-    case "ArrowDown": next = (at + 1) % items.length; break;
-    case "ArrowUp": next = (at - 1 + items.length) % items.length; break;
-    case "Home": next = 0; break;
-    case "End": next = items.length - 1; break;
+    case 'ArrowDown':
+      next = (at + 1) % items.length;
+      break;
+    case 'ArrowUp':
+      next = (at - 1 + items.length) % items.length;
+      break;
+    case 'Home':
+      next = 0;
+      break;
+    case 'End':
+      next = items.length - 1;
+      break;
     // The popover closes itself; the view must not also go back.
-    case "Escape": event.stopPropagation(); return;
-    default: return;
+    case 'Escape':
+      event.stopPropagation();
+      return;
+    default:
+      return;
   }
   event.preventDefault();
   items[next].focus();
 }
 
 // A menu placed for the old layout would float in the wrong place.
-window.addEventListener("resize", () => {
-  for (const menu of document.querySelectorAll(".overflow-menu:popover-open")) menu.hidePopover();
+window.addEventListener('resize', () => {
+  for (const menu of document.querySelectorAll('.overflow-menu:popover-open')) {
+    menu.hidePopover();
+  }
 });

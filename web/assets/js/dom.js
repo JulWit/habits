@@ -21,23 +21,30 @@ export function el(tag, props = {}, ...children) {
   const node = document.createElement(tag);
   for (const [key, value] of Object.entries(props)) {
     if (value == null) continue;
-    if (key === "class") {
-      node.className = Array.isArray(value) ? value.filter(Boolean).join(" ") : value;
-    } else if (key === "data") {
-      for (const [name, v] of defined(value)) node.dataset[name] = v;
-    } else if (key === "style") {
-      for (const [name, v] of defined(value)) node.style.setProperty(name, v);
+    if (key === 'class') {
+      node.className =
+          Array.isArray(value) ? value.filter(Boolean).join(' ') : value;
+    } else if (key === 'data') {
+      for (const [name, v] of defined(value)) {
+        node.dataset[name] = v;
+      }
+    } else if (key === 'style') {
+      for (const [name, v] of defined(value)) {
+        node.style.setProperty(name, v);
+      }
     } else if (key in node) {
       node[key] = value;
     } else {
       node.setAttribute(key, value);
     }
   }
-  node.append(...children.filter((c) => c != null && c !== false && c !== ""));
+  node.append(...children.filter((c) => c != null && c !== false && c !== ''));
   return node;
 }
 
-/** Returns the entries of `object` whose value is neither null nor undefined. */
+/**
+ * Returns the entries of `object` whose value is neither null nor undefined.
+ */
 function defined(object) {
   return Object.entries(object).filter(([, v]) => v != null);
 }
@@ -47,7 +54,7 @@ function defined(object) {
  * passed as children to `el`. Never pass user input.
  */
 export function markup(html) {
-  const template = document.createElement("template");
+  const template = document.createElement('template');
   template.innerHTML = html;
   return template.content;
 }

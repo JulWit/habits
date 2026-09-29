@@ -1,18 +1,20 @@
-// Date helpers. Dates are ISO strings ("2026-09-13"); arithmetic is done in UTC.
+// Date helpers. Dates are ISO strings ("2026-09-13"); arithmetic is done in
+// UTC.
 
-import { t, lang, userTimeZone } from "./i18n.js";
+import {lang, t, userTimeZone} from './i18n.js';
 
 const DAY_MS = 86400000;
 
 export function toUTC(iso) {
-  const [y, m, d] = iso.split("-").map(Number);
+  const [y, m, d] = iso.split('-').map(Number);
   return Date.UTC(y, m - 1, d);
 }
 
 export function fromUTC(ms) {
   const d = new Date(ms);
-  const pad = (n) => String(n).padStart(2, "0");
-  return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`;
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${
+      pad(d.getUTCDate())}`;
 }
 
 export function addDays(iso, n) {
@@ -35,21 +37,83 @@ export function startOfWeek(iso) {
 // Weekday and month names per language, short enough for a day column.
 const NAMES = {
   en: {
-    weekdayShort: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
-    weekdayLong: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
-    monthShort: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
+    weekdayShort: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+    weekdayLong: [
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
+      'Sunday',
+    ],
+    monthShort: [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ],
     monthLong: [
-      "January", "February", "March", "April", "May", "June",
-      "July", "August", "September", "October", "November", "December",
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
     ],
   },
   de: {
-    weekdayShort: ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"],
-    weekdayLong: ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"],
-    monthShort: ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"],
+    weekdayShort: ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'],
+    weekdayLong: [
+      'Montag',
+      'Dienstag',
+      'Mittwoch',
+      'Donnerstag',
+      'Freitag',
+      'Samstag',
+      'Sonntag',
+    ],
+    monthShort: [
+      'Jan',
+      'Feb',
+      'Mär',
+      'Apr',
+      'Mai',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Okt',
+      'Nov',
+      'Dez',
+    ],
     monthLong: [
-      "Januar", "Februar", "März", "April", "Mai", "Juni",
-      "Juli", "August", "September", "Oktober", "November", "Dezember",
+      'Januar',
+      'Februar',
+      'März',
+      'April',
+      'Mai',
+      'Juni',
+      'Juli',
+      'August',
+      'September',
+      'Oktober',
+      'November',
+      'Dezember',
     ],
   },
 }[lang];
@@ -73,7 +137,7 @@ export function monthIndex(iso) {
 
 /** Formats the day of the month: "13" / "13.". */
 function dayNumber(iso) {
-  return lang === "de" ? `${dayOfMonth(iso)}.` : String(dayOfMonth(iso));
+  return lang === 'de' ? `${dayOfMonth(iso)}.` : String(dayOfMonth(iso));
 }
 
 /** Formats a date without year: "13 Sep" / "13. Sep". */
@@ -83,7 +147,8 @@ export function formatDayMonth(iso) {
 
 /** Formats a date as "Mon, 13 Sep 2026". */
 export function formatLong(iso) {
-  return `${WEEKDAY_SHORT[weekdayIndex(iso)]}, ${formatDayMonth(iso)} ${yearOf(iso)}`;
+  return `${WEEKDAY_SHORT[weekdayIndex(iso)]}, ${formatDayMonth(iso)} ${
+      yearOf(iso)}`;
 }
 
 /**
@@ -91,18 +156,19 @@ export function formatLong(iso) {
  * `withYear` is false.
  */
 export function formatFull(iso, withYear = true) {
-  const date = `${WEEKDAY_LONG[weekdayIndex(iso)]}, ${dayNumber(iso)} ${MONTH_LONG[monthIndex(iso)]}`;
+  const date = `${WEEKDAY_LONG[weekdayIndex(iso)]}, ${dayNumber(iso)} ${
+      MONTH_LONG[monthIndex(iso)]}`;
   return withYear ? `${date} ${yearOf(iso)}` : date;
 }
 
 /** Formats a date as "today", "yesterday" or a long date. */
 export function formatRelative(iso, today) {
   const diff = daysBetween(iso, today);
-  if (diff === 0) return t("today");
-  if (diff === 1) return t("yesterday");
-  if (diff === 2) return t("the day before yesterday");
-  if (diff === -1) return t("tomorrow");
-  if (diff === -2) return t("the day after tomorrow");
+  if (diff === 0) return t('today');
+  if (diff === 1) return t('yesterday');
+  if (diff === 2) return t('the day before yesterday');
+  if (diff === -1) return t('tomorrow');
+  if (diff === -2) return t('the day after tomorrow');
   return formatLong(iso);
 }
 
@@ -111,6 +177,10 @@ export function formatRelative(iso, today) {
  * dates as YYYY-MM-DD.
  */
 export function localISO(stamp) {
-  return new Date(stamp).toLocaleDateString("en-CA",
-    { year: "numeric", month: "2-digit", day: "2-digit", timeZone: userTimeZone() });
+  return new Date(stamp).toLocaleDateString('en-CA', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    timeZone: userTimeZone(),
+  });
 }

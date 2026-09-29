@@ -5,7 +5,7 @@ export const state = {
   user: null,
   // Complete once the state is loaded.
   settings: {},
-  today: "",
+  today: '',
   categories: [],
   habits: [],
   colors: [],
@@ -31,7 +31,9 @@ export function subscribe(fn) {
 
 function notify() {
   revision++;
-  for (const fn of listeners) fn(state);
+  for (const fn of listeners) {
+    fn(state);
+  }
 }
 
 export function replaceState(next) {
@@ -46,8 +48,11 @@ export function habitById(id) {
 /** Replaces a habit with the view returned by the server. */
 export function upsertHabit(view) {
   const i = state.habits.findIndex((h) => h.id === view.id);
-  if (i === -1) state.habits.push(view);
-  else state.habits[i] = { ...state.habits[i], ...view };
+  if (i === -1) {
+    state.habits.push(view);
+  } else {
+    state.habits[i] = {...state.habits[i], ...view};
+  }
   notify();
 }
 
@@ -70,7 +75,9 @@ function inOrder(items, ids) {
   for (const item of items) {
     if (!ids.includes(item.id)) sorted.push(item);
   }
-  sorted.forEach((item, i) => { item.position = i; });
+  sorted.forEach((item, i) => {
+    item.position = i;
+  });
   return sorted;
 }
 
@@ -88,7 +95,7 @@ export function removeHabit(id) {
 function changeHabit(id, change) {
   const i = state.habits.findIndex((h) => h.id === id);
   if (i === -1) return;
-  const next = { ...state.habits[i] };
+  const next = {...state.habits[i]};
   change(next);
   state.habits[i] = next;
   notify();
@@ -101,7 +108,7 @@ function changeHabit(id, change) {
  */
 export function showPending(habitId, date, entry) {
   changeHabit(habitId, (habit) => {
-    habit.pending = { ...habit.pending, [date]: entry };
+    habit.pending = {...habit.pending, [date]: entry};
   });
 }
 
@@ -127,7 +134,7 @@ export function applyEntryAnswer(date, view) {
 
 /** Returns a copy of `map` without `key`. */
 function withoutKey(map, key) {
-  const { [key]: _, ...rest } = map ?? {};
+  const {[key]: _, ...rest} = map ?? {};
   return rest;
 }
 
@@ -137,8 +144,11 @@ export function categoryById(id) {
 
 export function upsertCategory(category) {
   const i = state.categories.findIndex((c) => c.id === category.id);
-  if (i === -1) state.categories.push(category);
-  else state.categories[i] = category;
+  if (i === -1) {
+    state.categories.push(category);
+  } else {
+    state.categories[i] = category;
+  }
   notify();
 }
 
@@ -169,9 +179,9 @@ export function archivedCount() {
  * showArchived setting is on.
  */
 export function groupedHabits() {
-  const blocks = state.categories.map((category) => ({ category, habits: [] }));
+  const blocks = state.categories.map((category) => ({category, habits: []}));
   const byId = new Map(blocks.map((b) => [b.category.id, b]));
-  const loose = { category: null, habits: [] };
+  const loose = {category: null, habits: []};
 
   for (const habit of state.habits) {
     if (habit.archivedAt && !state.settings.showArchived) continue;

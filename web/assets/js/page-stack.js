@@ -9,7 +9,7 @@
 // however it is closed: its close button, Escape, the system back gesture or
 // the browser's back button.
 
-import { t } from "./i18n.js";
+import {t} from './i18n.js';
 
 /** Open pages, bottom first. */
 const stack = [];
@@ -33,19 +33,21 @@ export function openPage(dialog) {
     watched.add(dialog);
     // Escape, or the browser's close watcher on Android (system back): ask
     // first if there are unsaved changes.
-    dialog.addEventListener("cancel", (event) => {
+    dialog.addEventListener('cancel', (event) => {
       if (!isDirty(dialog)) return;
       event.preventDefault();
       askToDiscard(dialog);
     });
     // Closed another way: drop the page and its history entry too. The event
     // is queued, so the page may have been opened again meanwhile.
-    dialog.addEventListener("close", () => {
-      if (!dialog.open && stack.includes(dialog)) closePage(dialog, { force: true });
+    dialog.addEventListener('close', () => {
+      if (!dialog.open && stack.includes(dialog)) {
+        closePage(dialog, {force: true});
+      }
     });
   }
   stack.push(dialog);
-  history.pushState({ pages: stack.length }, "");
+  history.pushState({pages: stack.length}, '');
   dialog.showModal();
 }
 
@@ -63,7 +65,7 @@ export function guardPage(dialog, dirty) {
  * the history has gone back, so a view opened then is not removed by the step
  * back.
  */
-export function closePage(dialog, { force = false } = {}) {
+export function closePage(dialog, {force = false} = {}) {
   const index = stack.indexOf(dialog);
   if (index < 0) {
     if (dialog.open) dialog.close();
@@ -92,19 +94,20 @@ function isDirty(page) {
 
 /** Asks whether to discard the changes; closes `page` if so. */
 async function askToDiscard(page) {
-  if (await confirmDiscard()) closePage(page, { force: true });
+  if (await confirmDiscard()) closePage(page, {force: true});
 }
 
 /** Resolves to true if the user chooses to discard the changes. */
 function confirmDiscard() {
-  const dialog = document.getElementById("discard-dialog");
+  const dialog = document.getElementById('discard-dialog');
   if (dialog.open) return Promise.resolve(false);
-  document.getElementById("discard-title").textContent = t("Discard changes?");
+  document.getElementById('discard-title').textContent = t('Discard changes?');
   // Escape leaves the value empty, i.e. keeps editing.
-  dialog.returnValue = "";
+  dialog.returnValue = '';
   dialog.showModal();
   return new Promise((resolve) => {
-    dialog.addEventListener("close", () => resolve(dialog.returnValue === "discard"), { once: true });
+    dialog.addEventListener(
+        'close', () => resolve(dialog.returnValue === 'discard'), {once: true});
   });
 }
 
@@ -117,7 +120,7 @@ function drop(index) {
 
 // Registered before app.js's listener, so the route is left alone when only a
 // page closes: the hash does not change.
-window.addEventListener("popstate", (event) => {
+window.addEventListener('popstate', (event) => {
   if (ownPops.length > 0) {
     ownPops.shift()();
     event.stopImmediatePropagation();
@@ -129,7 +132,9 @@ window.addEventListener("popstate", (event) => {
     // The browser's back button: restore the history entries of a page with
     // unsaved changes and ask.
     if (stack.slice(depth).some(isDirty)) {
-      for (let i = depth + 1; i <= stack.length; i++) history.pushState({ pages: i }, "");
+      for (let i = depth + 1; i <= stack.length; i++) {
+        history.pushState({pages: i}, '');
+      }
       askToDiscard(stack[depth]);
       return;
     }
@@ -138,12 +143,12 @@ window.addEventListener("popstate", (event) => {
 });
 
 // Back buttons in the page headers, and rows that open another page.
-document.addEventListener("click", (event) => {
-  const back = event.target.closest?.(".page [data-page-back]");
+document.addEventListener('click', (event) => {
+  const back = event.target.closest?.('.page [data-page-back]');
   if (back) {
-    closePage(back.closest(".page"));
+    closePage(back.closest('.page'));
     return;
   }
-  const link = event.target.closest?.("[data-open-page]");
+  const link = event.target.closest?.('[data-open-page]');
   if (link) openPage(document.getElementById(link.dataset.openPage));
 });

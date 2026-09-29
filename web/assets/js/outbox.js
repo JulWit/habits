@@ -4,10 +4,10 @@
 // user. Writing an entry sets an absolute value, so sending a queued write
 // later is safe: for each day the last value wins.
 
-import { t } from "./i18n.js";
+import {t} from './i18n.js';
 
-const OUTBOX = "habits.outbox";
-const STATE = "habits.state";
+const OUTBOX = 'habits.outbox';
+const STATE = 'habits.state';
 
 /** Called when the number of waiting writes or the connection changes. */
 let onStatus = () => {};
@@ -31,7 +31,7 @@ export function setOffline(value) {
 
 /** Reports whether `err` means the server could not be reached. */
 export function isConnectionError(err) {
-  return err?.code === "offline";
+  return err?.code === 'offline';
 }
 
 /**
@@ -39,7 +39,7 @@ export function isConnectionError(err) {
  * Writes then wait as well, until the page is reloaded and signed in again.
  */
 export function isSessionExpired(err) {
-  return err?.code === "session_expired";
+  return err?.code === 'session_expired';
 }
 
 // ---------- storage ----------
@@ -57,8 +57,11 @@ function read(key, fallback) {
 
 function write(key, value) {
   try {
-    if (value === null) localStorage.removeItem(key);
-    else localStorage.setItem(key, JSON.stringify(value));
+    if (value === null) {
+      localStorage.removeItem(key);
+    } else {
+      localStorage.setItem(key, JSON.stringify(value));
+    }
     return true;
   } catch {
     return false;
@@ -66,7 +69,7 @@ function write(key, value) {
 }
 
 /** The user the stored data belongs to, from the last loaded state. */
-let user = read(`${STATE}.user`, "");
+let user = read(`${STATE}.user`, '');
 
 const outboxKey = () => `${OUTBOX}.${user}`;
 const stateKey = () => `${STATE}.${user}`;
@@ -75,7 +78,7 @@ const stateKey = () => `${STATE}.${user}`;
 
 /** Keeps the loaded state for starting without a connection. */
 export function rememberState(loaded) {
-  user = loaded.user?.id ?? "";
+  user = loaded.user?.id ?? '';
   write(`${STATE}.user`, user);
   write(stateKey(), loaded);
 }
@@ -85,7 +88,9 @@ export function rememberedState() {
   return read(stateKey(), null);
 }
 
-/** Drops the last state and the waiting writes, e.g. once the data is deleted. */
+/**
+ * Drops the last state and the waiting writes, e.g. once the data is deleted.
+ */
 export function forget() {
   write(stateKey(), null);
   write(outboxKey(), null);
@@ -104,8 +109,9 @@ export function pending() {
  * Returns false if it could not be stored.
  */
 export function enqueue(habitId, date, value) {
-  const list = pending().filter((w) => !(w.habitId === habitId && w.date === date));
-  list.push({ habitId, date, value });
+  const list =
+      pending().filter((w) => !(w.habitId === habitId && w.date === date));
+  list.push({habitId, date, value});
   const ok = write(outboxKey(), list);
   onStatus();
   return ok;
@@ -118,8 +124,10 @@ export function enqueue(habitId, date, value) {
  */
 export function discard(habitId, date, value) {
   const list = pending();
-  const rest = list.filter((w) =>
-    !(w.habitId === habitId && w.date === date && (value === undefined || w.value === value)));
+  const rest = list.filter(
+      (w) =>
+          !(w.habitId === habitId && w.date === date &&
+            (value === undefined || w.value === value)));
   if (rest.length === list.length) return;
   write(outboxKey(), rest.length ? rest : null);
   onStatus();
@@ -135,7 +143,7 @@ export function overlay(loaded) {
     const habit = loaded.habits?.find((h) => h.id === w.habitId);
     if (!habit) continue;
     habit.pending ??= {};
-    habit.pending[w.date] = { value: w.value, skipped: false };
+    habit.pending[w.date] = {value: w.value, skipped: false};
   }
   return loaded;
 }
@@ -180,7 +188,7 @@ export function flush(send, onRejected) {
 /** Describes the sync status for the header, or "" when all is sent. */
 export function statusText() {
   const n = pending().length;
-  if (n === 1) return t("1 change waiting");
-  if (n > 1) return t("{n} changes waiting", { n });
-  return offline ? t("Offline") : "";
+  if (n === 1) return t('1 change waiting');
+  if (n > 1) return t('{n} changes waiting', {n});
+  return offline ? t('Offline') : '';
 }

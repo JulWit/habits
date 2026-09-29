@@ -3,9 +3,9 @@
 // key and loaded again once the state has changed, e.g. by a write; until the
 // new answer arrives, the view shows the previous one.
 
-import { stateRevision } from "./state.js";
-import { isConnectionError } from "./outbox.js";
-import { toast, errorText } from "./undo.js";
+import {isConnectionError} from './outbox.js';
+import {stateRevision} from './state.js';
+import {errorText, toast} from './undo.js';
 
 /** The loaded answers by key: {value, revision, loading}. */
 const loaded = new Map();
@@ -19,26 +19,28 @@ const loaded = new Map();
 export function remote(key, fetch, onLoad) {
   let entry = loaded.get(key);
   if (!entry) {
-    entry = { value: undefined, revision: -1, loading: false };
+    entry = {value: undefined, revision: -1, loading: false};
     loaded.set(key, entry);
   }
   const revision = stateRevision();
   if (entry.revision !== revision && !entry.loading) {
     entry.loading = true;
     fetch()
-      .then((value) => {
-        entry.value = value;
-        entry.revision = revision;
-        onLoad();
-      })
-      .catch((err) => {
-        // Offline, the view shows what it has, the header says why, and the
-        // next render tries again. Other errors wait for a change of state.
-        if (isConnectionError(err)) return;
-        entry.revision = revision;
-        toast(errorText(err), { error: true });
-      })
-      .finally(() => { entry.loading = false; });
+        .then((value) => {
+          entry.value = value;
+          entry.revision = revision;
+          onLoad();
+        })
+        .catch((err) => {
+          // Offline, the view shows what it has, the header says why, and the
+          // next render tries again. Other errors wait for a change of state.
+          if (isConnectionError(err)) return;
+          entry.revision = revision;
+          toast(errorText(err), {error: true});
+        })
+        .finally(() => {
+          entry.loading = false;
+        });
   }
   return entry.value;
 }

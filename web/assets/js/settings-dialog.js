@@ -1,15 +1,15 @@
 // Settings pages. Every change is saved immediately: the state is updated
 // first and restored if the server rejects the change.
 
-import { api } from "./api.js";
-import { state, replaceState, subscribe, archivedCount } from "./state.js";
-import { icons, colorLabel, colorValue } from "./icons.js";
-import { errorText, toast } from "./undo.js";
-import { t, locale, userTimeZone } from "./i18n.js";
-import { openPage, topPage } from "./page-stack.js";
-import { factItem } from "./stat-panels.js";
-import { forget } from "./outbox.js";
-import { el } from "./dom.js";
+import {api} from './api.js';
+import {el} from './dom.js';
+import {locale, t, userTimeZone} from './i18n.js';
+import {colorLabel, colorValue, icons} from './icons.js';
+import {forget} from './outbox.js';
+import {openPage, topPage} from './page-stack.js';
+import {factItem} from './stat-panels.js';
+import {archivedCount, replaceState, state, subscribe} from './state.js';
+import {errorText, toast} from './undo.js';
 
 let dialog;
 let themeInputs;
@@ -47,82 +47,100 @@ export function initSettings(handlers) {
   effectiveDays = handlers.effectiveDays;
   reload = handlers.reload;
   // Skipping days of all habits opens its own page (skip-editor.js).
-  document.getElementById("settings-skip").addEventListener("click", () => handlers.skipDays(null));
+  document.getElementById('settings-skip')
+      .addEventListener('click', () => handlers.skipDays(null));
 
-  dialog = document.getElementById("settings-dialog");
+  dialog = document.getElementById('settings-dialog');
   themeInputs = [...document.querySelectorAll('input[name="settings-theme"]')];
-  fontSelect = document.getElementById("settings-font");
-  densityInputs = [...document.querySelectorAll('input[name="settings-density"]')];
-  patternSelect = document.getElementById("settings-pattern");
-  rateWindowSelect = document.getElementById("settings-rate-window");
-  bandChoices = document.getElementById("settings-band-colors");
-  bandOpacity = document.getElementById("settings-band-opacity");
-  bandOpacityOut = document.getElementById("settings-band-opacity-out");
-  bandFillOpacity = document.getElementById("settings-band-fill-opacity");
-  bandFillOpacityOut = document.getElementById("settings-band-fill-opacity-out");
-  showBandInput = document.getElementById("settings-show-band");
-  reorderInputs = [...document.querySelectorAll('input[name="settings-reorder"]')];
-  reorderHint = document.getElementById("settings-reorder-hint");
+  fontSelect = document.getElementById('settings-font');
+  densityInputs =
+      [...document.querySelectorAll('input[name="settings-density"]')];
+  patternSelect = document.getElementById('settings-pattern');
+  rateWindowSelect = document.getElementById('settings-rate-window');
+  bandChoices = document.getElementById('settings-band-colors');
+  bandOpacity = document.getElementById('settings-band-opacity');
+  bandOpacityOut = document.getElementById('settings-band-opacity-out');
+  bandFillOpacity = document.getElementById('settings-band-fill-opacity');
+  bandFillOpacityOut =
+      document.getElementById('settings-band-fill-opacity-out');
+  showBandInput = document.getElementById('settings-show-band');
+  reorderInputs =
+      [...document.querySelectorAll('input[name="settings-reorder"]')];
+  reorderHint = document.getElementById('settings-reorder-hint');
   dayInputs = [...document.querySelectorAll('input[name="settings-days"]')];
-  daysHint = document.getElementById("settings-days-hint");
-  archivedInput = document.getElementById("settings-archived");
-  alignInput = document.getElementById("settings-align-weeks");
-  alignHint = document.getElementById("settings-align-hint");
-  archiveItem = document.getElementById("settings-archive-item");
-  archiveHint = document.getElementById("settings-archive-hint");
-  errorBox = document.getElementById("settings-error");
-  languageSelect = document.getElementById("settings-language");
-  timeZoneSelect = document.getElementById("settings-timezone");
-  timeZoneHint = document.getElementById("settings-timezone-hint");
-  timeZoneDevice = document.getElementById("settings-timezone-device");
+  daysHint = document.getElementById('settings-days-hint');
+  archivedInput = document.getElementById('settings-archived');
+  alignInput = document.getElementById('settings-align-weeks');
+  alignHint = document.getElementById('settings-align-hint');
+  archiveItem = document.getElementById('settings-archive-item');
+  archiveHint = document.getElementById('settings-archive-hint');
+  errorBox = document.getElementById('settings-error');
+  languageSelect = document.getElementById('settings-language');
+  timeZoneSelect = document.getElementById('settings-timezone');
+  timeZoneHint = document.getElementById('settings-timezone-hint');
+  timeZoneDevice = document.getElementById('settings-timezone-device');
 
-  const openButton = document.getElementById("open-settings");
+  const openButton = document.getElementById('open-settings');
   openButton.innerHTML = icons.gear;
-  openButton.addEventListener("click", () => {
+  openButton.addEventListener('click', () => {
     errorBox.hidden = true;
     paint();
     openPage(dialog);
   });
 
   for (const input of themeInputs) {
-    input.addEventListener("change", () => saveSetting({ theme: input.value }));
+    input.addEventListener('change', () => saveSetting({theme: input.value}));
   }
-  fontSelect.addEventListener("change", () => saveSetting({ font: fontSelect.value }));
+  fontSelect.addEventListener(
+      'change', () => saveSetting({font: fontSelect.value}));
   for (const input of densityInputs) {
-    input.addEventListener("change", () => saveSetting({ density: input.value }));
+    input.addEventListener('change', () => saveSetting({density: input.value}));
   }
-  patternSelect.addEventListener("change", () => saveSetting({ pattern: patternSelect.value }));
-  bandChoices.addEventListener("click", (event) => {
-    const swatch = event.target.closest(".swatch");
-    if (swatch) saveSetting({ bandColor: swatch.dataset.color });
+  patternSelect.addEventListener(
+      'change', () => saveSetting({pattern: patternSelect.value}));
+  bandChoices.addEventListener('click', (event) => {
+    const swatch = event.target.closest('.swatch');
+    if (swatch) saveSetting({bandColor: swatch.dataset.color});
   });
   // The sliders preview their value while they move and save it on release.
-  bindSlider(bandOpacity, bandOpacityOut, "bandOpacity", "--today-opacity");
-  bindSlider(bandFillOpacity, bandFillOpacityOut, "bandFillOpacity", "--band-opacity");
-  showBandInput.addEventListener("change", () => saveSetting({ showBand: showBandInput.checked }));
+  bindSlider(bandOpacity, bandOpacityOut, 'bandOpacity', '--today-opacity');
+  bindSlider(
+      bandFillOpacity, bandFillOpacityOut, 'bandFillOpacity', '--band-opacity');
+  showBandInput.addEventListener(
+      'change', () => saveSetting({showBand: showBandInput.checked}));
 
-  alignInput.addEventListener("change", () => saveSetting({ alignWeeks: alignInput.checked }));
+  alignInput.addEventListener(
+      'change', () => saveSetting({alignWeeks: alignInput.checked}));
   for (const input of reorderInputs) {
-    input.addEventListener("change", () => saveSetting({ reorderMode: input.value }));
+    input.addEventListener(
+        'change', () => saveSetting({reorderMode: input.value}));
   }
   for (const input of dayInputs) {
-    input.addEventListener("change", () => saveSetting({ overviewDays: Number(input.value) }));
+    input.addEventListener(
+        'change', () => saveSetting({overviewDays: Number(input.value)}));
   }
 
-  languageSelect.addEventListener("change", async () => {
+  languageSelect.addEventListener('change', async () => {
     // Reload the page to apply the new language, once the server has it.
-    if (await saveSetting({ language: languageSelect.value })) location.reload();
+    if (await saveSetting({language: languageSelect.value})) {
+      location.reload();
+    }
   });
-  timeZoneSelect.addEventListener("change", () => saveTimeZone(timeZoneSelect.value));
-  timeZoneDevice.addEventListener("click", () => saveTimeZone(deviceTimeZone()));
+  timeZoneSelect.addEventListener(
+      'change', () => saveTimeZone(timeZoneSelect.value));
+  timeZoneDevice.addEventListener(
+      'click', () => saveTimeZone(deviceTimeZone()));
 
-  rateWindowSelect.addEventListener("change", async () => {
+  rateWindowSelect.addEventListener('change', async () => {
     // The server computes the rate, so the statistics are reloaded.
-    if (await saveSetting({ rateWindow: rateWindowSelect.value })) await reload();
+    if (await saveSetting({rateWindow: rateWindowSelect.value})) {
+      await reload();
+    }
   });
 
   // The state holds the archived habits; the overview shows them at once.
-  archivedInput.addEventListener("change", () => saveSetting({ showArchived: archivedInput.checked }));
+  archivedInput.addEventListener(
+      'change', () => saveSetting({showArchived: archivedInput.checked}));
 
   initTransfer();
   initDeleteAll();
@@ -136,9 +154,13 @@ function paint() {
   if (!dialog || !state.user) return;
   const settings = state.settings;
 
-  for (const input of themeInputs) input.checked = input.value === settings.theme;
+  for (const input of themeInputs) {
+    input.checked = input.value === settings.theme;
+  }
   fontSelect.value = settings.font;
-  for (const input of densityInputs) input.checked = input.value === settings.density;
+  for (const input of densityInputs) {
+    input.checked = input.value === settings.density;
+  }
   patternSelect.value = settings.pattern;
   rateWindowSelect.value = settings.rateWindow;
   paintBandChoices(settings.bandColor);
@@ -148,32 +170,41 @@ function paint() {
   bandFillOpacity.value = String(settings.bandFillOpacity);
   showPercent(bandFillOpacityOut, bandFillOpacity.value);
   // The slider is only shown while the band is on.
-  bandFillOpacity.closest(".slider").hidden = !settings.showBand;
-  for (const input of reorderInputs) input.checked = input.value === settings.reorderMode;
-  reorderHint.textContent = settings.reorderMode === "drag"
-    ? t("Categories and habits are moved by their handle.")
-    : t("Categories and habits are moved with arrows — by keyboard too.");
+  bandFillOpacity.closest('.slider').hidden = !settings.showBand;
+  for (const input of reorderInputs) {
+    input.checked = input.value === settings.reorderMode;
+  }
+  reorderHint.textContent = settings.reorderMode === 'drag' ?
+      t('Categories and habits are moved by their handle.') :
+      t('Categories and habits are moved with arrows — by keyboard too.');
 
   const days = settings.overviewDays;
   const shown = effectiveDays();
-  for (const input of dayInputs) input.checked = Number(input.value) === days;
+  for (const input of dayInputs) {
+    input.checked = Number(input.value) === days;
+  }
   if (days === 0) {
-    daysHint.textContent = t("As many days are shown as fit in the window — currently {n}.", { n: shown });
+    daysHint.textContent =
+        t('As many days are shown as fit in the window — currently {n}.',
+          {n: shown});
   } else if (shown < days) {
-    daysHint.textContent = t("Only {n} days fit in the window right now. In a wider window it will be {days}.",
-      { n: shown, days });
+    daysHint.textContent = t(
+        'Only {n} days fit in the window right now. In a wider window it will be {days}.',
+        {n: shown, days});
   } else {
-    daysHint.textContent = t("{n} days are shown right now.", { n: shown });
+    daysHint.textContent = t('{n} days are shown right now.', {n: shown});
   }
 
   alignInput.checked = settings.alignWeeks;
   if (!settings.alignWeeks) {
-    alignHint.textContent = t("The overview ends on today.");
+    alignHint.textContent = t('The overview ends on today.');
   } else if (shown < 7) {
     // Week alignment requires at least seven columns.
-    alignHint.textContent = t("Possible from 7 columns on — {n} fit right now.", { n: shown });
+    alignHint.textContent =
+        t('Possible from 7 columns on — {n} fit right now.', {n: shown});
   } else {
-    alignHint.textContent = t("The overview shows whole calendar weeks, including the remaining days of this week.");
+    alignHint.textContent = t(
+        'The overview shows whole calendar weeks, including the remaining days of this week.');
   }
 
   paintRegion();
@@ -184,9 +215,9 @@ function paint() {
   archivedInput.checked = settings.showArchived;
   // Hidden if there are no archived habits and the switch is off.
   archiveItem.hidden = archived === 0 && !settings.showArchived;
-  archiveHint.textContent = archived === 1
-    ? t("1 habit is archived.")
-    : t("{n} habits are archived.", { n: archived });
+  archiveHint.textContent = archived === 1 ?
+      t('1 habit is archived.') :
+      t('{n} habits are archived.', {n: archived});
 }
 
 // ---------- account ----------
@@ -195,26 +226,28 @@ function paint() {
 function paintAccount() {
   const user = state.user;
   // Without a display name (e.g. single-user mode), the ID stands in.
-  const name = user.name || user.id || t("Unknown");
+  const name = user.name || user.id || t('Unknown');
   // The ID is only worth a line if the name does not show it already.
-  const detail = user.email || (user.id !== name ? user.id : "");
+  const detail = user.email || (user.id !== name ? user.id : '');
   const groups = user.groups ?? [];
 
-  document.getElementById("settings-account-avatar").textContent = initials(name);
-  document.getElementById("settings-account-name").textContent = name;
-  const detailEl = document.getElementById("settings-account-detail");
+  document.getElementById('settings-account-avatar').textContent =
+      initials(name);
+  document.getElementById('settings-account-name').textContent = name;
+  const detailEl = document.getElementById('settings-account-detail');
   detailEl.textContent = detail;
   detailEl.hidden = !detail;
-  const groupsEl = document.getElementById("settings-account-groups");
-  groupsEl.textContent = t("Groups: {list}", { list: groups.join(", ") });
+  const groupsEl = document.getElementById('settings-account-groups');
+  groupsEl.textContent = t('Groups: {list}', {list: groups.join(', ')});
   groupsEl.hidden = groups.length === 0;
 }
 
 /** Up to two initials: first and last word, or the first letter alone. */
 function initials(name) {
   const words = name.split(/[\s._@-]+/).filter(Boolean);
-  const letters = words.length > 1 ? [words[0], words.at(-1)] : words.slice(0, 1);
-  return letters.map((w) => [...w][0].toUpperCase()).join("");
+  const letters =
+      words.length > 1 ? [words[0], words.at(-1)] : words.slice(0, 1);
+  return letters.map((w) => [...w][0].toUpperCase()).join('');
 }
 
 // ---------- version ----------
@@ -222,41 +255,42 @@ function initials(name) {
 /** Fills the version page and the version row's hint from state.build. */
 function paintVersion() {
   const build = state.build;
-  const version = build.version || t("Development build");
+  const version = build.version || t('Development build');
   // Twelve characters identify a commit well enough.
-  const revision = build.revision
-    ? build.revision.slice(0, 12) + (build.modified ? ` (${t("modified")})` : "")
-    : t("Unknown");
+  const revision = build.revision ? build.revision.slice(0, 12) +
+          (build.modified ? ` (${t('modified')})` : '') :
+                                    t('Unknown');
 
-  document.getElementById("settings-version-hint").textContent = version;
+  document.getElementById('settings-version-hint').textContent = version;
 
   const facts = [
-    [t("Version"), version],
-    [t("Commit"), revision],
-    [t("Built"), formatBuildTime(build.time)],
-    [t("Go version"), build.goVersion || t("Unknown")],
+    [t('Version'), version],
+    [t('Commit'), revision],
+    [t('Built'), formatBuildTime(build.time)],
+    [t('Go version'), build.goVersion || t('Unknown')],
   ];
-  document.getElementById("settings-version-facts")
-    .replaceChildren(...facts.map(([label, value]) => factItem(label, value)));
+  document.getElementById('settings-version-facts')
+      .replaceChildren(
+          ...facts.map(([label, value]) => factItem(label, value)));
 }
 
 /** Formats the RFC 3339 build time in the user's language, or "Unknown". */
 function formatBuildTime(time) {
   const date = time ? new Date(time) : null;
-  if (!date || Number.isNaN(date.getTime())) return t("Unknown");
-  return date.toLocaleString(locale, { dateStyle: "medium", timeStyle: "short" });
+  if (!date || Number.isNaN(date.getTime())) return t('Unknown');
+  return date.toLocaleString(locale, {dateStyle: 'medium', timeStyle: 'short'});
 }
 
 // ---------- import & export ----------
 
 /** Wires the export and import buttons. */
 function initTransfer() {
-  const exportButton = document.getElementById("settings-export");
-  const importButton = document.getElementById("settings-import");
-  const fileInput = document.getElementById("settings-import-file");
-  const result = document.getElementById("settings-import-result");
+  const exportButton = document.getElementById('settings-export');
+  const importButton = document.getElementById('settings-import');
+  const fileInput = document.getElementById('settings-import-file');
+  const result = document.getElementById('settings-import-result');
 
-  exportButton.addEventListener("click", async () => {
+  exportButton.addEventListener('click', async () => {
     exportButton.disabled = true;
     try {
       const data = await api.exportHabits();
@@ -269,11 +303,11 @@ function initTransfer() {
     }
   });
 
-  importButton.addEventListener("click", () => fileInput.click());
-  fileInput.addEventListener("change", async () => {
+  importButton.addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', async () => {
     const file = fileInput.files[0];
     // Cleared, so that choosing the same file again fires "change".
-    fileInput.value = "";
+    fileInput.value = '';
     if (!file) return;
     result.hidden = true;
 
@@ -281,7 +315,7 @@ function initTransfer() {
     try {
       data = JSON.parse(await file.text());
     } catch {
-      report(t("The file is not an export of the habits."));
+      report(t('The file is not an export of the habits.'));
       return;
     }
     importButton.disabled = true;
@@ -295,7 +329,7 @@ function initTransfer() {
       const message = errorText(err);
       // The server names the habit or category that is invalid.
       const name = err.params?.habit ?? err.params?.category;
-      report(name ? t("\"{name}\": {message}", { name, message }) : message);
+      report(name ? t('"{name}": {message}', {name, message}) : message);
     } finally {
       importButton.disabled = false;
     }
@@ -303,35 +337,37 @@ function initTransfer() {
 }
 
 /** Describes the result of an import. */
-function importSummary({ habits, categories, skipped }) {
+function importSummary({habits, categories, skipped}) {
   const parts = [
-    habits === 1 ? t("1 habit imported.") : t("{n} habits imported.", { n: habits }),
+    habits === 1 ? t('1 habit imported.') :
+                   t('{n} habits imported.', {n: habits}),
   ];
   if (categories > 0) {
-    parts.push(categories === 1
-      ? t("1 category created.")
-      : t("{n} categories created.", { n: categories }));
+    parts.push(
+        categories === 1 ? t('1 category created.') :
+                           t('{n} categories created.', {n: categories}));
   }
   if (skipped > 0) {
-    parts.push(skipped === 1
-      ? t("1 habit already existed and was skipped.")
-      : t("{n} habits already existed and were skipped.", { n: skipped }));
+    parts.push(
+        skipped === 1 ?
+            t('1 habit already existed and was skipped.') :
+            t('{n} habits already existed and were skipped.', {n: skipped}));
   }
-  return parts.join(" ");
+  return parts.join(' ');
 }
 
 /** Wires the button that deletes all data, after asking. */
 function initDeleteAll() {
-  const button = document.getElementById("settings-delete-all");
-  const confirm = document.getElementById("delete-all-dialog");
+  const button = document.getElementById('settings-delete-all');
+  const confirm = document.getElementById('delete-all-dialog');
 
-  button.addEventListener("click", () => {
+  button.addEventListener('click', () => {
     // Escape leaves the value empty, i.e. cancels.
-    confirm.returnValue = "";
+    confirm.returnValue = '';
     confirm.showModal();
   });
-  confirm.addEventListener("close", async () => {
-    if (confirm.returnValue !== "delete") return;
+  confirm.addEventListener('close', async () => {
+    if (confirm.returnValue !== 'delete') return;
     button.disabled = true;
     try {
       await api.deleteAllData();
@@ -348,8 +384,8 @@ function initDeleteAll() {
 
 /** Offers `text` as a JSON file to save. */
 function download(name, text) {
-  const url = URL.createObjectURL(new Blob([text], { type: "application/json" }));
-  const link = document.createElement("a");
+  const url = URL.createObjectURL(new Blob([text], {type: 'application/json'}));
+  const link = document.createElement('a');
   link.href = url;
   link.download = name;
   document.body.append(link);
@@ -364,9 +400,9 @@ function download(name, text) {
 /** Returns the browser's time zone, or "". */
 function deviceTimeZone() {
   try {
-    return Intl.DateTimeFormat().resolvedOptions().timeZone ?? "";
+    return Intl.DateTimeFormat().resolvedOptions().timeZone ?? '';
   } catch {
-    return "";
+    return '';
   }
 }
 
@@ -376,9 +412,9 @@ function deviceTimeZone() {
  */
 function knownTimeZones() {
   try {
-    return Intl.supportedValuesOf("timeZone");
+    return Intl.supportedValuesOf('timeZone');
   } catch {
-    return ["UTC", "Europe/Berlin", "Europe/London", "America/New_York"];
+    return ['UTC', 'Europe/Berlin', 'Europe/London', 'America/New_York'];
   }
 }
 
@@ -388,19 +424,25 @@ function knownTimeZones() {
  */
 function buildTimeZoneOptions() {
   if (timeZoneSelect.options.length > 0) return;
-  timeZoneSelect.append(el("option", { value: "" }));
+  timeZoneSelect.append(el('option', {value: ''}));
 
   const groups = new Map();
   for (const zone of knownTimeZones()) {
-    const region = zone.includes("/") ? zone.slice(0, zone.indexOf("/")) : t("Other");
+    const region =
+        zone.includes('/') ? zone.slice(0, zone.indexOf('/')) : t('Other');
     if (!groups.has(region)) groups.set(region, []);
     groups.get(region).push(zone);
   }
   for (const [region, zones] of groups) {
-    timeZoneSelect.append(el("optgroup", { label: region }, ...zones.map((zone) =>
-      // Without the region prefix and underscores.
-      el("option", { value: zone },
-        zone.slice(zone.indexOf("/") + 1).replaceAll("_", " ").replaceAll("/", " / ")))));
+    timeZoneSelect.append(
+        el('optgroup', {label: region},
+           ...zones.map(
+               (zone) =>
+                   // Without the region prefix and underscores.
+               el('option', {value: zone},
+                  zone.slice(zone.indexOf('/') + 1)
+                      .replaceAll('_', ' ')
+                      .replaceAll('/', ' / ')))));
   }
 }
 
@@ -410,14 +452,14 @@ function paintRegion() {
   buildTimeZoneOptions();
   const server = state.serverTimeZone;
   // "Local" is a server zone without a name.
-  timeZoneSelect.options[0].textContent = server && server !== "Local"
-    ? t("Server default ({zone})", { zone: server })
-    : t("Server default");
+  timeZoneSelect.options[0].textContent = server && server !== 'Local' ?
+      t('Server default ({zone})', {zone: server}) :
+      t('Server default');
 
   const chosen = state.settings.timeZone;
   // Add the chosen zone if the browser does not list it.
   if (chosen && ![...timeZoneSelect.options].some((o) => o.value === chosen)) {
-    timeZoneSelect.append(el("option", { value: chosen }, chosen));
+    timeZoneSelect.append(el('option', {value: chosen}, chosen));
   }
   timeZoneSelect.value = chosen;
 
@@ -427,29 +469,30 @@ function paintRegion() {
   const device = deviceTimeZone();
   const inForce = chosen || server;
   timeZoneDevice.hidden = !device || device === inForce;
-  timeZoneDevice.textContent = t("Use this device's time zone ({zone})", { zone: device });
+  timeZoneDevice.textContent =
+      t('Use this device\'s time zone ({zone})', {zone: device});
 }
 
 /** Returns the time zone hint, including the current time there. */
 function timeZoneText() {
-  let now = "";
+  let now = '';
   try {
-    now = new Date().toLocaleTimeString(locale,
-      { hour: "2-digit", minute: "2-digit", timeZone: userTimeZone() });
+    now = new Date().toLocaleTimeString(
+        locale, {hour: '2-digit', minute: '2-digit', timeZone: userTimeZone()});
   } catch {
     // Omit the time if the browser cannot format the zone.
   }
-  const lead = t("Decides when a new day begins on the board.");
-  return now ? `${lead} ${t("It is {time} there now.", { time: now })}` : lead;
+  const lead = t('Decides when a new day begins on the board.');
+  return now ? `${lead} ${t('It is {time} there now.', {time: now})}` : lead;
 }
 
 /** Saves the time zone and reloads the state, as it changes "today". */
 async function saveTimeZone(zone) {
-  if (await saveSetting({ timeZone: zone })) await reload();
+  if (await saveSetting({timeZone: zone})) await reload();
 }
 
 /** Band colour for a grey today band, as store.NeutralBand. */
-const NEUTRAL_BAND = "neutral";
+const NEUTRAL_BAND = 'neutral';
 
 /** Builds the band colour choices: neutral, followed by the habit palette. */
 function paintBandChoices(chosen) {
@@ -457,19 +500,21 @@ function paintBandChoices(chosen) {
   if (bandChoices.childElementCount !== wanted.length) {
     bandChoices.replaceChildren(...wanted.map((color) => {
       const neutral = color === NEUTRAL_BAND;
-      return el("button", {
-        type: "button",
-        class: "swatch",
-        data: { color },
-        role: "radio",
-        style: { "--swatch": neutral ? "var(--today-neutral)" : colorValue(color) },
-        "aria-label": neutral ? t("Neutral") : t("Colour {color}", { color: colorLabel(color) }),
-        title: neutral ? t("Neutral") : colorLabel(color),
+      return el('button', {
+        type: 'button',
+        class: 'swatch',
+        data: {color},
+        role: 'radio',
+        style:
+            {'--swatch': neutral ? 'var(--today-neutral)' : colorValue(color)},
+        'aria-label': neutral ? t('Neutral') :
+                                t('Colour {color}', {color: colorLabel(color)}),
+        title: neutral ? t('Neutral') : colorLabel(color),
       });
     }));
   }
   for (const node of bandChoices.children) {
-    node.setAttribute("aria-checked", String(node.dataset.color === chosen));
+    node.setAttribute('aria-checked', String(node.dataset.color === chosen));
   }
 }
 
@@ -479,15 +524,15 @@ function paintBandChoices(chosen) {
  * was saved.
  */
 async function saveSetting(patch) {
-  const before = { ...state.settings };
+  const before = {...state.settings};
   // Apply immediately; restored on failure.
-  replaceState({ settings: { ...state.settings, ...patch } });
+  replaceState({settings: {...state.settings, ...patch}});
   try {
-    replaceState({ settings: await api.saveSettings(patch) });
+    replaceState({settings: await api.saveSettings(patch)});
     errorBox.hidden = true;
     return true;
   } catch (err) {
-    replaceState({ settings: before });
+    replaceState({settings: before});
     report(errorText(err));
     return false;
   }
@@ -504,21 +549,22 @@ function showPercent(out, value) {
  * value as the setting `key`.
  */
 function bindSlider(slider, out, key, cssVar) {
-  slider.addEventListener("input", () => {
+  slider.addEventListener('input', () => {
     showPercent(out, slider.value);
     document.documentElement.style.setProperty(cssVar, `${slider.value}%`);
   });
-  slider.addEventListener("change", () => saveSetting({ [key]: Number(slider.value) }));
+  slider.addEventListener(
+      'change', () => saveSetting({[key]: Number(slider.value)}));
 }
 
 /** Shows an error in the open settings page, since pages cover the toasts. */
 function report(message) {
   const page = topPage();
-  if (page?.id.startsWith("settings-")) {
-    page.querySelector(".page-body").append(errorBox);
+  if (page?.id.startsWith('settings-')) {
+    page.querySelector('.page-body').append(errorBox);
     errorBox.textContent = message;
     errorBox.hidden = false;
     return;
   }
-  toast(message, { error: true });
+  toast(message, {error: true});
 }

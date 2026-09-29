@@ -2,11 +2,11 @@
 // that can be undone answers with the ID of its step (changeId, see api.js),
 // and undo and redo ask the server to turn a step, or the latest one.
 
-import { api } from "./api.js";
-import { state } from "./state.js";
-import { formatRelative } from "./dates.js";
-import { t, locale, errorTemplate } from "./i18n.js";
-import { el } from "./dom.js";
+import {api} from './api.js';
+import {formatRelative} from './dates.js';
+import {el} from './dom.js';
+import {errorTemplate, locale, t} from './i18n.js';
+import {state} from './state.js';
 
 /** Called after every undo and redo, to reload the state. Set by app.js. */
 let onChange = async () => {};
@@ -24,7 +24,7 @@ export function offerUndo(changeId, text) {
     toast(text);
     return;
   }
-  toast(text, { actionLabel: t("Undo"), onAction: () => undoStep(changeId) });
+  toast(text, {actionLabel: t('Undo'), onAction: () => undoStep(changeId)});
 }
 
 /** Undoes the latest step, e.g. for Ctrl+Z. */
@@ -42,8 +42,8 @@ async function undoStep(id) {
   try {
     const step = await api.undo(id);
     await onChange();
-    toast(t("Undone: {label}", { label: stepLabel(step) }), {
-      actionLabel: t("Redo"),
+    toast(t('Undone: {label}', {label: stepLabel(step)}), {
+      actionLabel: t('Redo'),
       onAction: () => redoStep(step.id),
     });
   } catch (err) {
@@ -56,8 +56,8 @@ async function redoStep(id) {
   try {
     const step = await api.redo(id);
     await onChange();
-    toast(t("Redone: {label}", { label: stepLabel(step) }), {
-      actionLabel: t("Undo"),
+    toast(t('Redone: {label}', {label: stepLabel(step)}), {
+      actionLabel: t('Undo'),
       onAction: () => undoStep(step.id),
     });
   } catch (err) {
@@ -70,7 +70,7 @@ async function redoStep(id) {
  * meanwhile (409), the server has dropped the step and the state is reloaded.
  */
 async function failed(err) {
-  toast(errorText(err), { error: true });
+  toast(errorText(err), {error: true});
   if (err?.status === 409) await onChange();
 }
 
@@ -82,9 +82,13 @@ async function failed(err) {
 function stepLabel(step) {
   const vars = {};
   for (const [name, value] of Object.entries(step.params ?? {})) {
-    if (name === "date") vars[name] = formatRelative(value, state.today);
-    else if (typeof value === "number") vars[name] = value.toLocaleString(locale);
-    else vars[name] = value;
+    if (name === 'date') {
+      vars[name] = formatRelative(value, state.today);
+    } else if (typeof value === 'number') {
+      vars[name] = value.toLocaleString(locale);
+    } else {
+      vars[name] = value;
+    }
   }
   return t(step.label, vars);
 }
@@ -95,14 +99,15 @@ function stepLabel(step) {
  * shown.
  */
 export function errorText(err) {
-  if (!err?.message) return t("Unknown error");
+  if (!err?.message) return t('Unknown error');
   const template = err.code ? errorTemplate(err.code) : undefined;
   // The server's messages are error strings, which start in lower case.
   if (!template) return capitalize(String(err.message));
   const vars = {};
   for (const [name, value] of Object.entries(err.params ?? {})) {
     // Numbers are formatted for the locale, strings are translated.
-    vars[name] = typeof value === "number" ? value.toLocaleString(locale) : t(String(value));
+    vars[name] = typeof value === 'number' ? value.toLocaleString(locale) :
+                                             t(String(value));
   }
   return t(template, vars);
 }
@@ -122,17 +127,21 @@ let container = null;
  *          timeout?: number}} [opts]
  */
 export function toast(text, opts = {}) {
-  container ??= document.getElementById("toasts");
+  container ??= document.getElementById('toasts');
   if (!container) return;
 
-  const action = opts.actionLabel && opts.onAction
-    ? el("button", { type: "button", class: "button" }, opts.actionLabel)
-    : null;
-  const close = el("button", { type: "button", class: "icon-button", "aria-label": t("Close") }, "×");
-  const box = el("div", { class: ["toast", opts.error && "is-error"] },
-    el("span", { class: "text" }, text),
-    action,
-    close,
+  const action = opts.actionLabel && opts.onAction ?
+      el('button', {type: 'button', class: 'button'}, opts.actionLabel) :
+      null;
+  const close =
+      el('button',
+         {type: 'button', class: 'icon-button', 'aria-label': t('Close')}, '×');
+  const box = el(
+      'div',
+      {class: ['toast', opts.error && 'is-error']},
+      el('span', {class: 'text'}, text),
+      action,
+      close,
   );
 
   let timer;
@@ -142,12 +151,12 @@ export function toast(text, opts = {}) {
     clearTimeout(timer);
     box.remove();
   };
-  action?.addEventListener("click", () => {
+  action?.addEventListener('click', () => {
     // The action handler shows its own toast.
     dismiss();
     opts.onAction();
   });
-  close.addEventListener("click", dismiss);
+  close.addEventListener('click', dismiss);
 
   // The timeout pauses while the toast is hovered or focused.
   const timeout = opts.timeout ?? DEFAULT_TIMEOUT;
@@ -159,10 +168,19 @@ export function toast(text, opts = {}) {
     clearTimeout(timer);
     timer = setTimeout(dismiss, timeout);
   };
-  box.addEventListener("pointerenter", () => { hovered = true; hold(); });
-  box.addEventListener("pointerleave", () => { hovered = false; resume(); });
-  box.addEventListener("focusin", () => { focused = true; hold(); });
-  box.addEventListener("focusout", (event) => {
+  box.addEventListener('pointerenter', () => {
+    hovered = true;
+    hold();
+  });
+  box.addEventListener('pointerleave', () => {
+    hovered = false;
+    resume();
+  });
+  box.addEventListener('focusin', () => {
+    focused = true;
+    hold();
+  });
+  box.addEventListener('focusout', (event) => {
     if (box.contains(event.relatedTarget)) return;
     focused = false;
     resume();

@@ -2,10 +2,10 @@
 // that are not archived. It passes the input to its caller and stays open with
 // the error message if skipping fails.
 
-import { state } from "./state.js";
-import { addDays } from "./dates.js";
-import { errorText } from "./undo.js";
-import { openPage, closePage } from "./page-stack.js";
+import {addDays} from './dates.js';
+import {closePage, openPage} from './page-stack.js';
+import {state} from './state.js';
+import {errorText} from './undo.js';
 
 let dialog;
 let form;
@@ -16,17 +16,21 @@ let onSubmit = null;
 let habit = null;
 
 export function initSkipDialog() {
-  dialog = document.getElementById("skip-editor");
-  form = document.getElementById("skip-editor-form");
-  errorBox = document.getElementById("skip-editor-error");
-  submitButton = document.getElementById("skip-editor-submit");
+  dialog = document.getElementById('skip-editor');
+  form = document.getElementById('skip-editor-form');
+  errorBox = document.getElementById('skip-editor-error');
+  submitButton = document.getElementById('skip-editor-submit');
 
-  form.addEventListener("submit", handleSubmit);
-  form.addEventListener("input", () => { errorBox.hidden = true; });
+  form.addEventListener('submit', handleSubmit);
+  form.addEventListener('input', () => {
+    errorBox.hidden = true;
+  });
   // The last day cannot lie before the first.
-  form.elements.from.addEventListener("change", () => {
+  form.elements.from.addEventListener('change', () => {
     form.elements.to.min = form.elements.from.value;
-    if (form.elements.to.value < form.elements.from.value) form.elements.to.value = form.elements.from.value;
+    if (form.elements.to.value < form.elements.from.value) {
+      form.elements.to.value = form.elements.from.value;
+    }
   });
 }
 
@@ -45,9 +49,11 @@ export function openSkipDialog(target, handler) {
   f.from.value = state.today;
   f.to.value = addDays(state.today, 6);
   f.to.min = f.from.value;
-  f.scope.value = "one";
-  document.getElementById("skip-editor-scope").hidden = habit === null;
-  if (habit) document.getElementById("skip-editor-scope-one").textContent = habit.name;
+  f.scope.value = 'one';
+  document.getElementById('skip-editor-scope').hidden = habit === null;
+  if (habit) {
+    document.getElementById('skip-editor-scope-one').textContent = habit.name;
+  }
 
   openPage(dialog);
   f.from.focus();
@@ -55,7 +61,7 @@ export function openSkipDialog(target, handler) {
 
 function collect() {
   const f = form.elements;
-  const one = habit !== null && f.scope.value === "one";
+  const one = habit !== null && f.scope.value === 'one';
   return {
     from: f.from.value,
     to: f.to.value,
@@ -71,7 +77,7 @@ async function handleSubmit(event) {
   submitButton.disabled = true;
   try {
     await onSubmit(collect());
-    closePage(dialog, { force: true });
+    closePage(dialog, {force: true});
   } catch (err) {
     errorBox.textContent = errorText(err);
     errorBox.hidden = false;

@@ -133,7 +133,7 @@ func TestMigrationFromVersion3(t *testing.T) {
 	}
 	defer st.Close()
 
-	habits := read(t, st, "alice", func(tx *Tx) ([]domain.Habit, error) { return tx.Habits(t.Context(), true) })
+	habits := read(t, st, "alice", func(tx *Tx) ([]domain.Habit, error) { return tx.Habits(t.Context()) })
 	if len(habits) != 1 || habits[0].ID != "h1" {
 		t.Fatalf("habits = %+v, want only h1", habits)
 	}

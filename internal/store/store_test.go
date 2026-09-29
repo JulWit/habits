@@ -126,7 +126,7 @@ func TestAFailingUpdateWritesNothing(t *testing.T) {
 	if !errors.Is(err, boom) {
 		t.Fatalf("err = %v, want boom", err)
 	}
-	habits := read(t, st, "alice", func(tx *Tx) ([]domain.Habit, error) { return tx.Habits(t.Context(), true) })
+	habits := read(t, st, "alice", func(tx *Tx) ([]domain.Habit, error) { return tx.Habits(t.Context()) })
 	if len(habits) != 0 {
 		t.Errorf("%d habits saved by a failed update", len(habits))
 	}
@@ -212,7 +212,7 @@ func TestDeleteUserRemovesAllTheirData(t *testing.T) {
 	if got := read(t, st, "alice", settingsOf); got != settings.Default() {
 		t.Errorf("settings = %+v; want the defaults", got)
 	}
-	if bobs := read(t, st, "bob", func(tx *Tx) ([]domain.Habit, error) { return tx.Habits(t.Context(), true) }); len(bobs) != 1 {
+	if bobs := read(t, st, "bob", func(tx *Tx) ([]domain.Habit, error) { return tx.Habits(t.Context()) }); len(bobs) != 1 {
 		t.Errorf("bob's habits = %d; want 1", len(bobs))
 	}
 }

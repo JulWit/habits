@@ -37,7 +37,7 @@ func (s *server) handleSetEntry(w http.ResponseWriter, r *http.Request, user aut
 		if err != nil {
 			return err
 		}
-		if err := checkEntryDay(h, date, b.today, change.Records()); err != nil {
+		if err := checkEntryDay(h, date, b.today, change); err != nil {
 			return err
 		}
 		previous, err := tx.Entry(ctx, h.ID, date)
@@ -59,31 +59,40 @@ func (s *server) handleSetEntry(w http.ResponseWriter, r *http.Request, user aut
 	s.writeJSON(w, http.StatusOK, view)
 }
 
-// checkEntryDay returns an error unless the entry of h on date may be
-// changed: within the bounds of checkEntryDate, and on a due day for
-// recording something (records). Removing is allowed on any day.
-func checkEntryDay(h domain.Habit, date, today domain.Date, records bool) error {
-	if err := checkEntryDate(date, today, records); err != nil {
+// checkEntryDay returns an error unless change may be applied to the entry of
+// h on date. A change that records something (EntryChange.Records) needs a
+// due day within the bounds of checkRecordDate; removing is allowed on any day
+// up to the horizon of checkEntryHorizon.
+func checkEntryDay(h domain.Habit, date, today domain.Date, change domain.EntryChange) error {
+	if !change.Records() {
+		return checkEntryHorizon(date, today)
+	}
+	if err := checkRecordDate(date, today); err != nil {
 		return err
 	}
-	if records && !h.IsScheduled(date) {
+	if !h.IsScheduled(date) {
 		return domain.Invalid("not_scheduled", "the habit is not scheduled on this day")
 	}
 	return nil
 }
 
-// checkEntryDate returns an error unless an entry may be dated on date.
-// Nothing may be dated more than domain.EntryHorizonDays after today, and
-// nothing recorded (records) before domain.EarliestEntry.
-func checkEntryDate(date, today domain.Date, records bool) error {
-	switch {
-	case date.After(today.AddDays(domain.EntryHorizonDays)):
-		return domain.Invalid("entry_too_far_ahead", "entries may be at most one year in the future")
-	case records && date.Before(domain.EarliestEntry):
+// checkRecordDate returns an error unless something may be recorded on date:
+// not before domain.EarliestEntry and within checkEntryHorizon.
+func checkRecordDate(date, today domain.Date) error {
+	if date.Before(domain.EarliestEntry) {
 		// The year is passed as a string so the client does not format it as
 		// a number.
 		return domain.Invalid("entry_too_early",
 			"entries may not be dated before {year}", "year", strconv.Itoa(domain.EarliestEntry.Year))
+	}
+	return checkEntryHorizon(date, today)
+}
+
+// checkEntryHorizon returns an error if date lies more than
+// domain.EntryHorizonDays after today.
+func checkEntryHorizon(date, today domain.Date) error {
+	if date.After(today.AddDays(domain.EntryHorizonDays)) {
+		return domain.Invalid("entry_too_far_ahead", "entries may be at most one year in the future")
 	}
 	return nil
 }

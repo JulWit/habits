@@ -34,7 +34,7 @@ func TestHabitsAreScopedToTheirUser(t *testing.T) {
 	if !errors.Is(err, ErrNotFound) {
 		t.Errorf("SaveHabit of another user: %v, want ErrNotFound", err)
 	}
-	if theirs := read(t, st, "someone-else", func(tx *Tx) ([]domain.Habit, error) { return tx.Habits(t.Context(), true) }); len(theirs) != 0 {
+	if theirs := read(t, st, "someone-else", func(tx *Tx) ([]domain.Habit, error) { return tx.Habits(t.Context()) }); len(theirs) != 0 {
 		t.Errorf("another user's list contains %d habits", len(theirs))
 	}
 	if entries := entriesOf(t, st, "someone-else", mine.ID); len(entries) != 0 {
@@ -159,7 +159,7 @@ func TestDeleteHabitRemovesItsHistory(t *testing.T) {
 func habitIDs(t *testing.T, st *Store, user string) []string {
 	t.Helper()
 	var ids []string
-	for _, h := range read(t, st, user, func(tx *Tx) ([]domain.Habit, error) { return tx.Habits(t.Context(), true) }) {
+	for _, h := range read(t, st, user, func(tx *Tx) ([]domain.Habit, error) { return tx.Habits(t.Context()) }) {
 		ids = append(ids, h.ID)
 	}
 	return ids
@@ -190,7 +190,7 @@ func TestReorderPlacesUnnamedHabitsAfterTheNamedOnes(t *testing.T) {
 	c := mustCreateHabit(t, st, "alice", countHabit(domain.KindCheck, 1))
 
 	update(t, st, "alice", func(tx *Tx) error { return tx.ReorderHabits(t.Context(), []string{c.ID}) })
-	habits := read(t, st, "alice", func(tx *Tx) ([]domain.Habit, error) { return tx.Habits(t.Context(), true) })
+	habits := read(t, st, "alice", func(tx *Tx) ([]domain.Habit, error) { return tx.Habits(t.Context()) })
 	want := []string{c.ID, a.ID, b.ID}
 	for i, h := range habits {
 		if h.ID != want[i] || h.Position != i {

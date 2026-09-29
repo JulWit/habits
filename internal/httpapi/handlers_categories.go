@@ -73,7 +73,7 @@ func (s *server) handleDeleteCategory(w http.ResponseWriter, r *http.Request, us
 		if err != nil {
 			return err
 		}
-		habits, err := tx.Habits(ctx, true)
+		habits, err := tx.Habits(ctx)
 		if err != nil {
 			return err
 		}

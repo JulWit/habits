@@ -79,7 +79,7 @@ func (s *server) handleState(w http.ResponseWriter, r *http.Request, user auth.U
 		if err != nil {
 			return err
 		}
-		habits, err := tx.Habits(ctx, true)
+		habits, err := tx.Habits(ctx)
 		if err != nil {
 			return err
 		}

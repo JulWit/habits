@@ -91,7 +91,7 @@ func (s *server) handleExport(w http.ResponseWriter, r *http.Request, user auth.
 		if err != nil {
 			return err
 		}
-		habits, err := tx.Habits(ctx, true)
+		habits, err := tx.Habits(ctx)
 		if err != nil {
 			return err
 		}
@@ -215,7 +215,7 @@ func importFile(ctx context.Context, tx *store.Tx, in exportFile) (importResult,
 	if err != nil {
 		return result, err
 	}
-	existingHabits, err := tx.Habits(ctx, true)
+	existingHabits, err := tx.Habits(ctx)
 	if err != nil {
 		return result, err
 	}

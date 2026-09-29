@@ -45,14 +45,23 @@ func scanHabit(scanner interface{ Scan(...any) error }) (domain.Habit, error) {
 	return h, nil
 }
 
-// Habits returns the user's habits in display order, archived ones only with
-// includeArchived.
-func (t *Tx) Habits(ctx context.Context, includeArchived bool) ([]domain.Habit, error) {
-	query := `SELECT ` + habitColumns + ` FROM habits WHERE user_id = ?`
-	if !includeArchived {
-		query += ` AND archived_at IS NULL`
-	}
-	query += ` ORDER BY position, created_at`
+// Habits returns all of the user's habits in display order, archived ones
+// included.
+func (t *Tx) Habits(ctx context.Context) ([]domain.Habit, error) {
+	return t.habitsWhere(ctx, ``)
+}
+
+// ActiveHabits returns the user's habits that are not archived, in display
+// order.
+func (t *Tx) ActiveHabits(ctx context.Context) ([]domain.Habit, error) {
+	return t.habitsWhere(ctx, ` AND archived_at IS NULL`)
+}
+
+// habitsWhere returns the user's habits that match the SQL condition filter,
+// which is "" or starts with AND, in display order.
+func (t *Tx) habitsWhere(ctx context.Context, filter string) ([]domain.Habit, error) {
+	query := `SELECT ` + habitColumns + ` FROM habits WHERE user_id = ?` + filter +
+		` ORDER BY position, created_at`
 
 	schedules, err := t.schedulesOfUser(ctx)
 	if err != nil {

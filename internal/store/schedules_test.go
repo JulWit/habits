@@ -29,7 +29,7 @@ func TestSchedulesRoundTrip(t *testing.T) {
 		t.Errorf("current frequency = %+v, want the newer one", all[1].Frequency)
 	}
 
-	listed := read(t, st, "alice", func(tx *Tx) ([]domain.Habit, error) { return tx.Habits(t.Context(), false) })
+	listed := read(t, st, "alice", func(tx *Tx) ([]domain.Habit, error) { return tx.ActiveHabits(t.Context()) })
 	if len(listed) != 1 || len(listed[0].Schedules) != 2 {
 		t.Errorf("Habits did not load both schedules: %+v", listed)
 	}

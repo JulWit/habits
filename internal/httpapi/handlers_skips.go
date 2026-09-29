@@ -48,10 +48,10 @@ func (s *server) handleSkipDays(w http.ResponseWriter, r *http.Request, user aut
 		if err != nil {
 			return err
 		}
-		if err := checkEntryDate(body.From, b.today, true); err != nil {
+		if err := checkRecordDate(body.From, b.today); err != nil {
 			return err
 		}
-		if err := checkEntryDate(body.To, b.today, true); err != nil {
+		if err := checkRecordDate(body.To, b.today); err != nil {
 			return err
 		}
 		habits, err := habitsToSkip(ctx, tx, body.HabitIDs)
@@ -90,7 +90,7 @@ func (s *server) handleSkipDays(w http.ResponseWriter, r *http.Request, user aut
 // habitsToSkip returns the habits of the user with the given IDs, or all
 // that are not archived if there are none. An unknown ID is ErrNotFound.
 func habitsToSkip(ctx context.Context, tx *store.Tx, ids []string) ([]domain.Habit, error) {
-	all, err := tx.Habits(ctx, true)
+	all, err := tx.Habits(ctx)
 	if err != nil {
 		return nil, err
 	}

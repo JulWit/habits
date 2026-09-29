@@ -103,7 +103,7 @@ func (s *server) handleDays(w http.ResponseWriter, r *http.Request, user auth.Us
 // them for categoryID "", otherwise those of that category. An unknown
 // category is ErrNotFound.
 func habitsOfCategory(ctx context.Context, tx *store.Tx, categoryID string) ([]domain.Habit, error) {
-	habits, err := tx.Habits(ctx, false)
+	habits, err := tx.ActiveHabits(ctx)
 	if err != nil || categoryID == "" {
 		return habits, err
 	}

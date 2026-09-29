@@ -167,14 +167,16 @@ func TestNameFallsBackToTheIdentifier(t *testing.T) {
 	}
 }
 
-// MustUser panics without a user in the context.
-func TestMustUserPanicsWithoutAUser(t *testing.T) {
-	defer func() {
-		if recover() == nil {
-			t.Error("MustUser did not panic without the middleware")
-		}
-	}()
-	MustUser(httptest.NewRequest("GET", "/", nil).Context())
+// UserFrom finds the user stored by WithUser and reports a missing one.
+func TestUserFrom(t *testing.T) {
+	ctx := httptest.NewRequest("GET", "/", nil).Context()
+	if u, ok := UserFrom(ctx); ok {
+		t.Errorf("UserFrom without WithUser = %+v, true; want false", u)
+	}
+	want := User{ID: "alice", Name: "Alice"}
+	if got, ok := UserFrom(WithUser(ctx, want)); !ok || got.ID != want.ID || got.Name != want.Name {
+		t.Errorf("UserFrom = %+v, %v; want %+v, true", got, ok, want)
+	}
 }
 
 func TestPeerTrusted(t *testing.T) {

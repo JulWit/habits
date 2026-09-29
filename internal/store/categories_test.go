@@ -11,19 +11,20 @@ import (
 // createCategory creates c for user.
 func createCategory(t *testing.T, st *Store, user string, c domain.Category) domain.Category {
 	t.Helper()
-	update(t, st, user, func(tx *Tx) error { return tx.CreateCategory(&c) })
+	update(t, st, user, func(tx *Tx) error { return tx.CreateCategory(t.Context(), &c) })
 	return c
 }
 
 // categoryOf returns the category id of user.
 func categoryOf(t *testing.T, st *Store, user, id string) domain.Category {
 	t.Helper()
-	return read(t, st, user, func(tx *Tx) (domain.Category, error) { return tx.Category(id) })
+	return read(t, st, user, func(tx *Tx) (domain.Category, error) { return tx.Category(t.Context(), id) })
 }
 
 // saveCategory saves c for user and returns the error.
 func saveCategory(st *Store, user string, c domain.Category) error {
-	_, err := st.Update(context.Background(), user, func(tx *Tx) error { return tx.SaveCategory(&c) })
+	ctx := context.Background()
+	_, err := st.Update(ctx, user, func(tx *Tx) error { return tx.SaveCategory(ctx, &c) })
 	return err
 }
 
@@ -35,8 +36,8 @@ func TestDeleteCategoryKeepsItsHabits(t *testing.T) {
 	h.CategoryID = c.ID
 	h = mustCreateHabit(t, st, "alice", h)
 
-	update(t, st, "alice", func(tx *Tx) error { return tx.DeleteCategory(c.ID) })
-	if cats := read(t, st, "alice", (*Tx).Categories); len(cats) != 0 {
+	update(t, st, "alice", func(tx *Tx) error { return tx.DeleteCategory(t.Context(), c.ID) })
+	if cats := read(t, st, "alice", func(tx *Tx) ([]domain.Category, error) { return tx.Categories(t.Context()) }); len(cats) != 0 {
 		t.Error("the deleted category is still listed")
 	}
 	if got := habitOf(t, st, "alice", h.ID).CategoryID; got != "" {
@@ -114,7 +115,7 @@ func TestCategoriesAreScopedToTheirUser(t *testing.T) {
 	if err := saveCategory(st, "mallory", c); !errors.Is(err, ErrNotFound) {
 		t.Errorf("SaveCategory of another user: %v, want ErrNotFound", err)
 	}
-	_, err := st.Update(context.Background(), "mallory", func(tx *Tx) error { return tx.DeleteCategory(c.ID) })
+	_, err := st.Update(context.Background(), "mallory", func(tx *Tx) error { return tx.DeleteCategory(t.Context(), c.ID) })
 	if !errors.Is(err, ErrNotFound) {
 		t.Errorf("DeleteCategory of another user: %v, want ErrNotFound", err)
 	}

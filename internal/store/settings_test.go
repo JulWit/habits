@@ -13,7 +13,7 @@ import (
 // refused.
 func TestSettingsRoundTrip(t *testing.T) {
 	st := openTestStore(t)
-	if got := read(t, st, "alice", (*Tx).Settings); got != settings.Default() {
+	if got := read(t, st, "alice", settingsOf); got != settings.Default() {
 		t.Errorf("an unknown user gets %+v instead of the defaults", got)
 	}
 
@@ -23,18 +23,18 @@ func TestSettingsRoundTrip(t *testing.T) {
 	want.TimeZone = "Europe/Berlin"
 	// Differs from the default, so storing it is actually tested.
 	want.ShowBand = false
-	update(t, st, "alice", func(tx *Tx) error { return tx.SaveSettings(want) })
-	if got := read(t, st, "alice", (*Tx).Settings); got != want {
+	update(t, st, "alice", func(tx *Tx) error { return tx.SaveSettings(t.Context(), want) })
+	if got := read(t, st, "alice", settingsOf); got != want {
 		t.Errorf("round trip: %+v != %+v", got, want)
 	}
 
 	bad := settings.Default()
 	bad.Theme = "neon"
-	_, err := st.Update(context.Background(), "alice", func(tx *Tx) error { return tx.SaveSettings(bad) })
+	_, err := st.Update(context.Background(), "alice", func(tx *Tx) error { return tx.SaveSettings(t.Context(), bad) })
 	if !errors.Is(err, domain.ErrValidation) {
 		t.Errorf("invalid theme: %v, want ErrValidation", err)
 	}
-	if got := read(t, st, "alice", (*Tx).Settings); got != want {
+	if got := read(t, st, "alice", settingsOf); got != want {
 		t.Errorf("after a refused save: %+v, want %+v", got, want)
 	}
 }
@@ -50,7 +50,7 @@ func TestStoredSettingsFallBackToTheDefaults(t *testing.T) {
 	}
 	want := settings.Default()
 	want.Theme = "dark"
-	if got := read(t, st, "alice", (*Tx).Settings); got != want {
+	if got := read(t, st, "alice", settingsOf); got != want {
 		t.Errorf("got  %+v\nwant %+v", got, want)
 	}
 }
@@ -64,10 +64,15 @@ func TestUnreadableSettingsAreAnError(t *testing.T) {
 		t.Fatal(err)
 	}
 	err := st.View(context.Background(), "alice", func(tx *Tx) error {
-		_, err := tx.Settings()
+		_, err := tx.Settings(t.Context())
 		return err
 	})
 	if err == nil {
 		t.Error("unreadable settings were read without an error")
 	}
+}
+
+// settingsOf reads the settings in tx; a read callback for tests.
+func settingsOf(tx *Tx) (settings.Settings, error) {
+	return tx.Settings(context.Background())
 }

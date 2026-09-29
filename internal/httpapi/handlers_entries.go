@@ -15,40 +15,40 @@ import (
 // domain.EarliestEntry and domain.EntryHorizonDays after today; removing is
 // allowed on any day. The answer is the habit with its full history, as an
 // entry can change the status of other days too (see domain.HistoryStart).
-func (s *server) handleSetEntry(w http.ResponseWriter, r *http.Request) {
+func (s *server) handleSetEntry(w http.ResponseWriter, r *http.Request, user auth.User) {
 	var change domain.EntryChange
-	if !decodeJSON(w, r, &change) {
+	if !s.decodeJSON(w, r, &change) {
 		return
 	}
 	date, err := domain.ParseDate(r.PathValue("date"))
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "invalid_date", "Invalid date, expected YYYY-MM-DD")
+		s.writeError(w, http.StatusBadRequest, "invalid_date", "Invalid date, expected YYYY-MM-DD")
 		return
 	}
-	user := auth.MustUser(r.Context())
+	ctx := r.Context()
 
 	var view habitView
-	changeID, err := s.store.Update(r.Context(), user.ID, func(tx *store.Tx) error {
-		b, err := s.basis(tx)
+	changeID, err := s.store.Update(ctx, user.ID, func(tx *store.Tx) error {
+		b, err := s.basis(ctx, tx)
 		if err != nil {
 			return err
 		}
-		h, err := tx.Habit(r.PathValue("id"))
+		h, err := tx.Habit(ctx, r.PathValue("id"))
 		if err != nil {
 			return err
 		}
 		if err := checkEntryDay(h, date, b.today, change.Records()); err != nil {
 			return err
 		}
-		previous, err := tx.Entry(h.ID, date)
+		previous, err := tx.Entry(ctx, h.ID, date)
 		if err != nil {
 			return err
 		}
-		if err := tx.SetEntries(h, map[domain.Date]domain.Entry{date: change.Apply(previous)}); err != nil {
+		if err := tx.SetEntries(ctx, h, map[domain.Date]domain.Entry{date: change.Apply(previous)}); err != nil {
 			return err
 		}
 		tx.Record("{name} — {date}", "name", h.Name, "date", date.String())
-		view, err = s.fullView(tx, h.ID)
+		view, err = s.fullView(ctx, tx, h.ID)
 		return err
 	})
 	if err != nil {
@@ -56,7 +56,7 @@ func (s *server) handleSetEntry(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeChange(w, changeID)
-	writeJSON(w, http.StatusOK, view)
+	s.writeJSON(w, http.StatusOK, view)
 }
 
 // checkEntryDay returns an error unless the entry of h on date may be

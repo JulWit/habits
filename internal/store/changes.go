@@ -124,7 +124,7 @@ func rowKey(table string, r row) string {
 
 // watch registers the rows of table matching where (with args) as about to
 // change and remembers their state before.
-func (t *Tx) watch(table, where string, args ...any) error {
+func (t *Tx) watch(ctx context.Context, table, where string, args ...any) error {
 	if t.log == nil {
 		return errors.New("writing in a read-only transaction")
 	}
@@ -134,7 +134,7 @@ func (t *Tx) watch(table, where string, args ...any) error {
 			return nil
 		}
 	}
-	rows, err := t.snapshot(w)
+	rows, err := t.snapshot(ctx, w)
 	if err != nil {
 		return err
 	}
@@ -151,8 +151,8 @@ func (t *Tx) watch(table, where string, args ...any) error {
 }
 
 // snapshot reads the rows selected by w, by rowKey.
-func (t *Tx) snapshot(w watch) (map[string]row, error) {
-	rows, err := t.query(`SELECT * FROM `+w.table+` WHERE `+w.where, w.args...)
+func (t *Tx) snapshot(ctx context.Context, w watch) (map[string]row, error) {
+	rows, err := t.query(ctx, `SELECT * FROM `+w.table+` WHERE `+w.where, w.args...)
 	if err != nil {
 		return nil, fmt.Errorf("reading %s: %w", w.table, err)
 	}
@@ -210,10 +210,10 @@ func normalise(v any) any {
 
 // diff returns the rows the transaction changed so far: each watched row
 // whose state differs from before, ordered by table and key.
-func (t *Tx) diff() ([]rowChange, error) {
+func (t *Tx) diff(ctx context.Context) ([]rowChange, error) {
 	after := map[string]observed{}
 	for _, w := range t.log.watches {
-		rows, err := t.snapshot(w)
+		rows, err := t.snapshot(ctx, w)
 		if err != nil {
 			return nil, err
 		}
@@ -227,7 +227,7 @@ func (t *Tx) diff() ([]rowChange, error) {
 		if _, ok := after[key]; ok || b.row == nil {
 			continue
 		}
-		cur, err := t.current(b.table, b.row)
+		cur, err := t.current(ctx, b.table, b.row)
 		if err != nil {
 			return nil, err
 		}
@@ -291,15 +291,15 @@ func changedColumns(a, b row) []string {
 
 // saveChange keeps the transaction's change as an undo step if it was
 // recorded and changed something, and returns its ID.
-func (t *Tx) saveChange() (int64, error) {
+func (t *Tx) saveChange(ctx context.Context) (int64, error) {
 	if t.log.label == nil {
 		return 0, nil
 	}
-	diff, err := t.diff()
+	diff, err := t.diff(ctx)
 	if err != nil || len(diff) == 0 {
 		return 0, err
 	}
-	if _, err := t.exec(`DELETE FROM changes WHERE user_id = ? AND undone_at IS NOT NULL`, t.userID); err != nil {
+	if _, err := t.exec(ctx, `DELETE FROM changes WHERE user_id = ? AND undone_at IS NOT NULL`, t.userID); err != nil {
 		return 0, err
 	}
 	params, err := json.Marshal(t.log.label.Params)
@@ -310,7 +310,7 @@ func (t *Tx) saveChange() (int64, error) {
 	if err != nil {
 		return 0, err
 	}
-	res, err := t.exec(
+	res, err := t.exec(ctx,
 		`INSERT INTO changes (user_id, label, params, diff, created_at) VALUES (?,?,?,?,?)`,
 		t.userID, t.log.label.Template, string(params), string(encoded), formatTime(t.now))
 	if err != nil {
@@ -320,7 +320,7 @@ func (t *Tx) saveChange() (int64, error) {
 	if err != nil {
 		return 0, err
 	}
-	_, err = t.exec(`DELETE FROM changes WHERE user_id = ? AND id NOT IN (
+	_, err = t.exec(ctx, `DELETE FROM changes WHERE user_id = ? AND id NOT IN (
 		SELECT id FROM changes WHERE user_id = ? ORDER BY id DESC LIMIT ?)`,
 		t.userID, t.userID, maxSteps)
 	return id, err
@@ -335,7 +335,7 @@ type storedStep struct {
 // loadStep returns the user's undo step id, or with id 0 the latest one that
 // can be undone (undone false) or redone (undone true). A step that is not in
 // that state is ErrNotFound.
-func (t *Tx) loadStep(id int64, undone bool) (storedStep, error) {
+func (t *Tx) loadStep(ctx context.Context, id int64, undone bool) (storedStep, error) {
 	state := `undone_at IS NULL`
 	order := `id DESC`
 	if undone {
@@ -354,7 +354,7 @@ func (t *Tx) loadStep(id int64, undone bool) (storedStep, error) {
 		s              storedStep
 		params, diffJS string
 	)
-	err := t.queryRow(query, args...).Scan(&s.ID, &s.Template, &params, &diffJS)
+	err := t.queryRow(ctx, query, args...).Scan(&s.ID, &s.Template, &params, &diffJS)
 	if errors.Is(err, sql.ErrNoRows) {
 		return storedStep{}, ErrNotFound
 	}
@@ -426,25 +426,25 @@ func (s *Store) turn(ctx context.Context, userID string, id int64, redo bool) (S
 	)
 	_, err := s.Update(ctx, userID, func(t *Tx) error {
 		var err error
-		if step, err = t.loadStep(id, redo); err != nil {
+		if step, err = t.loadStep(ctx, id, redo); err != nil {
 			return err
 		}
-		if err := t.watchStep(step.diff, redo); err != nil {
+		if err := t.watchStep(ctx, step.diff, redo); err != nil {
 			return err
 		}
-		applies, err := t.stepApplies(step.diff, redo)
+		applies, err := t.stepApplies(ctx, step.diff, redo)
 		if err != nil {
 			return err
 		}
 		if !applies {
 			conflict = true
-			_, err := t.exec(`DELETE FROM changes WHERE id = ?`, step.ID)
+			_, err := t.exec(ctx, `DELETE FROM changes WHERE id = ?`, step.ID)
 			return err
 		}
-		if err := t.applyStep(step.diff, redo); err != nil {
+		if err := t.applyStep(ctx, step.diff, redo); err != nil {
 			return err
 		}
-		changed, err := t.diff()
+		changed, err := t.diff(ctx)
 		if err != nil {
 			return err
 		}
@@ -458,7 +458,7 @@ func (s *Store) turn(ctx context.Context, userID string, id int64, redo bool) (S
 		if err != nil {
 			return err
 		}
-		_, err = t.exec(`UPDATE changes SET diff = ?, undone_at = ? WHERE id = ?`,
+		_, err = t.exec(ctx, `UPDATE changes SET diff = ?, undone_at = ? WHERE id = ?`,
 			string(encoded), undoneAt, step.ID)
 		return err
 	})
@@ -492,7 +492,7 @@ func ends(rc rowChange, redo bool) (from, to row) {
 // watchStep registers the rows an undo or redo of diff changes, including
 // rows that go along with a removed row: the schedules and entries of a
 // habit, and the habits of a category, which lose it.
-func (t *Tx) watchStep(diff []rowChange, redo bool) error {
+func (t *Tx) watchStep(ctx context.Context, diff []rowChange, redo bool) error {
 	for _, rc := range diff {
 		from, to := ends(rc, redo)
 		r := from
@@ -500,7 +500,7 @@ func (t *Tx) watchStep(diff []rowChange, redo bool) error {
 			r = to
 		}
 		where, args := keyWhere(rc.Table, r)
-		if err := t.watch(rc.Table, where, args...); err != nil {
+		if err := t.watch(ctx, rc.Table, where, args...); err != nil {
 			return err
 		}
 		if to != nil {
@@ -510,10 +510,10 @@ func (t *Tx) watchStep(diff []rowChange, redo bool) error {
 		switch rc.Table {
 		case "habits":
 			err = errors.Join(
-				t.watch("habit_schedules", "habit_id = ?", r["id"]),
-				t.watch("entries", "habit_id = ?", r["id"]))
+				t.watch(ctx, "habit_schedules", "habit_id = ?", r["id"]),
+				t.watch(ctx, "entries", "habit_id = ?", r["id"]))
 		case "categories":
-			err = t.watch("habits", "category_id = ?", r["id"])
+			err = t.watch(ctx, "habits", "category_id = ?", r["id"])
 		}
 		if err != nil {
 			return err
@@ -534,9 +534,9 @@ func keyWhere(table string, r row) (string, []any) {
 }
 
 // current returns the stored row of table with the key of r, or nil.
-func (t *Tx) current(table string, r row) (row, error) {
+func (t *Tx) current(ctx context.Context, table string, r row) (row, error) {
 	where, args := keyWhere(table, r)
-	rows, err := t.query(`SELECT * FROM `+table+` WHERE `+where, args...)
+	rows, err := t.query(ctx, `SELECT * FROM `+table+` WHERE `+where, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -551,14 +551,14 @@ func (t *Tx) current(table string, r row) (row, error) {
 // still holds the state the step expects: a row to remove or update still has
 // the values the step left in the columns it changed, and a row to put back
 // does not exist. A row that cannot be read is an error, not a conflict.
-func (t *Tx) stepApplies(diff []rowChange, redo bool) (bool, error) {
+func (t *Tx) stepApplies(ctx context.Context, diff []rowChange, redo bool) (bool, error) {
 	for _, rc := range diff {
 		from, to := ends(rc, redo)
 		key := from
 		if key == nil {
 			key = to
 		}
-		cur, err := t.current(rc.Table, key)
+		cur, err := t.current(ctx, rc.Table, key)
 		if err != nil {
 			return false, err
 		}
@@ -590,7 +590,7 @@ func (t *Tx) stepApplies(diff []rowChange, redo bool) (bool, error) {
 // applyStep writes the rows of an undo or redo of diff: first it removes
 // rows, children first, then puts rows back, parents first, then updates
 // the others.
-func (t *Tx) applyStep(diff []rowChange, redo bool) error {
+func (t *Tx) applyStep(ctx context.Context, diff []rowChange, redo bool) error {
 	byTable := func(parentsFirst bool) []rowChange {
 		sorted := slices.Clone(diff)
 		slices.SortStableFunc(sorted, func(a, b rowChange) int {
@@ -605,21 +605,21 @@ func (t *Tx) applyStep(diff []rowChange, redo bool) error {
 	for _, rc := range byTable(false) {
 		if from, to := ends(rc, redo); from != nil && to == nil {
 			where, args := keyWhere(rc.Table, from)
-			if _, err := t.exec(`DELETE FROM `+rc.Table+` WHERE `+where, args...); err != nil {
+			if _, err := t.exec(ctx, `DELETE FROM `+rc.Table+` WHERE `+where, args...); err != nil {
 				return err
 			}
 		}
 	}
 	for _, rc := range byTable(true) {
 		if from, to := ends(rc, redo); from == nil && to != nil {
-			if err := t.insertRow(rc.Table, to); err != nil {
+			if err := t.insertRow(ctx, rc.Table, to); err != nil {
 				return err
 			}
 		}
 	}
 	for _, rc := range byTable(true) {
 		if from, to := ends(rc, redo); from != nil && to != nil {
-			if err := t.updateRow(rc.Table, to, changedColumns(from, to)); err != nil {
+			if err := t.updateRow(ctx, rc.Table, to, changedColumns(from, to)); err != nil {
 				return err
 			}
 		}
@@ -628,20 +628,20 @@ func (t *Tx) applyStep(diff []rowChange, redo bool) error {
 }
 
 // insertRow inserts r into table.
-func (t *Tx) insertRow(table string, r row) error {
+func (t *Tx) insertRow(ctx context.Context, table string, r row) error {
 	columns := slices.Sorted(maps.Keys(r))
 	args := make([]any, len(columns))
 	for i, c := range columns {
 		args[i] = normalise(r[c])
 	}
 	marks := strings.TrimSuffix(strings.Repeat("?,", len(columns)), ",")
-	_, err := t.exec(`INSERT INTO `+table+` (`+strings.Join(columns, ", ")+`) VALUES (`+marks+`)`, args...)
+	_, err := t.exec(ctx, `INSERT INTO `+table+` (`+strings.Join(columns, ", ")+`) VALUES (`+marks+`)`, args...)
 	return err
 }
 
 // updateRow sets the columns of the stored row with the key of r to the
 // values of r, and its updated_at to now if it has one.
-func (t *Tx) updateRow(table string, r row, columns []string) error {
+func (t *Tx) updateRow(ctx context.Context, table string, r row, columns []string) error {
 	var sets []string
 	var args []any
 	for _, c := range columns {
@@ -656,7 +656,7 @@ func (t *Tx) updateRow(table string, r row, columns []string) error {
 		return nil
 	}
 	where, keyArgs := keyWhere(table, r)
-	_, err := t.exec(`UPDATE `+table+` SET `+strings.Join(sets, ", ")+` WHERE `+where, append(args, keyArgs...)...)
+	_, err := t.exec(ctx, `UPDATE `+table+` SET `+strings.Join(sets, ", ")+` WHERE `+where, append(args, keyArgs...)...)
 	return err
 }
 

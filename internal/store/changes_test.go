@@ -82,13 +82,13 @@ func TestUndoDeleteHabitRestoresItsHistory(t *testing.T) {
 	if err := h.Reschedule(daily, day(2026, time.March, 1), false); err != nil {
 		t.Fatal(err)
 	}
-	update(t, st, "alice", func(tx *Tx) error { return tx.SaveHabit(&h) })
+	update(t, st, "alice", func(tx *Tx) error { return tx.SaveHabit(t.Context(), &h) })
 	d := day(2026, time.September, 18)
 	setEntry(t, st, "alice", h, d, domain.Entry{Value: 30})
 
 	id := update(t, st, "alice", func(tx *Tx) error {
 		tx.Record(`"{name}" deleted`, "name", h.Name)
-		return tx.DeleteHabit(h.ID)
+		return tx.DeleteHabit(t.Context(), h.ID)
 	})
 	mustUndo(t, st, "alice", id)
 	back := habitOf(t, st, "alice", h.ID)
@@ -112,7 +112,7 @@ func TestUndoCreateHabitKeepsLaterEntriesForRedo(t *testing.T) {
 	h := countHabit(domain.KindCheck, 1)
 	created := update(t, st, "alice", func(tx *Tx) error {
 		tx.Record(`"{name}" created`, "name", h.Name)
-		return tx.CreateHabit(&h)
+		return tx.CreateHabit(t.Context(), &h)
 	})
 	d := day(2026, time.September, 18)
 	setEntry(t, st, "alice", h, d, domain.Entry{Value: 1})
@@ -137,7 +137,7 @@ func TestUndoDeleteCategoryPutsItsHabitsBack(t *testing.T) {
 
 	id := update(t, st, "alice", func(tx *Tx) error {
 		tx.Record(`Category "{name}" deleted`, "name", c.Name)
-		return tx.DeleteCategory(c.ID)
+		return tx.DeleteCategory(t.Context(), c.ID)
 	})
 	mustUndo(t, st, "alice", id)
 	if got := categoryOf(t, st, "alice", c.ID); got.Name != "Sport" {
@@ -156,7 +156,7 @@ func TestUndoRefusesAChangeMadeSince(t *testing.T) {
 		return update(t, st, "alice", func(tx *Tx) error {
 			tx.Record(`"{name}" edited`, "name", h.Name)
 			h.Name = name
-			return tx.SaveHabit(&h)
+			return tx.SaveHabit(t.Context(), &h)
 		})
 	}
 	first := rename("Read")
@@ -180,15 +180,15 @@ func TestUndoIgnoresOtherColumns(t *testing.T) {
 	renamed := update(t, st, "alice", func(tx *Tx) error {
 		tx.Record(`"{name}" edited`, "name", h.Name)
 		h.Name = "Read"
-		return tx.SaveHabit(&h)
+		return tx.SaveHabit(t.Context(), &h)
 	})
 	update(t, st, "alice", func(tx *Tx) error {
 		h.Color = "red"
-		return tx.SaveHabit(&h)
+		return tx.SaveHabit(t.Context(), &h)
 	})
 	// Entries touch the habit's updated_at, and reordering its position.
 	setEntry(t, st, "alice", h, day(2026, time.September, 18), domain.Entry{Value: 1})
-	update(t, st, "alice", func(tx *Tx) error { return tx.ReorderHabits([]string{h.ID}) })
+	update(t, st, "alice", func(tx *Tx) error { return tx.ReorderHabits(t.Context(), []string{h.ID}) })
 
 	mustUndo(t, st, "alice", renamed)
 	if got := habitOf(t, st, "alice", h.ID); got.Name != "Test" || got.Color != "red" {
@@ -245,12 +245,12 @@ func TestUndoIsScopedToTheUser(t *testing.T) {
 func TestOnlyRecordedChangesAreSteps(t *testing.T) {
 	st := openTestStore(t)
 	h := mustCreateHabit(t, st, "alice", countHabit(domain.KindCheck, 1))
-	if id := update(t, st, "alice", func(tx *Tx) error { return tx.ReorderHabits([]string{h.ID}) }); id != 0 {
+	if id := update(t, st, "alice", func(tx *Tx) error { return tx.ReorderHabits(t.Context(), []string{h.ID}) }); id != 0 {
 		t.Errorf("reordering recorded step %d", id)
 	}
 	if id := update(t, st, "alice", func(tx *Tx) error {
 		tx.Record(`"{name}" edited`, "name", h.Name)
-		return tx.SaveHabit(&h)
+		return tx.SaveHabit(t.Context(), &h)
 	}); id != 0 {
 		t.Errorf("saving an unchanged habit recorded step %d", id)
 	}

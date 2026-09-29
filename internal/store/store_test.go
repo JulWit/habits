@@ -52,7 +52,7 @@ func read[T any](t *testing.T, st *Store, user string, fn func(*Tx) (T, error)) 
 // mustCreateHabit creates h for user.
 func mustCreateHabit(t *testing.T, st *Store, user string, h domain.Habit) domain.Habit {
 	t.Helper()
-	update(t, st, user, func(tx *Tx) error { return tx.CreateHabit(&h) })
+	update(t, st, user, func(tx *Tx) error { return tx.CreateHabit(t.Context(), &h) })
 	return h
 }
 
@@ -62,20 +62,20 @@ func setEntry(t *testing.T, st *Store, user string, h domain.Habit, date domain.
 	t.Helper()
 	return update(t, st, user, func(tx *Tx) error {
 		tx.Record("{name} — {date}", "name", h.Name, "date", date.String())
-		return tx.SetEntries(h, map[domain.Date]domain.Entry{date: e})
+		return tx.SetEntries(t.Context(), h, map[domain.Date]domain.Entry{date: e})
 	})
 }
 
 // entriesOf returns the entries of the habit id of user.
 func entriesOf(t *testing.T, st *Store, user, id string) map[domain.Date]domain.Entry {
 	t.Helper()
-	return read(t, st, user, func(tx *Tx) (map[domain.Date]domain.Entry, error) { return tx.HabitEntries(id) })
+	return read(t, st, user, func(tx *Tx) (map[domain.Date]domain.Entry, error) { return tx.HabitEntries(t.Context(), id) })
 }
 
 // habitOf returns the habit id of user.
 func habitOf(t *testing.T, st *Store, user, id string) domain.Habit {
 	t.Helper()
-	return read(t, st, user, func(tx *Tx) (domain.Habit, error) { return tx.Habit(id) })
+	return read(t, st, user, func(tx *Tx) (domain.Habit, error) { return tx.Habit(t.Context(), id) })
 }
 
 // day returns a Date (keyed fields, as required by vet).
@@ -118,7 +118,7 @@ func TestAFailingUpdateWritesNothing(t *testing.T) {
 	boom := errors.New("boom")
 	_, err := st.Update(context.Background(), "alice", func(tx *Tx) error {
 		h := countHabit(domain.KindCheck, 1)
-		if err := tx.CreateHabit(&h); err != nil {
+		if err := tx.CreateHabit(t.Context(), &h); err != nil {
 			return err
 		}
 		return boom
@@ -126,7 +126,7 @@ func TestAFailingUpdateWritesNothing(t *testing.T) {
 	if !errors.Is(err, boom) {
 		t.Fatalf("err = %v, want boom", err)
 	}
-	habits := read(t, st, "alice", func(tx *Tx) ([]domain.Habit, error) { return tx.Habits(true) })
+	habits := read(t, st, "alice", func(tx *Tx) ([]domain.Habit, error) { return tx.Habits(t.Context(), true) })
 	if len(habits) != 0 {
 		t.Errorf("%d habits saved by a failed update", len(habits))
 	}
@@ -137,7 +137,7 @@ func TestViewCannotWrite(t *testing.T) {
 	st := openTestStore(t)
 	err := st.View(context.Background(), "alice", func(tx *Tx) error {
 		h := countHabit(domain.KindCheck, 1)
-		return tx.CreateHabit(&h)
+		return tx.CreateHabit(t.Context(), &h)
 	})
 	if err == nil {
 		t.Error("a habit was created in a View")
@@ -183,22 +183,22 @@ func TestDeleteUserRemovesAllTheirData(t *testing.T) {
 	var h domain.Habit
 	update(t, st, "alice", func(tx *Tx) error {
 		cat := domain.Category{Name: "Health"}
-		if err := tx.CreateCategory(&cat); err != nil {
+		if err := tx.CreateCategory(t.Context(), &cat); err != nil {
 			return err
 		}
 		h = countHabit(domain.KindCount, 10)
 		h.CategoryID = cat.ID
-		if err := tx.CreateHabit(&h); err != nil {
+		if err := tx.CreateHabit(t.Context(), &h); err != nil {
 			return err
 		}
 		prefs := settings.Default()
 		prefs.Theme = "dark"
-		return tx.SaveSettings(prefs)
+		return tx.SaveSettings(t.Context(), prefs)
 	})
 	setEntry(t, st, "alice", h, day(2026, time.January, 5), domain.Entry{Value: 20})
 	mustCreateHabit(t, st, "bob", countHabit(domain.KindCheck, 1))
 
-	update(t, st, "alice", func(tx *Tx) error { return tx.DeleteUser() })
+	update(t, st, "alice", func(tx *Tx) error { return tx.DeleteUser(t.Context()) })
 
 	for _, table := range []string{"users", "user_settings", "categories", "habits", "habit_schedules", "entries", "changes"} {
 		var n int
@@ -209,10 +209,10 @@ func TestDeleteUserRemovesAllTheirData(t *testing.T) {
 			t.Errorf("%s: %d rows of alice left", table, n)
 		}
 	}
-	if got := read(t, st, "alice", (*Tx).Settings); got != settings.Default() {
+	if got := read(t, st, "alice", settingsOf); got != settings.Default() {
 		t.Errorf("settings = %+v; want the defaults", got)
 	}
-	if bobs := read(t, st, "bob", func(tx *Tx) ([]domain.Habit, error) { return tx.Habits(true) }); len(bobs) != 1 {
+	if bobs := read(t, st, "bob", func(tx *Tx) ([]domain.Habit, error) { return tx.Habits(t.Context(), true) }); len(bobs) != 1 {
 		t.Errorf("bob's habits = %d; want 1", len(bobs))
 	}
 }

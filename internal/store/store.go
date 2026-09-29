@@ -70,10 +70,6 @@ func (s *Store) Close() error { return s.db.Close() }
 
 // Tx is a transaction of one user. Its methods are scoped to that user.
 type Tx struct {
-	// ctx is the context of View or Update. A Tx lives only as long as their
-	// callback, so its methods take the context from here rather than as a
-	// parameter each.
-	ctx    context.Context
 	tx     *sql.Tx
 	userID string
 	// now is the time of the transaction, used for all its timestamps.
@@ -86,7 +82,7 @@ type Tx struct {
 // View runs fn in a transaction that only reads.
 func (s *Store) View(ctx context.Context, userID string, fn func(*Tx) error) error {
 	return s.inTx(ctx, "reading", func(tx *sql.Tx) error {
-		return fn(&Tx{ctx: ctx, tx: tx, userID: userID, now: time.Now().UTC()})
+		return fn(&Tx{tx: tx, userID: userID, now: time.Now().UTC()})
 	})
 }
 
@@ -99,14 +95,14 @@ func (s *Store) Update(ctx context.Context, userID string, fn func(*Tx) error) (
 	}
 	var changeID int64
 	err := s.inTx(ctx, "saving", func(tx *sql.Tx) error {
-		t := &Tx{ctx: ctx, tx: tx, userID: userID, now: time.Now().UTC(), log: &changeLog{}}
-		if err := t.ensureUser(); err != nil {
+		t := &Tx{tx: tx, userID: userID, now: time.Now().UTC(), log: &changeLog{}}
+		if err := t.ensureUser(ctx); err != nil {
 			return err
 		}
 		if err := fn(t); err != nil {
 			return err
 		}
-		id, err := t.saveChange()
+		id, err := t.saveChange(ctx)
 		changeID = id
 		return err
 	})
@@ -137,24 +133,24 @@ func (s *Store) inTx(ctx context.Context, what string, fn func(*sql.Tx) error) e
 func (t *Tx) Now() time.Time { return t.now }
 
 // exec runs a statement in the transaction.
-func (t *Tx) exec(query string, args ...any) (sql.Result, error) {
-	return t.tx.ExecContext(t.ctx, query, args...)
+func (t *Tx) exec(ctx context.Context, query string, args ...any) (sql.Result, error) {
+	return t.tx.ExecContext(ctx, query, args...)
 }
 
 // query runs a query in the transaction.
-func (t *Tx) query(query string, args ...any) (*sql.Rows, error) {
-	return t.tx.QueryContext(t.ctx, query, args...)
+func (t *Tx) query(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
+	return t.tx.QueryContext(ctx, query, args...)
 }
 
 // queryRow runs a query for a single row in the transaction.
-func (t *Tx) queryRow(query string, args ...any) *sql.Row {
-	return t.tx.QueryRowContext(t.ctx, query, args...)
+func (t *Tx) queryRow(ctx context.Context, query string, args ...any) *sql.Row {
+	return t.tx.QueryRowContext(ctx, query, args...)
 }
 
 // ensureUser records the user on their first write. Every user-owned row
 // refers to it.
-func (t *Tx) ensureUser() error {
-	if _, err := t.exec(
+func (t *Tx) ensureUser(ctx context.Context) error {
+	if _, err := t.exec(ctx,
 		`INSERT INTO users (id, created_at) VALUES (?, ?) ON CONFLICT(id) DO NOTHING`,
 		t.userID, formatTime(t.now)); err != nil {
 		return fmt.Errorf("recording user: %w", err)
@@ -165,8 +161,8 @@ func (t *Tx) ensureUser() error {
 // DeleteUser removes the user and, through ON DELETE CASCADE, all their data:
 // settings, categories, habits, schedules, entries and undo steps. The user
 // is recorded again on their next write. It cannot be undone.
-func (t *Tx) DeleteUser() error {
-	_, err := t.exec(`DELETE FROM users WHERE id = ?`, t.userID)
+func (t *Tx) DeleteUser(ctx context.Context) error {
+	_, err := t.exec(ctx, `DELETE FROM users WHERE id = ?`, t.userID)
 	return err
 }
 

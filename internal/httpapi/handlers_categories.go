@@ -9,21 +9,21 @@ import (
 )
 
 // handleCreateCategory creates a category. The name is required.
-func (s *server) handleCreateCategory(w http.ResponseWriter, r *http.Request) {
+func (s *server) handleCreateCategory(w http.ResponseWriter, r *http.Request, user auth.User) {
 	var in domain.CategoryEdit
-	if !decodeJSON(w, r, &in) {
+	if !s.decodeJSON(w, r, &in) {
 		return
 	}
 	if in.Name == nil {
-		writeError(w, http.StatusBadRequest, "missing_fields", "name is required")
+		s.writeError(w, http.StatusBadRequest, "missing_fields", "name is required")
 		return
 	}
-	user := auth.MustUser(r.Context())
+	ctx := r.Context()
 
 	var c domain.Category
 	in.Apply(&c)
-	changeID, err := s.store.Update(r.Context(), user.ID, func(tx *store.Tx) error {
-		if err := tx.CreateCategory(&c); err != nil {
+	changeID, err := s.store.Update(ctx, user.ID, func(tx *store.Tx) error {
+		if err := tx.CreateCategory(ctx, &c); err != nil {
 			return err
 		}
 		tx.Record(`Category "{name}" created`, "name", c.Name)
@@ -34,46 +34,46 @@ func (s *server) handleCreateCategory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeChange(w, changeID)
-	writeJSON(w, http.StatusCreated, c)
+	s.writeJSON(w, http.StatusCreated, c)
 }
 
 // handleUpdateCategory updates the fields of a category given in the request
 // body.
-func (s *server) handleUpdateCategory(w http.ResponseWriter, r *http.Request) {
+func (s *server) handleUpdateCategory(w http.ResponseWriter, r *http.Request, user auth.User) {
 	var in domain.CategoryEdit
-	if !decodeJSON(w, r, &in) {
+	if !s.decodeJSON(w, r, &in) {
 		return
 	}
-	user := auth.MustUser(r.Context())
+	ctx := r.Context()
 
 	var c domain.Category
-	changeID, err := s.store.Update(r.Context(), user.ID, func(tx *store.Tx) error {
+	changeID, err := s.store.Update(ctx, user.ID, func(tx *store.Tx) error {
 		var err error
-		if c, err = tx.Category(r.PathValue("id")); err != nil {
+		if c, err = tx.Category(ctx, r.PathValue("id")); err != nil {
 			return err
 		}
 		tx.Record(`Category "{name}" edited`, "name", c.Name)
 		in.Apply(&c)
-		return tx.SaveCategory(&c)
+		return tx.SaveCategory(ctx, &c)
 	})
 	if err != nil {
 		s.writeStoreError(w, err, "updating category")
 		return
 	}
 	writeChange(w, changeID)
-	writeJSON(w, http.StatusOK, c)
+	s.writeJSON(w, http.StatusOK, c)
 }
 
 // handleDeleteCategory deletes a category. Its habits stay, without a
 // category; undo puts them back.
-func (s *server) handleDeleteCategory(w http.ResponseWriter, r *http.Request) {
-	user := auth.MustUser(r.Context())
-	changeID, err := s.store.Update(r.Context(), user.ID, func(tx *store.Tx) error {
-		c, err := tx.Category(r.PathValue("id"))
+func (s *server) handleDeleteCategory(w http.ResponseWriter, r *http.Request, user auth.User) {
+	ctx := r.Context()
+	changeID, err := s.store.Update(ctx, user.ID, func(tx *store.Tx) error {
+		c, err := tx.Category(ctx, r.PathValue("id"))
 		if err != nil {
 			return err
 		}
-		habits, err := tx.Habits(true)
+		habits, err := tx.Habits(ctx, true)
 		if err != nil {
 			return err
 		}
@@ -91,7 +91,7 @@ func (s *server) handleDeleteCategory(w http.ResponseWriter, r *http.Request) {
 		default:
 			tx.Record(`Category "{name}" deleted — {n} habits kept`, "name", c.Name, "n", kept)
 		}
-		return tx.DeleteCategory(c.ID)
+		return tx.DeleteCategory(ctx, c.ID)
 	})
 	if err != nil {
 		s.writeStoreError(w, err, "deleting category")
@@ -102,16 +102,16 @@ func (s *server) handleDeleteCategory(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleReorderCategories sets the order of the categories to the given IDs.
-func (s *server) handleReorderCategories(w http.ResponseWriter, r *http.Request) {
+func (s *server) handleReorderCategories(w http.ResponseWriter, r *http.Request, user auth.User) {
 	var body struct {
 		IDs []string `json:"ids"`
 	}
-	if !decodeJSON(w, r, &body) {
+	if !s.decodeJSON(w, r, &body) {
 		return
 	}
-	user := auth.MustUser(r.Context())
-	_, err := s.store.Update(r.Context(), user.ID, func(tx *store.Tx) error {
-		return tx.ReorderCategories(body.IDs)
+	ctx := r.Context()
+	_, err := s.store.Update(ctx, user.ID, func(tx *store.Tx) error {
+		return tx.ReorderCategories(ctx, body.IDs)
 	})
 	if err != nil {
 		s.writeStoreError(w, err, "saving order")

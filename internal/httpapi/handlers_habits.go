@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"context"
 	"net/http"
 	"time"
 
@@ -61,24 +62,24 @@ const entryWindowDays = 200
 
 // handleState returns all data the client needs on startup. The query
 // parameter from=YYYY-MM-DD extends the entry window into the past.
-func (s *server) handleState(w http.ResponseWriter, r *http.Request) {
-	user := auth.MustUser(r.Context())
+func (s *server) handleState(w http.ResponseWriter, r *http.Request, user auth.User) {
+	ctx := r.Context()
 	var from domain.Date
 	if v := r.URL.Query().Get("from"); v != "" {
 		var err error
 		if from, err = domain.ParseDate(v); err != nil {
-			writeError(w, http.StatusBadRequest, "invalid_date", "Invalid date, expected YYYY-MM-DD")
+			s.writeError(w, http.StatusBadRequest, "invalid_date", "Invalid date, expected YYYY-MM-DD")
 			return
 		}
 	}
 
 	var out stateResponse
-	err := s.store.View(r.Context(), user.ID, func(tx *store.Tx) error {
-		b, err := s.basis(tx)
+	err := s.store.View(ctx, user.ID, func(tx *store.Tx) error {
+		b, err := s.basis(ctx, tx)
 		if err != nil {
 			return err
 		}
-		habits, err := tx.Habits(true)
+		habits, err := tx.Habits(ctx, true)
 		if err != nil {
 			return err
 		}
@@ -89,11 +90,11 @@ func (s *server) handleState(w http.ResponseWriter, r *http.Request) {
 		}
 		// The statistics cover the whole history, so all entries are loaded;
 		// only the window's are sent.
-		entries, err := tx.Entries()
+		entries, err := tx.Entries(ctx)
 		if err != nil {
 			return err
 		}
-		categories, err := tx.Categories()
+		categories, err := tx.Categories(ctx)
 		if err != nil {
 			return err
 		}
@@ -124,7 +125,7 @@ func (s *server) handleState(w http.ResponseWriter, r *http.Request) {
 		s.writeStoreError(w, err, "loading the state")
 		return
 	}
-	writeJSON(w, http.StatusOK, out)
+	s.writeJSON(w, http.StatusOK, out)
 }
 
 // history holds what a habit's view computes from its whole history: its
@@ -179,16 +180,16 @@ func viewFor(h domain.Habit, hist history, entries map[domain.Date]domain.Entry,
 }
 
 // fullView returns the view of a habit of the user with all its entries.
-func (s *server) fullView(tx *store.Tx, id string) (habitView, error) {
-	h, err := tx.Habit(id)
+func (s *server) fullView(ctx context.Context, tx *store.Tx, id string) (habitView, error) {
+	h, err := tx.Habit(ctx, id)
 	if err != nil {
 		return habitView{}, err
 	}
-	entries, err := tx.HabitEntries(id)
+	entries, err := tx.HabitEntries(ctx, id)
 	if err != nil {
 		return habitView{}, err
 	}
-	b, err := s.basis(tx)
+	b, err := s.basis(ctx, tx)
 	if err != nil {
 		return habitView{}, err
 	}
@@ -196,37 +197,37 @@ func (s *server) fullView(tx *store.Tx, id string) (habitView, error) {
 }
 
 // handleGetHabit returns a habit with its full history.
-func (s *server) handleGetHabit(w http.ResponseWriter, r *http.Request) {
-	user := auth.MustUser(r.Context())
+func (s *server) handleGetHabit(w http.ResponseWriter, r *http.Request, user auth.User) {
+	ctx := r.Context()
 	var view habitView
-	err := s.store.View(r.Context(), user.ID, func(tx *store.Tx) error {
+	err := s.store.View(ctx, user.ID, func(tx *store.Tx) error {
 		var err error
-		view, err = s.fullView(tx, r.PathValue("id"))
+		view, err = s.fullView(ctx, tx, r.PathValue("id"))
 		return err
 	})
 	if err != nil {
 		s.writeStoreError(w, err, "loading habit")
 		return
 	}
-	writeJSON(w, http.StatusOK, view)
+	s.writeJSON(w, http.StatusOK, view)
 }
 
 // handleCreateHabit creates a habit. Name, kind and frequency are required.
 // The first schedule starts on the user's today.
-func (s *server) handleCreateHabit(w http.ResponseWriter, r *http.Request) {
+func (s *server) handleCreateHabit(w http.ResponseWriter, r *http.Request, user auth.User) {
 	var in domain.HabitEdit
-	if !decodeJSON(w, r, &in) {
+	if !s.decodeJSON(w, r, &in) {
 		return
 	}
 	if in.Name == nil || in.Kind == nil || in.Frequency == nil {
-		writeError(w, http.StatusBadRequest, "missing_fields", "name, kind and frequency are required")
+		s.writeError(w, http.StatusBadRequest, "missing_fields", "name, kind and frequency are required")
 		return
 	}
-	user := auth.MustUser(r.Context())
+	ctx := r.Context()
 
 	var view habitView
-	changeID, err := s.store.Update(r.Context(), user.ID, func(tx *store.Tx) error {
-		b, err := s.basis(tx)
+	changeID, err := s.store.Update(ctx, user.ID, func(tx *store.Tx) error {
+		b, err := s.basis(ctx, tx)
 		if err != nil {
 			return err
 		}
@@ -234,7 +235,7 @@ func (s *server) handleCreateHabit(w http.ResponseWriter, r *http.Request) {
 		if in.Archived != nil {
 			h.SetArchived(*in.Archived, tx.Now())
 		}
-		if err := tx.CreateHabit(&h); err != nil {
+		if err := tx.CreateHabit(ctx, &h); err != nil {
 			return err
 		}
 		tx.Record(`"{name}" created`, "name", h.Name)
@@ -246,7 +247,7 @@ func (s *server) handleCreateHabit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeChange(w, changeID)
-	writeJSON(w, http.StatusCreated, view)
+	s.writeJSON(w, http.StatusCreated, view)
 }
 
 // handleUpdateHabit changes the fields of a habit given in the request body,
@@ -254,25 +255,25 @@ func (s *server) handleCreateHabit(w http.ResponseWriter, r *http.Request) {
 // starts a new schedule from today on unless it is retroactive, and a change
 // of kind converts the recorded history. "archived" archives the habit or
 // reactivates it; the undo step is named after that then.
-func (s *server) handleUpdateHabit(w http.ResponseWriter, r *http.Request) {
+func (s *server) handleUpdateHabit(w http.ResponseWriter, r *http.Request, user auth.User) {
 	var in domain.HabitEdit
-	if !decodeJSON(w, r, &in) {
+	if !s.decodeJSON(w, r, &in) {
 		return
 	}
-	user := auth.MustUser(r.Context())
+	ctx := r.Context()
 	id := r.PathValue("id")
 
 	var view habitView
-	changeID, err := s.store.Update(r.Context(), user.ID, func(tx *store.Tx) error {
-		b, err := s.basis(tx)
+	changeID, err := s.store.Update(ctx, user.ID, func(tx *store.Tx) error {
+		b, err := s.basis(ctx, tx)
 		if err != nil {
 			return err
 		}
-		h, err := tx.Habit(id)
+		h, err := tx.Habit(ctx, id)
 		if err != nil {
 			return err
 		}
-		entries, err := tx.HabitEntries(id)
+		entries, err := tx.HabitEntries(ctx, id)
 		if err != nil {
 			return err
 		}
@@ -289,11 +290,11 @@ func (s *server) handleUpdateHabit(w http.ResponseWriter, r *http.Request) {
 		default:
 			tx.Record(`"{name}" reactivated`, "name", name)
 		}
-		if err := tx.SaveHabit(&h); err != nil {
+		if err := tx.SaveHabit(ctx, &h); err != nil {
 			return err
 		}
 		if converted != nil {
-			if err := tx.ReplaceEntries(h, converted); err != nil {
+			if err := tx.ReplaceEntries(ctx, h, converted); err != nil {
 				return err
 			}
 			entries = converted
@@ -306,19 +307,19 @@ func (s *server) handleUpdateHabit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeChange(w, changeID)
-	writeJSON(w, http.StatusOK, view)
+	s.writeJSON(w, http.StatusOK, view)
 }
 
 // handleDeleteHabit deletes a habit with its history. Undo brings it back.
-func (s *server) handleDeleteHabit(w http.ResponseWriter, r *http.Request) {
-	user := auth.MustUser(r.Context())
-	changeID, err := s.store.Update(r.Context(), user.ID, func(tx *store.Tx) error {
-		h, err := tx.Habit(r.PathValue("id"))
+func (s *server) handleDeleteHabit(w http.ResponseWriter, r *http.Request, user auth.User) {
+	ctx := r.Context()
+	changeID, err := s.store.Update(ctx, user.ID, func(tx *store.Tx) error {
+		h, err := tx.Habit(ctx, r.PathValue("id"))
 		if err != nil {
 			return err
 		}
 		tx.Record(`"{name}" deleted`, "name", h.Name)
-		return tx.DeleteHabit(h.ID)
+		return tx.DeleteHabit(ctx, h.ID)
 	})
 	if err != nil {
 		s.writeStoreError(w, err, "deleting habit")
@@ -329,16 +330,16 @@ func (s *server) handleDeleteHabit(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleReorderHabits sets the order of the habits to the given IDs.
-func (s *server) handleReorderHabits(w http.ResponseWriter, r *http.Request) {
+func (s *server) handleReorderHabits(w http.ResponseWriter, r *http.Request, user auth.User) {
 	var body struct {
 		IDs []string `json:"ids"`
 	}
-	if !decodeJSON(w, r, &body) {
+	if !s.decodeJSON(w, r, &body) {
 		return
 	}
-	user := auth.MustUser(r.Context())
-	_, err := s.store.Update(r.Context(), user.ID, func(tx *store.Tx) error {
-		return tx.ReorderHabits(body.IDs)
+	ctx := r.Context()
+	_, err := s.store.Update(ctx, user.ID, func(tx *store.Tx) error {
+		return tx.ReorderHabits(ctx, body.IDs)
 	})
 	if err != nil {
 		s.writeStoreError(w, err, "saving order")

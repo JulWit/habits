@@ -11,41 +11,41 @@ import (
 )
 
 // handleGetSettings returns the user's settings.
-func (s *server) handleGetSettings(w http.ResponseWriter, r *http.Request) {
-	user := auth.MustUser(r.Context())
+func (s *server) handleGetSettings(w http.ResponseWriter, r *http.Request, user auth.User) {
+	ctx := r.Context()
 	var prefs settings.Settings
-	err := s.store.View(r.Context(), user.ID, func(tx *store.Tx) error {
+	err := s.store.View(ctx, user.ID, func(tx *store.Tx) error {
 		var err error
-		prefs, err = tx.Settings()
+		prefs, err = tx.Settings(ctx)
 		return err
 	})
 	if err != nil {
 		s.writeStoreError(w, err, "loading settings")
 		return
 	}
-	writeJSON(w, http.StatusOK, prefs)
+	s.writeJSON(w, http.StatusOK, prefs)
 }
 
 // handleUpdateSettings updates the settings given in the request body; the
 // others are left unchanged. The store validates the result.
-func (s *server) handleUpdateSettings(w http.ResponseWriter, r *http.Request) {
+func (s *server) handleUpdateSettings(w http.ResponseWriter, r *http.Request, user auth.User) {
 	var patch json.RawMessage
-	if !decodeJSON(w, r, &patch) {
+	if !s.decodeJSON(w, r, &patch) {
 		return
 	}
 	// Unknown settings and values of the wrong type are rejected before the
 	// patch is applied.
 	var probe settings.Settings
 	if err := decodeSettings(patch, &probe); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid_body", "Invalid request body: "+err.Error())
+		s.writeError(w, http.StatusBadRequest, "invalid_body", "Invalid request body: "+err.Error())
 		return
 	}
-	user := auth.MustUser(r.Context())
+	ctx := r.Context()
 
 	var prefs settings.Settings
-	_, err := s.store.Update(r.Context(), user.ID, func(tx *store.Tx) error {
+	_, err := s.store.Update(ctx, user.ID, func(tx *store.Tx) error {
 		var err error
-		if prefs, err = tx.Settings(); err != nil {
+		if prefs, err = tx.Settings(ctx); err != nil {
 			return err
 		}
 		// Decoding onto the current settings changes only the fields in the
@@ -53,13 +53,13 @@ func (s *server) handleUpdateSettings(w http.ResponseWriter, r *http.Request) {
 		if err := decodeSettings(patch, &prefs); err != nil {
 			return err
 		}
-		return tx.SaveSettings(prefs)
+		return tx.SaveSettings(ctx, prefs)
 	})
 	if err != nil {
 		s.writeStoreError(w, err, "saving settings")
 		return
 	}
-	writeJSON(w, http.StatusOK, prefs)
+	s.writeJSON(w, http.StatusOK, prefs)
 }
 
 // decodeSettings decodes a settings patch onto dst, rejecting unknown fields.

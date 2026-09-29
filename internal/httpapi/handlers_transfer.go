@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"context"
 	"errors"
 	"maps"
 	"net/http"
@@ -74,27 +75,27 @@ type importResult struct {
 
 // handleExport sends the user's habits, archived ones included, with their
 // history, and their categories as a file to download.
-func (s *server) handleExport(w http.ResponseWriter, r *http.Request) {
-	user := auth.MustUser(r.Context())
+func (s *server) handleExport(w http.ResponseWriter, r *http.Request, user auth.User) {
+	ctx := r.Context()
 	var (
 		out   exportFile
 		today domain.Date
 	)
-	err := s.store.View(r.Context(), user.ID, func(tx *store.Tx) error {
-		b, err := s.basis(tx)
+	err := s.store.View(ctx, user.ID, func(tx *store.Tx) error {
+		b, err := s.basis(ctx, tx)
 		if err != nil {
 			return err
 		}
 		today = b.today
-		categories, err := tx.Categories()
+		categories, err := tx.Categories(ctx)
 		if err != nil {
 			return err
 		}
-		habits, err := tx.Habits(true)
+		habits, err := tx.Habits(ctx, true)
 		if err != nil {
 			return err
 		}
-		entries, err := tx.Entries()
+		entries, err := tx.Entries(ctx)
 		if err != nil {
 			return err
 		}
@@ -121,7 +122,7 @@ func (s *server) handleExport(w http.ResponseWriter, r *http.Request) {
 	}
 	name := "habits-" + today.String() + ".json"
 	w.Header().Set("Content-Disposition", `attachment; filename="`+name+`"`)
-	writeJSON(w, http.StatusOK, out)
+	s.writeJSON(w, http.StatusOK, out)
 }
 
 // exportHabitOf returns h with its entries as it is exported.
@@ -169,22 +170,22 @@ func (p importProblem) Unwrap() error { return p.error }
 // same name, and only missing categories are created. Habits whose name is
 // already taken are skipped, so importing a file twice adds nothing. Nothing
 // is saved if any habit or category is invalid.
-func (s *server) handleImport(w http.ResponseWriter, r *http.Request) {
+func (s *server) handleImport(w http.ResponseWriter, r *http.Request, user auth.User) {
 	var in exportFile
-	if !decodeJSONLimit(w, r, &in, maxImportBytes) {
+	if !s.decodeJSONLimit(w, r, &in, maxImportBytes) {
 		return
 	}
 	if in.Format != exportFormat || in.Version != exportVersion {
-		writeProblem(w, http.StatusUnprocessableEntity, domain.Invalid("import_format",
+		s.writeProblem(w, http.StatusUnprocessableEntity, domain.Invalid("import_format",
 			"the file is not a habits export of version {version}", "version", exportVersion))
 		return
 	}
-	user := auth.MustUser(r.Context())
+	ctx := r.Context()
 
 	var result importResult
-	changeID, err := s.store.Update(r.Context(), user.ID, func(tx *store.Tx) error {
+	changeID, err := s.store.Update(ctx, user.ID, func(tx *store.Tx) error {
 		var err error
-		if result, err = importFile(tx, in); err != nil {
+		if result, err = importFile(ctx, tx, in); err != nil {
 			return err
 		}
 		if result.Habits == 1 {
@@ -197,24 +198,24 @@ func (s *server) handleImport(w http.ResponseWriter, r *http.Request) {
 	var problem importProblem
 	switch {
 	case errors.As(err, &problem) && errors.Is(err, domain.ErrValidation):
-		writeImportProblem(w, problem.error, problem.param, problem.name)
+		s.writeImportProblem(w, problem.error, problem.param, problem.name)
 		return
 	case err != nil:
 		s.writeStoreError(w, err, "importing")
 		return
 	}
 	writeChange(w, changeID)
-	writeJSON(w, http.StatusOK, result)
+	s.writeJSON(w, http.StatusOK, result)
 }
 
 // importFile adds the categories and habits of in (see handleImport).
-func importFile(tx *store.Tx, in exportFile) (importResult, error) {
+func importFile(ctx context.Context, tx *store.Tx, in exportFile) (importResult, error) {
 	var result importResult
-	existingCats, err := tx.Categories()
+	existingCats, err := tx.Categories(ctx)
 	if err != nil {
 		return result, err
 	}
-	existingHabits, err := tx.Habits(true)
+	existingHabits, err := tx.Habits(ctx, true)
 	if err != nil {
 		return result, err
 	}
@@ -231,7 +232,7 @@ func importFile(tx *store.Tx, in exportFile) (importResult, error) {
 			continue
 		}
 		c := domain.Category{Name: ec.Name, Icon: ec.Icon, Color: ec.Color, ShowProgress: ec.ShowProgress}
-		if err := tx.CreateCategory(&c); err != nil {
+		if err := tx.CreateCategory(ctx, &c); err != nil {
 			return result, importProblem{error: err, param: "category", name: ec.Name}
 		}
 		catByName[nameKey(c.Name)] = c.ID
@@ -248,7 +249,7 @@ func importFile(tx *store.Tx, in exportFile) (importResult, error) {
 			result.Skipped++
 			continue
 		}
-		if err := importHabit(tx, eh, catByKey); err != nil {
+		if err := importHabit(ctx, tx, eh, catByKey); err != nil {
 			return result, importProblem{error: err, param: "habit", name: eh.Name}
 		}
 		taken[nameKey(eh.Name)] = true
@@ -259,7 +260,7 @@ func importFile(tx *store.Tx, in exportFile) (importResult, error) {
 
 // importHabit adds the habit eh with its entries; catByKey maps the category
 // keys of the file to category IDs.
-func importHabit(tx *store.Tx, eh exportHabit, catByKey map[string]string) error {
+func importHabit(ctx context.Context, tx *store.Tx, eh exportHabit, catByKey map[string]string) error {
 	h := domain.Habit{
 		Name:  eh.Name,
 		Color: eh.Color,
@@ -273,7 +274,7 @@ func importHabit(tx *store.Tx, eh exportHabit, catByKey map[string]string) error
 		Schedules:  eh.Schedules,
 	}
 	h.SetArchived(eh.Archived, tx.Now())
-	if err := tx.CreateHabit(&h); err != nil {
+	if err := tx.CreateHabit(ctx, &h); err != nil {
 		return err
 	}
 	entries := map[domain.Date]domain.Entry{}
@@ -290,16 +291,16 @@ func importHabit(tx *store.Tx, eh exportHabit, catByKey map[string]string) error
 		}
 		entries[d] = domain.Entry{Skipped: true}
 	}
-	return tx.SetEntries(h, entries)
+	return tx.SetEntries(ctx, h, entries)
 }
 
 // handleDeleteData removes all of the user's data: habits with their entries,
 // categories, settings and undo steps. It cannot be undone. DELETE is not a
 // simple method, so a cross-site request needs a CORS preflight, which fails.
-func (s *server) handleDeleteData(w http.ResponseWriter, r *http.Request) {
-	user := auth.MustUser(r.Context())
-	_, err := s.store.Update(r.Context(), user.ID, func(tx *store.Tx) error {
-		return tx.DeleteUser()
+func (s *server) handleDeleteData(w http.ResponseWriter, r *http.Request, user auth.User) {
+	ctx := r.Context()
+	_, err := s.store.Update(ctx, user.ID, func(tx *store.Tx) error {
+		return tx.DeleteUser(ctx)
 	})
 	if err != nil {
 		s.writeStoreError(w, err, "deleting data")
@@ -315,7 +316,7 @@ func nameKey(name string) string { return strings.ToLower(strings.TrimSpace(name
 // writeImportProblem writes the validation error err of an imported habit or
 // category, naming it in the parameter param, so the client can say which one
 // is invalid.
-func writeImportProblem(w http.ResponseWriter, err error, param, name string) {
+func (s *server) writeImportProblem(w http.ResponseWriter, err error, param, name string) {
 	var p *domain.Problem
 	if errors.As(err, &p) {
 		named := *p
@@ -325,5 +326,5 @@ func writeImportProblem(w http.ResponseWriter, err error, param, name string) {
 		}
 		err = &named
 	}
-	writeProblem(w, http.StatusUnprocessableEntity, err)
+	s.writeProblem(w, http.StatusUnprocessableEntity, err)
 }

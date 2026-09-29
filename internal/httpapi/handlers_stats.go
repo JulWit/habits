@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"context"
 	"net/http"
 	"slices"
 	"strconv"
@@ -52,11 +53,11 @@ type daysResponse struct {
 // current one): how many of the habits that are not archived were due and
 // done on each day, and what that adds up to. ?category= limits them to the
 // habits of a category.
-func (s *server) handleDays(w http.ResponseWriter, r *http.Request) {
-	user := auth.MustUser(r.Context())
+func (s *server) handleDays(w http.ResponseWriter, r *http.Request, user auth.User) {
+	ctx := r.Context()
 	var out daysResponse
-	err := s.store.View(r.Context(), user.ID, func(tx *store.Tx) error {
-		b, err := s.basis(tx)
+	err := s.store.View(ctx, user.ID, func(tx *store.Tx) error {
+		b, err := s.basis(ctx, tx)
 		if err != nil {
 			return err
 		}
@@ -64,11 +65,11 @@ func (s *server) handleDays(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return err
 		}
-		habits, err := habitsOfCategory(tx, r.URL.Query().Get("category"))
+		habits, err := habitsOfCategory(ctx, tx, r.URL.Query().Get("category"))
 		if err != nil {
 			return err
 		}
-		entries, err := tx.Entries()
+		entries, err := tx.Entries(ctx)
 		if err != nil {
 			return err
 		}
@@ -95,18 +96,18 @@ func (s *server) handleDays(w http.ResponseWriter, r *http.Request) {
 		s.writeStoreError(w, err, "loading day statistics")
 		return
 	}
-	writeJSON(w, http.StatusOK, out)
+	s.writeJSON(w, http.StatusOK, out)
 }
 
 // habitsOfCategory returns the user's habits that are not archived: all of
 // them for categoryID "", otherwise those of that category. An unknown
 // category is ErrNotFound.
-func habitsOfCategory(tx *store.Tx, categoryID string) ([]domain.Habit, error) {
-	habits, err := tx.Habits(false)
+func habitsOfCategory(ctx context.Context, tx *store.Tx, categoryID string) ([]domain.Habit, error) {
+	habits, err := tx.Habits(ctx, false)
 	if err != nil || categoryID == "" {
 		return habits, err
 	}
-	if _, err := tx.Category(categoryID); err != nil {
+	if _, err := tx.Category(ctx, categoryID); err != nil {
 		return nil, err
 	}
 	return slices.DeleteFunc(habits, func(h domain.Habit) bool { return h.CategoryID != categoryID }), nil
@@ -115,19 +116,19 @@ func habitsOfCategory(tx *store.Tx, categoryID string) ([]domain.Habit, error) {
 // handleHabitTotals sums a habit's values over a year (?year=, by default the
 // current one) per day, week or month (?grain=, by default month), up to
 // today.
-func (s *server) handleHabitTotals(w http.ResponseWriter, r *http.Request) {
+func (s *server) handleHabitTotals(w http.ResponseWriter, r *http.Request, user auth.User) {
 	grain := domain.Grain(r.URL.Query().Get("grain"))
 	if grain == "" {
 		grain = domain.GrainMonth
 	}
 	if !grain.Valid() {
-		writeError(w, http.StatusBadRequest, "invalid_grain", "grain must be day, week or month")
+		s.writeError(w, http.StatusBadRequest, "invalid_grain", "grain must be day, week or month")
 		return
 	}
-	user := auth.MustUser(r.Context())
+	ctx := r.Context()
 	var out domain.Totals
-	err := s.store.View(r.Context(), user.ID, func(tx *store.Tx) error {
-		b, err := s.basis(tx)
+	err := s.store.View(ctx, user.ID, func(tx *store.Tx) error {
+		b, err := s.basis(ctx, tx)
 		if err != nil {
 			return err
 		}
@@ -135,11 +136,11 @@ func (s *server) handleHabitTotals(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return err
 		}
-		h, err := tx.Habit(r.PathValue("id"))
+		h, err := tx.Habit(ctx, r.PathValue("id"))
 		if err != nil {
 			return err
 		}
-		entries, err := tx.HabitEntries(h.ID)
+		entries, err := tx.HabitEntries(ctx, h.ID)
 		if err != nil {
 			return err
 		}
@@ -151,5 +152,5 @@ func (s *server) handleHabitTotals(w http.ResponseWriter, r *http.Request) {
 		s.writeStoreError(w, err, "loading totals")
 		return
 	}
-	writeJSON(w, http.StatusOK, out)
+	s.writeJSON(w, http.StatusOK, out)
 }

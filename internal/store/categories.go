@@ -1,6 +1,7 @@
 package store
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -31,8 +32,8 @@ func scanCategory(row interface{ Scan(...any) error }) (domain.Category, error) 
 }
 
 // Categories returns the user's categories in display order.
-func (t *Tx) Categories() ([]domain.Category, error) {
-	rows, err := t.query(`SELECT `+categoryColumns+` FROM categories
+func (t *Tx) Categories(ctx context.Context) ([]domain.Category, error) {
+	rows, err := t.query(ctx, `SELECT `+categoryColumns+` FROM categories
 		WHERE user_id = ? ORDER BY position, created_at`, t.userID)
 	if err != nil {
 		return nil, fmt.Errorf("loading categories: %w", err)
@@ -52,8 +53,8 @@ func (t *Tx) Categories() ([]domain.Category, error) {
 }
 
 // Category returns a category of the user, or ErrNotFound.
-func (t *Tx) Category(id string) (domain.Category, error) {
-	c, err := scanCategory(t.queryRow(
+func (t *Tx) Category(ctx context.Context, id string) (domain.Category, error) {
+	c, err := scanCategory(t.queryRow(ctx,
 		`SELECT `+categoryColumns+` FROM categories WHERE id = ? AND user_id = ?`, id, t.userID))
 	if errors.Is(err, sql.ErrNoRows) {
 		return domain.Category{}, ErrNotFound
@@ -66,22 +67,22 @@ func (t *Tx) Category(id string) (domain.Category, error) {
 
 // CreateCategory validates the category and inserts it at the end of the
 // user's list, with a new ID, its position and timestamps.
-func (t *Tx) CreateCategory(c *domain.Category) error {
+func (t *Tx) CreateCategory(ctx context.Context, c *domain.Category) error {
 	c.ID = NewID()
 	c.CreatedAt, c.UpdatedAt = t.now, t.now
 	if err := c.Validate(); err != nil {
 		return err
 	}
 	var last sql.NullInt64
-	if err := t.queryRow(`SELECT MAX(position) FROM categories WHERE user_id = ?`, t.userID).Scan(&last); err != nil {
+	if err := t.queryRow(ctx, `SELECT MAX(position) FROM categories WHERE user_id = ?`, t.userID).Scan(&last); err != nil {
 		return err
 	}
 	c.Position = int(last.Int64) + 1
 
-	if err := t.watch("categories", "id = ?", c.ID); err != nil {
+	if err := t.watch(ctx, "categories", "id = ?", c.ID); err != nil {
 		return err
 	}
-	_, err := t.exec(`
+	_, err := t.exec(ctx, `
 		INSERT INTO categories (id, user_id, name, icon, color, show_progress, position, created_at, updated_at)
 		VALUES (?,?,?,?,?,?,?,?,?)`,
 		c.ID, t.userID, c.Name, c.Icon, c.Color, c.ShowProgress, c.Position,
@@ -91,15 +92,15 @@ func (t *Tx) CreateCategory(c *domain.Category) error {
 
 // SaveCategory validates the category and stores all its fields except the
 // position (see ReorderCategories).
-func (t *Tx) SaveCategory(c *domain.Category) error {
+func (t *Tx) SaveCategory(ctx context.Context, c *domain.Category) error {
 	c.UpdatedAt = t.now
 	if err := c.Validate(); err != nil {
 		return err
 	}
-	if err := t.watch("categories", "id = ?", c.ID); err != nil {
+	if err := t.watch(ctx, "categories", "id = ?", c.ID); err != nil {
 		return err
 	}
-	res, err := t.exec(`
+	res, err := t.exec(ctx, `
 		UPDATE categories SET name = ?, icon = ?, color = ?, show_progress = ?, updated_at = ?
 		WHERE id = ? AND user_id = ?`,
 		c.Name, c.Icon, c.Color, c.ShowProgress, formatTime(c.UpdatedAt), c.ID, t.userID)
@@ -111,14 +112,14 @@ func (t *Tx) SaveCategory(c *domain.Category) error {
 
 // DeleteCategory removes a category of the user. Its habits stay, without a
 // category; undoing the step puts them back into it.
-func (t *Tx) DeleteCategory(id string) error {
+func (t *Tx) DeleteCategory(ctx context.Context, id string) error {
 	if err := errors.Join(
-		t.watch("categories", "id = ? AND user_id = ?", id, t.userID),
-		t.watch("habits", "category_id = ?", id),
+		t.watch(ctx, "categories", "id = ? AND user_id = ?", id, t.userID),
+		t.watch(ctx, "habits", "category_id = ?", id),
 	); err != nil {
 		return err
 	}
-	res, err := t.exec(`DELETE FROM categories WHERE id = ? AND user_id = ?`, id, t.userID)
+	res, err := t.exec(ctx, `DELETE FROM categories WHERE id = ? AND user_id = ?`, id, t.userID)
 	if err != nil {
 		return fmt.Errorf("deleting category: %w", err)
 	}
@@ -127,6 +128,6 @@ func (t *Tx) DeleteCategory(id string) error {
 
 // ReorderCategories sets the display order of the user's categories (see
 // reorder).
-func (t *Tx) ReorderCategories(ids []string) error {
-	return t.reorder("categories", ids)
+func (t *Tx) ReorderCategories(ctx context.Context, ids []string) error {
+	return t.reorder(ctx, "categories", ids)
 }

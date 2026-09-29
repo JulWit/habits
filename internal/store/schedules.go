@@ -1,6 +1,7 @@
 package store
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 
@@ -13,8 +14,8 @@ const scheduleColumns = `s.habit_id, s.valid_from, s.target_value, s.target_type
 
 // schedulesOfUser returns the schedules of the user's habits, oldest first,
 // keyed by habit ID.
-func (t *Tx) schedulesOfUser() (map[string][]domain.Schedule, error) {
-	rows, err := t.query(`SELECT `+scheduleColumns+`
+func (t *Tx) schedulesOfUser(ctx context.Context) (map[string][]domain.Schedule, error) {
+	rows, err := t.query(ctx, `SELECT `+scheduleColumns+`
 		FROM habit_schedules s JOIN habits h ON h.id = s.habit_id
 		WHERE h.user_id = ?
 		ORDER BY s.habit_id, s.valid_from`, t.userID)
@@ -26,8 +27,8 @@ func (t *Tx) schedulesOfUser() (map[string][]domain.Schedule, error) {
 }
 
 // schedulesOfHabit returns the schedules of a habit, oldest first.
-func (t *Tx) schedulesOfHabit(habitID string) ([]domain.Schedule, error) {
-	rows, err := t.query(`SELECT `+scheduleColumns+`
+func (t *Tx) schedulesOfHabit(ctx context.Context, habitID string) ([]domain.Schedule, error) {
+	rows, err := t.query(ctx, `SELECT `+scheduleColumns+`
 		FROM habit_schedules s WHERE s.habit_id = ? ORDER BY s.valid_from`, habitID)
 	if err != nil {
 		return nil, fmt.Errorf("loading schedules: %w", err)
@@ -73,16 +74,16 @@ func collectSchedules(rows *sql.Rows) (map[string][]domain.Schedule, error) {
 }
 
 // saveSchedules replaces the stored schedules of the habit with h.Schedules.
-func (t *Tx) saveSchedules(h *domain.Habit) error {
-	if err := t.watch("habit_schedules", "habit_id = ?", h.ID); err != nil {
+func (t *Tx) saveSchedules(ctx context.Context, h *domain.Habit) error {
+	if err := t.watch(ctx, "habit_schedules", "habit_id = ?", h.ID); err != nil {
 		return err
 	}
-	if _, err := t.exec(`DELETE FROM habit_schedules WHERE habit_id = ?`, h.ID); err != nil {
+	if _, err := t.exec(ctx, `DELETE FROM habit_schedules WHERE habit_id = ?`, h.ID); err != nil {
 		return fmt.Errorf("replacing schedules: %w", err)
 	}
 	for _, sc := range h.Schedules {
 		f := sc.Frequency
-		if _, err := t.exec(`
+		if _, err := t.exec(ctx, `
 			INSERT INTO habit_schedules (habit_id, valid_from, target_value, target_type,
 				freq_kind, freq_times_per_week, freq_times_per_month, freq_weekdays, freq_interval_days,
 				freq_week_interval, freq_week_of_month, freq_anchor_date)

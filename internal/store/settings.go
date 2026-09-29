@@ -1,6 +1,7 @@
 package store
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"errors"
@@ -14,9 +15,9 @@ import (
 // removed ones are ignored. The stored settings were valid when they were
 // saved (SaveSettings), so removing an option needs a migration that
 // rewrites the stored values.
-func (t *Tx) Settings() (settings.Settings, error) {
+func (t *Tx) Settings(ctx context.Context) (settings.Settings, error) {
 	var data string
-	err := t.queryRow(`SELECT data FROM user_settings WHERE user_id = ?`, t.userID).Scan(&data)
+	err := t.queryRow(ctx, `SELECT data FROM user_settings WHERE user_id = ?`, t.userID).Scan(&data)
 	if errors.Is(err, sql.ErrNoRows) {
 		return settings.Default(), nil
 	}
@@ -32,7 +33,7 @@ func (t *Tx) Settings() (settings.Settings, error) {
 
 // SaveSettings validates the settings and stores them. Settings are not an
 // undo step.
-func (t *Tx) SaveSettings(s settings.Settings) error {
+func (t *Tx) SaveSettings(ctx context.Context, s settings.Settings) error {
 	if err := s.Validate(); err != nil {
 		return err
 	}
@@ -40,7 +41,7 @@ func (t *Tx) SaveSettings(s settings.Settings) error {
 	if err != nil {
 		return err
 	}
-	_, err = t.exec(`
+	_, err = t.exec(ctx, `
 		INSERT INTO user_settings (user_id, data, updated_at) VALUES (?,?,?)
 		ON CONFLICT(user_id) DO UPDATE SET data = excluded.data, updated_at = excluded.updated_at`,
 		t.userID, string(data), formatTime(t.now))

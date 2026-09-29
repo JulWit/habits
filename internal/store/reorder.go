@@ -1,6 +1,7 @@
 package store
 
 import (
+	"context"
 	"slices"
 
 	"github.com/JulWit/habits/internal/domain"
@@ -10,14 +11,14 @@ import (
 // ids. Rows missing from ids follow in their previous order; unknown IDs are
 // ignored; duplicate IDs are an error. table must be a constant. Reordering
 // is not an undo step.
-func (t *Tx) reorder(table string, ids []string) error {
+func (t *Tx) reorder(ctx context.Context, table string, ids []string) error {
 	for i, id := range ids {
 		if slices.Contains(ids[:i], id) {
 			return domain.Invalid("order_duplicate", "the new order names the same entry twice")
 		}
 	}
 
-	rows, err := t.query(`SELECT id FROM `+table+` WHERE user_id = ? ORDER BY position, created_at`, t.userID)
+	rows, err := t.query(ctx, `SELECT id FROM `+table+` WHERE user_id = ? ORDER BY position, created_at`, t.userID)
 	if err != nil {
 		return err
 	}
@@ -49,7 +50,7 @@ func (t *Tx) reorder(table string, ids []string) error {
 	}
 
 	for position, id := range order {
-		if _, err := t.exec(`UPDATE `+table+` SET position = ? WHERE id = ?`, position, id); err != nil {
+		if _, err := t.exec(ctx, `UPDATE `+table+` SET position = ? WHERE id = ?`, position, id); err != nil {
 			return err
 		}
 	}

@@ -36,10 +36,10 @@ func loadManifest(webFS fs.FS) (map[string]any, error) {
 // uses the scheme app.js stores in the color_scheme cookie, light without
 // one. Chrome then follows the theme-color entries in index.html; Firefox on
 // Android uses the manifest only.
-func (s *server) handleManifest(w http.ResponseWriter, r *http.Request) {
-	user := auth.MustUser(r.Context())
+func (s *server) handleManifest(w http.ResponseWriter, r *http.Request, user auth.User) {
+	ctx := r.Context()
 	dark := false
-	if settings := s.settingsOf(r.Context(), user.ID); settings.Theme != "system" {
+	if settings := s.settingsOf(ctx, user.ID); settings.Theme != "system" {
 		dark = settings.Theme == "dark"
 	} else if c, err := r.Cookie("color_scheme"); err == nil {
 		dark = c.Value == "dark"

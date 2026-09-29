@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"context"
 	"net/http"
 	"slices"
 
@@ -16,34 +17,34 @@ const maxSkipDays = 366
 // all habits that are not archived, e.g. for a holiday. Only due days without
 // a value are skipped (domain.DaysToSkip). The answer counts the skipped
 // days; undo takes them back as one step.
-func (s *server) handleSkipDays(w http.ResponseWriter, r *http.Request) {
+func (s *server) handleSkipDays(w http.ResponseWriter, r *http.Request, user auth.User) {
 	var body struct {
 		From     domain.Date `json:"from"`
 		To       domain.Date `json:"to"`
 		HabitIDs []string    `json:"habitIds"`
 	}
-	if !decodeJSON(w, r, &body) {
+	if !s.decodeJSON(w, r, &body) {
 		return
 	}
 	if body.From.IsZero() || body.To.IsZero() {
-		writeError(w, http.StatusBadRequest, "missing_fields", "from and to are required")
+		s.writeError(w, http.StatusBadRequest, "missing_fields", "from and to are required")
 		return
 	}
 	if body.To.Before(body.From) {
-		writeProblem(w, http.StatusUnprocessableEntity, domain.Invalid("skip_range_reversed",
+		s.writeProblem(w, http.StatusUnprocessableEntity, domain.Invalid("skip_range_reversed",
 			"the last day lies before the first"))
 		return
 	}
 	if body.To.DaysSince(body.From) >= maxSkipDays {
-		writeProblem(w, http.StatusUnprocessableEntity, domain.Invalid("skip_range_too_long",
+		s.writeProblem(w, http.StatusUnprocessableEntity, domain.Invalid("skip_range_too_long",
 			"at most {max} days can be skipped at once", "max", maxSkipDays))
 		return
 	}
-	user := auth.MustUser(r.Context())
+	ctx := r.Context()
 
 	skipped := 0
-	changeID, err := s.store.Update(r.Context(), user.ID, func(tx *store.Tx) error {
-		b, err := s.basis(tx)
+	changeID, err := s.store.Update(ctx, user.ID, func(tx *store.Tx) error {
+		b, err := s.basis(ctx, tx)
 		if err != nil {
 			return err
 		}
@@ -53,11 +54,11 @@ func (s *server) handleSkipDays(w http.ResponseWriter, r *http.Request) {
 		if err := checkEntryDate(body.To, b.today, true); err != nil {
 			return err
 		}
-		habits, err := habitsToSkip(tx, body.HabitIDs)
+		habits, err := habitsToSkip(ctx, tx, body.HabitIDs)
 		if err != nil {
 			return err
 		}
-		entries, err := tx.Entries()
+		entries, err := tx.Entries(ctx)
 		if err != nil {
 			return err
 		}
@@ -66,7 +67,7 @@ func (s *server) handleSkipDays(w http.ResponseWriter, r *http.Request) {
 			for _, d := range domain.DaysToSkip(h, entries[h.ID], body.From, body.To) {
 				days[d] = domain.Entry{Skipped: true}
 			}
-			if err := tx.SetEntries(h, days); err != nil {
+			if err := tx.SetEntries(ctx, h, days); err != nil {
 				return err
 			}
 			skipped += len(days)
@@ -83,13 +84,13 @@ func (s *server) handleSkipDays(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeChange(w, changeID)
-	writeJSON(w, http.StatusOK, map[string]int{"skipped": skipped})
+	s.writeJSON(w, http.StatusOK, map[string]int{"skipped": skipped})
 }
 
 // habitsToSkip returns the habits of the user with the given IDs, or all
 // that are not archived if there are none. An unknown ID is ErrNotFound.
-func habitsToSkip(tx *store.Tx, ids []string) ([]domain.Habit, error) {
-	all, err := tx.Habits(true)
+func habitsToSkip(ctx context.Context, tx *store.Tx, ids []string) ([]domain.Habit, error) {
+	all, err := tx.Habits(ctx, true)
 	if err != nil {
 		return nil, err
 	}

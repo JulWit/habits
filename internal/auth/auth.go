@@ -28,14 +28,10 @@ func WithUser(ctx context.Context, u User) context.Context {
 	return context.WithValue(ctx, ctxKey{}, u)
 }
 
-// MustUser returns the user stored by WithUser. It panics if there is none,
-// as then the handler is registered without authentication.
-func MustUser(ctx context.Context) User {
+// UserFrom returns the user stored by WithUser, and false if there is none.
+func UserFrom(ctx context.Context) (User, bool) {
 	u, ok := ctx.Value(ctxKey{}).(User)
-	if !ok {
-		panic("auth: handler registered without authentication")
-	}
-	return u
+	return u, ok
 }
 
 // Error is a rejected request: Status, Code and Message go to the client,

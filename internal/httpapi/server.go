@@ -60,33 +60,33 @@ func New(cfg config.Config, st *store.Store, log *slog.Logger, webFS fs.FS) (htt
 	}
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /api/state", s.handleState)
-	mux.HandleFunc("GET /api/days", s.handleDays)
-	mux.HandleFunc("POST /api/habits", s.handleCreateHabit)
-	mux.HandleFunc("POST /api/habits/reorder", s.handleReorderHabits)
-	mux.HandleFunc("GET /api/habits/{id}", s.handleGetHabit)
-	mux.HandleFunc("PATCH /api/habits/{id}", s.handleUpdateHabit)
-	mux.HandleFunc("DELETE /api/habits/{id}", s.handleDeleteHabit)
-	mux.HandleFunc("GET /api/habits/{id}/totals", s.handleHabitTotals)
-	mux.HandleFunc("PUT /api/habits/{id}/entries/{date}", s.handleSetEntry)
-	mux.HandleFunc("POST /api/skips", s.handleSkipDays)
-	mux.HandleFunc("POST /api/categories", s.handleCreateCategory)
-	mux.HandleFunc("POST /api/categories/reorder", s.handleReorderCategories)
-	mux.HandleFunc("PATCH /api/categories/{id}", s.handleUpdateCategory)
-	mux.HandleFunc("DELETE /api/categories/{id}", s.handleDeleteCategory)
-	mux.HandleFunc("POST /api/undo", s.handleUndo)
-	mux.HandleFunc("POST /api/redo", s.handleRedo)
-	mux.HandleFunc("GET /api/settings", s.handleGetSettings)
-	mux.HandleFunc("PATCH /api/settings", s.handleUpdateSettings)
-	mux.HandleFunc("GET /api/export", s.handleExport)
-	mux.HandleFunc("POST /api/import", s.handleImport)
-	mux.HandleFunc("DELETE /api/data", s.handleDeleteData)
-	mux.HandleFunc("/api/", notFoundJSON)
+	mux.HandleFunc("GET /api/state", s.withUser(s.handleState))
+	mux.HandleFunc("GET /api/days", s.withUser(s.handleDays))
+	mux.HandleFunc("POST /api/habits", s.withUser(s.handleCreateHabit))
+	mux.HandleFunc("POST /api/habits/reorder", s.withUser(s.handleReorderHabits))
+	mux.HandleFunc("GET /api/habits/{id}", s.withUser(s.handleGetHabit))
+	mux.HandleFunc("PATCH /api/habits/{id}", s.withUser(s.handleUpdateHabit))
+	mux.HandleFunc("DELETE /api/habits/{id}", s.withUser(s.handleDeleteHabit))
+	mux.HandleFunc("GET /api/habits/{id}/totals", s.withUser(s.handleHabitTotals))
+	mux.HandleFunc("PUT /api/habits/{id}/entries/{date}", s.withUser(s.handleSetEntry))
+	mux.HandleFunc("POST /api/skips", s.withUser(s.handleSkipDays))
+	mux.HandleFunc("POST /api/categories", s.withUser(s.handleCreateCategory))
+	mux.HandleFunc("POST /api/categories/reorder", s.withUser(s.handleReorderCategories))
+	mux.HandleFunc("PATCH /api/categories/{id}", s.withUser(s.handleUpdateCategory))
+	mux.HandleFunc("DELETE /api/categories/{id}", s.withUser(s.handleDeleteCategory))
+	mux.HandleFunc("POST /api/undo", s.withUser(s.handleUndo))
+	mux.HandleFunc("POST /api/redo", s.withUser(s.handleRedo))
+	mux.HandleFunc("GET /api/settings", s.withUser(s.handleGetSettings))
+	mux.HandleFunc("PATCH /api/settings", s.withUser(s.handleUpdateSettings))
+	mux.HandleFunc("GET /api/export", s.withUser(s.handleExport))
+	mux.HandleFunc("POST /api/import", s.withUser(s.handleImport))
+	mux.HandleFunc("DELETE /api/data", s.withUser(s.handleDeleteData))
+	mux.HandleFunc("/api/", s.notFoundJSON)
 
-	mux.HandleFunc("GET /{$}", s.handleIndex)
+	mux.HandleFunc("GET /{$}", s.withUser(s.handleIndex))
 	mux.Handle("GET /assets/", s.assets)
 	// Served from the root so that the service worker's scope covers "/".
-	mux.HandleFunc("GET /manifest.webmanifest", s.handleManifest)
+	mux.HandleFunc("GET /manifest.webmanifest", s.withUser(s.handleManifest))
 	mux.Handle("GET /sw.js", s.assets)
 
 	// The health check requires no authentication.
@@ -124,16 +124,34 @@ func (s *server) authenticate(next http.Handler) http.Handler {
 				"reason", refused.Reason,
 				"peer", r.RemoteAddr,
 				"path", r.URL.Path)
-			writeError(w, refused.Status, refused.Code, refused.Message)
+			s.writeError(w, refused.Status, refused.Code, refused.Message)
 			return
 		}
 		if err != nil {
 			s.log.Error("authentication failed", "error", err, "path", r.URL.Path)
-			writeError(w, http.StatusInternalServerError, "internal", "Internal server error")
+			s.writeError(w, http.StatusInternalServerError, "internal", "Internal server error")
 			return
 		}
 		next.ServeHTTP(w, r.WithContext(auth.WithUser(r.Context(), user)))
 	})
+}
+
+// userHandler is a handler that acts for the user of its request.
+type userHandler func(w http.ResponseWriter, r *http.Request, user auth.User)
+
+// withUser passes the user stored by authenticate to h. A request without
+// one means h is registered outside of authenticate; it is answered with
+// status 500.
+func (s *server) withUser(h userHandler) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		user, ok := auth.UserFrom(r.Context())
+		if !ok {
+			s.log.Error("handler registered without authentication", "path", r.URL.Path)
+			s.writeError(w, http.StatusInternalServerError, "internal", "Internal server error")
+			return
+		}
+		h(w, r, user)
+	}
 }
 
 // securityHeaders sets security headers on every response.
@@ -149,9 +167,9 @@ func securityHeaders(next http.Handler) http.Handler {
 
 // handleIndex renders index.html with the user's appearance settings, so the
 // page is styled correctly before any script runs.
-func (s *server) handleIndex(w http.ResponseWriter, r *http.Request) {
-	user := auth.MustUser(r.Context())
-	prefs := s.settingsOf(r.Context(), user.ID)
+func (s *server) handleIndex(w http.ResponseWriter, r *http.Request, user auth.User) {
+	ctx := r.Context()
+	prefs := s.settingsOf(ctx, user.ID)
 	data := struct {
 		settings.Settings
 		Lang string
@@ -183,8 +201,8 @@ type basis struct {
 
 // basis loads the user's settings in tx and derives the basis of their
 // statistics from them.
-func (s *server) basis(tx *store.Tx) (basis, error) {
-	prefs, err := tx.Settings()
+func (s *server) basis(ctx context.Context, tx *store.Tx) (basis, error) {
+	prefs, err := tx.Settings(ctx)
 	if err != nil {
 		return basis{}, err
 	}
@@ -214,7 +232,7 @@ func (s *server) settingsOf(ctx context.Context, userID string) settings.Setting
 	var prefs settings.Settings
 	err := s.store.View(ctx, userID, func(tx *store.Tx) error {
 		var err error
-		prefs, err = tx.Settings()
+		prefs, err = tx.Settings(ctx)
 		return err
 	})
 	if err != nil {
@@ -274,7 +292,7 @@ func (s *server) recoverPanics(next http.Handler) http.Handler {
 				}
 				s.log.Error("panic in handler",
 					"value", v, "path", r.URL.Path, "stack", string(debug.Stack()))
-				writeError(w, http.StatusInternalServerError, "internal", "Internal server error")
+				s.writeError(w, http.StatusInternalServerError, "internal", "Internal server error")
 			}
 		}()
 		next.ServeHTTP(w, r)

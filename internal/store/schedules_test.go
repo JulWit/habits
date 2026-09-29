@@ -16,7 +16,7 @@ func TestSchedulesRoundTrip(t *testing.T) {
 	if err := h.Reschedule(domain.Schedule{TargetValue: 80, Frequency: weekdays}, later, false); err != nil {
 		t.Fatalf("Reschedule: %v", err)
 	}
-	update(t, st, "alice", func(tx *Tx) error { return tx.SaveHabit(&h) })
+	update(t, st, "alice", func(tx *Tx) error { return tx.SaveHabit(t.Context(), &h) })
 
 	all := habitOf(t, st, "alice", h.ID).Schedules
 	if len(all) != 2 {
@@ -29,7 +29,7 @@ func TestSchedulesRoundTrip(t *testing.T) {
 		t.Errorf("current frequency = %+v, want the newer one", all[1].Frequency)
 	}
 
-	listed := read(t, st, "alice", func(tx *Tx) ([]domain.Habit, error) { return tx.Habits(false) })
+	listed := read(t, st, "alice", func(tx *Tx) ([]domain.Habit, error) { return tx.Habits(t.Context(), false) })
 	if len(listed) != 1 || len(listed[0].Schedules) != 2 {
 		t.Errorf("Habits did not load both schedules: %+v", listed)
 	}

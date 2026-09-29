@@ -16,25 +16,25 @@ func TestHabitsAreScopedToTheirUser(t *testing.T) {
 	mine := mustCreateHabit(t, st, "alice", countHabit(domain.KindCheck, 1))
 
 	err := st.View(ctx, "someone-else", func(tx *Tx) error {
-		_, err := tx.Habit(mine.ID)
+		_, err := tx.Habit(t.Context(), mine.ID)
 		return err
 	})
 	if !errors.Is(err, ErrNotFound) {
 		t.Errorf("Habit of another user: %v, want ErrNotFound", err)
 	}
-	_, err = st.Update(ctx, "someone-else", func(tx *Tx) error { return tx.DeleteHabit(mine.ID) })
+	_, err = st.Update(ctx, "someone-else", func(tx *Tx) error { return tx.DeleteHabit(t.Context(), mine.ID) })
 	if !errors.Is(err, ErrNotFound) {
 		t.Errorf("DeleteHabit of another user: %v, want ErrNotFound", err)
 	}
 	_, err = st.Update(ctx, "someone-else", func(tx *Tx) error {
 		h := mine
 		h.Name = "Mine now"
-		return tx.SaveHabit(&h)
+		return tx.SaveHabit(t.Context(), &h)
 	})
 	if !errors.Is(err, ErrNotFound) {
 		t.Errorf("SaveHabit of another user: %v, want ErrNotFound", err)
 	}
-	if theirs := read(t, st, "someone-else", func(tx *Tx) ([]domain.Habit, error) { return tx.Habits(true) }); len(theirs) != 0 {
+	if theirs := read(t, st, "someone-else", func(tx *Tx) ([]domain.Habit, error) { return tx.Habits(t.Context(), true) }); len(theirs) != 0 {
 		t.Errorf("another user's list contains %d habits", len(theirs))
 	}
 	if entries := entriesOf(t, st, "someone-else", mine.ID); len(entries) != 0 {
@@ -53,10 +53,10 @@ func TestReplaceEntries(t *testing.T) {
 
 	update(t, st, "alice", func(tx *Tx) error {
 		h.Kind = domain.KindCheck
-		if err := tx.SaveHabit(&h); err != nil {
+		if err := tx.SaveHabit(t.Context(), &h); err != nil {
 			return err
 		}
-		return tx.ReplaceEntries(h, map[domain.Date]domain.Entry{friday: {Value: 1}})
+		return tx.ReplaceEntries(t.Context(), h, map[domain.Date]domain.Entry{friday: {Value: 1}})
 	})
 	entries := entriesOf(t, st, "alice", h.ID)
 	if want := (domain.Entry{Value: 1}); len(entries) != 1 || entries[friday] != want {
@@ -75,7 +75,7 @@ func TestSaveHabitKeepsTheEntries(t *testing.T) {
 	h.StepValue = 20
 	h.Schedules[0].TargetValue = 100
 	h.Schedules[0].Frequency = domain.Frequency{Kind: domain.FreqTimesPerWeek, TimesPerWeek: 4}
-	update(t, st, "alice", func(tx *Tx) error { return tx.SaveHabit(&h) })
+	update(t, st, "alice", func(tx *Tx) error { return tx.SaveHabit(t.Context(), &h) })
 
 	after := habitOf(t, st, "alice", h.ID)
 	if after.Name != "Wasser trinken" || after.Current().TargetValue != 100 || after.StepValue != 20 {
@@ -124,14 +124,14 @@ func TestHabitCannotJoinAForeignCategory(t *testing.T) {
 	var theirs domain.Category
 	update(t, st, "someone-else", func(tx *Tx) error {
 		theirs = domain.Category{Name: "Sport"}
-		return tx.CreateCategory(&theirs)
+		return tx.CreateCategory(t.Context(), &theirs)
 	})
 
 	for _, id := range []string{theirs.ID, "does-not-exist"} {
 		_, err := st.Update(ctx, "alice", func(tx *Tx) error {
 			h := countHabit(domain.KindCheck, 1)
 			h.CategoryID = id
-			return tx.CreateHabit(&h)
+			return tx.CreateHabit(t.Context(), &h)
 		})
 		if !errors.Is(err, domain.ErrValidation) {
 			t.Errorf("category %q: %v, want ErrValidation", id, err)
@@ -145,7 +145,7 @@ func TestDeleteHabitRemovesItsHistory(t *testing.T) {
 	h := mustCreateHabit(t, st, "alice", countHabit(domain.KindCheck, 1))
 	setEntry(t, st, "alice", h, day(2026, time.September, 18), domain.Entry{Value: 1})
 
-	update(t, st, "alice", func(tx *Tx) error { return tx.DeleteHabit(h.ID) })
+	update(t, st, "alice", func(tx *Tx) error { return tx.DeleteHabit(t.Context(), h.ID) })
 	for _, table := range []string{"habits", "habit_schedules", "entries"} {
 		var n int
 		st.db.QueryRow(`SELECT COUNT(*) FROM ` + table).Scan(&n)
@@ -159,7 +159,7 @@ func TestDeleteHabitRemovesItsHistory(t *testing.T) {
 func habitIDs(t *testing.T, st *Store, user string) []string {
 	t.Helper()
 	var ids []string
-	for _, h := range read(t, st, user, func(tx *Tx) ([]domain.Habit, error) { return tx.Habits(true) }) {
+	for _, h := range read(t, st, user, func(tx *Tx) ([]domain.Habit, error) { return tx.Habits(t.Context(), true) }) {
 		ids = append(ids, h.ID)
 	}
 	return ids
@@ -172,7 +172,7 @@ func TestReorderIgnoresForeignIDs(t *testing.T) {
 	b := mustCreateHabit(t, st, "alice", countHabit(domain.KindCheck, 1))
 	theirs := mustCreateHabit(t, st, "someone-else", countHabit(domain.KindCheck, 1))
 
-	update(t, st, "alice", func(tx *Tx) error { return tx.ReorderHabits([]string{b.ID, theirs.ID, a.ID}) })
+	update(t, st, "alice", func(tx *Tx) error { return tx.ReorderHabits(t.Context(), []string{b.ID, theirs.ID, a.ID}) })
 	if got := habitIDs(t, st, "alice"); len(got) != 2 || got[0] != b.ID || got[1] != a.ID {
 		t.Errorf("order = %v", got)
 	}
@@ -189,8 +189,8 @@ func TestReorderPlacesUnnamedHabitsAfterTheNamedOnes(t *testing.T) {
 	b := mustCreateHabit(t, st, "alice", countHabit(domain.KindCheck, 1))
 	c := mustCreateHabit(t, st, "alice", countHabit(domain.KindCheck, 1))
 
-	update(t, st, "alice", func(tx *Tx) error { return tx.ReorderHabits([]string{c.ID}) })
-	habits := read(t, st, "alice", func(tx *Tx) ([]domain.Habit, error) { return tx.Habits(true) })
+	update(t, st, "alice", func(tx *Tx) error { return tx.ReorderHabits(t.Context(), []string{c.ID}) })
+	habits := read(t, st, "alice", func(tx *Tx) ([]domain.Habit, error) { return tx.Habits(t.Context(), true) })
 	want := []string{c.ID, a.ID, b.ID}
 	for i, h := range habits {
 		if h.ID != want[i] || h.Position != i {
@@ -206,7 +206,7 @@ func TestReorderRefusesADuplicate(t *testing.T) {
 	b := mustCreateHabit(t, st, "alice", countHabit(domain.KindCheck, 1))
 
 	_, err := st.Update(context.Background(), "alice", func(tx *Tx) error {
-		return tx.ReorderHabits([]string{b.ID, a.ID, b.ID})
+		return tx.ReorderHabits(t.Context(), []string{b.ID, a.ID, b.ID})
 	})
 	if !errors.Is(err, domain.ErrValidation) {
 		t.Fatalf("err = %v, want a validation error", err)
@@ -223,7 +223,7 @@ func TestReorderKeepsUpdatedAt(t *testing.T) {
 	b := mustCreateHabit(t, st, "alice", countHabit(domain.KindCheck, 1))
 	before := habitOf(t, st, "alice", a.ID)
 
-	update(t, st, "alice", func(tx *Tx) error { return tx.ReorderHabits([]string{b.ID, a.ID}) })
+	update(t, st, "alice", func(tx *Tx) error { return tx.ReorderHabits(t.Context(), []string{b.ID, a.ID}) })
 	after := habitOf(t, st, "alice", a.ID)
 	if after.Position != 1 {
 		t.Errorf("position = %d, want 1", after.Position)

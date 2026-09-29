@@ -104,7 +104,7 @@ func TestFrequencyChangeKeepsThePastDueDays(t *testing.T) {
 	h := dailyHabit()
 	// Mondays only, from this Monday on.
 	if err := h.Reschedule(Schedule{TargetValue: 1, Frequency: Frequency{Kind: FreqWeekdays, Weekdays: 1}}, monday, false); err != nil {
-		t.Fatal(err)
+		t.Fatalf("Reschedule: %v", err)
 	}
 	if !h.IsScheduled(monday.AddDays(-2)) {
 		t.Error("last Saturday was due daily and must stay due")
@@ -122,7 +122,7 @@ func TestFrequencyChangeKeepsThePastDueDays(t *testing.T) {
 func TestWeeklyHabitJudgesOlderWeeksByTheirSchedule(t *testing.T) {
 	h := dailyHabit()
 	if err := h.Reschedule(Schedule{TargetValue: 1, Frequency: Frequency{Kind: FreqTimesPerWeek, TimesPerWeek: 2}}, monday, false); err != nil {
-		t.Fatal(err)
+		t.Fatalf("Reschedule: %v", err)
 	}
 
 	entries := map[Date]int{}
@@ -180,7 +180,7 @@ func TestDayStatusesFollowTheSchedules(t *testing.T) {
 	h := dailyHabit()
 	// Mondays only, from this Monday on.
 	if err := h.Reschedule(Schedule{TargetValue: 1, Frequency: Frequency{Kind: FreqWeekdays, Weekdays: 1}}, monday, false); err != nil {
-		t.Fatal(err)
+		t.Fatalf("Reschedule: %v", err)
 	}
 	// Saturday and Sunday before, then Monday to Wednesday.
 	if got := DayStatuses(h, nil, HistoryStart(h, nil), monday.AddDays(-2), monday.AddDays(2), monday); got != "ooo--" {

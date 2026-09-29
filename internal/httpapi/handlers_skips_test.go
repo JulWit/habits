@@ -18,7 +18,7 @@ func createHabit(t *testing.T, h http.Handler, body string) string {
 		ID string `json:"id"`
 	}
 	if err := json.Unmarshal(mustDo(t, h, "POST", "/api/habits", body, http.StatusCreated), &created); err != nil {
-		t.Fatal(err)
+		t.Fatalf("json.Unmarshal(POST /api/habits): %v", err)
 	}
 	return created.ID
 }
@@ -48,7 +48,7 @@ func TestSkipDaysAndUndo(t *testing.T) {
 
 	mustDo(t, h, "POST", "/api/undo", `{"id":`+w.Header().Get("Change-Id")+`}`, http.StatusOK)
 	if n := skippedDays(t, h); n != 0 {
-		t.Errorf("%d skipped days left after undo", n)
+		t.Errorf("%d skipped days left after undo, want 0", n)
 	}
 }
 
@@ -61,7 +61,7 @@ func skippedDays(t *testing.T, h http.Handler) int {
 		} `json:"habits"`
 	}
 	if err := json.Unmarshal(mustDo(t, h, "GET", "/api/state", "", http.StatusOK), &state); err != nil {
-		t.Fatal(err)
+		t.Fatalf("json.Unmarshal(GET /api/state): %v", err)
 	}
 	n := 0
 	for _, habit := range state.Habits {

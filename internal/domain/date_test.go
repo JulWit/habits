@@ -160,7 +160,7 @@ func TestTodayUsesTheGivenLocation(t *testing.T) {
 func TestUntilTomorrow(t *testing.T) {
 	berlin, err := time.LoadLocation("Europe/Berlin")
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf(`time.LoadLocation("Europe/Berlin"): %v`, err)
 	}
 	for _, tc := range []struct {
 		name string

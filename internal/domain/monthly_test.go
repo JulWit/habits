@@ -98,7 +98,7 @@ func TestRescheduleToALimitStartsANewVersion(t *testing.T) {
 	limit := h.Current()
 	limit.TargetType = TargetAtMost
 	if err := h.Reschedule(limit, friday, false); err != nil {
-		t.Fatal(err)
+		t.Fatalf("Reschedule: %v", err)
 	}
 	if len(h.Schedules) != 2 || !h.Current().isLimit() || h.Schedules[0].isLimit() {
 		t.Errorf("schedules = %+v, want the old target and a limit from friday on", h.Schedules)

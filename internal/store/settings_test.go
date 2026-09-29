@@ -46,7 +46,7 @@ func TestStoredSettingsFallBackToTheDefaults(t *testing.T) {
 	if _, err := st.db.Exec(`INSERT INTO users (id, created_at) VALUES ('alice', '');
 		INSERT INTO user_settings (user_id, data, updated_at)
 		VALUES ('alice', '{"theme":"dark","surfaceBlur":30}', '')`); err != nil {
-		t.Fatal(err)
+		t.Fatalf("storing settings: %v", err)
 	}
 	want := settings.Default()
 	want.Theme = "dark"
@@ -61,7 +61,7 @@ func TestUnreadableSettingsAreAnError(t *testing.T) {
 	if _, err := st.db.Exec(`INSERT INTO users (id, created_at) VALUES ('alice', '');
 		INSERT INTO user_settings (user_id, data, updated_at)
 		VALUES ('alice', '{"overviewDays":"many"}', '')`); err != nil {
-		t.Fatal(err)
+		t.Fatalf("storing settings: %v", err)
 	}
 	err := st.View(context.Background(), "alice", func(tx *Tx) error {
 		_, err := tx.Settings(t.Context())

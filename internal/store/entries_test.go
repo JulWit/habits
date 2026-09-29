@@ -71,7 +71,7 @@ func TestSetEntriesTouchesTheHabit(t *testing.T) {
 	h := mustCreateHabit(t, st, "alice", countHabit(domain.KindCheck, 1))
 	// Far back, as the clock may not have moved on since the habit was created.
 	if _, err := st.db.Exec(`UPDATE habits SET updated_at = '2000-01-01T00:00:00.000000000Z'`); err != nil {
-		t.Fatal(err)
+		t.Fatalf("backdating updated_at: %v", err)
 	}
 	before := habitOf(t, st, "alice", h.ID).UpdatedAt
 	setEntry(t, st, "alice", h, day(2026, time.September, 18), domain.Entry{Value: 1})

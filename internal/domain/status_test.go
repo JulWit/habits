@@ -147,7 +147,7 @@ func TestComputeDayStats(t *testing.T) {
 	}
 	st := ComputeDayStats(totals, friday)
 	if st.Perfect != 3 || st.Counted != 5 || st.Completed != 7 || st.EmptyDays != 0 {
-		t.Errorf("counts = %+v", st)
+		t.Errorf("counts = %+v, want 3 perfect of 5 counted days, 7 completed, none empty", st)
 	}
 	if st.CurrentStreak != 2 || st.BestStreak != 2 {
 		t.Errorf("streaks = %d, %d, want 2, 2", st.CurrentStreak, st.BestStreak)
@@ -157,10 +157,10 @@ func TestComputeDayStats(t *testing.T) {
 		t.Errorf("Average = %v, want 0.875", st.Average)
 	}
 	if st.BestWeekday != 0 || st.Weekdays[4].Rate == nil || *st.Weekdays[4].Rate != 0 {
-		t.Errorf("weekdays = %d, %+v", st.BestWeekday, st.Weekdays)
+		t.Errorf("BestWeekday, Weekdays = %d, %+v; want Monday best and Friday at 0", st.BestWeekday, st.Weekdays)
 	}
 	if st.FirstMonth != time.September || len(st.Months) != 1 || st.BestMonth != time.September {
-		t.Errorf("months = %v, %+v, %v", st.FirstMonth, st.Months, st.BestMonth)
+		t.Errorf("FirstMonth, Months, BestMonth = %v, %+v, %v; want September, one month, September", st.FirstMonth, st.Months, st.BestMonth)
 	}
 }
 
@@ -168,7 +168,7 @@ func TestSumValuesPerWeek(t *testing.T) {
 	entries := valued(map[Date]int{monday: 10, friday: 30, sunday.AddDays(1): 5})
 	got := SumValues(entries, monday.AddDays(-7), sunday.AddDays(1), GrainWeek)
 	if got.Total != 45 || got.Best != 30 || got.ActiveDays != 3 {
-		t.Errorf("totals = %+v", got)
+		t.Errorf("totals = %+v, want a total of 45, best 30 and 3 active days", got)
 	}
 	want := []Bucket{
 		{Start: monday.AddDays(-7), Sum: 0, Cumulative: 0},
@@ -189,6 +189,6 @@ func TestSumValuesPerMonthStartsOnTheFirstDay(t *testing.T) {
 	from := Date{2026, time.January, 1}
 	got := SumValues(nil, from, Date{2026, time.March, 10}, GrainMonth)
 	if len(got.Buckets) != 3 || got.Buckets[2].Start != (Date{2026, time.March, 1}) {
-		t.Errorf("buckets = %+v", got.Buckets)
+		t.Errorf("buckets = %+v, want 3 months, the last from 1 March", got.Buckets)
 	}
 }

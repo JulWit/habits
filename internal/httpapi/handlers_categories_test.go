@@ -12,7 +12,7 @@ func TestCategoryProgressIsOffUntilSwitchedOn(t *testing.T) {
 
 	w := do(t, h, "POST", "/api/categories", `{"name":"Sport"}`, "application/json")
 	if w.Code != http.StatusCreated {
-		t.Fatalf("create: status %d (%s)", w.Code, w.Body)
+		t.Fatalf("POST /api/categories: status %d, want 201 (%s)", w.Code, w.Body)
 	}
 	var c struct {
 		ID           string `json:"id"`
@@ -27,7 +27,7 @@ func TestCategoryProgressIsOffUntilSwitchedOn(t *testing.T) {
 
 	w = do(t, h, "PATCH", "/api/categories/"+c.ID, `{"showProgress":true}`, "application/json")
 	if w.Code != http.StatusOK {
-		t.Fatalf("switch on: status %d (%s)", w.Code, w.Body)
+		t.Fatalf("PATCH /api/categories/{id}: status %d, want 200 (%s)", w.Code, w.Body)
 	}
 	w = do(t, h, "PATCH", "/api/categories/"+c.ID, `{"name":"Bewegung"}`, "application/json")
 	if err := json.Unmarshal(w.Body.Bytes(), &c); err != nil {

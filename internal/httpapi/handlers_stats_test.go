@@ -20,17 +20,17 @@ func TestDaysCountTheHabitsOfEachDay(t *testing.T) {
 
 	var got daysResponse
 	if err := json.Unmarshal(mustDo(t, h, "GET", "/api/days", "", http.StatusOK), &got); err != nil {
-		t.Fatal(err)
+		t.Fatalf("json.Unmarshal(GET /api/days): %v", err)
 	}
 	first, last := yearRange(today.Year)
 	if got.Year != today.Year || len(got.Totals) != last.DaysSince(first)+1 {
-		t.Fatalf("year %d with %d days", got.Year, len(got.Totals))
+		t.Fatalf("year %d with %d days, want %d with %d", got.Year, len(got.Totals), today.Year, last.DaysSince(first)+1)
 	}
 	if day := got.Totals[today.DaysSince(first)]; day.Due != 2 || day.Done != 1 {
 		t.Errorf("today = %+v, want 1 of 2 done", day)
 	}
 	if got.Stats.Completed != 1 || got.Stats.Counted != 1 || got.Habits != 2 {
-		t.Errorf("habits %d, stats = %+v", got.Habits, got.Stats)
+		t.Errorf("habits %d, stats = %+v; want 2 habits, 1 completed on 1 counted day", got.Habits, got.Stats)
 	}
 	if w := do(t, h, "GET", "/api/days?year=1999", "", ""); w.Code != http.StatusUnprocessableEntity {
 		t.Errorf("year before the earliest entry: status %d, want 422", w.Code)
@@ -44,7 +44,7 @@ func TestDaysOfACategoryCoverItsHabits(t *testing.T) {
 		ID string `json:"id"`
 	}
 	if err := json.Unmarshal(mustDo(t, h, "POST", "/api/categories", `{"name":"Sport"}`, http.StatusCreated), &c); err != nil {
-		t.Fatal(err)
+		t.Fatalf("json.Unmarshal(POST /api/categories): %v", err)
 	}
 	run := createHabit(t, h, fmt.Sprintf(`{"name":"Run","kind":"check","categoryId":%q,"frequency":{"kind":"daily"}}`, c.ID))
 	createHabit(t, h, `{"name":"Read","kind":"check","frequency":{"kind":"daily"}}`)
@@ -53,10 +53,10 @@ func TestDaysOfACategoryCoverItsHabits(t *testing.T) {
 
 	var got daysResponse
 	if err := json.Unmarshal(mustDo(t, h, "GET", "/api/days?category="+c.ID, "", http.StatusOK), &got); err != nil {
-		t.Fatal(err)
+		t.Fatalf("json.Unmarshal(GET /api/days?category=): %v", err)
 	}
 	if got.Habits != 1 || got.Stats.Counted != 1 || got.Stats.Perfect != 1 || got.Stats.CurrentStreak != 1 {
-		t.Errorf("habits %d, stats = %+v", got.Habits, got.Stats)
+		t.Errorf("habits %d, stats = %+v; want 1 habit, 1 perfect day and a streak of 1", got.Habits, got.Stats)
 	}
 	if got.Expected != 1 || got.Achieved != 1 {
 		t.Errorf("rate counts = %d of %d, want 1 of 1", got.Achieved, got.Expected)
@@ -73,7 +73,7 @@ func TestHabitTotals(t *testing.T) {
 
 	var got domain.Totals
 	if err := json.Unmarshal(mustDo(t, h, "GET", "/api/habits/"+id+"/totals?grain=month", "", http.StatusOK), &got); err != nil {
-		t.Fatal(err)
+		t.Fatalf("json.Unmarshal(GET /api/habits/{id}/totals): %v", err)
 	}
 	if got.Total != 30 || len(got.Buckets) != int(today.Month) {
 		t.Errorf("totals = %+v, want 30 in %d months", got, today.Month)

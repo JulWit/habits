@@ -94,7 +94,7 @@ func TestTrustedPeerIsBelieved(t *testing.T) {
 			r.Header.Set("Remote-User", "Alice")
 		})
 		if !reached {
-			t.Errorf("%s: rejected with %d", peer, status)
+			t.Errorf("%s: rejected with %d, want accepted", peer, status)
 			continue
 		}
 		// User IDs are lower-cased.

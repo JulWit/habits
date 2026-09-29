@@ -48,7 +48,7 @@ func TestValidationMessagesReachTheUserPlain(t *testing.T) {
 		t.Fatalf("reading response: %v", err)
 	}
 	if body.Detail != "name must not be empty" {
-		t.Errorf("detail = %q", body.Detail)
+		t.Errorf("detail = %q, want %q", body.Detail, "name must not be empty")
 	}
 }
 
@@ -76,7 +76,7 @@ func TestErrorsAreProblemDetailsWithACode(t *testing.T) {
 		t.Errorf("code %q, status %d, title %q", body.Code, body.Status, body.Title)
 	}
 	if body.Detail != "name is longer than 80 characters" {
-		t.Errorf("detail = %q", body.Detail)
+		t.Errorf("detail = %q, want %q", body.Detail, "name is longer than 80 characters")
 	}
 	if body.Params["max"] != float64(80) {
 		t.Errorf("params = %v, want max 80", body.Params)
@@ -94,6 +94,6 @@ func TestUnknownAPIPathAnswersAProblem(t *testing.T) {
 		t.Errorf("Content-Type = %q, want application/problem+json", ct)
 	}
 	if !strings.Contains(w.Body.String(), `"code":"unknown_endpoint"`) {
-		t.Errorf("body = %s", w.Body)
+		t.Errorf("body = %s, want the code unknown_endpoint", w.Body)
 	}
 }

@@ -35,10 +35,10 @@ func TestHabitsAreScopedToTheirUser(t *testing.T) {
 		t.Errorf("SaveHabit of another user: %v, want ErrNotFound", err)
 	}
 	if theirs := read(t, st, "someone-else", func(tx *Tx) ([]domain.Habit, error) { return tx.Habits(t.Context()) }); len(theirs) != 0 {
-		t.Errorf("another user's list contains %d habits", len(theirs))
+		t.Errorf("another user's list contains %d habits, want 0", len(theirs))
 	}
 	if entries := entriesOf(t, st, "someone-else", mine.ID); len(entries) != 0 {
-		t.Errorf("another user reads %d entries", len(entries))
+		t.Errorf("another user reads %d entries, want 0", len(entries))
 	}
 }
 
@@ -79,10 +79,10 @@ func TestSaveHabitKeepsTheEntries(t *testing.T) {
 
 	after := habitOf(t, st, "alice", h.ID)
 	if after.Name != "Wasser trinken" || after.Current().TargetValue != 100 || after.StepValue != 20 {
-		t.Errorf("changes did not arrive: %+v", after)
+		t.Errorf("habit = %+v, want the new name, target 100 and step 20", after)
 	}
 	if f := after.Current().Frequency; f.Kind != domain.FreqTimesPerWeek || f.TimesPerWeek != 4 {
-		t.Errorf("frequency did not arrive: %+v", f)
+		t.Errorf("frequency = %+v, want 4 times per week", f)
 	}
 	if entries := entriesOf(t, st, "alice", h.ID); len(entries) != 1 {
 		t.Errorf("entries = %v, want the one kept", entries)
@@ -148,7 +148,7 @@ func TestDeleteHabitRemovesItsHistory(t *testing.T) {
 	update(t, st, "alice", func(tx *Tx) error { return tx.DeleteHabit(t.Context(), h.ID) })
 	for _, table := range []string{"habits", "habit_schedules", "entries"} {
 		if n := queryInt(t, st, `SELECT COUNT(*) FROM `+table); n != 0 {
-			t.Errorf("%s: %d rows left", table, n)
+			t.Errorf("%s: %d rows left, want 0", table, n)
 		}
 	}
 }
@@ -172,7 +172,7 @@ func TestReorderIgnoresForeignIDs(t *testing.T) {
 
 	update(t, st, "alice", func(tx *Tx) error { return tx.ReorderHabits(t.Context(), []string{b.ID, theirs.ID, a.ID}) })
 	if got := habitIDs(t, st, "alice"); len(got) != 2 || got[0] != b.ID || got[1] != a.ID {
-		t.Errorf("order = %v", got)
+		t.Errorf("order = %v, want %v", got, []string{b.ID, a.ID})
 	}
 	if other := habitIDs(t, st, "someone-else"); len(other) != 1 {
 		t.Error("the other user's list was touched")

@@ -105,7 +105,7 @@ func TestIndexCarriesTheStoredAppearance(t *testing.T) {
 	h := newTestServer(t)
 
 	if w := do(t, h, "PATCH", "/api/settings", `{"theme":"dark","font":"geist"}`, "application/json"); w.Code != http.StatusOK {
-		t.Fatalf("writing settings: %d (%s)", w.Code, w.Body)
+		t.Fatalf("PATCH /api/settings: status %d, want 200 (%s)", w.Code, w.Body)
 	}
 	w := do(t, h, "GET", "/", "", "")
 	body := w.Body.String()
@@ -122,7 +122,7 @@ func TestHealthzNeedsNoIdentity(t *testing.T) {
 	h := newTestServer(t)
 	w := do(t, h, "GET", "/healthz", "", "")
 	if w.Code != http.StatusOK || !strings.Contains(w.Body.String(), "ok") {
-		t.Errorf("healthz: %d %q", w.Code, w.Body)
+		t.Errorf("GET /healthz: status %d, body %q; want 200, ok", w.Code, w.Body)
 	}
 }
 
@@ -223,11 +223,11 @@ func TestManifestFollowsTheStoredTheme(t *testing.T) {
 	h := newTestServer(t)
 	for theme, want := range map[string]string{"dark": "#0f0f0f", "light": "#e6e8ec", "system": "#e6e8ec"} {
 		if w := do(t, h, "PATCH", "/api/settings", `{"theme":"`+theme+`"}`, "application/json"); w.Code != http.StatusOK {
-			t.Fatalf("writing settings: %d (%s)", w.Code, w.Body)
+			t.Fatalf("PATCH /api/settings: status %d, want 200 (%s)", w.Code, w.Body)
 		}
 		w := do(t, h, "GET", "/manifest.webmanifest", "", "")
 		if ct := w.Header().Get("Content-Type"); ct != "application/manifest+json" {
-			t.Errorf("%s: Content-Type = %q", theme, ct)
+			t.Errorf("%s: Content-Type = %q, want application/manifest+json", theme, ct)
 		}
 		var m map[string]any
 		if err := json.Unmarshal(w.Body.Bytes(), &m); err != nil {
@@ -243,7 +243,7 @@ func TestManifestFollowsTheStoredTheme(t *testing.T) {
 func TestManifestFollowsTheColorSchemeCookie(t *testing.T) {
 	h := newTestServer(t)
 	if w := do(t, h, "PATCH", "/api/settings", `{"theme":"system"}`, "application/json"); w.Code != http.StatusOK {
-		t.Fatalf("writing settings: %d (%s)", w.Code, w.Body)
+		t.Fatalf("PATCH /api/settings: status %d, want 200 (%s)", w.Code, w.Body)
 	}
 	for cookie, want := range map[string]string{"dark": "#0f0f0f", "light": "#e6e8ec", "bogus": "#e6e8ec"} {
 		r := httptest.NewRequest("GET", "/manifest.webmanifest", nil)
@@ -265,7 +265,7 @@ func TestManifestFollowsTheColorSchemeCookie(t *testing.T) {
 func TestRefusedAuthenticationIsAProblem(t *testing.T) {
 	st, err := store.Open(context.Background(), filepath.Join(t.TempDir(), "test.db"))
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("store.Open: %v", err)
 	}
 	t.Cleanup(func() { st.Close() })
 	cfg := config.Config{
@@ -277,7 +277,7 @@ func TestRefusedAuthenticationIsAProblem(t *testing.T) {
 	}
 	h, err := New(cfg, st, slog.New(slog.NewTextHandler(io.Discard, nil)), testWeb)
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("New: %v", err)
 	}
 
 	w := do(t, h, "GET", "/api/state", "", "")
@@ -288,7 +288,7 @@ func TestRefusedAuthenticationIsAProblem(t *testing.T) {
 	contentType := w.Header().Get("Content-Type")
 	refused := w.Code == http.StatusForbidden && body.Status == http.StatusForbidden && body.Code == "untrusted_proxy"
 	if !refused || !strings.HasPrefix(contentType, "application/problem+json") {
-		t.Errorf("status %d, Content-Type %q, body %+v", w.Code, contentType, body)
+		t.Errorf("status %d, Content-Type %q, body %+v; want 403 untrusted_proxy as problem+json", w.Code, contentType, body)
 	}
 	if w.Header().Get("Content-Security-Policy") == "" {
 		t.Error("the refusal has no security headers")

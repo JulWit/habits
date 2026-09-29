@@ -43,7 +43,7 @@ func TestEntryValueIsBounded(t *testing.T) {
 		`{"name":"Running","kind":"distance","targetValue":5000,"frequency":{"kind":"daily"}}`,
 		"application/json")
 	if w.Code != http.StatusCreated {
-		t.Fatalf("creating habit: %d (%s)", w.Code, w.Body)
+		t.Fatalf("POST /api/habits: status %d, want 201 (%s)", w.Code, w.Body)
 	}
 	var created struct {
 		ID string `json:"id"`
@@ -89,7 +89,7 @@ func TestEntryOnUnscheduledWeekdayIsRefused(t *testing.T) {
 		`{"name":"Gym","kind":"check","frequency":{"kind":"weekdays","weekdays":17}}`,
 		"application/json")
 	if w.Code != http.StatusCreated {
-		t.Fatalf("creating habit: %d (%s)", w.Code, w.Body)
+		t.Fatalf("POST /api/habits: status %d, want 201 (%s)", w.Code, w.Body)
 	}
 	var created struct {
 		ID string `json:"id"`
@@ -118,7 +118,7 @@ func TestEntryBetweenCustomIntervalIsRefused(t *testing.T) {
 		`{"name":"Run","kind":"check","frequency":{"kind":"custom_interval","intervalDays":3,"anchorDate":"2026-09-14"}}`,
 		"application/json")
 	if w.Code != http.StatusCreated {
-		t.Fatalf("creating habit: %d (%s)", w.Code, w.Body)
+		t.Fatalf("POST /api/habits: status %d, want 201 (%s)", w.Code, w.Body)
 	}
 	var created struct {
 		ID string `json:"id"`
@@ -152,7 +152,7 @@ func TestEntryAnswersWithUpdatedAt(t *testing.T) {
 	w := do(t, h, "POST", "/api/habits",
 		`{"name":"Read","kind":"check","frequency":{"kind":"daily"}}`, "application/json")
 	if w.Code != http.StatusCreated {
-		t.Fatalf("creating habit: %d (%s)", w.Code, w.Body)
+		t.Fatalf("POST /api/habits: status %d, want 201 (%s)", w.Code, w.Body)
 	}
 	var created struct {
 		ID string `json:"id"`
@@ -163,7 +163,7 @@ func TestEntryAnswersWithUpdatedAt(t *testing.T) {
 
 	w = do(t, h, "PUT", "/api/habits/"+created.ID+"/entries/2026-09-18", `{"value":1}`, "application/json")
 	if w.Code != http.StatusOK {
-		t.Fatalf("setting entry: %d (%s)", w.Code, w.Body)
+		t.Fatalf("PUT entry: status %d, want 200 (%s)", w.Code, w.Body)
 	}
 	var answer struct {
 		UpdatedAt time.Time `json:"updatedAt"`
@@ -216,7 +216,7 @@ func TestSkipReachesTheState(t *testing.T) {
 	mustDo(t, h, "PUT", path(2), `{"value":1}`, http.StatusOK)
 	var answer entryAnswer
 	if err := json.Unmarshal(mustDo(t, h, "PUT", path(1), `{"skipped":true}`, http.StatusOK), &answer); err != nil {
-		t.Fatal(err)
+		t.Fatalf("json.Unmarshal(PUT entry, skipped): %v", err)
 	}
 	if answer.statusOn(yesterday) != domain.StatusSkipped || answer.Entries[yesterday.String()] != 0 {
 		t.Errorf("after the skip: status %c, value %d", answer.statusOn(yesterday), answer.Entries[yesterday.String()])
@@ -231,7 +231,7 @@ func TestSkipReachesTheState(t *testing.T) {
 		} `json:"habits"`
 	}
 	if err := json.Unmarshal(mustDo(t, h, "GET", "/api/state", "", http.StatusOK), &state); err != nil {
-		t.Fatal(err)
+		t.Fatalf("json.Unmarshal(GET /api/state): %v", err)
 	}
 	got := state.Habits[0]
 	if i := yesterday.DaysSince(got.DaysFrom); got.Days[i] != byte(domain.StatusSkipped) {
@@ -244,7 +244,7 @@ func TestSkipReachesTheState(t *testing.T) {
 	// A value ends the skip.
 	answer = entryAnswer{}
 	if err := json.Unmarshal(mustDo(t, h, "PUT", path(1), `{"value":1}`, http.StatusOK), &answer); err != nil {
-		t.Fatal(err)
+		t.Fatalf("json.Unmarshal(PUT entry, value): %v", err)
 	}
 	if answer.statusOn(yesterday) != domain.StatusDone || answer.Entries[yesterday.String()] != 1 {
 		t.Errorf("after a value: status %c, value %d", answer.statusOn(yesterday), answer.Entries[yesterday.String()])
@@ -271,7 +271,7 @@ func TestEntryAnswerCoversTheMovedHistoryStart(t *testing.T) {
 	var answer entryAnswer
 	body := mustDo(t, h, "PUT", "/api/habits/"+id+"/entries/"+today.AddDays(-3).String(), `{"value":10}`, http.StatusOK)
 	if err := json.Unmarshal(body, &answer); err != nil {
-		t.Fatal(err)
+		t.Fatalf("json.Unmarshal(PUT entry): %v", err)
 	}
 	if got := answer.statusOn(between); got != domain.StatusDone {
 		t.Errorf("status of an empty day after the new start = %c, want %c", got, domain.StatusDone)
@@ -288,7 +288,7 @@ func TestSkipNeedsADueDay(t *testing.T) {
 		ID string `json:"id"`
 	}
 	if err := json.Unmarshal(w.Body.Bytes(), &created); err != nil {
-		t.Fatal(err)
+		t.Fatalf("json.Unmarshal(POST /api/habits): %v (%s)", err, w.Body)
 	}
 	// 2026-09-15 is a Tuesday.
 	path := "/api/habits/" + created.ID + "/entries/2026-09-15"

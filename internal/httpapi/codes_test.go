@@ -14,7 +14,7 @@ import (
 func TestEveryProblemCodeIsTranslated(t *testing.T) {
 	i18n, err := os.ReadFile(filepath.Join("..", "..", "web", "assets", "js", "i18n.js"))
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("os.ReadFile(i18n.js): %v", err)
 	}
 	_, block, found := strings.Cut(string(i18n), "const deErrors = {")
 	if !found {
@@ -85,7 +85,7 @@ func serverSources(t *testing.T) map[string]string {
 		return nil
 	})
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("reading the server sources: %v", err)
 	}
 	return out
 }

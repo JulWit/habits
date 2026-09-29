@@ -56,7 +56,7 @@ func TestUndoAndRedoAnEntry(t *testing.T) {
 
 	step := mustUndo(t, st, "alice", 0)
 	if step.ID != id || step.Template != "{name} — {date}" || step.Params["date"] != d.String() {
-		t.Errorf("undone step = %+v", step)
+		t.Errorf("undone step = %+v, want step %d for %s", step, id, d)
 	}
 	if got := entriesOf(t, st, "alice", h.ID)[d].Value; got != 30 {
 		t.Errorf("after undo: %d, want 30", got)
@@ -80,7 +80,7 @@ func TestUndoDeleteHabitRestoresItsHistory(t *testing.T) {
 	h := mustCreateHabit(t, st, "alice", countHabit(domain.KindCount, 80))
 	daily := domain.Schedule{TargetValue: 100, Frequency: domain.Frequency{Kind: domain.FreqDaily}}
 	if err := h.Reschedule(daily, day(2026, time.March, 1), false); err != nil {
-		t.Fatal(err)
+		t.Fatalf("Reschedule: %v", err)
 	}
 	update(t, st, "alice", func(tx *Tx) error { return tx.SaveHabit(t.Context(), &h) })
 	d := day(2026, time.September, 18)
@@ -93,7 +93,7 @@ func TestUndoDeleteHabitRestoresItsHistory(t *testing.T) {
 	mustUndo(t, st, "alice", id)
 	back := habitOf(t, st, "alice", h.ID)
 	if len(back.Schedules) != 2 || back.Name != h.Name || back.Position != h.Position {
-		t.Errorf("restored habit = %+v", back)
+		t.Errorf("restored habit = %+v, want %s with 2 schedules at position %d", back, h.Name, h.Position)
 	}
 	if got := entriesOf(t, st, "alice", h.ID)[d].Value; got != 30 {
 		t.Errorf("restored entry = %d, want 30", got)
@@ -141,7 +141,7 @@ func TestUndoDeleteCategoryPutsItsHabitsBack(t *testing.T) {
 	})
 	mustUndo(t, st, "alice", id)
 	if got := categoryOf(t, st, "alice", c.ID); got.Name != "Sport" {
-		t.Errorf("category = %+v", got)
+		t.Errorf("category = %+v, want Sport", got)
 	}
 	if got := habitOf(t, st, "alice", h.ID).CategoryID; got != c.ID {
 		t.Errorf("habit's category = %q, want %q", got, c.ID)
@@ -279,6 +279,6 @@ func TestStepsAreLimited(t *testing.T) {
 		t.Errorf("PurgeSteps removed %d steps (err %v), want %d", n, err, maxSteps)
 	}
 	if n := count(); n != 0 {
-		t.Errorf("%d steps left after purging", n)
+		t.Errorf("%d steps left after purging, want 0", n)
 	}
 }

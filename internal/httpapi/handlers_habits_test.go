@@ -16,7 +16,7 @@ func TestStateCarriesTheKindDescriptors(t *testing.T) {
 	h := newTestServer(t)
 	w := do(t, h, "GET", "/api/state", "", "")
 	if w.Code != http.StatusOK {
-		t.Fatalf("status %d (%s)", w.Code, w.Body)
+		t.Fatalf("GET /api/state: status %d, want 200 (%s)", w.Code, w.Body)
 	}
 
 	var got struct {
@@ -37,7 +37,7 @@ func TestStateCarriesTheKindDescriptors(t *testing.T) {
 		}
 	}
 	if got.Kinds["distance"].Scale != 1000 || got.Kinds["distance"].Max != 200000 {
-		t.Errorf("distance = %+v", got.Kinds["distance"])
+		t.Errorf("distance = %+v, want scale 1000 and max 200000", got.Kinds["distance"])
 	}
 	if got.Kinds["time"].Unit != "min" {
 		t.Errorf("time.unit = %q, want min", got.Kinds["time"].Unit)
@@ -63,13 +63,13 @@ func TestKindChangeConvertsTheHistory(t *testing.T) {
 	day := domain.Today(time.UTC).AddDays(-1).String()
 	w = do(t, h, "PUT", "/api/habits/"+created.ID+"/entries/"+day, `{"value":5200}`, "application/json")
 	if w.Code != http.StatusOK {
-		t.Fatalf("entry: %d (%s)", w.Code, w.Body)
+		t.Fatalf("PUT entry: status %d, want 200 (%s)", w.Code, w.Body)
 	}
 
 	w = do(t, h, "PATCH", "/api/habits/"+created.ID,
 		`{"kind":"time","targetValue":300}`, "application/json")
 	if w.Code != http.StatusOK {
-		t.Fatalf("status %d (%s)", w.Code, w.Body)
+		t.Fatalf("PATCH /api/habits/{id}: status %d, want 200 (%s)", w.Code, w.Body)
 	}
 	var view struct {
 		StepValue int                 `json:"stepValue"`
@@ -116,14 +116,14 @@ func TestEntriesFollowTheScheduleOfTheirDay(t *testing.T) {
 		} `json:"habits"`
 	}
 	if err := json.Unmarshal(mustDo(t, h, "GET", "/api/state", "", http.StatusOK), &state); err != nil || len(state.Habits) != 1 {
-		t.Fatalf("state: %v, %+v", err, state)
+		t.Fatalf("GET /api/state: %v, %+v; want one habit", err, state)
 	}
 	path := "/api/habits/" + state.Habits[0].ID
 	var w *httptest.ResponseRecorder
 
 	yesterday := path + "/entries/" + iso(today.AddDays(-1))
 	if w := do(t, h, "PUT", yesterday, `{"value":1}`, "application/json"); w.Code != http.StatusOK {
-		t.Errorf("yesterday was due daily: status %d (%s)", w.Code, w.Body)
+		t.Errorf("yesterday was due daily: status %d, want 200 (%s)", w.Code, w.Body)
 	}
 	tomorrow := path + "/entries/" + iso(today.AddDays(1))
 	if w := do(t, h, "PUT", tomorrow, `{"value":1}`, "application/json"); w.Code != http.StatusUnprocessableEntity {
@@ -134,7 +134,7 @@ func TestEntriesFollowTheScheduleOfTheirDay(t *testing.T) {
 	body := fmt.Sprintf(`{"frequency":{"kind":"weekdays","weekdays":%d},"retroactive":true}`, todayOnly)
 	w = do(t, h, "PATCH", path, body, "application/json")
 	if w.Code != http.StatusOK {
-		t.Fatalf("retroactive change: %d (%s)", w.Code, w.Body)
+		t.Fatalf("retroactive change: status %d, want 200 (%s)", w.Code, w.Body)
 	}
 	var view struct {
 		Schedules []domain.Schedule `json:"schedules"`
@@ -158,7 +158,7 @@ func TestStateCarriesTheDueDays(t *testing.T) {
 	todayOnly := 1 << ((int(today.Weekday()) + 6) % 7)
 	body := fmt.Sprintf(`{"name":"Laundry","kind":"check","frequency":{"kind":"weekdays","weekdays":%d}}`, todayOnly)
 	if w := do(t, h, "POST", "/api/habits", body, "application/json"); w.Code != http.StatusCreated {
-		t.Fatalf("create: %d (%s)", w.Code, w.Body)
+		t.Fatalf("POST /api/habits: status %d, want 201 (%s)", w.Code, w.Body)
 	}
 
 	w := do(t, h, "GET", "/api/state", "", "")
@@ -197,7 +197,7 @@ func TestRateWindowAndYearsOfTheHistory(t *testing.T) {
 			DaysFrom string       `json:"daysFrom"`
 		}
 		if err := json.Unmarshal(mustDo(t, h, "GET", "/api/habits/"+id, "", http.StatusOK), &view); err != nil {
-			t.Fatal(err)
+			t.Fatalf("json.Unmarshal(GET /api/habits/{id}): %v", err)
 		}
 		if want := fmt.Sprintf("%d-01-01", old.Year()); view.DaysFrom != want {
 			t.Errorf("dueFrom = %s, want %s", view.DaysFrom, want)
@@ -229,7 +229,7 @@ func TestPatchArchivesAHabit(t *testing.T) {
 			ArchivedAt *time.Time `json:"archivedAt"`
 		}
 		if err := json.Unmarshal(mustDo(t, h, "GET", path, "", http.StatusOK), &view); err != nil {
-			t.Fatal(err)
+			t.Fatalf("json.Unmarshal(GET /api/habits/{id}): %v", err)
 		}
 		return view.ArchivedAt
 	}
@@ -249,7 +249,7 @@ func TestPatchArchivesAHabit(t *testing.T) {
 		Label string `json:"label"`
 	}
 	if err := json.Unmarshal(mustDo(t, h, "POST", "/api/undo", `{}`, http.StatusOK), &undone); err != nil {
-		t.Fatal(err)
+		t.Fatalf("json.Unmarshal(POST /api/undo): %v", err)
 	}
 	if undone.Label != `"{name}" archived` {
 		t.Errorf("undone step %q, want the archiving", undone.Label)
@@ -276,7 +276,7 @@ func TestStateHoldsArchivedHabits(t *testing.T) {
 		} `json:"habits"`
 	}
 	if err := json.Unmarshal(mustDo(t, h, "GET", "/api/state", "", http.StatusOK), &state); err != nil {
-		t.Fatal(err)
+		t.Fatalf("json.Unmarshal(GET /api/state): %v", err)
 	}
 	if state.Settings.ShowArchived {
 		t.Fatal("showArchived is on by default")

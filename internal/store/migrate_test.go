@@ -94,7 +94,7 @@ func oldDatabase(t *testing.T, path string, stmts ...string) {
 	t.Helper()
 	old, err := sql.Open("sqlite", "file:"+path+"?_pragma=foreign_keys(1)")
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("sql.Open: %v", err)
 	}
 	defer old.Close()
 	for _, stmt := range stmts {
@@ -152,7 +152,7 @@ func TestMigrationFromVersion3(t *testing.T) {
 		t.Errorf("entry = %+v, want the value 40", got)
 	}
 	if orphans := queryInt(t, st, `SELECT COUNT(*) FROM entries WHERE habit_id = 'h2'`); orphans != 0 {
-		t.Errorf("%d entries of the deleted habit left", orphans)
+		t.Errorf("%d entries of the deleted habit left, want 0", orphans)
 	}
 
 	fresh := openTestStore(t)
@@ -225,7 +225,7 @@ func schemaOf(t *testing.T, db *sql.DB) string {
 	t.Helper()
 	rows, err := db.Query(`SELECT sql FROM sqlite_master WHERE sql IS NOT NULL ORDER BY type, name`)
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("reading sqlite_master: %v", err)
 	}
 	defer rows.Close()
 	comment := regexp.MustCompile(`--[^\n]*`)
@@ -234,7 +234,7 @@ func schemaOf(t *testing.T, db *sql.DB) string {
 	for rows.Next() {
 		var def string
 		if err := rows.Scan(&def); err != nil {
-			t.Fatal(err)
+			t.Fatalf("rows.Scan: %v", err)
 		}
 		def = comment.ReplaceAllString(def, "")
 		def = strings.ReplaceAll(def, `"`, "")
@@ -245,7 +245,7 @@ func schemaOf(t *testing.T, db *sql.DB) string {
 		out = append(out, def)
 	}
 	if err := rows.Err(); err != nil {
-		t.Fatal(err)
+		t.Fatalf("rows.Err: %v", err)
 	}
 	return strings.Join(out, "\n")
 }

@@ -226,7 +226,7 @@ func TestEmptyHistory(t *testing.T) {
 	h := dailyHabit()
 	st := ComputeStats(h, valued(map[Date]int{}), friday, rateDays)
 	if st.CurrentStreak != 0 || st.BestStreak != 0 || st.Total != 0 {
-		t.Errorf("empty history: %+v", st)
+		t.Errorf("empty history: %+v, want no streak and a total of 0", st)
 	}
 	if st.CompletionRate != 0 {
 		t.Errorf("rate = %.3f, want 0", st.CompletionRate)

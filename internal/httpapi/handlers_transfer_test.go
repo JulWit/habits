@@ -41,10 +41,10 @@ func TestExportAndImportRestoreTheHistory(t *testing.T) {
 
 	w := do(t, src, "GET", "/api/export", "", "")
 	if w.Code != http.StatusOK {
-		t.Fatalf("export: %d (%s)", w.Code, w.Body)
+		t.Fatalf("GET /api/export: status %d, want 200 (%s)", w.Code, w.Body)
 	}
 	if cd := w.Header().Get("Content-Disposition"); !strings.HasPrefix(cd, "attachment;") {
-		t.Errorf("Content-Disposition = %q", cd)
+		t.Errorf("Content-Disposition = %q, want an attachment", cd)
 	}
 	file := w.Body.String()
 	for _, leak := range []string{"stats", "streak"} {
@@ -59,7 +59,7 @@ func TestExportAndImportRestoreTheHistory(t *testing.T) {
 		t.Fatalf("json.Unmarshal(POST /api/import): %v", err)
 	}
 	if result != (importResult{Habits: 2, Categories: 1}) {
-		t.Errorf("result = %+v", result)
+		t.Errorf("import result = %+v, want 2 habits and 1 category", result)
 	}
 
 	var state struct {
@@ -84,20 +84,20 @@ func TestExportAndImportRestoreTheHistory(t *testing.T) {
 		t.Fatalf("json.Unmarshal(GET /api/state): %v", err)
 	}
 	if len(state.Categories) != 1 || len(state.Habits) != 2 {
-		t.Fatalf("imported %d categories, %d habits", len(state.Categories), len(state.Habits))
+		t.Fatalf("imported %d categories, %d habits; want 1, 2", len(state.Categories), len(state.Habits))
 	}
 	c := state.Categories[0]
 	if c.Name != "Health" || c.Icon != "heart" || c.Color != "red" || !c.ShowProgress {
-		t.Errorf("category = %+v", c)
+		t.Errorf("category = %+v, want Health with heart, red and its progress shown", c)
 	}
 	got := state.Habits[0]
 	measured := got.Name == "Water" && got.Kind == "count" && got.Unit == "glasses" && got.StepValue == 20
 	shown := got.Color == "sky" && got.Icon == "droplet" && got.CategoryID == c.ID && got.ArchivedAt == nil
 	if !measured || !shown {
-		t.Errorf("habit = %+v", got)
+		t.Errorf("habit = %+v, want Water as exported", got)
 	}
 	if s := got.Schedules; len(s) != 1 || s[0].TargetValue != 80 || s[0].Frequency.Kind != "daily" {
-		t.Errorf("schedules = %+v", s)
+		t.Errorf("schedules = %+v, want one daily with the target 80", s)
 	}
 	if got.Entries[today.String()] != 30 {
 		t.Errorf("entries = %v, want 30 today", got.Entries)
@@ -106,7 +106,7 @@ func TestExportAndImportRestoreTheHistory(t *testing.T) {
 		t.Errorf("yesterday = %c, want skipped", got.Days[i])
 	}
 	if read := state.Habits[1]; read.Name != "Read" || read.ArchivedAt == nil {
-		t.Errorf("archived habit = %+v", read)
+		t.Errorf("habit = %+v, want Read, archived", read)
 	}
 
 	// A second import finds everything in place.
@@ -114,7 +114,7 @@ func TestExportAndImportRestoreTheHistory(t *testing.T) {
 		t.Fatalf("json.Unmarshal(POST /api/import): %v", err)
 	}
 	if result != (importResult{Skipped: 2}) {
-		t.Errorf("second import = %+v", result)
+		t.Errorf("second import = %+v, want both habits skipped", result)
 	}
 }
 
@@ -128,14 +128,14 @@ func TestImportIsAllOrNothing(t *testing.T) {
 		 "schedules":[{"from":"2026-01-01","targetValue":1,"frequency":{"kind":"sometimes"}}]}]}`
 	w := do(t, h, "POST", "/api/import", file, "application/json")
 	if w.Code != http.StatusUnprocessableEntity {
-		t.Fatalf("status %d (%s)", w.Code, w.Body)
+		t.Fatalf("POST /api/import: status %d, want 422 (%s)", w.Code, w.Body)
 	}
 	var problem problemBody
 	if err := json.Unmarshal(w.Body.Bytes(), &problem); err != nil {
 		t.Fatalf("json.Unmarshal(POST /api/import): %v (%s)", err, w.Body)
 	}
 	if problem.Code != "unknown_frequency" || problem.Params["habit"] != "Swim" {
-		t.Errorf("problem = %+v", problem)
+		t.Errorf("problem = %+v, want unknown_frequency naming Swim", problem)
 	}
 
 	var state struct {
@@ -146,7 +146,7 @@ func TestImportIsAllOrNothing(t *testing.T) {
 		t.Fatalf("json.Unmarshal(GET /api/state): %v", err)
 	}
 	if len(state.Categories) != 0 || len(state.Habits) != 0 {
-		t.Errorf("a failed import saved %d categories, %d habits", len(state.Categories), len(state.Habits))
+		t.Errorf("a failed import saved %d categories, %d habits; want none", len(state.Categories), len(state.Habits))
 	}
 }
 
@@ -159,7 +159,7 @@ func TestImportChecksTheFormat(t *testing.T) {
 	} {
 		w := do(t, h, "POST", "/api/import", file, "application/json")
 		if w.Code != http.StatusUnprocessableEntity || !strings.Contains(w.Body.String(), "import_format") {
-			t.Errorf("%s: %d (%s)", file, w.Code, w.Body)
+			t.Errorf("import %s: status %d (%s), want 422 import_format", file, w.Code, w.Body)
 		}
 	}
 }
@@ -181,7 +181,7 @@ func TestImportReusesCategoriesByName(t *testing.T) {
 		t.Fatalf("json.Unmarshal(POST /api/import): %v (%s)", err, w.Body)
 	}
 	if w.Code != http.StatusOK || result != (importResult{Habits: 1}) {
-		t.Errorf("import: %d, %+v", w.Code, result)
+		t.Errorf("import: status %d, %+v; want 200, 1 habit", w.Code, result)
 	}
 	var state struct {
 		Habits []struct{ CategoryID string }
@@ -198,7 +198,7 @@ func TestImportReusesCategoriesByName(t *testing.T) {
 		t.Fatalf("json.Unmarshal(GET /api/state): %v", err)
 	}
 	if len(state.Habits) != 0 {
-		t.Errorf("%d habits left after undoing the import", len(state.Habits))
+		t.Errorf("%d habits left after undoing the import, want 0", len(state.Habits))
 	}
 }
 
@@ -221,7 +221,7 @@ func TestDeleteDataEmptiesTheBoard(t *testing.T) {
 		t.Fatalf("json.Unmarshal(GET /api/state): %v", err)
 	}
 	if len(state.Categories) != 0 || len(state.Habits) != 0 || state.Settings.Theme != "system" {
-		t.Errorf("after deleting: %d categories, %d habits, theme %q",
+		t.Errorf("after deleting: %d categories, %d habits, theme %q; want 0, 0, system",
 			len(state.Categories), len(state.Habits), state.Settings.Theme)
 	}
 	// The app keeps working afterwards.

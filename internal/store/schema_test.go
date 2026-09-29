@@ -28,7 +28,7 @@ func TestSchemaConstraints(t *testing.T) {
 		"skip with value": `UPDATE entries SET skipped = 1`,
 	} {
 		if _, err := st.db.Exec(stmt); err == nil {
-			t.Errorf("%s: accepted", name)
+			t.Errorf("%s: accepted, want rejected", name)
 		}
 	}
 
@@ -37,7 +37,7 @@ func TestSchemaConstraints(t *testing.T) {
 	}
 	for _, table := range []string{"habits", "habit_schedules", "entries", "changes"} {
 		if n := queryInt(t, st, `SELECT COUNT(*) FROM `+table); n != 0 {
-			t.Errorf("%s: %d rows left after deleting the user", table, n)
+			t.Errorf("%s: %d rows left after deleting the user, want 0", table, n)
 		}
 	}
 }

@@ -27,12 +27,12 @@ func TestUndoAndRedoOverHTTP(t *testing.T) {
 
 	var undone store.Step
 	if err := json.Unmarshal(mustDo(t, h, "POST", "/api/undo", `{"id":`+step+`}`, http.StatusOK), &undone); err != nil {
-		t.Fatal(err)
+		t.Fatalf("json.Unmarshal(POST /api/undo): %v", err)
 	}
 	sameStep := fmt.Sprint(undone.ID) == step && undone.Template == "{name} — {date}"
 	sameParams := undone.Params["name"] == "Water" && undone.Params["date"] == today
 	if !sameStep || !sameParams {
-		t.Errorf("undone step = %+v", undone)
+		t.Errorf("undone step = %+v, want step %s for Water on %s", undone, step, today)
 	}
 	if value := entryValue(t, h, id, today); value != 0 {
 		t.Errorf("value after undo = %d, want none", value)
@@ -71,7 +71,7 @@ func TestUndoDeleteHabitOverHTTP(t *testing.T) {
 
 	w := do(t, h, "DELETE", "/api/habits/"+id, "", "")
 	if w.Code != http.StatusNoContent {
-		t.Fatalf("delete: %d (%s)", w.Code, w.Body)
+		t.Fatalf("DELETE /api/habits/{id}: status %d, want 204 (%s)", w.Code, w.Body)
 	}
 	mustDo(t, h, "GET", "/api/habits/"+id, "", http.StatusNotFound)
 	mustDo(t, h, "POST", "/api/undo", `{"id":`+w.Header().Get("Change-Id")+`}`, http.StatusOK)
@@ -87,7 +87,7 @@ func entryValue(t *testing.T, h http.Handler, id, date string) int {
 		Entries map[string]int `json:"entries"`
 	}
 	if err := json.Unmarshal(mustDo(t, h, "GET", "/api/habits/"+id, "", http.StatusOK), &view); err != nil {
-		t.Fatal(err)
+		t.Fatalf("json.Unmarshal(GET /api/habits/{id}): %v", err)
 	}
 	return view.Entries[date]
 }
@@ -106,13 +106,13 @@ func TestStateStatisticsFollowEveryChange(t *testing.T) {
 			} `json:"habits"`
 		}
 		if err := json.Unmarshal(mustDo(t, h, "GET", "/api/state", "", http.StatusOK), &state); err != nil {
-			t.Fatal(err)
+			t.Fatalf("json.Unmarshal(GET /api/state): %v", err)
 		}
 		return state.Habits[0].Stats.Total
 	}
 
 	if n := total(); n != 0 {
-		t.Fatalf("total = %d before any entry", n)
+		t.Fatalf("total = %d before any entry, want 0", n)
 	}
 	w := do(t, h, "PUT", "/api/habits/"+id+"/entries/"+today, `{"value":1}`, "application/json")
 	if n := total(); n != 1 {

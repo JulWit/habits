@@ -20,20 +20,20 @@ func writeChange(w http.ResponseWriter, changeID int64) {
 }
 
 // handleUndo undoes an undo step: the one with the given id, or the latest.
-func (s *Server) handleUndo(w http.ResponseWriter, r *http.Request) {
+func (s *server) handleUndo(w http.ResponseWriter, r *http.Request) {
 	s.turnStep(w, r, s.store.Undo)
 }
 
 // handleRedo redoes an undone step: the one with the given id, or the one
 // undone last.
-func (s *Server) handleRedo(w http.ResponseWriter, r *http.Request) {
+func (s *server) handleRedo(w http.ResponseWriter, r *http.Request) {
 	s.turnStep(w, r, s.store.Redo)
 }
 
 // turnStep undoes or redoes a step with turn and answers with it
 // (store.Step). Nothing to undo is 404 nothing_to_undo; a step whose data
 // was changed since is dropped, 409 changed_since.
-func (s *Server) turnStep(w http.ResponseWriter, r *http.Request, turn func(context.Context, string, int64) (store.Step, error)) {
+func (s *server) turnStep(w http.ResponseWriter, r *http.Request, turn func(context.Context, string, int64) (store.Step, error)) {
 	var body struct {
 		// ID is the step, or 0 for the latest.
 		ID int64 `json:"id"`

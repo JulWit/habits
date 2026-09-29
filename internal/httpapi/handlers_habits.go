@@ -61,7 +61,7 @@ const entryWindowDays = 200
 
 // handleState returns all data the client needs on startup. The query
 // parameter from=YYYY-MM-DD extends the entry window into the past.
-func (s *Server) handleState(w http.ResponseWriter, r *http.Request) {
+func (s *server) handleState(w http.ResponseWriter, r *http.Request) {
 	user := auth.MustUser(r.Context())
 	var from domain.Date
 	if v := r.URL.Query().Get("from"); v != "" {
@@ -179,7 +179,7 @@ func viewFor(h domain.Habit, hist history, entries map[domain.Date]domain.Entry,
 }
 
 // fullView returns the view of a habit of the user with all its entries.
-func (s *Server) fullView(tx *store.Tx, id string) (habitView, error) {
+func (s *server) fullView(tx *store.Tx, id string) (habitView, error) {
 	h, err := tx.Habit(id)
 	if err != nil {
 		return habitView{}, err
@@ -196,7 +196,7 @@ func (s *Server) fullView(tx *store.Tx, id string) (habitView, error) {
 }
 
 // handleGetHabit returns a habit with its full history.
-func (s *Server) handleGetHabit(w http.ResponseWriter, r *http.Request) {
+func (s *server) handleGetHabit(w http.ResponseWriter, r *http.Request) {
 	user := auth.MustUser(r.Context())
 	var view habitView
 	err := s.store.View(r.Context(), user.ID, func(tx *store.Tx) error {
@@ -213,7 +213,7 @@ func (s *Server) handleGetHabit(w http.ResponseWriter, r *http.Request) {
 
 // handleCreateHabit creates a habit. Name, kind and frequency are required.
 // The first schedule starts on the user's today.
-func (s *Server) handleCreateHabit(w http.ResponseWriter, r *http.Request) {
+func (s *server) handleCreateHabit(w http.ResponseWriter, r *http.Request) {
 	var in domain.HabitEdit
 	if !decodeJSON(w, r, &in) {
 		return
@@ -254,7 +254,7 @@ func (s *Server) handleCreateHabit(w http.ResponseWriter, r *http.Request) {
 // starts a new schedule from today on unless it is retroactive, and a change
 // of kind converts the recorded history. "archived" archives the habit or
 // reactivates it; the undo step is named after that then.
-func (s *Server) handleUpdateHabit(w http.ResponseWriter, r *http.Request) {
+func (s *server) handleUpdateHabit(w http.ResponseWriter, r *http.Request) {
 	var in domain.HabitEdit
 	if !decodeJSON(w, r, &in) {
 		return
@@ -310,7 +310,7 @@ func (s *Server) handleUpdateHabit(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleDeleteHabit deletes a habit with its history. Undo brings it back.
-func (s *Server) handleDeleteHabit(w http.ResponseWriter, r *http.Request) {
+func (s *server) handleDeleteHabit(w http.ResponseWriter, r *http.Request) {
 	user := auth.MustUser(r.Context())
 	changeID, err := s.store.Update(r.Context(), user.ID, func(tx *store.Tx) error {
 		h, err := tx.Habit(r.PathValue("id"))
@@ -329,7 +329,7 @@ func (s *Server) handleDeleteHabit(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleReorderHabits sets the order of the habits to the given IDs.
-func (s *Server) handleReorderHabits(w http.ResponseWriter, r *http.Request) {
+func (s *server) handleReorderHabits(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		IDs []string `json:"ids"`
 	}

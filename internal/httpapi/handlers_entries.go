@@ -15,7 +15,7 @@ import (
 // domain.EarliestEntry and domain.EntryHorizonDays after today; removing is
 // allowed on any day. The answer is the habit with its full history, as an
 // entry can change the status of other days too (see domain.HistoryStart).
-func (s *Server) handleSetEntry(w http.ResponseWriter, r *http.Request) {
+func (s *server) handleSetEntry(w http.ResponseWriter, r *http.Request) {
 	var change domain.EntryChange
 	if !decodeJSON(w, r, &change) {
 		return

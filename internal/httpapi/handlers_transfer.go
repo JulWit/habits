@@ -74,7 +74,7 @@ type importResult struct {
 
 // handleExport sends the user's habits, archived ones included, with their
 // history, and their categories as a file to download.
-func (s *Server) handleExport(w http.ResponseWriter, r *http.Request) {
+func (s *server) handleExport(w http.ResponseWriter, r *http.Request) {
 	user := auth.MustUser(r.Context())
 	var (
 		out   exportFile
@@ -169,7 +169,7 @@ func (p importProblem) Unwrap() error { return p.error }
 // same name, and only missing categories are created. Habits whose name is
 // already taken are skipped, so importing a file twice adds nothing. Nothing
 // is saved if any habit or category is invalid.
-func (s *Server) handleImport(w http.ResponseWriter, r *http.Request) {
+func (s *server) handleImport(w http.ResponseWriter, r *http.Request) {
 	var in exportFile
 	if !decodeJSONLimit(w, r, &in, maxImportBytes) {
 		return
@@ -296,7 +296,7 @@ func importHabit(tx *store.Tx, eh exportHabit, catByKey map[string]string) error
 // handleDeleteData removes all of the user's data: habits with their entries,
 // categories, settings and undo steps. It cannot be undone. DELETE is not a
 // simple method, so a cross-site request needs a CORS preflight, which fails.
-func (s *Server) handleDeleteData(w http.ResponseWriter, r *http.Request) {
+func (s *server) handleDeleteData(w http.ResponseWriter, r *http.Request) {
 	user := auth.MustUser(r.Context())
 	_, err := s.store.Update(r.Context(), user.ID, func(tx *store.Tx) error {
 		return tx.DeleteUser()

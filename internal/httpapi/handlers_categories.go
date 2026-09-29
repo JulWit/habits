@@ -9,7 +9,7 @@ import (
 )
 
 // handleCreateCategory creates a category. The name is required.
-func (s *Server) handleCreateCategory(w http.ResponseWriter, r *http.Request) {
+func (s *server) handleCreateCategory(w http.ResponseWriter, r *http.Request) {
 	var in domain.CategoryEdit
 	if !decodeJSON(w, r, &in) {
 		return
@@ -39,7 +39,7 @@ func (s *Server) handleCreateCategory(w http.ResponseWriter, r *http.Request) {
 
 // handleUpdateCategory updates the fields of a category given in the request
 // body.
-func (s *Server) handleUpdateCategory(w http.ResponseWriter, r *http.Request) {
+func (s *server) handleUpdateCategory(w http.ResponseWriter, r *http.Request) {
 	var in domain.CategoryEdit
 	if !decodeJSON(w, r, &in) {
 		return
@@ -66,7 +66,7 @@ func (s *Server) handleUpdateCategory(w http.ResponseWriter, r *http.Request) {
 
 // handleDeleteCategory deletes a category. Its habits stay, without a
 // category; undo puts them back.
-func (s *Server) handleDeleteCategory(w http.ResponseWriter, r *http.Request) {
+func (s *server) handleDeleteCategory(w http.ResponseWriter, r *http.Request) {
 	user := auth.MustUser(r.Context())
 	changeID, err := s.store.Update(r.Context(), user.ID, func(tx *store.Tx) error {
 		c, err := tx.Category(r.PathValue("id"))
@@ -102,7 +102,7 @@ func (s *Server) handleDeleteCategory(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleReorderCategories sets the order of the categories to the given IDs.
-func (s *Server) handleReorderCategories(w http.ResponseWriter, r *http.Request) {
+func (s *server) handleReorderCategories(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		IDs []string `json:"ids"`
 	}

@@ -16,7 +16,7 @@ const maxSkipDays = 366
 // all habits that are not archived, e.g. for a holiday. Only due days without
 // a value are skipped (domain.DaysToSkip). The answer counts the skipped
 // days; undo takes them back as one step.
-func (s *Server) handleSkipDays(w http.ResponseWriter, r *http.Request) {
+func (s *server) handleSkipDays(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		From     domain.Date `json:"from"`
 		To       domain.Date `json:"to"`

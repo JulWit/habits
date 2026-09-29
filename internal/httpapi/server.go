@@ -24,8 +24,8 @@ import (
 	"github.com/JulWit/habits/internal/store"
 )
 
-// Server holds the dependencies of the HTTP handlers.
-type Server struct {
+// server holds the dependencies of the HTTP handlers.
+type server struct {
 	cfg    config.Config
 	store  *store.Store
 	log    *slog.Logger
@@ -50,7 +50,7 @@ func New(cfg config.Config, st *store.Store, log *slog.Logger, webFS fs.FS) (htt
 	if err != nil {
 		return nil, err
 	}
-	s := &Server{
+	s := &server{
 		cfg:      cfg,
 		store:    st,
 		log:      log,
@@ -115,7 +115,7 @@ const contentSecurityPolicy = "default-src 'self'; " +
 
 // authenticate stores the user of each request in its context (auth.Resolve)
 // and rejects requests without one.
-func (s *Server) authenticate(next http.Handler) http.Handler {
+func (s *server) authenticate(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		user, err := auth.Resolve(s.cfg, r)
 		var refused *auth.Error
@@ -149,7 +149,7 @@ func securityHeaders(next http.Handler) http.Handler {
 
 // handleIndex renders index.html with the user's appearance settings, so the
 // page is styled correctly before any script runs.
-func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
+func (s *server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	user := auth.MustUser(r.Context())
 	prefs := s.settingsOf(r.Context(), user.ID)
 	data := struct {
@@ -183,7 +183,7 @@ type basis struct {
 
 // basis loads the user's settings in tx and derives the basis of their
 // statistics from them.
-func (s *Server) basis(tx *store.Tx) (basis, error) {
+func (s *server) basis(tx *store.Tx) (basis, error) {
 	prefs, err := tx.Settings()
 	if err != nil {
 		return basis{}, err
@@ -199,7 +199,7 @@ func (s *Server) basis(tx *store.Tx) (basis, error) {
 
 // location returns the user's time zone, or the server's if the user has not
 // chosen one.
-func (s *Server) location(prefs settings.Settings) *time.Location {
+func (s *server) location(prefs settings.Settings) *time.Location {
 	if prefs.TimeZone != "" {
 		if loc, err := time.LoadLocation(prefs.TimeZone); err == nil {
 			return loc
@@ -210,7 +210,7 @@ func (s *Server) location(prefs settings.Settings) *time.Location {
 
 // settingsOf returns the user's settings, or the defaults if they cannot be
 // loaded, for pages that are shown either way.
-func (s *Server) settingsOf(ctx context.Context, userID string) settings.Settings {
+func (s *server) settingsOf(ctx context.Context, userID string) settings.Settings {
 	var prefs settings.Settings
 	err := s.store.View(ctx, userID, func(tx *store.Tx) error {
 		var err error
@@ -241,7 +241,7 @@ func resolveLanguage(chosen, acceptLanguage string) string {
 }
 
 // logRequests logs every request with its status and duration.
-func (s *Server) logRequests(next http.Handler) http.Handler {
+func (s *server) logRequests(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 		rec := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
@@ -264,7 +264,7 @@ func (s *Server) logRequests(next http.Handler) http.Handler {
 }
 
 // recoverPanics logs a panicking handler and answers with status 500.
-func (s *Server) recoverPanics(next http.Handler) http.Handler {
+func (s *server) recoverPanics(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			if v := recover(); v != nil {

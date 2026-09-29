@@ -11,7 +11,7 @@ import (
 )
 
 // handleGetSettings returns the user's settings.
-func (s *Server) handleGetSettings(w http.ResponseWriter, r *http.Request) {
+func (s *server) handleGetSettings(w http.ResponseWriter, r *http.Request) {
 	user := auth.MustUser(r.Context())
 	var prefs settings.Settings
 	err := s.store.View(r.Context(), user.ID, func(tx *store.Tx) error {
@@ -28,7 +28,7 @@ func (s *Server) handleGetSettings(w http.ResponseWriter, r *http.Request) {
 
 // handleUpdateSettings updates the settings given in the request body; the
 // others are left unchanged. The store validates the result.
-func (s *Server) handleUpdateSettings(w http.ResponseWriter, r *http.Request) {
+func (s *server) handleUpdateSettings(w http.ResponseWriter, r *http.Request) {
 	var patch json.RawMessage
 	if !decodeJSON(w, r, &patch) {
 		return

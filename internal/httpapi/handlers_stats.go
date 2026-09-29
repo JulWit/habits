@@ -52,7 +52,7 @@ type daysResponse struct {
 // current one): how many of the habits that are not archived were due and
 // done on each day, and what that adds up to. ?category= limits them to the
 // habits of a category.
-func (s *Server) handleDays(w http.ResponseWriter, r *http.Request) {
+func (s *server) handleDays(w http.ResponseWriter, r *http.Request) {
 	user := auth.MustUser(r.Context())
 	var out daysResponse
 	err := s.store.View(r.Context(), user.ID, func(tx *store.Tx) error {
@@ -115,7 +115,7 @@ func habitsOfCategory(tx *store.Tx, categoryID string) ([]domain.Habit, error) {
 // handleHabitTotals sums a habit's values over a year (?year=, by default the
 // current one) per day, week or month (?grain=, by default month), up to
 // today.
-func (s *Server) handleHabitTotals(w http.ResponseWriter, r *http.Request) {
+func (s *server) handleHabitTotals(w http.ResponseWriter, r *http.Request) {
 	grain := domain.Grain(r.URL.Query().Get("grain"))
 	if grain == "" {
 		grain = domain.GrainMonth

@@ -63,6 +63,7 @@ func (t *Tx) Habits(includeArchived bool) ([]domain.Habit, error) {
 	}
 	defer rows.Close()
 
+	// Not nil, so that the API sends [] for a user without habits.
 	habits := []domain.Habit{}
 	for rows.Next() {
 		h, err := scanHabit(rows)

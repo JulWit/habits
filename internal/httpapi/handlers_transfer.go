@@ -159,6 +159,7 @@ type importProblem struct {
 	param, name string
 }
 
+// Unwrap returns the validation error, so errors.Is and errors.As see it.
 func (p importProblem) Unwrap() error { return p.error }
 
 // handleImport adds the habits and categories of an export file, with the

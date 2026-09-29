@@ -103,8 +103,8 @@ func (t *Tx) SetEntries(h domain.Habit, entries map[domain.Date]domain.Entry) er
 			return err
 		}
 	}
-	if err := t.watch("entries", "habit_id = ? AND date BETWEEN ? AND ?",
-		h.ID, days[0].String(), days[len(days)-1].String()); err != nil {
+	first, last := days[0].String(), days[len(days)-1].String()
+	if err := t.watch("entries", "habit_id = ? AND date BETWEEN ? AND ?", h.ID, first, last); err != nil {
 		return err
 	}
 	now := formatTime(t.now)

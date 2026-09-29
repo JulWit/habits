@@ -39,6 +39,7 @@ func (t *Tx) Categories() ([]domain.Category, error) {
 	}
 	defer rows.Close()
 
+	// Not nil, so that the API sends [] for a user without categories.
 	out := []domain.Category{}
 	for rows.Next() {
 		c, err := scanCategory(rows)

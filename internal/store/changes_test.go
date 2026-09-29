@@ -78,8 +78,8 @@ func TestUndoAndRedoAnEntry(t *testing.T) {
 func TestUndoDeleteHabitRestoresItsHistory(t *testing.T) {
 	st := openTestStore(t)
 	h := mustCreateHabit(t, st, "alice", countHabit(domain.KindCount, 80))
-	if err := h.Reschedule(domain.Schedule{TargetValue: 100, Frequency: domain.Frequency{Kind: domain.FreqDaily}},
-		day(2026, time.March, 1), false); err != nil {
+	daily := domain.Schedule{TargetValue: 100, Frequency: domain.Frequency{Kind: domain.FreqDaily}}
+	if err := h.Reschedule(daily, day(2026, time.March, 1), false); err != nil {
 		t.Fatal(err)
 	}
 	update(t, st, "alice", func(tx *Tx) error { return tx.SaveHabit(&h) })

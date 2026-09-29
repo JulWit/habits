@@ -47,6 +47,7 @@ type Error struct {
 	Reason  string
 }
 
+// Error returns the reason for the log; the client gets Message.
 func (e *Error) Error() string { return e.Reason }
 
 // Resolve determines the user of r according to cfg.AuthMode. In

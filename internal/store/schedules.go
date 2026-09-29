@@ -52,13 +52,13 @@ func collectSchedules(rows *sql.Rows) (map[string][]domain.Schedule, error) {
 			sc       domain.Schedule
 		)
 		f := &sc.Frequency
-		if err := rows.Scan(&habitID, &from, &sc.TargetValue, &sc.TargetType,
+		err := rows.Scan(&habitID, &from, &sc.TargetValue, &sc.TargetType,
 			&f.Kind, &f.TimesPerWeek, &f.TimesPerMonth, &weekdays, &f.IntervalDays,
-			&f.WeekInterval, &f.WeekOfMonth, &anchor); err != nil {
+			&f.WeekInterval, &f.WeekOfMonth, &anchor)
+		if err != nil {
 			return nil, fmt.Errorf("reading schedule: %w", err)
 		}
 		f.Weekdays = domain.Weekdays(weekdays)
-		var err error
 		if sc.From, err = domain.ParseDate(from); err != nil {
 			return nil, fmt.Errorf("schedule of habit %s: %w", habitID, err)
 		}

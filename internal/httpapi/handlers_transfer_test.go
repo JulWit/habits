@@ -85,8 +85,9 @@ func TestExportAndImportRestoreTheHistory(t *testing.T) {
 		t.Errorf("category = %+v", c)
 	}
 	got := state.Habits[0]
-	if got.Name != "Water" || got.Kind != "count" || got.Unit != "glasses" || got.StepValue != 20 ||
-		got.Color != "sky" || got.Icon != "droplet" || got.CategoryID != c.ID || got.ArchivedAt != nil {
+	measured := got.Name == "Water" && got.Kind == "count" && got.Unit == "glasses" && got.StepValue == 20
+	shown := got.Color == "sky" && got.Icon == "droplet" && got.CategoryID == c.ID && got.ArchivedAt == nil
+	if !measured || !shown {
 		t.Errorf("habit = %+v", got)
 	}
 	if s := got.Schedules; len(s) != 1 || s[0].TargetValue != 80 || s[0].Frequency.Kind != "daily" {

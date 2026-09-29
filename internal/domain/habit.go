@@ -1,3 +1,7 @@
+// Package domain holds the rules of the habit tracker: habits and their
+// schedules, the status of each day, streaks, statistics and totals, and the
+// validation errors shown to the user. It does no I/O; the store persists its
+// types and the HTTP API sends them.
 package domain
 
 import (

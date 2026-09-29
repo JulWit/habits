@@ -104,8 +104,8 @@ func TestIndexCarriesTheStoredAppearance(t *testing.T) {
 		t.Fatalf("writing settings: %d (%s)", w.Code, w.Body)
 	}
 	w := do(t, h, "GET", "/", "", "")
-	if body := w.Body.String(); !strings.Contains(body, `data-theme="dark"`) ||
-		!strings.Contains(body, `data-font="geist"`) {
+	body := w.Body.String()
+	if !strings.Contains(body, `data-theme="dark"`) || !strings.Contains(body, `data-font="geist"`) {
 		t.Errorf("shell without the stored appearance: %s", body)
 	}
 	if cc := w.Header().Get("Cache-Control"); cc != "no-store" {
@@ -268,9 +268,10 @@ func TestRefusedAuthenticationIsAProblem(t *testing.T) {
 	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
 		t.Fatalf("reading the answer: %v (%s)", err, w.Body)
 	}
-	if w.Code != http.StatusForbidden || body.Code != "untrusted_proxy" || body.Status != http.StatusForbidden ||
-		!strings.HasPrefix(w.Header().Get("Content-Type"), "application/problem+json") {
-		t.Errorf("status %d, Content-Type %q, body %+v", w.Code, w.Header().Get("Content-Type"), body)
+	contentType := w.Header().Get("Content-Type")
+	refused := w.Code == http.StatusForbidden && body.Status == http.StatusForbidden && body.Code == "untrusted_proxy"
+	if !refused || !strings.HasPrefix(contentType, "application/problem+json") {
+		t.Errorf("status %d, Content-Type %q, body %+v", w.Code, contentType, body)
 	}
 	if w.Header().Get("Content-Security-Policy") == "" {
 		t.Error("the refusal has no security headers")

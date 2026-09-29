@@ -90,11 +90,12 @@ func (s *Store) View(ctx context.Context, userID string, fn func(*Tx) error) err
 // Update runs fn in a transaction that changes the user's data and commits
 // it if fn succeeds. If fn calls Tx.Record, the change is kept as an undo
 // step and its ID returned; otherwise the ID is 0.
-func (s *Store) Update(ctx context.Context, userID string, fn func(*Tx) error) (changeID int64, err error) {
+func (s *Store) Update(ctx context.Context, userID string, fn func(*Tx) error) (int64, error) {
 	if strings.TrimSpace(userID) == "" {
 		return 0, errors.New("no user")
 	}
-	err = s.inTx(ctx, "saving", func(tx *sql.Tx) error {
+	var changeID int64
+	err := s.inTx(ctx, "saving", func(tx *sql.Tx) error {
 		t := &Tx{ctx: ctx, tx: tx, userID: userID, now: time.Now().UTC(), log: &changeLog{}}
 		if err := t.ensureUser(); err != nil {
 			return err
@@ -102,7 +103,8 @@ func (s *Store) Update(ctx context.Context, userID string, fn func(*Tx) error) (
 		if err := fn(t); err != nil {
 			return err
 		}
-		changeID, err = t.saveChange()
+		id, err := t.saveChange()
+		changeID = id
 		return err
 	})
 	if err != nil {

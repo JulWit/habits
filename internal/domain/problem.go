@@ -44,6 +44,7 @@ func (p *Problem) Message() string {
 	})
 }
 
+// Error returns the English message, marked as a validation error.
 func (p *Problem) Error() string { return ErrValidation.Error() + ": " + p.Message() }
 
 // Is reports whether target is ErrValidation.

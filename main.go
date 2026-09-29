@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 
@@ -70,9 +71,16 @@ func run(log *slog.Logger) error {
 	defer st.Close()
 
 	// Undo steps are removed once their retention period is over: now, and
-	// daily for a server that runs for long.
+	// daily for a server that runs for long. The daily purge ends before the
+	// store closes (deferred calls run in reverse order).
 	purgeSteps(ctx, st, cfg.UndoRetention, log)
-	go purgeDaily(ctx, st, cfg.UndoRetention, log)
+	purgeCtx, stopPurging := context.WithCancel(ctx)
+	var purging sync.WaitGroup
+	purging.Go(func() { purgeDaily(purgeCtx, st, cfg.UndoRetention, log) })
+	defer func() {
+		stopPurging()
+		purging.Wait()
+	}()
 
 	handler, err := httpapi.New(cfg, st, log, webFS)
 	if err != nil {

@@ -281,6 +281,7 @@ type statusRecorder struct {
 	written bool
 }
 
+// WriteHeader records the status of the first call and passes it on.
 func (r *statusRecorder) WriteHeader(code int) {
 	if !r.written {
 		r.status, r.written = code, true
@@ -288,6 +289,8 @@ func (r *statusRecorder) WriteHeader(code int) {
 	r.ResponseWriter.WriteHeader(code)
 }
 
+// Write passes b on; a body written first implies the status 200, which the
+// recorder keeps.
 func (r *statusRecorder) Write(b []byte) (int, error) {
 	r.written = true
 	return r.ResponseWriter.Write(b)

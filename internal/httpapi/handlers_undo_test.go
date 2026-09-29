@@ -29,8 +29,9 @@ func TestUndoAndRedoOverHTTP(t *testing.T) {
 	if err := json.Unmarshal(mustDo(t, h, "POST", "/api/undo", `{"id":`+step+`}`, http.StatusOK), &undone); err != nil {
 		t.Fatal(err)
 	}
-	if fmt.Sprint(undone.ID) != step || undone.Template != "{name} — {date}" ||
-		undone.Params["name"] != "Water" || undone.Params["date"] != today {
+	sameStep := fmt.Sprint(undone.ID) == step && undone.Template == "{name} — {date}"
+	sameParams := undone.Params["name"] == "Water" && undone.Params["date"] == today
+	if !sameStep || !sameParams {
 		t.Errorf("undone step = %+v", undone)
 	}
 	if value := entryValue(t, h, id, today); value != 0 {

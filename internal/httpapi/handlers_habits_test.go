@@ -61,8 +61,8 @@ func TestKindChangeConvertsTheHistory(t *testing.T) {
 		t.Fatalf("reading response: %v", err)
 	}
 	day := domain.Today(time.UTC).AddDays(-1).String()
-	if w := do(t, h, "PUT", "/api/habits/"+created.ID+"/entries/"+day,
-		`{"value":5200}`, "application/json"); w.Code != http.StatusOK {
+	w = do(t, h, "PUT", "/api/habits/"+created.ID+"/entries/"+day, `{"value":5200}`, "application/json")
+	if w.Code != http.StatusOK {
 		t.Fatalf("entry: %d (%s)", w.Code, w.Body)
 	}
 

@@ -301,8 +301,8 @@ func TestKindDescriptorsMatchTheKindMethods(t *testing.T) {
 			t.Errorf("no descriptor for %q", k)
 			continue
 		}
-		if info.Scale != k.Scale() || info.Step != k.Step() ||
-			info.Max != k.MaxTarget() || info.Unit != k.Unit() {
+		want := KindInfo{Scale: k.Scale(), Step: k.Step(), Max: k.MaxTarget(), Unit: k.Unit()}
+		if info != want {
 			t.Errorf("%q: %+v differs from the methods", k, info)
 		}
 	}

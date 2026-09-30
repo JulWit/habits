@@ -1,9 +1,8 @@
 // Inline SVG icons. They use currentColor. The markup is constant, so it is
 // safe to assign with innerHTML.
 
-import {el, markup} from './dom.js';
 import {t} from './i18n.js';
-import {h} from './vue.js';
+import {computed, h} from './vue.js';
 
 /**
  * Wraps the shapes of an icon in its SVG element.
@@ -344,45 +343,6 @@ export const habitIcons = {
   check: icons.check,
 };
 
-/**
- * Returns the tile for an icon, or null if there is no drawing for `name`.
- * Without a colour, the tile is neutral.
- * @param {string} name
- * @param {?string} color
- * @param {string} className
- * @return {?HTMLElement}
- */
-function iconBadge(name, color, className) {
-  const svg = habitIcons[name];
-  if (!svg) return null;
-  return el(
-      'span', {
-        class: [className, !color && 'is-neutral'],
-        style: {'--habit-color': color ? colorValue(color) : undefined},
-      },
-      markup(svg));
-}
-
-/**
- * Returns the icon tile of a habit, in the habit's colour.
- * @param {!Habit} habit
- * @param {string=} className
- * @return {?HTMLElement}
- */
-export function habitIconBadge(habit, className = 'habit-icon') {
-  return iconBadge(habit.icon, habit.color, className);
-}
-
-/**
- * Returns the icon tile of a category, in its colour or neutral.
- * @param {!Category} category
- * @param {string=} className
- * @return {?HTMLElement}
- */
-export function categoryIconBadge(category, className = 'habit-icon') {
-  return iconBadge(category.icon, category.color || null, className);
-}
-
 // Names of the icons and colours, for screen readers and tooltips. Missing
 // entries fall back to the identifier.
 const ICON_LABELS = {
@@ -459,47 +419,6 @@ export function iconLabel(name) {
 export function colorLabel(name) {
   const label = COLOR_LABELS[name];
   return label ? t(label) : name;
-}
-
-/**
- * Fills `host` with a radio button per icon, preceded by "no icon", and calls
- * `onPick` with the chosen name ("" for none). Names without a drawing are
- * skipped.
- * @param {!Element} host
- * @param {?Array<string>|undefined} names
- * @param {function(string): void} onPick
- */
-export function buildIconChoices(host, names, onPick) {
-  const offered = ['', ...(names ?? []).filter((name) => habitIcons[name])];
-  host.replaceChildren(
-      ...offered.map((name) => {
-        // "No icon" is an empty tile.
-        const b =
-            el('button', {
-              type: 'button',
-              class: ['icon-choice', !name && 'is-none'],
-              data: {icon: name},
-              role: 'radio',
-              'aria-label': name ? t('Icon {name}', {name: iconLabel(name)}) :
-                                   t('No icon'),
-              title: name ? iconLabel(name) : t('No icon'),
-            },
-               name && markup(habitIcons[name]));
-        b.addEventListener('click', () => onPick(name));
-        return b;
-      }),
-  );
-}
-
-/**
- * Selects the choice for `name`.
- * @param {!Element} host
- * @param {string} name
- */
-export function markIconChoice(host, name) {
-  for (const node of host.querySelectorAll('.icon-choice')) {
-    node.setAttribute('aria-checked', String(node.dataset.icon === name));
-  }
 }
 
 /**
@@ -586,6 +505,90 @@ export const IconBadge = {
           :style="color ? {'--habit-color': colorValue(color)} : null">
       <app-icon :svg="habitIcons[icon]"/>
     </span>`,
+};
+
+/**
+ * Band colour for a grey accent, as store.NeutralBand.
+ * @const {string}
+ */
+export const NEUTRAL = 'neutral';
+
+/**
+ * A radio group of colour swatches, bound with v-model to the chosen colour.
+ * `colors` lists the palette names offered; "" stands for no colour and
+ * NEUTRAL for the grey accent.
+ */
+export const ColorSwatches = {
+  name: 'ColorSwatches',
+  props: {
+    colors: {type: Array, required: true},
+    modelValue: String,
+  },
+  emits: ['update:modelValue'],
+  setup() {
+    /**
+     * Returns the CSS value shown by a swatch.
+     * @param {string} color
+     * @return {string|undefined}
+     */
+    const swatch = (color) => {
+      if (color === NEUTRAL) return 'var(--today-neutral)';
+      return color ? colorValue(color) : undefined;
+    };
+    /**
+     * Returns the name of a swatch.
+     * @param {string} color
+     * @return {string}
+     */
+    const name = (color) => {
+      if (color === NEUTRAL) return t('Neutral');
+      return color ? colorLabel(color) : t('No colour');
+    };
+    return {swatch, name, colorLabel};
+  },
+  template: `
+    <div class="swatches" role="radiogroup" :aria-label="t('Colour')">
+      <button v-for="color in colors" :key="color" type="button" class="swatch"
+              :class="{'is-none': !color}" :style="{'--swatch': swatch(color)}"
+              role="radio"
+              :aria-checked="String(color === modelValue)"
+              :aria-label="color && color !== 'neutral' ? t('Colour {color}', {color: colorLabel(color)}) : name(color)"
+              :title="name(color)" @click="$emit('update:modelValue', color)"></button>
+    </div>`,
+};
+
+/**
+ * A radio group of the habit icons `names`, preceded by "no icon", bound with
+ * v-model to the chosen name ("" for none). Names without a drawing are
+ * left out. The icons are drawn in the colour --habit-color set around them.
+ */
+export const IconChoices = {
+  name: 'IconChoices',
+  props: {
+    names: {type: Array, default: () => []},
+    modelValue: String,
+  },
+  emits: ['update:modelValue'],
+  setup(props) {
+    return {
+      habitIcons,
+      iconLabel,
+      offered: computed(
+          () => ['', ...props.names.filter((name) => habitIcons[name])]),
+    };
+  },
+  // "No icon" is an empty tile.
+  template: `
+    <div class="icon-choices" role="radiogroup" :aria-label="t('Icon')">
+      <button v-for="name in offered" :key="name" type="button" class="icon-choice"
+              :class="{'is-none': !name}" role="radio"
+              :aria-checked="String(name === modelValue)"
+              :aria-label="name ? t('Icon {name}', {name: iconLabel(name)}) : t('No icon')"
+              :title="name ? iconLabel(name) : t('No icon')"
+              @click="$emit('update:modelValue', name)">
+        <app-icon v-if="name" :svg="habitIcons[name]"/>
+      </button>
+    </div>`,
 };
 
 /**

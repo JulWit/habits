@@ -1,12 +1,13 @@
 // Search dialog for habits and categories, opened from the title bar or with
 // "/". Selecting a result opens it.
 
-import {el} from './dom.js';
 import * as habitHelpers from './habit-helpers.js';
 import {t} from './i18n.js';
-import {categoryIconBadge, colorValue, habitIconBadge} from './icons.js';
+import {colorValue, hasHabitIcon} from './icons.js';
 import {closePage, openPage} from './page-stack.js';
-import {groupedHabits, subscribe} from './state.js';
+import {groupedHabits} from './state.js';
+import {createVueApp} from './vue-app.js';
+import {computed, nextTick, onMounted, ref, watch} from './vue.js';
 
 /**
  * A search result: a habit with its category, or a category with its habits.
@@ -19,24 +20,14 @@ import {groupedHabits, subscribe} from './state.js';
  */
 let SearchEntry;
 
-/** @type {!HTMLDialogElement} */
-let dialog;
-/** @type {!HTMLInputElement} */
-let input;
-/** @type {!HTMLElement} */
-let list;
-/** @type {!HTMLElement} */
-let empty;
-/** @type {!HTMLButtonElement} */
-let clear;
+/** The query as typed. */
+const query = ref('');
 
-/**
- * The displayed results.
- * @type {!Array<!SearchEntry>}
- */
-let results = [];
 /** The index of the selected result. */
-let active = 0;
+const active = ref(0);
+
+/** Counts the openings, so the list is measured once it can be. */
+const openings = ref(0);
 
 /**
  * Callbacks set by app.js.
@@ -45,70 +36,21 @@ let active = 0;
 let deps;
 
 /**
- * Initialises the search.
- * @param {!Object<string, !Function>} handlers the handlers of app.js
+ * The dialog, once mounted.
+ * @type {?HTMLDialogElement}
  */
-export function initSearch(handlers) {
-  deps = handlers;
-  dialog = document.getElementById('search-dialog');
-  input = document.getElementById('search-input');
-  list = document.getElementById('search-results');
-  empty = document.getElementById('search-empty');
-
-  const button = document.getElementById('open-search');
-  button.addEventListener('click', openSearch);
-  // Without a keyboard the shortcut in the title means nothing; screen readers
-  // would still read it out.
-  if (matchMedia('(pointer: coarse)').matches) button.title = t('Search');
-  input.addEventListener('input', () => {
-    active = 0;
-    draw();
-  });
-  input.addEventListener('keydown', onKey);
-
-  clear = document.getElementById('search-clear');
-  clear.addEventListener('click', () => {
-    input.value = '';
-    active = 0;
-    draw();
-    input.focus();
-  });
-
-  list.addEventListener('click', (event) => {
-    const option = event.target.closest('[data-index]');
-    if (option) choose(results[Number(option.dataset.index)]);
-  });
-  // Pointer and arrow keys move the same selection.
-  list.addEventListener('pointermove', (event) => {
-    const option = event.target.closest('[data-index]');
-    if (option && Number(option.dataset.index) !== active) {
-      active = Number(option.dataset.index);
-      mark();
-    }
-  });
-
-  // Close on a click on the backdrop.
-  dialog.addEventListener('click', (event) => {
-    if (event.target === dialog) closePage(dialog);
-  });
-
-  // Update the results when the state changes.
-  subscribe(() => {
-    if (dialog.open) draw();
-  });
-}
+let dialog = null;
 
 /**
  * Opens the search with an empty query.
  */
 export function openSearch() {
   if (dialog.open) return;
-  input.value = '';
-  active = 0;
-  // Open first, so that draw() can measure the list.
+  query.value = '';
+  active.value = 0;
   openPage(dialog);
-  draw();
-  input.focus();
+  openings.value++;
+  dialog.querySelector('input').focus();
 }
 
 /**
@@ -129,128 +71,30 @@ function candidates() {
 /**
  * Reports whether an entry matches the query, which is in lower case.
  * @param {!SearchEntry} entry
- * @param {string} query
+ * @param {string} text
  * @return {boolean}
  */
-function matches(entry, query) {
-  if (query === '') return true;
+function matches(entry, text) {
+  if (text === '') return true;
   // Habits also match the name of their category.
-  const text = entry.kind === 'habit' ?
+  const name = entry.kind === 'habit' ?
       `${entry.item.name} ${entry.category?.name ?? ''}` :
       entry.item.name;
-  return text.toLowerCase().includes(query);
+  return name.toLowerCase().includes(text);
 }
 
 /**
- * Lists the results of the query.
- */
-function draw() {
-  const query = input.value.trim().toLowerCase();
-  clear.hidden = input.value === '';
-  results = candidates().filter((entry) => matches(entry, query));
-  active = Math.min(active, Math.max(0, results.length - 1));
-
-  list.replaceChildren(...results.map(option));
-  list.hidden = results.length === 0;
-  empty.hidden = results.length > 0;
-  // Measure without the class's padding.
-  list.classList.remove('is-scrolling');
-  list.classList.toggle('is-scrolling', list.scrollHeight > list.clientHeight);
-  mark();
-}
-
-/**
- * Builds the option of a result.
- * @param {!SearchEntry} entry
- * @param {number} index
- * @return {!HTMLElement}
- */
-function option(entry, index) {
-  const isHabit = entry.kind === 'habit';
-  const meta = isHabit ? habitMeta(entry) : categoryMeta(entry);
-
-  return el(
-      'div',
-      {
-        class: [
-          'search-option',
-          isHabit && entry.item.archivedAt ? 'is-archived' : '',
-        ],
-        id: `search-option-${index}`,
-        data: {index},
-        role: 'option',
-      },
-      optionDot(entry),
-      el('span', {class: 'search-option-name'}, entry.item.name),
-      el('span', {class: 'search-option-meta'}, meta),
-  );
-}
-
-/**
- * Returns the detail shown after a habit: its category, or without one its
- * target.
+ * Returns the detail shown after a result: for a habit its category, or
+ * without one its target; for a category its number of habits.
  * @param {!SearchEntry} entry
  * @return {string}
  */
-function habitMeta(entry) {
-  return entry.category?.name ?? habitHelpers.describeHabit(entry.item);
-}
-
-/**
- * Returns the detail shown after a category: its number of habits.
- * @param {!SearchEntry} entry
- * @return {string}
- */
-function categoryMeta(entry) {
+function meta(entry) {
+  if (entry.kind === 'habit') {
+    return entry.category?.name ?? habitHelpers.describeHabit(entry.item);
+  }
   const n = entry.habits.length;
   return n === 1 ? t('Category · 1 habit') : t('Category · {n} habits', {n});
-}
-
-/**
- * Returns the icon of a result, or a dot if it has none.
- * @param {!SearchEntry} entry
- * @return {!HTMLElement}
- */
-function optionDot({kind, item}) {
-  if (kind === 'habit') {
-    return habitIconBadge(item, 'habit-icon is-small') ??
-        el('span',
-           {class: 'dot', style: {'--habit-color': colorValue(item.color)}});
-  }
-  return categoryIconBadge(item, 'habit-icon is-small') ??
-      el('span', {class: 'dot is-category'});
-}
-
-/** Highlights the selected result and scrolls it into view. */
-function mark() {
-  for (const node of list.children) {
-    node.setAttribute(
-        'aria-selected', String(Number(node.dataset.index) === active));
-  }
-  const current = list.children[active];
-  if (current) {
-    input.setAttribute('aria-activedescendant', current.id);
-    current.scrollIntoView({block: 'nearest'});
-  } else {
-    input.removeAttribute('aria-activedescendant');
-  }
-}
-
-/**
- * Moves the selection with the arrow keys and chooses it with Enter.
- * @param {!KeyboardEvent} event
- */
-function onKey(event) {
-  if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
-    event.preventDefault();
-    if (results.length === 0) return;
-    const step = event.key === 'ArrowDown' ? 1 : -1;
-    active = (active + step + results.length) % results.length;
-    mark();
-  } else if (event.key === 'Enter') {
-    event.preventDefault();
-    if (results[active]) choose(results[active]);
-  }
 }
 
 /**
@@ -267,4 +111,146 @@ async function choose(entry) {
   } else {
     deps.openCategory(entry.item.id);
   }
+}
+
+/** The search dialog (see openSearch). The input controls the list. */
+const SearchDialog = {
+  name: 'SearchDialog',
+  setup() {
+    const el = ref(null);
+    const input = ref(null);
+    const list = ref(null);
+    const scrolling = ref(false);
+    onMounted(() => {
+      dialog = el.value;
+    });
+
+    const results = computed(() => {
+      const text = query.value.trim().toLowerCase();
+      return candidates().filter((entry) => matches(entry, text));
+    });
+    // A new query selects the first result; a shorter list keeps the
+    // selection within it.
+    watch(query, () => {
+      active.value = 0;
+    });
+    watch(results, (now) => {
+      active.value = Math.min(active.value, Math.max(0, now.length - 1));
+    });
+
+    // The list gets room for its scrollbar only when it overflows (measured
+    // without the class's padding), and the selection stays in view.
+    watch([results, active, openings], async () => {
+      await nextTick();
+      if (!list.value) return;
+      scrolling.value = false;
+      await nextTick();
+      scrolling.value = list.value.scrollHeight > list.value.clientHeight;
+      list.value.children[active.value]?.scrollIntoView({block: 'nearest'});
+    }, {flush: 'post'});
+
+    /**
+     * Moves the selection with the arrow keys and chooses it with Enter.
+     * @param {!KeyboardEvent} event
+     */
+    const onKey = (event) => {
+      const count = results.value.length;
+      if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+        event.preventDefault();
+        if (count === 0) return;
+        const step = event.key === 'ArrowDown' ? 1 : -1;
+        active.value = (active.value + step + count) % count;
+      } else if (event.key === 'Enter') {
+        event.preventDefault();
+        choose(results.value[active.value]);
+      }
+    };
+
+    return {
+      el,
+      input,
+      list,
+      scrolling,
+      query,
+      active,
+      results,
+      meta,
+      choose,
+      onKey,
+      colorValue,
+      hasHabitIcon,
+      clear: () => {
+        query.value = '';
+        input.value.focus();
+      },
+      /**
+       * Closes the search on a click on the backdrop.
+       * @param {!MouseEvent} event
+       */
+      onBackdrop: (event) => {
+        if (event.target === el.value) closePage(el.value);
+      },
+    };
+  },
+  // Pointer and arrow keys move the same selection. Our own clear button:
+  // Firefox has none, Chrome's is hidden. A result without an icon gets a
+  // dot.
+  template: `
+    <dialog ref="el" id="search-dialog" class="dialog search-dialog"
+            :aria-label="t('Search')" @click="onBackdrop">
+      <div class="search-field">
+        <span class="search-icon" aria-hidden="true"><app-icon name="search"/></span>
+        <input ref="input" id="search-input" v-model="query" type="search"
+               :placeholder="t('Search habits and categories…')" autocomplete="off"
+               spellcheck="false" :aria-label="t('Search habits and categories')"
+               role="combobox" aria-expanded="true" aria-autocomplete="list"
+               aria-controls="search-results"
+               :aria-activedescendant="results[active] ? 'search-option-' + active : undefined"
+               @keydown="onKey">
+        <button v-if="query !== ''" class="icon-button search-clear" type="button"
+                :title="t('Clear search')" :aria-label="t('Clear search')" @click="clear">
+          <app-icon name="close"/>
+        </button>
+      </div>
+      <div ref="list" id="search-results" class="search-results" role="listbox"
+           :aria-label="t('Results')" :class="{'is-scrolling': scrolling}"
+           :hidden="results.length === 0">
+        <div v-for="(entry, i) in results" :key="entry.kind + entry.item.id"
+             :id="'search-option-' + i" class="search-option"
+             :class="{'is-archived': entry.kind === 'habit' && entry.item.archivedAt}"
+             role="option" :aria-selected="String(i === active)"
+             @click="choose(entry)" @pointermove="active = i">
+          <template v-if="entry.kind === 'habit'">
+            <icon-badge v-if="hasHabitIcon(entry.item.icon)" class="habit-icon is-small"
+                        :icon="entry.item.icon" :color="entry.item.color"/>
+            <span v-else class="dot" :style="{'--habit-color': colorValue(entry.item.color)}"></span>
+          </template>
+          <template v-else>
+            <icon-badge v-if="hasHabitIcon(entry.item.icon)" class="habit-icon is-small"
+                        :icon="entry.item.icon" :color="entry.item.color || null"/>
+            <span v-else class="dot is-category"></span>
+          </template>
+          <span class="search-option-name">{{ entry.item.name }}</span>
+          <span class="search-option-meta">{{ meta(entry) }}</span>
+        </div>
+      </div>
+      <p v-if="results.length === 0" class="search-empty">{{ t('No habit or category matches.') }}</p>
+    </dialog>`,
+};
+
+/**
+ * Mounts the search into `host` and connects the search button of the title
+ * bar.
+ * @param {!Object<string, !Function>} handlers the handlers of app.js
+ * @param {!Element} host
+ */
+export function initSearch(handlers, host) {
+  deps = handlers;
+  createVueApp(SearchDialog).mount(host);
+
+  const button = document.getElementById('open-search');
+  button.addEventListener('click', openSearch);
+  // Without a keyboard the shortcut in the title means nothing; screen
+  // readers would still read it out.
+  if (matchMedia('(pointer: coarse)').matches) button.title = t('Search');
 }

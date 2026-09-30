@@ -106,13 +106,15 @@ async function main() {
   paintIcons();
   // Before the board, which measures its width depending on these settings.
   initAppearance();
-  initCategoryPicker({createCategory: actions.createCategory});
-  initEditor();
-  initCategoryEditor();
-  initValueDialog();
-  initSkipDialog();
+  const host = (id) => document.getElementById(`${id}-host`);
+  initCategoryPicker(
+      {createCategory: actions.createCategory}, host('category-picker'));
+  initEditor(host('habit-editor'));
+  initCategoryEditor(host('category-editor'));
+  initValueDialog(host('day-editor'));
+  initSkipDialog(host('skip-editor'));
   initOverview(handlers);
-  initSearch(handlers);
+  initSearch(handlers, host('search-dialog'));
   initDetail(handlers, document.getElementById('habit-view-host'));
   initCategory(handlers, document.getElementById('category-view-host'));
   initDays(handlers, document.getElementById('day-stats-view-host'));

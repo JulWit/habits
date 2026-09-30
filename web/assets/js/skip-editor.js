@@ -6,6 +6,8 @@ import {addDays} from './dates.js';
 import {closePage, openPage} from './page-stack.js';
 import {state} from './state.js';
 import {errorText} from './undo.js';
+import {createVueApp} from './vue-app.js';
+import {nextTick, onMounted, reactive, ref, watch} from './vue.js';
 
 /**
  * The range of days to skip and the habits; no habitIds means all habits.
@@ -13,46 +15,35 @@ import {errorText} from './undo.js';
  */
 let SkipInput;
 
-/** @type {!HTMLDialogElement} */
-let dialog;
-/** @type {!HTMLFormElement} */
-let form;
-/** @type {!HTMLElement} */
-let errorBox;
-/** @type {!HTMLButtonElement} */
-let submitButton;
+/**
+ * The input of the form; `scope` is "one" for the habit the page was opened
+ * for, or "all".
+ */
+const form = reactive({from: '', to: '', scope: 'one'});
+
+/**
+ * The habit the page was opened for, or null for all habits.
+ * @type {!Object}
+ */
+const habit = ref(null);
+
+/** The message of a failed skip, or "". */
+const error = ref('');
+
+/** Whether the days are being skipped. */
+const busy = ref(false);
+
 /**
  * Skips the days; set when the page opens.
  * @type {?function(!SkipInput): !Promise<void>}
  */
 let onSubmit = null;
-/**
- * The habit the page was opened for, or null for all habits.
- * @type {?Habit}
- */
-let habit = null;
 
 /**
- * Initialises the page for skipping days.
+ * The page, once mounted.
+ * @type {?HTMLDialogElement}
  */
-export function initSkipDialog() {
-  dialog = document.getElementById('skip-editor');
-  form = document.getElementById('skip-editor-form');
-  errorBox = document.getElementById('skip-editor-error');
-  submitButton = document.getElementById('skip-editor-submit');
-
-  form.addEventListener('submit', handleSubmit);
-  form.addEventListener('input', () => {
-    errorBox.hidden = true;
-  });
-  // The last day cannot lie before the first.
-  form.elements.from.addEventListener('change', () => {
-    form.elements.to.min = form.elements.from.value;
-    if (form.elements.to.value < form.elements.from.value) {
-      form.elements.to.value = form.elements.from.value;
-    }
-  });
-}
+let dialog = null;
 
 /**
  * Opens the page for `target`, with the choice of all habits, or for all
@@ -61,24 +52,18 @@ export function initSkipDialog() {
  * @param {?Habit} target
  * @param {function(!SkipInput): !Promise<void>} handler
  */
-export function openSkipDialog(target, handler) {
-  habit = target;
+export async function openSkipDialog(target, handler) {
+  habit.value = target;
   onSubmit = handler;
-  errorBox.hidden = true;
-
-  const f = form.elements;
   // A week from today, the usual holiday.
-  f.from.value = state.today;
-  f.to.value = addDays(state.today, 6);
-  f.to.min = f.from.value;
-  f.scope.value = 'one';
-  document.getElementById('skip-editor-scope').hidden = habit === null;
-  if (habit) {
-    document.getElementById('skip-editor-scope-one').textContent = habit.name;
-  }
+  form.from = state.today;
+  form.to = addDays(state.today, 6);
+  form.scope = 'one';
+  await nextTick();
+  error.value = '';
 
   openPage(dialog);
-  f.from.focus();
+  dialog.querySelector('input[name="from"]').focus();
 }
 
 /**
@@ -86,33 +71,91 @@ export function openSkipDialog(target, handler) {
  * @return {!SkipInput}
  */
 function collect() {
-  const f = form.elements;
-  const one = habit !== null && f.scope.value === 'one';
-  return {
-    from: f.from.value,
-    to: f.to.value,
-    habitIds: one ? [habit.id] : [],
-  };
+  const one = habit.value !== null && form.scope === 'one';
+  return {from: form.from, to: form.to, habitIds: one ? [habit.value.id] : []};
 }
 
-/**
- * Skips the days and closes the page, or shows why it failed.
- * @param {!Event} event
- * @return {!Promise<void>}
- */
-async function handleSubmit(event) {
-  // Keep the page open until the server accepts the input.
-  event.preventDefault();
-  if (!form.reportValidity()) return;
+/** The page for skipping days (see openSkipDialog). */
+const SkipEditor = {
+  name: 'SkipEditor',
+  setup() {
+    const el = ref(null);
+    const formEl = ref(null);
+    onMounted(() => {
+      dialog = el.value;
+    });
 
-  submitButton.disabled = true;
-  try {
-    await onSubmit(collect());
-    closePage(dialog, {force: true});
-  } catch (err) {
-    errorBox.textContent = errorText(err);
-    errorBox.hidden = false;
-  } finally {
-    submitButton.disabled = false;
-  }
+    // Any change of the input hides the error message.
+    watch(form, () => {
+      error.value = '';
+    });
+    // The last day cannot lie before the first.
+    watch(() => form.from, (from) => {
+      if (form.to < from) form.to = from;
+    });
+
+    /**
+     * Skips the days and closes the page, or shows why it failed. The page
+     * stays open until the server accepts the input.
+     */
+    const submit = async () => {
+      if (!formEl.value.reportValidity()) return;
+      busy.value = true;
+      try {
+        await onSubmit(collect());
+        closePage(dialog, {force: true});
+      } catch (err) {
+        error.value = errorText(err);
+      } finally {
+        busy.value = false;
+      }
+    };
+
+    return {el, formEl, form, habit, error, busy, submit};
+  },
+  template: `
+    <dialog ref="el" id="skip-editor" class="dialog page is-sheet is-floating"
+            aria-labelledby="skip-editor-title">
+      <form ref="formEl" method="dialog" @submit.prevent="submit">
+        <header class="page-head">
+          <button type="button" class="icon-button" data-page-back
+                  :title="t('Close')" :aria-label="t('Close')"><app-icon name="close"/></button>
+          <h2 id="skip-editor-title">{{ t('Skip days') }}</h2>
+          <button type="submit" class="button primary" :disabled="busy">{{ t('Skip') }}</button>
+        </header>
+
+        <div class="page-body">
+          <div class="field row">
+            <label class="grow">
+              <span class="field-label">{{ t('From') }}</span>
+              <input name="from" v-model="form.from" type="date" required>
+            </label>
+            <label class="grow">
+              <span class="field-label">{{ t('Until') }}</span>
+              <input name="to" v-model="form.to" type="date" :min="form.from" required>
+            </label>
+          </div>
+
+          <fieldset v-if="habit" class="field">
+            <legend class="field-label">{{ t('Habits') }}</legend>
+            <div class="segmented" role="radiogroup" :aria-label="t('Habits')">
+              <label><input type="radio" name="scope" value="one" v-model="form.scope"><span>{{ habit.name }}</span></label>
+              <label><input type="radio" name="scope" value="all" v-model="form.scope"><span>{{ t('All habits') }}</span></label>
+            </div>
+          </fieldset>
+
+          <p class="field-hint">{{ t('Only due days without an entry are skipped; days with an entry keep it. Skipped days neither break nor extend a streak. Archived habits are left out.') }}</p>
+
+          <p v-if="error" class="error" role="alert">{{ error }}</p>
+        </div>
+      </form>
+    </dialog>`,
+};
+
+/**
+ * Mounts the page for skipping days into `host`.
+ * @param {!Element} host
+ */
+export function initSkipDialog(host) {
+  createVueApp(SkipEditor).mount(host);
 }

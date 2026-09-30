@@ -486,7 +486,8 @@ export const TheHabitEditor = {
               type="button"
               class="picker"
               aria-haspopup="dialog"
-              aria-labelledby="habit-editor-category-label habit-editor-category"
+              aria-labelledby="habit-editor-category-label
+                habit-editor-category"
               @click="chooseCategory"
             >
               <app-icon-badge

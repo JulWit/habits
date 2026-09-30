@@ -8,9 +8,9 @@ import {colorValue} from './icons.js';
 import {state} from './state.js';
 import {computed} from './vue.js';
 
-const CHECK_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true">' +
-    '<path d="M5 12.5 10 17.5 19 7" fill="none" stroke="currentColor"' +
-    ' stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const CHECK_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path
+    d="M5 12.5 10 17.5 19 7" fill="none" stroke="currentColor" stroke-width="3"
+    stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 
 /**
  * A day in the header. `active` is the highlighted day (is-today), by default

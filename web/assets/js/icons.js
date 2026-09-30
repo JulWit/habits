@@ -9,11 +9,9 @@ import {computed, h} from './vue.js';
  * @param {string} body
  * @return {string}
  */
-const draw = (body) =>
-    '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" ' +
-    'stroke="currentColor"' +
-    ' stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">' +
-    body + '</svg>';
+const draw = (body) => `<svg viewBox="0 0 24 24" aria-hidden="true"
+    fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"
+    stroke-linejoin="round">${body}</svg>`;
 
 /**
  * The interface icons as SVG markup, keyed by name.

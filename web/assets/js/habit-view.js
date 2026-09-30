@@ -317,10 +317,27 @@ const CumulativeChart = {
       format,
       grain,
       GRAINS,
-      current: computed(() => props.year === currentYear()),
+      emptyText: computed(
+          () => props.year === currentYear() ?
+              t('No entries in {year} yet.', {year: props.year}) :
+              t('No entries in {year}.', {year: props.year})),
+      // The texts between the figures of the summary line start and end with
+      // a space.
+      scopeText: computed(
+          () => t(
+              ' {scope} · avg ', {scope: t('in {year}', {year: props.year})})),
+      daysText: computed(() => {
+        const n = summary.value.activeDays;
+        return n === 1 ? t(' on 1 active day · best day ') :
+                         t(' on {n} active days · best day ', {n});
+      }),
       // Average per day with an entry.
       average: computed(
           () => Math.round(summary.value.total / summary.value.activeDays)),
+      chartStyle: computed(() => ({
+                             '--cols': String(columns.value.length),
+                             '--bar-min': GRAINS[grain.value].barMin,
+                           })),
     };
   },
   // Until the first answer arrives, the chart is empty. The scale line marks
@@ -330,38 +347,82 @@ const CumulativeChart = {
     <section class="panel cum-panel">
       <div class="cum-head">
         <h3>{{ t('Cumulative') }}</h3>
-        <div class="segmented cum-grain" role="radiogroup" :aria-label="t('Period')">
-          <label v-for="(info, key) in GRAINS" :key="key">
-            <input type="radio" name="cum-grain" :value="key" v-model="grain">
+        <div
+          class="segmented cum-grain"
+          role="radiogroup"
+          :aria-label="t('Period')"
+        >
+          <label
+            v-for="(info, key) in GRAINS"
+            :key="key"
+          >
+            <input
+              type="radio"
+              name="cum-grain"
+              :value="key"
+              v-model="grain"
+            >
             <span>{{ info.label }}</span>
           </label>
         </div>
       </div>
-      <div v-if="!summary" class="cum-loading"></div>
+      <div
+        v-if="!summary"
+        class="cum-loading"
+      ></div>
       <div v-else-if="summary.total === 0">
-        <p class="cum-empty">{{ current ? t('No entries in {year} yet.', {year}) : t('No entries in {year}.', {year}) }}</p>
+        <p class="cum-empty">
+          {{ emptyText }}
+        </p>
       </div>
       <div v-else>
         <p class="cum-summary">
-          <strong>{{ format(summary.total) }}</strong>{{ t(' {scope} · avg ', {scope: t('in {year}', {year})}) }}<strong>{{ format(average) }}</strong>{{ summary.activeDays === 1 ? t(' on 1 active day · best day ') : t(' on {n} active days · best day ', {n: summary.activeDays}) }}<strong>{{ format(summary.best) }}</strong>
+          <strong>{{ format(summary.total) }}</strong>{{ scopeText }}
+          <strong>{{ format(average) }}</strong>{{ daysText }}
+          <strong>{{ format(summary.best) }}</strong>
         </p>
-        <div class="cum-chart" :class="{'is-fine': grain !== 'month'}"
-             :style="{'--cols': String(columns.length), '--bar-min': GRAINS[grain].barMin}">
+        <div
+          class="cum-chart"
+          :class="{'is-fine': grain !== 'month'}"
+          :style="chartStyle"
+        >
           <div class="cum-scale">{{ format(summary.total) }}</div>
-          <div ref="scroller" class="cum-scroll">
+          <div
+            ref="scroller"
+            class="cum-scroll"
+          >
             <div class="cum-track">
               <div class="cum-bars">
                 <!-- An accessible name, as the tooltip requires a pointer. -->
-                <div v-for="col in columns" :key="col.start" class="cum-col"
-                     :data-tip="col.tip" :data-status="col.status" role="img"
-                     :aria-label="col.tip + ': ' + col.status">
-                  <div class="cum-bar" :class="{'is-zero': col.zero}" :style="{height: col.height}">
-                    <div v-if="col.gain" class="cum-gain" :style="{height: col.gain}"></div>
+                <div
+                  v-for="col in columns"
+                  :key="col.start"
+                  class="cum-col"
+                  :data-tip="col.tip"
+                  :data-status="col.status"
+                  role="img"
+                  :aria-label="col.tip + ': ' + col.status"
+                >
+                  <div
+                    class="cum-bar"
+                    :class="{'is-zero': col.zero}"
+                    :style="{height: col.height}"
+                  >
+                    <div
+                      v-if="col.gain"
+                      class="cum-gain"
+                      :style="{height: col.gain}"
+                    ></div>
                   </div>
                 </div>
               </div>
               <div class="cum-months">
-                <span v-for="col in columns" :key="col.start"><i v-if="col.label">{{ col.label }}</i></span>
+                <span
+                  v-for="col in columns"
+                  :key="col.start"
+                >
+                  <i v-if="col.label">{{ col.label }}</i>
+                </span>
               </div>
             </div>
           </div>
@@ -480,47 +541,95 @@ export const HabitView = {
   // How the habit is set up comes first, then its statistics and the year,
   // then its activity. Frequency and target are in the details panel.
   template: `
-    <main ref="root" id="habit-view" class="view" :hidden="!habit"
-          :style="habit ? {'--habit-color': colorValue(habit.color)} : null">
+    <main
+      ref="root"
+      id="habit-view"
+      class="view"
+      :hidden="!habit"
+      :style="habit ? {'--habit-color': colorValue(habit.color)} : null"
+    >
       <template v-if="habit">
-        <app-bar :title="habit.name" :menu="menu" @back="back" @edit="edit"
-                 @action="onMenu">
+        <app-bar
+          :title="habit.name"
+          :menu="menu"
+          @back="back"
+          @edit="edit"
+          @action="onMenu"
+        >
           <template #badge>
             <!-- Without an icon, a dot in the habit's colour. -->
-            <icon-badge v-if="hasHabitIcon(habit.icon)" class="habit-icon"
-                        :icon="habit.icon" :color="habit.color"/>
-            <span v-else class="dot"></span>
+            <icon-badge
+              v-if="hasHabitIcon(habit.icon)"
+              class="habit-icon"
+              :icon="habit.icon"
+              :color="habit.color"
+            />
+            <span
+              v-else
+              class="dot"
+            ></span>
           </template>
         </app-bar>
-        <facts-panel :title="t('Details')" :items="details"/>
+        <facts-panel
+          :title="t('Details')"
+          :items="details"
+        />
         <stat-row :stats="stats"/>
-        <cumulative-chart v-if="isCountable(habit)" :key="habit.id" :habit="habit" :year="shownYear"/>
+        <cumulative-chart
+          v-if="isCountable(habit)"
+          :key="habit.id"
+          :habit="habit"
+          :year="shownYear"
+        />
         <section class="panel">
           <div class="year-head">
             <h3>{{ t('Year {year}', {year: shownYear}) }}</h3>
             <div class="year-nav">
-              <button type="button" class="icon-button" data-action="year-earlier"
-                      :title="t('Previous year')" :aria-label="t('Previous year')"
-                      :disabled="Number(shownYear) <= range[0]" @click="showYear(-1, $event)">
+              <button
+                type="button"
+                class="icon-button"
+                data-action="year-earlier"
+                :title="t('Previous year')"
+                :aria-label="t('Previous year')"
+                :disabled="Number(shownYear) <= range[0]"
+                @click="showYear(-1, $event)"
+              >
                 <app-icon name="chevronLeft"/>
               </button>
-              <button type="button" class="icon-button" data-action="year-later"
-                      :title="t('Next year')" :aria-label="t('Next year')"
-                      :disabled="Number(shownYear) >= range[1]" @click="showYear(1, $event)">
+              <button
+                type="button"
+                class="icon-button"
+                data-action="year-later"
+                :title="t('Next year')"
+                :aria-label="t('Next year')"
+                :disabled="Number(shownYear) >= range[1]"
+                @click="showYear(1, $event)"
+              >
                 <app-icon name="chevronRight"/>
               </button>
             </div>
           </div>
-          <year-grid :year="shownYear" :square="square"/>
+          <year-grid
+            :year="shownYear"
+            :square="square"
+          />
           <div class="heatmap-legend">
             <span>{{ legendRange }}</span>
             <span style="flex: 1"></span>
             <span>{{ t('less') }}</span>
-            <span v-for="level in [0, 1, 2, 3, 4]" :key="level" class="heat" :data-level="level"></span>
+            <span
+              v-for="level in [0, 1, 2, 3, 4]"
+              :key="level"
+              class="heat"
+              :data-level="level"
+            ></span>
             <span>{{ t('more') }}</span>
           </div>
         </section>
-        <facts-panel :title="t('Activity')" :items="activity"/>
+        <facts-panel
+          :title="t('Activity')"
+          :items="activity"
+        />
       </template>
     </main>`,
 };

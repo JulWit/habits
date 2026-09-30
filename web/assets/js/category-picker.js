@@ -126,30 +126,77 @@ export const CategoryPicker = {
   // Leaving the page by its back button, Escape or the system back cancels.
   // The selection is shown by the accent fill, as in the dropdowns.
   template: `
-    <dialog ref="el" id="category-picker" class="dialog page is-floating"
-            aria-labelledby="category-picker-title" @close="finish(null)">
+    <dialog
+      ref="el"
+      id="category-picker"
+      class="dialog page is-floating"
+      aria-labelledby="category-picker-title"
+      @close="finish(null)"
+    >
       <header class="page-head">
-        <button type="button" class="icon-button" data-page-back
-                :title="t('Back')" :aria-label="t('Back')"><app-icon name="arrowLeft"/></button>
+        <button
+          type="button"
+          class="icon-button"
+          data-page-back
+          :title="t('Back')"
+          :aria-label="t('Back')"
+        >
+          <app-icon name="arrowLeft"/>
+        </button>
         <h2 id="category-picker-title">{{ t('Category') }}</h2>
       </header>
       <div class="page-body">
-        <div class="picker-list" role="listbox" :aria-label="t('Choose category')">
-          <button v-for="option in options" :key="option.id" type="button"
-                  class="picker-option" :class="{'is-stale': option.stale}"
-                  role="option" :aria-selected="String(option.id === current)"
-                  @click="choose(option.id)">
-            <icon-badge class="habit-icon is-small" :icon="option.icon" :color="option.color || null"/>
+        <div
+          class="picker-list"
+          role="listbox"
+          :aria-label="t('Choose category')"
+        >
+          <button
+            v-for="option in options"
+            :key="option.id"
+            type="button"
+            class="picker-option"
+            :class="{'is-stale': option.stale}"
+            role="option"
+            :aria-selected="String(option.id === current)"
+            @click="choose(option.id)"
+          >
+            <icon-badge
+              class="habit-icon is-small"
+              :icon="option.icon"
+              :color="option.color || null"
+            />
             <span class="picker-option-name">{{ option.name }}</span>
           </button>
         </div>
-        <form class="picker-create" @submit.prevent="create">
-          <input ref="nameInput" v-model="newName" name="name" type="text" maxlength="60"
-                 autocomplete="off" :placeholder="t('New category')"
-                 :aria-label="t('Name of the new category')">
-          <button type="submit" class="button" :disabled="creating">{{ t('Create') }}</button>
+        <form
+          class="picker-create"
+          @submit.prevent="create"
+        >
+          <input
+            ref="nameInput"
+            v-model="newName"
+            name="name"
+            type="text"
+            maxlength="60"
+            autocomplete="off"
+            :placeholder="t('New category')"
+            :aria-label="t('Name of the new category')"
+          >
+          <button
+            type="submit"
+            class="button"
+            :disabled="creating"
+          >
+            {{ t('Create') }}
+          </button>
         </form>
-        <p v-if="error" class="error">{{ error }}</p>
+        <p
+          v-if="error"
+          class="error"
+        >
+          {{ error }}
+        </p>
       </div>
     </dialog>`,
 };

@@ -151,10 +151,21 @@ const BarPanel = {
     <section class="panel">
       <h3>{{ title }}</h3>
       <div class="day-bars">
-        <div v-for="b in bars" :key="b.name" class="day-bar" :class="{'is-empty': b.empty}"
-             :data-tip="b.name" :data-status="b.status">
+        <div
+          v-for="b in bars"
+          :key="b.name"
+          class="day-bar"
+          :class="{'is-empty': b.empty}"
+          :data-tip="b.name"
+          :data-status="b.status"
+        >
           <span class="day-bar-label">{{ b.label }}</span>
-          <span class="day-bar-track"><span class="day-bar-fill" :style="{width: b.width}"></span></span>
+          <span class="day-bar-track">
+            <span
+              class="day-bar-fill"
+              :style="{width: b.width}"
+            ></span>
+          </span>
           <span class="day-bar-value">{{ b.value }}</span>
         </div>
       </div>
@@ -216,22 +227,52 @@ export const DayStatsView = {
     };
   },
   template: `
-    <main ref="root" id="day-stats-view" class="view" :hidden="!shown">
-      <app-bar :title="t('Day statistics')" :sub="year" :edit="false" @back="back"/>
+    <main
+      ref="root"
+      id="day-stats-view"
+      class="view"
+      :hidden="!shown"
+    >
+      <app-bar
+        :title="t('Day statistics')"
+        :sub="year"
+        :edit="false"
+        @back="back"
+      />
       <template v-if="data">
         <stat-row :stats="tiles"/>
-        <facts-panel :title="t('Highlights')" :items="highlights"/>
-        <bar-panel :title="t('By weekday')" :bars="weekdays"/>
-        <bar-panel :title="t('By month')" :bars="months"/>
+        <facts-panel
+          :title="t('Highlights')"
+          :items="highlights"
+        />
+        <bar-panel
+          :title="t('By weekday')"
+          :bars="weekdays"
+        />
+        <bar-panel
+          :title="t('By month')"
+          :bars="months"
+        />
         <section class="panel days-heatmap">
           <h3>{{ t('Year {year}', {year}) }}</h3>
-          <year-grid :year="year" :square="square"/>
+          <year-grid
+            :year="year"
+            :square="square"
+          />
           <div class="heatmap-legend">
             <span>{{ legendRange }}</span>
             <span style="flex: 1"></span>
             <span>0 %</span>
-            <span v-for="rate in [0, 0.25, 0.5, 0.75]" :key="rate" class="heat" :style="{'--rate': String(rate)}"></span>
-            <span class="heat is-perfect" style="--rate: 1"></span>
+            <span
+              v-for="rate in [0, 0.25, 0.5, 0.75]"
+              :key="rate"
+              class="heat"
+              :style="{'--rate': String(rate)}"
+            ></span>
+            <span
+              class="heat is-perfect"
+              style="--rate: 1"
+            ></span>
             <span>100 %</span>
           </div>
         </section>

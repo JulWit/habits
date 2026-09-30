@@ -122,10 +122,16 @@ extend it along with the frontend.
   to the functions they use. Components used by one module stay in it;
   shared state and the function that opens a dialog live at module level.
   `app.js` registers `AppIcon`, `IconBadge` and `t` for every template.
+- Vue code follows the [Vue style guide](https://vuejs.org/style-guide/). In
+  templates, tags are kebab-case and self-closing without content; an element
+  with more than one attribute has one attribute per line and its closing
+  bracket on a line of its own; expressions stay simple, anything longer goes
+  into a `computed` or a function in `setup()`.
 - JS follows the [Google JavaScript style
   guide](https://google.github.io/styleguide/jsguide.html): single quotes,
-  80 columns, braces around every block except a one-line `if` without `else`,
-  a trailing comma in wrapped array and object literals. Format with
+  80 columns (templates included), braces around every block except a
+  one-line `if` without `else`, a trailing comma in wrapped array and object
+  literals. Format with
   `uvx clang-format -i web/sw.js web/assets/js/*.js` (`.clang-format`; a
   developer tool, not a build step). Long UI texts in `t('…')` and `i18n.js`
   stay on one line, so they can be searched for.

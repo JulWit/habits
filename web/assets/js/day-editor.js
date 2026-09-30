@@ -223,41 +223,114 @@ export const DayEditor = {
   // A skipped day has no value, so the value controls are off while
   // skipping. Any value is allowed, not only multiples of the step.
   template: `
-    <dialog ref="el" id="day-editor" class="dialog compact"
-            aria-labelledby="day-editor-title" @click="onBackdrop">
-      <form method="dialog" @submit.prevent="save">
-        <h2 id="day-editor-title" class="dialog-head">{{ title }}</h2>
-        <fieldset class="day-value" :disabled="day.skipped">
+    <dialog
+      ref="el"
+      id="day-editor"
+      class="dialog compact"
+      aria-labelledby="day-editor-title"
+      @click="onBackdrop"
+    >
+      <form
+        method="dialog"
+        @submit.prevent="save"
+      >
+        <h2
+          id="day-editor-title"
+          class="dialog-head"
+        >
+          {{ title }}
+        </h2>
+        <fieldset
+          class="day-value"
+          :disabled="day.skipped"
+        >
           <legend class="sr-only">{{ t('Value') }}</legend>
           <div v-show="!check">
             <div class="stepper">
-              <button type="button" class="button round" :aria-label="t('Less')" @click="stepBy(-1)">−</button>
-              <input ref="input" name="value" v-model="day.value" type="number" min="0"
-                     :max="day.max" :step="day.scale === 1 ? '1' : 'any'"
-                     :inputmode="day.scale === 1 ? 'numeric' : 'decimal'"
-                     :disabled="check" :aria-label="valueLabel">
-              <button type="button" class="button round" :aria-label="t('More')" @click="stepBy(1)">+</button>
+              <button
+                type="button"
+                class="button round"
+                :aria-label="t('Less')"
+                @click="stepBy(-1)"
+              >−</button>
+              <input
+                ref="input"
+                name="value"
+                v-model="day.value"
+                type="number"
+                min="0"
+                :max="day.max"
+                :step="day.scale === 1 ? '1' : 'any'"
+                :inputmode="day.scale === 1 ? 'numeric' : 'decimal'"
+                :disabled="check"
+                :aria-label="valueLabel"
+              >
+              <button
+                type="button"
+                class="button round"
+                :aria-label="t('More')"
+                @click="stepBy(1)"
+              >+</button>
             </div>
-            <div v-if="quick.length > 0" class="quick-steps">
-              <button v-for="offset in quick" :key="offset" type="button" class="button"
-                      @click="jump(offset)">{{ quickLabel(offset) }}</button>
+            <div
+              v-if="quick.length > 0"
+              class="quick-steps"
+            >
+              <button
+                v-for="offset in quick"
+                :key="offset"
+                type="button"
+                class="button"
+                @click="jump(offset)"
+              >
+                {{ quickLabel(offset) }}
+              </button>
             </div>
-            <p id="day-editor-hint" class="field-hint">{{ hint }}</p>
+            <p
+              id="day-editor-hint"
+              class="field-hint"
+            >
+              {{ hint }}
+            </p>
           </div>
-          <label v-show="check" class="switch">
-            <input type="checkbox" name="done" v-model="day.done" autocomplete="off">
+          <label
+            v-show="check"
+            class="switch"
+          >
+            <input
+              type="checkbox"
+              name="done"
+              v-model="day.done"
+              autocomplete="off"
+            >
             <span>{{ t('Completed') }}</span>
           </label>
         </fieldset>
         <div class="day-skip">
           <label class="switch">
-            <input type="checkbox" name="skipped" v-model="day.skipped" autocomplete="off">
+            <input
+              type="checkbox"
+              name="skipped"
+              v-model="day.skipped"
+              autocomplete="off"
+            >
             <span>{{ t('Skip this day') }}</span>
           </label>
         </div>
         <footer class="dialog-foot">
-          <button type="button" class="button ghost" @click="clear">{{ t('Clear') }}</button>
-          <button type="submit" class="button primary">{{ t('Save') }}</button>
+          <button
+            type="button"
+            class="button ghost"
+            @click="clear"
+          >
+            {{ t('Clear') }}
+          </button>
+          <button
+            type="submit"
+            class="button primary"
+          >
+            {{ t('Save') }}
+          </button>
         </footer>
       </form>
     </dialog>`,

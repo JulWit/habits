@@ -144,7 +144,17 @@ export const DaySummary = {
     return {
       progress,
       percent,
+      isComplete: computed(() => {
+        const {due, done} = progress.value;
+        return due > 0 && done === due;
+      }),
       ring,
+      // Filling from empty, the ring also fades in (ring-wind in the CSS).
+      ringStyle: computed(() => ({
+                            '--from': ring.from,
+                            '--to': ring.to,
+                            '--from-opacity': ring.from === 0 ? 0 : 1,
+                          })),
       RING_R,
       WAVY_RING_PATH,
       // The year only if it is not the current one.
@@ -158,31 +168,58 @@ export const DaySummary = {
     };
   },
   template: `
-    <section class="day-summary"
-             :class="{'is-complete': progress.due > 0 && progress.done === progress.due}"
-             data-role="open-days" role="button" tabindex="0"
-             :title="t('Show day statistics')"
-             :aria-label="date + ' — ' + t('Show day statistics')"
-             @click="$emit('open')"
-             @keydown.enter.space.prevent="$emit('open')">
+    <section
+      class="day-summary"
+      :class="{'is-complete': isComplete}"
+      data-role="open-days"
+      role="button"
+      tabindex="0"
+      :title="t('Show day statistics')"
+      :aria-label="date + ' — ' + t('Show day statistics')"
+      @click="$emit('open')"
+      @keydown.enter.space.prevent="$emit('open')"
+    >
       <div class="day-summary-text">
         <h2 class="day-summary-date">{{ date }}</h2>
         <p class="day-summary-count">
-          <template v-if="progress.due === 0">{{ t('Nothing due on this day') }}</template>
-          <template v-else-if="progress.done < progress.due">{{ t('{done} of {due} done', progress) }}</template>
-          <template v-else><app-icon name="check"/><span>{{ completeText }}</span></template>
+          <template v-if="progress.due === 0">{{ t('Nothing due on this day') }}
+          </template>
+          <template v-else-if="progress.done < progress.due">
+            {{ t('{done} of {due} done', progress) }}
+          </template>
+          <template v-else><app-icon name="check"/>
+            <span>{{ completeText }}</span>
+          </template>
         </p>
       </div>
-      <div v-if="progress.due > 0" class="day-summary-ring" role="progressbar"
-           aria-valuemin="0" aria-valuemax="100" :aria-valuenow="percent"
-           :aria-label="t('Done on this day')">
-        <svg viewBox="0 0 40 40" aria-hidden="true">
-          <circle class="day-summary-ring-track" cx="20" cy="20" :r="RING_R"/>
+      <div
+        v-if="progress.due > 0"
+        class="day-summary-ring"
+        role="progressbar"
+        aria-valuemin="0"
+        aria-valuemax="100"
+        :aria-valuenow="percent"
+        :aria-label="t('Done on this day')"
+      >
+        <svg
+          viewBox="0 0 40 40"
+          aria-hidden="true"
+        >
+          <circle
+            class="day-summary-ring-track"
+            cx="20"
+            cy="20"
+            :r="RING_R"
+          />
           <!-- pathLength="100" allows dash lengths in percent. -->
-          <path :key="ring.key" class="day-summary-ring-fill"
-                :class="{'is-filling': ring.filling, 'is-empty': ring.to === 0}"
-                :d="WAVY_RING_PATH" pathLength="100"
-                :style="{'--from': ring.from, '--to': ring.to, '--from-opacity': ring.from === 0 ? 0 : 1}"/>
+          <path
+            :key="ring.key"
+            class="day-summary-ring-fill"
+            :class="{'is-filling': ring.filling, 'is-empty': ring.to === 0}"
+            :d="WAVY_RING_PATH"
+            pathLength="100"
+            :style="ringStyle"
+          />
         </svg>
         <span class="day-summary-percent">{{ Math.round(ring.to) }}%</span>
       </div>

@@ -92,6 +92,15 @@ function meta(entry) {
 }
 
 /**
+ * Returns the element ID of the result at `index`.
+ * @param {number} index
+ * @return {string}
+ */
+function optionId(index) {
+  return `search-option-${index}`;
+}
+
+/**
  * Closes the search and opens the chosen habit or category.
  * @param {!SearchEntry|undefined} entry
  * @return {!Promise<void>}
@@ -168,6 +177,18 @@ export const SearchDialog = {
       query,
       active,
       results,
+      optionId,
+      // The option the arrow keys point at, for screen readers.
+      activeOption: computed(
+          () =>
+              results.value[active.value] ? optionId(active.value) : undefined),
+      /**
+       * Reports whether a result is an archived habit.
+       * @param {!SearchEntry} entry
+       * @return {boolean}
+       */
+      isArchived: (entry) =>
+          entry.kind === 'habit' && Boolean(entry.item.archivedAt),
       meta,
       choose,
       onKey,
@@ -190,44 +211,101 @@ export const SearchDialog = {
   // Firefox has none, Chrome's is hidden. A result without an icon gets a
   // dot.
   template: `
-    <dialog ref="el" id="search-dialog" class="dialog search-dialog"
-            :aria-label="t('Search')" @click="onBackdrop">
+    <dialog
+      ref="el"
+      id="search-dialog"
+      class="dialog search-dialog"
+      :aria-label="t('Search')"
+      @click="onBackdrop"
+    >
       <div class="search-field">
-        <span class="search-icon" aria-hidden="true"><app-icon name="search"/></span>
-        <input ref="input" id="search-input" v-model="query" type="search"
-               :placeholder="t('Search habits and categories…')" autocomplete="off"
-               spellcheck="false" :aria-label="t('Search habits and categories')"
-               role="combobox" aria-expanded="true" aria-autocomplete="list"
-               aria-controls="search-results"
-               :aria-activedescendant="results[active] ? 'search-option-' + active : undefined"
-               @keydown="onKey">
-        <button v-if="query !== ''" class="icon-button search-clear" type="button"
-                :title="t('Clear search')" :aria-label="t('Clear search')" @click="clear">
+        <span
+          class="search-icon"
+          aria-hidden="true"
+        >
+          <app-icon name="search"/>
+        </span>
+        <input
+          ref="input"
+          id="search-input"
+          v-model="query"
+          type="search"
+          :placeholder="t('Search habits and categories…')"
+          autocomplete="off"
+          spellcheck="false"
+          :aria-label="t('Search habits and categories')"
+          role="combobox"
+          aria-expanded="true"
+          aria-autocomplete="list"
+          aria-controls="search-results"
+          :aria-activedescendant="activeOption"
+          @keydown="onKey"
+        >
+        <button
+          v-if="query !== ''"
+          class="icon-button search-clear"
+          type="button"
+          :title="t('Clear search')"
+          :aria-label="t('Clear search')"
+          @click="clear"
+        >
           <app-icon name="close"/>
         </button>
       </div>
-      <div ref="list" id="search-results" class="search-results" role="listbox"
-           :aria-label="t('Results')" :class="{'is-scrolling': scrolling}"
-           :hidden="results.length === 0">
-        <div v-for="(entry, i) in results" :key="entry.kind + entry.item.id"
-             :id="'search-option-' + i" class="search-option"
-             :class="{'is-archived': entry.kind === 'habit' && entry.item.archivedAt}"
-             role="option" :aria-selected="String(i === active)"
-             @click="choose(entry)" @pointermove="active = i">
+      <div
+        ref="list"
+        id="search-results"
+        class="search-results"
+        role="listbox"
+        :aria-label="t('Results')"
+        :class="{'is-scrolling': scrolling}"
+        :hidden="results.length === 0"
+      >
+        <div
+          v-for="(entry, i) in results"
+          :key="entry.kind + entry.item.id"
+          :id="optionId(i)"
+          class="search-option"
+          :class="{'is-archived': isArchived(entry)}"
+          role="option"
+          :aria-selected="String(i === active)"
+          @click="choose(entry)"
+          @pointermove="active = i"
+        >
           <template v-if="entry.kind === 'habit'">
-            <icon-badge v-if="hasHabitIcon(entry.item.icon)" class="habit-icon is-small"
-                        :icon="entry.item.icon" :color="entry.item.color"/>
-            <span v-else class="dot" :style="{'--habit-color': colorValue(entry.item.color)}"></span>
+            <icon-badge
+              v-if="hasHabitIcon(entry.item.icon)"
+              class="habit-icon is-small"
+              :icon="entry.item.icon"
+              :color="entry.item.color"
+            />
+            <span
+              v-else
+              class="dot"
+              :style="{'--habit-color': colorValue(entry.item.color)}"
+            ></span>
           </template>
           <template v-else>
-            <icon-badge v-if="hasHabitIcon(entry.item.icon)" class="habit-icon is-small"
-                        :icon="entry.item.icon" :color="entry.item.color || null"/>
-            <span v-else class="dot is-category"></span>
+            <icon-badge
+              v-if="hasHabitIcon(entry.item.icon)"
+              class="habit-icon is-small"
+              :icon="entry.item.icon"
+              :color="entry.item.color || null"
+            />
+            <span
+              v-else
+              class="dot is-category"
+            ></span>
           </template>
           <span class="search-option-name">{{ entry.item.name }}</span>
           <span class="search-option-meta">{{ meta(entry) }}</span>
         </div>
       </div>
-      <p v-if="results.length === 0" class="search-empty">{{ t('No habit or category matches.') }}</p>
+      <p
+        v-if="results.length === 0"
+        class="search-empty"
+      >
+        {{ t('No habit or category matches.') }}
+      </p>
     </dialog>`,
 };

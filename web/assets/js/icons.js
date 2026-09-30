@@ -489,8 +489,11 @@ export const IconBadge = {
     return {habitIcons, colorValue};
   },
   template: `
-    <span v-if="habitIcons[icon]" :class="{'is-neutral': !color}"
-          :style="color ? {'--habit-color': colorValue(color)} : null">
+    <span
+      v-if="habitIcons[icon]"
+      :class="{'is-neutral': !color}"
+      :style="color ? {'--habit-color': colorValue(color)} : null"
+    >
       <app-icon :svg="habitIcons[icon]"/>
     </span>`,
 };
@@ -532,16 +535,37 @@ export const ColorSwatches = {
       if (color === NEUTRAL) return t('Neutral');
       return color ? colorLabel(color) : t('No colour');
     };
-    return {swatch, name, colorLabel};
+    /**
+     * Returns the accessible name of a swatch; a palette colour is announced
+     * as a colour.
+     * @param {string} color
+     * @return {string}
+     */
+    const label = (color) => {
+      if (!color || color === NEUTRAL) return name(color);
+      return t('Colour {color}', {color: colorLabel(color)});
+    };
+    return {swatch, name, label};
   },
   template: `
-    <div class="swatches" role="radiogroup" :aria-label="t('Colour')">
-      <button v-for="color in colors" :key="color" type="button" class="swatch"
-              :class="{'is-none': !color}" :style="{'--swatch': swatch(color)}"
-              role="radio"
-              :aria-checked="String(color === modelValue)"
-              :aria-label="color && color !== 'neutral' ? t('Colour {color}', {color: colorLabel(color)}) : name(color)"
-              :title="name(color)" @click="$emit('update:modelValue', color)"></button>
+    <div
+      class="swatches"
+      role="radiogroup"
+      :aria-label="t('Colour')"
+    >
+      <button
+        v-for="color in colors"
+        :key="color"
+        type="button"
+        class="swatch"
+        :class="{'is-none': !color}"
+        :style="{'--swatch': swatch(color)}"
+        role="radio"
+        :aria-checked="String(color === modelValue)"
+        :aria-label="label(color)"
+        :title="name(color)"
+        @click="$emit('update:modelValue', color)"
+      ></button>
     </div>`,
 };
 
@@ -560,21 +584,46 @@ export const IconChoices = {
   setup(props) {
     return {
       habitIcons,
-      iconLabel,
+      /**
+       * Returns the tooltip of a choice.
+       * @param {string} name
+       * @return {string}
+       */
+      title: (name) => name ? iconLabel(name) : t('No icon'),
+      /**
+       * Returns the accessible name of a choice.
+       * @param {string} name
+       * @return {string}
+       */
+      label: (name) =>
+          name ? t('Icon {name}', {name: iconLabel(name)}) : t('No icon'),
       offered: computed(
           () => ['', ...props.names.filter((name) => habitIcons[name])]),
     };
   },
   // "No icon" is an empty tile.
   template: `
-    <div class="icon-choices" role="radiogroup" :aria-label="t('Icon')">
-      <button v-for="name in offered" :key="name" type="button" class="icon-choice"
-              :class="{'is-none': !name}" role="radio"
-              :aria-checked="String(name === modelValue)"
-              :aria-label="name ? t('Icon {name}', {name: iconLabel(name)}) : t('No icon')"
-              :title="name ? iconLabel(name) : t('No icon')"
-              @click="$emit('update:modelValue', name)">
-        <app-icon v-if="name" :svg="habitIcons[name]"/>
+    <div
+      class="icon-choices"
+      role="radiogroup"
+      :aria-label="t('Icon')"
+    >
+      <button
+        v-for="name in offered"
+        :key="name"
+        type="button"
+        class="icon-choice"
+        :class="{'is-none': !name}"
+        role="radio"
+        :aria-checked="String(name === modelValue)"
+        :aria-label="label(name)"
+        :title="title(name)"
+        @click="$emit('update:modelValue', name)"
+      >
+        <app-icon
+          v-if="name"
+          :svg="habitIcons[name]"
+        />
       </button>
     </div>`,
 };

@@ -113,35 +113,75 @@ export const CategoryView = {
   // The habit count is a stat tile. A habit without an icon gets a dot in its
   // colour.
   template: `
-    <main id="category-view" class="view" :hidden="!category">
+    <main
+      id="category-view"
+      class="view"
+      :hidden="!category"
+    >
       <template v-if="category">
-        <app-bar :title="category.name" :menu="menu" @back="back" @edit="edit"
-                 @action="remove">
+        <app-bar
+          :title="category.name"
+          :menu="menu"
+          @back="back"
+          @edit="edit"
+          @action="remove"
+        >
           <template #badge>
-            <icon-badge class="habit-icon" :icon="category.icon" :color="category.color || null"/>
+            <icon-badge
+              class="habit-icon"
+              :icon="category.icon"
+              :color="category.color || null"
+            />
           </template>
         </app-bar>
-        <facts-panel :title="t('Details')" :items="details"/>
+        <facts-panel
+          :title="t('Details')"
+          :items="details"
+        />
         <stat-row :stats="stats"/>
         <section class="panel">
           <h3>{{ t('Habits') }}</h3>
-          <p v-if="habits.length === 0" class="block-empty">{{ t('No habit in this category yet.') }}</p>
-          <div v-else class="cat-habits">
-            <button v-for="habit in habits" :key="habit.id" type="button"
-                    class="cat-habit" :style="{'--habit-color': colorValue(habit.color)}"
-                    @click="openHabit(habit.id)">
-              <icon-badge v-if="hasHabitIcon(habit.icon)" class="habit-icon"
-                          :icon="habit.icon" :color="habit.color"/>
-              <span v-else class="dot"></span>
+          <p
+            v-if="habits.length === 0"
+            class="block-empty"
+          >
+            {{ t('No habit in this category yet.') }}
+          </p>
+          <div
+            v-else
+            class="cat-habits"
+          >
+            <button
+              v-for="habit in habits"
+              :key="habit.id"
+              type="button"
+              class="cat-habit"
+              :style="{'--habit-color': colorValue(habit.color)}"
+              @click="openHabit(habit.id)"
+            >
+              <icon-badge
+                v-if="hasHabitIcon(habit.icon)"
+                class="habit-icon"
+                :icon="habit.icon"
+                :color="habit.color"
+              />
+              <span
+                v-else
+                class="dot"
+              ></span>
               <span class="cat-habit-text">
                 <span class="habit-name">{{ habit.name }}</span>
                 <span class="habit-meta">{{ describeHabit(habit) }}</span>
               </span>
-              <span class="cat-habit-streak">{{ shortStreak(habit.stats) }}</span>
+              <span class="cat-habit-streak">{{ shortStreak(habit.stats) }}
+              </span>
             </button>
           </div>
         </section>
-        <facts-panel :title="t('Activity')" :items="activity"/>
+        <facts-panel
+          :title="t('Activity')"
+          :items="activity"
+        />
       </template>
     </main>`,
 };

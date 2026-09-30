@@ -5,7 +5,7 @@ import {ColorSwatches, colorValue, IconChoices} from './icons.js';
 import {closePage, guardPage, openPage} from './page-stack.js';
 import {categoryById, state} from './state.js';
 import {errorText} from './undo.js';
-import {nextTick, onMounted, reactive, ref, watch} from './vue.js';
+import {computed, nextTick, onMounted, reactive, ref, watch} from './vue.js';
 
 /**
  * What the editor sends.
@@ -115,49 +115,96 @@ export const CategoryEditor = {
       }
     };
 
-    return {el, formEl, errorEl, form, state, error, busy, colorValue, submit};
+    // Without a colour, the icons keep the neutral colour of the stylesheet.
+    const iconStyle = computed(
+        () => form.color ? {'--habit-color': colorValue(form.color)} : null);
+
+    return {el, formEl, errorEl, form, state, error, busy, iconStyle, submit};
   },
   // The colours start with "no colour"; the icons are drawn in the chosen
   // colour, or neutral without one.
   template: `
-    <dialog ref="el" id="category-editor" class="dialog page is-sheet is-floating"
-            aria-labelledby="category-editor-title">
-      <form ref="formEl" method="dialog" @submit.prevent="submit">
+    <dialog
+      ref="el"
+      id="category-editor"
+      class="dialog page is-sheet is-floating"
+      aria-labelledby="category-editor-title"
+    >
+      <form
+        ref="formEl"
+        method="dialog"
+        @submit.prevent="submit"
+      >
         <header class="page-head">
-          <button type="button" class="icon-button" data-page-back
-                  :title="t('Close')" :aria-label="t('Close')"><app-icon name="close"/></button>
+          <button
+            type="button"
+            class="icon-button"
+            data-page-back
+            :title="t('Close')"
+            :aria-label="t('Close')"
+          >
+            <app-icon name="close"/>
+          </button>
           <h2 id="category-editor-title">{{ t('Edit category') }}</h2>
-          <button type="submit" class="button primary" :disabled="busy">{{ t('Save') }}</button>
+          <button
+            type="submit"
+            class="button primary"
+            :disabled="busy"
+          >
+            {{ t('Save') }}
+          </button>
         </header>
-
         <div class="page-body">
           <label class="field">
             <span class="field-label">{{ t('Name') }}</span>
-            <input name="name" v-model="form.name" type="text" maxlength="60" required autocomplete="off">
+            <input
+              name="name"
+              v-model="form.name"
+              type="text"
+              maxlength="60"
+              required
+              autocomplete="off"
+            >
           </label>
-
           <fieldset class="field">
             <legend class="field-label">{{ t('Colour') }}</legend>
-            <color-swatches :colors="['', ...state.colors]" v-model="form.color"/>
+            <color-swatches
+              :colors="['', ...state.colors]"
+              v-model="form.color"
+            />
           </fieldset>
-
           <fieldset class="field">
             <legend class="field-label">{{ t('Icon') }}</legend>
-            <icon-choices :names="state.icons" v-model="form.icon"
-                          :class="{'is-neutral': !form.color}"
-                          :style="form.color ? {'--habit-color': colorValue(form.color)} : null"/>
+            <icon-choices
+              :names="state.icons"
+              v-model="form.icon"
+              :class="{'is-neutral': !form.color}"
+              :style="iconStyle"
+            />
           </fieldset>
-
           <fieldset class="field">
             <legend class="field-label">{{ t('Progress') }}</legend>
             <label class="switch">
-              <input type="checkbox" name="showProgress" v-model="form.showProgress" autocomplete="off">
+              <input
+                type="checkbox"
+                name="showProgress"
+                v-model="form.showProgress"
+                autocomplete="off"
+              >
               <span>{{ t("Show today's progress") }}</span>
             </label>
-            <p class="field-hint">{{ t('The bar and the count beside the name on the board.') }}</p>
+            <p class="field-hint">
+              {{ t('The bar and the count beside the name on the board.') }}
+            </p>
           </fieldset>
-
-          <p v-if="error" ref="errorEl" class="error" role="alert">{{ error }}</p>
+          <p
+            v-if="error"
+            ref="errorEl"
+            class="error"
+            role="alert"
+          >
+            {{ error }}
+          </p>
         </div>
       </form>
     </dialog>`,

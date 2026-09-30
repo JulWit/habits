@@ -199,8 +199,18 @@ const GuideSection = {
   template: `
     <section class="sg-section">
       <h3 class="sg-title">{{ title }}</h3>
-      <p v-if="note" class="sg-note">{{ note }}</p>
-      <div class="sg-row" :class="{'is-block': block}"><slot/></div>
+      <p
+        v-if="note"
+        class="sg-note"
+      >
+        {{ note }}
+      </p>
+      <div
+        class="sg-row"
+        :class="{'is-block': block}"
+      >
+        <slot/>
+      </div>
     </section>`,
 };
 
@@ -209,7 +219,8 @@ const GuideSpecimen = {
   name: 'GuideSpecimen',
   props: {label: String},
   template: `
-    <div class="sg-specimen"><slot/><span class="sg-label">{{ label }}</span></div>`,
+    <div class="sg-specimen"><slot/><span class="sg-label">{{ label }}</span>
+    </div>`,
 };
 
 /**
@@ -243,116 +254,344 @@ const GuidePanel = {
       today: day(0),
       yesterday: day(1),
       streaks: streakScale(s.check),
+      weekdays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+      // A sample per kind, and one that is not due on the shown days.
+      rows: [
+        ['Check', s.check],
+        ['Count', s.count],
+        ['Time', s.time],
+        ['Distance', s.distance],
+        ['not scheduled', s.sparse],
+      ],
       // Non-colours get no swatch, keeping the grid cell.
       isColor: (value) => /^(#|rgb|hsl|color|oklch)/i.test(value ?? ''),
     };
   },
   template: `
-    <div ref="root" class="sg-theme" :data-theme="theme">
+    <div
+      ref="root"
+      class="sg-theme"
+      :data-theme="theme"
+    >
       <h2 class="sg-theme-title">{{ theme === 'dark' ? 'Dark' : 'Light' }}</h2>
-
-      <guide-section title="Tokens" note="Read straight from the stylesheet, not maintained here." block>
+      <guide-section
+        title="Tokens"
+        note="Read straight from the stylesheet, not maintained here."
+        block
+      >
         <div class="sg-tokens">
-          <div v-for="(name, i) in names" :key="name" class="sg-token">
-            <span class="sg-chip" :class="{'is-empty': values.length && !isColor(values[i])}"
-                  :style="{background: 'var(' + name + ')'}"></span>
+          <div
+            v-for="(name, i) in names"
+            :key="name"
+            class="sg-token"
+          >
+            <span
+              class="sg-chip"
+              :class="{'is-empty': values.length && !isColor(values[i])}"
+              :style="{background: 'var(' + name + ')'}"
+            ></span>
             <code class="sg-token-name">{{ name }}</code>
             <span class="sg-token-value">{{ values[i] }}</span>
           </div>
         </div>
       </guide-section>
-
-      <guide-section title="Buttons" note="Primary carries the single accent colour of the interface: dark grey on light, light on dark.">
-        <guide-specimen label=".button.primary"><button type="button" class="button primary">Create</button></guide-specimen>
-        <guide-specimen label=".button"><button type="button" class="button">Cancel</button></guide-specimen>
-        <guide-specimen label=".button.ghost"><button type="button" class="button ghost">Later</button></guide-specimen>
-        <guide-specimen label=".button.danger"><button type="button" class="button danger">Delete</button></guide-specimen>
-        <guide-specimen label=":disabled"><button type="button" class="button primary" disabled>Save</button></guide-specimen>
-        <guide-specimen label=".button.round"><button type="button" class="button round">+</button></guide-specimen>
-        <guide-specimen label=".icon-button"><button type="button" class="icon-button" aria-label="Edit"><app-icon name="edit"/></button></guide-specimen>
-        <guide-specimen label=".icon-button.is-back"><button type="button" class="icon-button is-back" aria-label="Back"><app-icon name="arrowLeft"/></button></guide-specimen>
+      <guide-section
+        title="Buttons"
+        note="Primary carries the single accent colour of the interface: dark grey on light, light on dark."
+      >
+        <guide-specimen label=".button.primary">
+          <button
+            type="button"
+            class="button primary"
+          >Create</button>
+        </guide-specimen>
+        <guide-specimen label=".button">
+          <button
+            type="button"
+            class="button"
+          >Cancel</button>
+        </guide-specimen>
+        <guide-specimen label=".button.ghost">
+          <button
+            type="button"
+            class="button ghost"
+          >Later</button>
+        </guide-specimen>
+        <guide-specimen label=".button.danger">
+          <button
+            type="button"
+            class="button danger"
+          >Delete</button>
+        </guide-specimen>
+        <guide-specimen label=":disabled">
+          <button
+            type="button"
+            class="button primary"
+            disabled
+          >Save</button>
+        </guide-specimen>
+        <guide-specimen label=".button.round">
+          <button
+            type="button"
+            class="button round"
+          >+</button>
+        </guide-specimen>
+        <guide-specimen label=".icon-button">
+          <button
+            type="button"
+            class="icon-button"
+            aria-label="Edit"
+          >
+            <app-icon name="edit"/>
+          </button>
+        </guide-specimen>
+        <guide-specimen label=".icon-button.is-back">
+          <button
+            type="button"
+            class="icon-button is-back"
+            aria-label="Back"
+          >
+            <app-icon name="arrowLeft"/>
+          </button>
+        </guide-specimen>
       </guide-section>
-
-      <guide-section title="Form fields" note="Everything the editor and the settings use.">
-        <label class="field"><span class="field-label">Name</span><input type="text" placeholder="e.g. drink water"></label>
-        <label class="field"><span class="field-label">With hint</span><input type="text" value="5000"><p class="field-hint">Equals 5.0 km.</p></label>
-        <label class="field"><span class="field-label">Disabled</span><input type="text" value="Locked" disabled></label>
+      <guide-section
+        title="Form fields"
+        note="Everything the editor and the settings use."
+      >
+        <label class="field"><span class="field-label">Name</span>
+          <input
+            type="text"
+            placeholder="e.g. drink water"
+          >
+        </label>
+        <label class="field"><span class="field-label">With hint</span>
+          <input
+            type="text"
+            value="5000"
+          >
+          <p class="field-hint">Equals 5.0 km.</p>
+        </label>
+        <label class="field"><span class="field-label">Disabled</span>
+          <input
+            type="text"
+            value="Locked"
+            disabled
+          >
+        </label>
         <guide-specimen label=".segmented">
-          <div class="segmented" role="radiogroup" aria-label="Kind">
-            <label><input type="radio" :name="'sg-kind-' + theme" value="check" checked><span><app-icon name="check"/>Check</span></label>
-            <label><input type="radio" :name="'sg-kind-' + theme" value="count"><span><app-icon name="calculator"/>Count</span></label>
-            <label><input type="radio" :name="'sg-kind-' + theme" value="time"><span><app-icon name="clock"/>Time</span></label>
-            <label><input type="radio" :name="'sg-kind-' + theme" value="distance"><span><app-icon name="navigation"/>Distance</span></label>
+          <div
+            class="segmented"
+            role="radiogroup"
+            aria-label="Kind"
+          >
+            <label>
+              <input
+                type="radio"
+                :name="'sg-kind-' + theme"
+                value="check"
+                checked
+              >
+              <span><app-icon name="check"/>Check</span>
+            </label>
+            <label>
+              <input
+                type="radio"
+                :name="'sg-kind-' + theme"
+                value="count"
+              >
+              <span><app-icon name="calculator"/>Count</span>
+            </label>
+            <label>
+              <input
+                type="radio"
+                :name="'sg-kind-' + theme"
+                value="time"
+              >
+              <span><app-icon name="clock"/>Time</span>
+            </label>
+            <label>
+              <input
+                type="radio"
+                :name="'sg-kind-' + theme"
+                value="distance"
+              >
+              <span><app-icon name="navigation"/>Distance</span>
+            </label>
           </div>
         </guide-specimen>
         <guide-specimen label=".weekdays">
           <div class="weekdays">
-            <button v-for="(d, i) in ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']" :key="d"
-                    type="button" class="weekday" :aria-pressed="String(i === 0 || i === 2 || i === 4)">{{ d }}</button>
+            <button
+              v-for="(d, i) in weekdays"
+              :key="d"
+              type="button"
+              class="weekday"
+              :aria-pressed="String(i === 0 || i === 2 || i === 4)"
+            >
+              {{ d }}
+            </button>
           </div>
         </guide-specimen>
         <guide-specimen label=".swatches">
-          <div class="swatches" role="radiogroup">
-            <button v-for="color in state.colors" :key="color" type="button" class="swatch"
-                    :style="{'--swatch': colorValue(color)}" role="radio"
-                    :aria-checked="String(color === state.colors[0])" :aria-label="color"></button>
+          <div
+            class="swatches"
+            role="radiogroup"
+          >
+            <button
+              v-for="color in state.colors"
+              :key="color"
+              type="button"
+              class="swatch"
+              :style="{'--swatch': colorValue(color)}"
+              role="radio"
+              :aria-checked="String(color === state.colors[0])"
+              :aria-label="color"
+            ></button>
           </div>
         </guide-specimen>
         <guide-specimen label=".stepper">
           <div class="stepper">
-            <button type="button" class="button round">−</button><input type="number" value="20"><button type="button" class="button round">+</button>
+            <button
+              type="button"
+              class="button round"
+            >−</button>
+            <input
+              type="number"
+              value="20"
+            >
+            <button
+              type="button"
+              class="button round"
+            >+</button>
           </div>
         </guide-specimen>
         <guide-specimen label=".switch">
-          <label class="switch"><input type="checkbox" checked><span>Show archived habits</span></label>
+          <label class="switch">
+            <input
+              type="checkbox"
+              checked
+            >
+            <span>Show archived habits</span>
+          </label>
         </guide-specimen>
         <guide-specimen label=".picker">
-          <button type="button" class="picker"><span class="picker-value">Health</span></button>
+          <button
+            type="button"
+            class="picker"
+          >
+            <span class="picker-value">Health</span>
+          </button>
         </guide-specimen>
-        <guide-specimen label="p.error"><p class="error">Please select at least one weekday.</p></guide-specimen>
+        <guide-specimen label="p.error">
+          <p class="error">Please select at least one weekday.</p>
+        </guide-specimen>
       </guide-section>
-
-      <guide-section title="Board" note="Built with the same components as the overview — HeadDay, HabitLabel, DayCell.">
+      <guide-section
+        title="Board"
+        note="Built with the same components as the overview — HeadDay, HabitLabel, DayCell."
+      >
         <guide-specimen label="HeadDay: today / normal">
-          <div class="sg-cells"><head-day :iso="today"/><head-day :iso="yesterday"/></div>
+          <div class="sg-cells"><head-day :iso="today"/>
+            <head-day :iso="yesterday"/>
+          </div>
         </guide-specimen>
-        <guide-specimen label="HabitLabel"><habit-label :habit="s.time"/></guide-specimen>
-        <guide-specimen label="HabitLabel: archived"><habit-label :habit="s.archived"/></guide-specimen>
-        <guide-specimen v-for="[label, habit] in [['Check', s.check], ['Count', s.count], ['Time', s.time], ['Distance', s.distance], ['not scheduled', s.sparse]]"
-                        :key="label" :label="label">
-          <div class="sg-cells"><day-cell v-for="iso in dates" :key="iso" :habit="habit" :iso="iso"/></div>
+        <guide-specimen label="HabitLabel">
+          <habit-label :habit="s.time"/>
+        </guide-specimen>
+        <guide-specimen label="HabitLabel: archived">
+          <habit-label :habit="s.archived"/>
+        </guide-specimen>
+        <guide-specimen
+          v-for="[label, habit] in rows"
+          :key="label"
+          :label="label"
+        >
+          <div class="sg-cells">
+            <day-cell
+              v-for="iso in dates"
+              :key="iso"
+              :habit="habit"
+              :iso="iso"
+            />
+          </div>
         </guide-specimen>
         <guide-specimen label="streak levels: none, 1 week … 1 year">
-          <div class="sg-cells"><day-cell v-for="sample in streaks" :key="sample.iso" :habit="sample.habit" :iso="sample.iso"/></div>
+          <div class="sg-cells">
+            <day-cell
+              v-for="sample in streaks"
+              :key="sample.iso"
+              :habit="sample.habit"
+              :iso="sample.iso"
+            />
+          </div>
         </guide-specimen>
-        <guide-specimen label=".month-label"><div class="month-label">September</div></guide-specimen>
+        <guide-specimen label=".month-label">
+          <div class="month-label">September</div>
+        </guide-specimen>
       </guide-section>
-
-      <guide-section title="Heatmap" note='Levels 0–4, then "not scheduled" and the future.'>
+      <guide-section
+        title="Heatmap"
+        note='Levels 0–4, then "not scheduled" and the future.'
+      >
         <guide-specimen label="data-level 0 … 4 · is-off · is-future">
           <div class="heatmap-sample">
-            <div v-for="level in [0, 1, 2, 3, 4]" :key="level" class="heat" :data-level="level"></div>
+            <div
+              v-for="level in [0, 1, 2, 3, 4]"
+              :key="level"
+              class="heat"
+              :data-level="level"
+            ></div>
             <div class="heat is-off"></div>
             <div class="heat is-future"></div>
           </div>
         </guide-specimen>
       </guide-section>
-
-      <guide-section title="Messages" note="In the running app toasts sit at the bottom right; here they stand in the flow.">
+      <guide-section
+        title="Messages"
+        note="In the running app toasts sit at the bottom right; here they stand in the flow."
+      >
         <guide-specimen label=".toast">
-          <div class="toast"><span class="text">Habit deleted.</span><button type="button" class="button">Undo</button><button type="button" class="icon-button" aria-label="Close">&times;</button></div>
+          <div class="toast"><span class="text">Habit deleted.</span>
+            <button
+              type="button"
+              class="button"
+            >Undo</button>
+            <button
+              type="button"
+              class="icon-button"
+              aria-label="Close"
+            >&times;</button>
+          </div>
         </guide-specimen>
         <guide-specimen label=".toast.is-error">
-          <div class="toast is-error"><span class="text">No connection to the server.</span><button type="button" class="icon-button" aria-label="Close">&times;</button></div>
+          <div class="toast is-error">
+            <span class="text">No connection to the server.</span>
+            <button
+              type="button"
+              class="icon-button"
+              aria-label="Close"
+            >&times;</button>
+          </div>
         </guide-specimen>
       </guide-section>
-
-      <guide-section title="Text" note="The type sizes that appear outside the building blocks.">
+      <guide-section
+        title="Text"
+        note="The type sizes that appear outside the building blocks."
+      >
         <guide-specimen label="h2"><h2>Heading</h2></guide-specimen>
-        <guide-specimen label=".block-title"><h2 class="block-title">Category</h2></guide-specimen>
-        <guide-specimen label="p"><p>Body text, as it appears in empty states.</p></guide-specimen>
-        <guide-specimen label=".habit-meta"><span class="habit-meta">20 min · daily</span></guide-specimen>
-        <guide-specimen label=".field-hint"><p class="field-hint">A hint below a field.</p></guide-specimen>
+        <guide-specimen label=".block-title">
+          <h2 class="block-title">Category</h2>
+        </guide-specimen>
+        <guide-specimen label="p">
+          <p>Body text, as it appears in empty states.</p>
+        </guide-specimen>
+        <guide-specimen label=".habit-meta">
+          <span class="habit-meta">20 min · daily</span>
+        </guide-specimen>
+        <guide-specimen label=".field-hint">
+          <p class="field-hint">A hint below a field.</p>
+        </guide-specimen>
       </guide-section>
     </div>`,
 };
@@ -371,10 +610,20 @@ export const StyleGuideView = {
   template: `
     <header class="sg-head">
       <h1>Building blocks</h1>
-      <p class="sg-note">Every building block of the application, in both themes side by side. Not linked — reachable at #/styleguide.</p>
+      <p class="sg-note">Every building block of the application, in both themes
+        side by side. Not linked — reachable at #/styleguide.</p>
     </header>
-    <div v-if="ready" class="sg-themes">
-      <guide-panel theme="light" :names="names"/>
-      <guide-panel theme="dark" :names="names"/>
+    <div
+      v-if="ready"
+      class="sg-themes"
+    >
+      <guide-panel
+        theme="light"
+        :names="names"
+      />
+      <guide-panel
+        theme="dark"
+        :names="names"
+      />
     </div>`,
 };

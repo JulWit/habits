@@ -76,32 +76,67 @@ export const AppBar = {
   },
   template: `
     <header class="app-bar">
-      <button class="icon-button" type="button" :title="t('Back')"
-              :aria-label="t('Back')" @click="$emit('back')">
+      <button
+        class="icon-button"
+        type="button"
+        :title="t('Back')"
+        :aria-label="t('Back')"
+        @click="$emit('back')"
+      >
         <app-icon name="arrowLeft"/>
       </button>
       <div class="app-bar-title">
         <h2><slot name="badge"/><span class="name">{{ title }}</span></h2>
-        <!-- In a span of its own, as the stylesheet draws the dot before it. -->
-        <span v-if="sub" class="sub"><span class="sub-part">{{ sub }}</span></span>
+        <!-- In a span of its own, as the stylesheet draws the dot before
+             it. -->
+        <span
+          v-if="sub"
+          class="sub"
+        >
+          <span class="sub-part">{{ sub }}</span>
+        </span>
       </div>
       <div class="app-bar-actions">
-        <button v-if="edit" class="icon-button" type="button" :title="t('Edit')"
-                :aria-label="t('Edit')" @click="$emit('edit')">
+        <button
+          v-if="edit"
+          class="icon-button"
+          type="button"
+          :title="t('Edit')"
+          :aria-label="t('Edit')"
+          @click="$emit('edit')"
+        >
           <app-icon name="edit"/>
         </button>
         <template v-if="menu.length > 0">
-          <button type="button" class="icon-button" :title="t('More options')"
-                  :aria-label="t('More options')" aria-haspopup="menu"
-                  aria-expanded="false" :popovertarget="menuId">
+          <button
+            type="button"
+            class="icon-button"
+            :title="t('More options')"
+            :aria-label="t('More options')"
+            aria-haspopup="menu"
+            aria-expanded="false"
+            :popovertarget="menuId"
+          >
             <app-icon name="moreVertical"/>
           </button>
-          <div :id="menuId" class="overflow-menu" popover="auto" role="menu"
-               @toggle="onToggle" @beforetoggle="onBeforeToggle"
-               @keydown="onMenuKey">
-            <button v-for="item in menu" :key="item.action" type="button"
-                    class="overflow-item" :class="{'is-danger': item.danger}"
-                    role="menuitem" @click="choose(item, $event)">
+          <div
+            :id="menuId"
+            class="overflow-menu"
+            popover="auto"
+            role="menu"
+            @toggle="onToggle"
+            @beforetoggle="onBeforeToggle"
+            @keydown="onMenuKey"
+          >
+            <button
+              v-for="item in menu"
+              :key="item.action"
+              type="button"
+              class="overflow-item"
+              :class="{'is-danger': item.danger}"
+              role="menuitem"
+              @click="choose(item, $event)"
+            >
               <app-icon :name="item.icon"/><span>{{ item.label }}</span>
             </button>
           </div>

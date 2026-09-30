@@ -26,9 +26,18 @@ export const StatRow = {
   props: {stats: {type: Array, required: true}},
   template: `
     <div class="stat-row">
-      <div v-for="[label, value, icon] in stats" :key="label" class="stat">
+      <div
+        v-for="[label, value, icon] in stats"
+        :key="label"
+        class="stat"
+      >
         <div class="value">{{ value }}</div>
-        <span class="stat-icon" aria-hidden="true"><app-icon :name="icon"/></span>
+        <span
+          class="stat-icon"
+          aria-hidden="true"
+        >
+          <app-icon :name="icon"/>
+        </span>
         <div class="label">{{ label }}</div>
       </div>
     </div>`,
@@ -62,9 +71,18 @@ export const FactsPanel = {
     <section class="panel">
       <h3>{{ title }}</h3>
       <dl class="activity-list">
-        <div v-for="item in items" :key="item.label">
+        <div
+          v-for="item in items"
+          :key="item.label"
+        >
           <dt>{{ item.label }}</dt>
-          <dd>{{ item.value }}<span v-if="item.note" class="note">{{ item.note }}</span></dd>
+          <dd>{{ item.value }}<span
+              v-if="item.note"
+              class="note"
+            >
+              {{ item.note }}
+            </span>
+          </dd>
         </div>
       </dl>
     </section>`,

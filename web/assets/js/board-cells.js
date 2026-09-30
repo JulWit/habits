@@ -38,16 +38,24 @@ export const HeadDay = {
     };
   },
   template: `
-    <button v-if="selectable" type="button"
-            class="grid-head is-selectable"
-            :class="{'is-today': isActive, 'is-current': iso === state.today}"
-            :title="title" data-role="select-day" :data-date="iso"
-            :aria-pressed="String(isActive)">
+    <button
+      v-if="selectable"
+      type="button"
+      class="grid-head is-selectable"
+      :class="{'is-today': isActive, 'is-current': iso === state.today}"
+      :title="title"
+      data-role="select-day"
+      :data-date="iso"
+      :aria-pressed="String(isActive)"
+    >
       <span class="dow">{{ weekday }}</span><span class="dom">{{ day }}</span>
     </button>
-    <div v-else class="grid-head"
-         :class="{'is-today': isActive, 'is-current': iso === state.today}"
-         :title="title">
+    <div
+      v-else
+      class="grid-head"
+      :class="{'is-today': isActive, 'is-current': iso === state.today}"
+      :title="title"
+    >
       <span class="dow">{{ weekday }}</span><span class="dom">{{ day }}</span>
     </div>`,
 };
@@ -72,13 +80,27 @@ export const HabitLabel = {
   },
   // The streak is always shown, even when it is 0.
   template: `
-    <button type="button" class="habit-main"
-            :class="{'is-archived': habit.archivedAt}"
-            data-role="open" :data-habit="habit.id" :title="title">
-      <icon-badge class="habit-icon" :icon="habit.icon" :color="habit.color"/>
+    <button
+      type="button"
+      class="habit-main"
+      :class="{'is-archived': habit.archivedAt}"
+      data-role="open"
+      :data-habit="habit.id"
+      :title="title"
+    >
+      <icon-badge
+        class="habit-icon"
+        :icon="habit.icon"
+        :color="habit.color"
+      />
       <span class="habit-text">
         <span class="habit-name">{{ habit.name }}</span>
-        <span class="habit-meta"><span class="habit-streak"><app-icon name="streak"/>{{ habit.stats?.currentStreak ?? 0 }}</span><template v-if="described"> · {{ described }}</template></span>
+        <span class="habit-meta">
+          <span class="habit-streak">
+            <app-icon name="streak"/>{{ habit.stats?.currentStreak ?? 0 }}
+          </span>
+          <template v-if="described"> · {{ described }}</template>
+        </span>
       </span>
     </button>`,
 };
@@ -106,17 +128,39 @@ export const DayCell = {
   // The label is also the tooltip, so the state is not told by the mark's
   // colour and pattern alone (e.g. hatched: planned ahead).
   template: `
-    <button type="button" class="cell" :class="{'is-today': isActive}"
-            data-role="cell" :data-habit="habit.id" :data-date="iso"
-            :style="{'--habit-color': color}"
-            :aria-label="cell.label" :title="cell.label"
-            :disabled="cell.disabled">
-      <span class="mark" :class="cell.mark" :data-streak="cell.streak || undefined"
-            :style="{'--habit-color': color, '--p': String(cell.progress)}">
-        <app-icon v-if="cell.skipped" name="skip"/>
-        <app-icon v-else-if="cell.check" :svg="CHECK_SVG"/>
-        <span v-else-if="cell.number" class="mark-value"
-              :class="{'is-long': cell.number.length >= 4}">{{ cell.number }}</span>
+    <button
+      type="button"
+      class="cell"
+      :class="{'is-today': isActive}"
+      data-role="cell"
+      :data-habit="habit.id"
+      :data-date="iso"
+      :style="{'--habit-color': color}"
+      :aria-label="cell.label"
+      :title="cell.label"
+      :disabled="cell.disabled"
+    >
+      <span
+        class="mark"
+        :class="cell.mark"
+        :data-streak="cell.streak || undefined"
+        :style="{'--habit-color': color, '--p': String(cell.progress)}"
+      >
+        <app-icon
+          v-if="cell.skipped"
+          name="skip"
+        />
+        <app-icon
+          v-else-if="cell.check"
+          :svg="CHECK_SVG"
+        />
+        <span
+          v-else-if="cell.number"
+          class="mark-value"
+          :class="{'is-long': cell.number.length >= 4}"
+        >
+          {{ cell.number }}
+        </span>
       </span>
     </button>`,
 };

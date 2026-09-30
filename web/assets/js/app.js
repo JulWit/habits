@@ -88,50 +88,100 @@ const App = {
     <header class="topbar">
       <div class="topbar-inner">
         <h1 class="brand">
-          <svg class="brand-mark" viewBox="0 0 24 24" aria-hidden="true"
-               fill="none" stroke="currentColor" stroke-width="2.4">
+          <svg
+            class="brand-mark"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.4"
+          >
             <path d="M2.98 15.28A9.6 9.6 0 1 1 21.02 15.28"/>
             <path d="M20.14 17.09A9.6 9.6 0 0 1 16.41 20.53"/>
             <path d="M14.54 21.26A9.6 9.6 0 0 1 9.46 21.26"/>
             <path d="M7.59 20.53A9.6 9.6 0 0 1 3.86 17.09"/>
-            <path d="M8 12.3 10.9 15.2 16.1 9.2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path
+              d="M8 12.3 10.9 15.2 16.1 9.2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
           </svg>
-          <span class="brand-text" translate="no">Habits</span>
+          <span
+            class="brand-text"
+            translate="no"
+          >Habits</span>
         </h1>
         <div class="topbar-actions">
-          <span class="sync-status" role="status" :hidden="!syncStatus.text">{{ syncStatus.text }}</span>
-          <button id="add-habit" class="icon-button" type="button"
-                  :title="t('New habit')" :aria-label="t('New habit')" @click="createHabit">
+          <span
+            class="sync-status"
+            role="status"
+            :hidden="!syncStatus.text"
+          >
+            {{ syncStatus.text }}
+          </span>
+          <button
+            id="add-habit"
+            class="icon-button"
+            type="button"
+            :title="t('New habit')"
+            :aria-label="t('New habit')"
+            @click="createHabit"
+          >
             <app-icon name="plus"/>
           </button>
-          <button id="open-search" class="icon-button" type="button" :title="searchTitle"
-                  :aria-label="t('Search')" aria-haspopup="dialog" @click="openSearch">
+          <button
+            id="open-search"
+            class="icon-button"
+            type="button"
+            :title="searchTitle"
+            :aria-label="t('Search')"
+            aria-haspopup="dialog"
+            @click="openSearch"
+          >
             <app-icon name="search"/>
           </button>
-          <button id="filter-open-habits" class="icon-button" type="button"
-                  :title="t('Show only open')" :aria-label="t('Show only open')"
-                  :aria-pressed="String(onlyOpen)" @click="toggleFilter">
+          <button
+            id="filter-open-habits"
+            class="icon-button"
+            type="button"
+            :title="t('Show only open')"
+            :aria-label="t('Show only open')"
+            :aria-pressed="String(onlyOpen)"
+            @click="toggleFilter"
+          >
             <app-icon name="filter"/>
           </button>
-          <button id="open-settings" class="icon-button" type="button"
-                  :title="t('Settings')" :aria-label="t('Settings')"
-                  aria-haspopup="dialog" @click="openSettings">
+          <button
+            id="open-settings"
+            class="icon-button"
+            type="button"
+            :title="t('Settings')"
+            :aria-label="t('Settings')"
+            aria-haspopup="dialog"
+            @click="openSettings"
+          >
             <app-icon name="gear"/>
           </button>
         </div>
       </div>
     </header>
-
-    <main id="board-view" class="view" :hidden="route.view !== 'board'">
+    <main
+      id="board-view"
+      class="view"
+      :hidden="route.view !== 'board'"
+    >
       <board-view/>
     </main>
     <habit-view/>
     <category-view/>
     <day-stats-view/>
-    <main id="style-guide-view" class="view" :hidden="route.view !== 'styleguide'">
+    <main
+      id="style-guide-view"
+      class="view"
+      :hidden="route.view !== 'styleguide'"
+    >
       <style-guide-view v-if="guideShown"/>
     </main>
-
     <!-- Pages: full-screen dialogs with a back button, stacked (see
          page-stack.js). -->
     <habit-editor/>
@@ -141,23 +191,48 @@ const App = {
     <skip-editor/>
     <search-dialog/>
     <day-editor/>
-
     <!-- Asks before an editor with unsaved changes closes (see page-stack.js).
          The first button, keeping the changes, gets the focus. -->
-    <dialog id="discard-dialog" class="dialog compact" aria-labelledby="discard-title">
+    <dialog
+      id="discard-dialog"
+      class="dialog compact"
+      aria-labelledby="discard-title"
+    >
       <form method="dialog">
-        <h2 id="discard-title" class="dialog-head">{{ t('Discard changes?') }}</h2>
+        <h2
+          id="discard-title"
+          class="dialog-head"
+        >
+          {{ t('Discard changes?') }}
+        </h2>
         <footer class="dialog-foot">
-          <button type="submit" class="button ghost" value="keep">{{ t('Keep editing') }}</button>
-          <button type="submit" class="button primary" value="discard">{{ t('Discard') }}</button>
+          <button
+            type="submit"
+            class="button ghost"
+            value="keep"
+          >
+            {{ t('Keep editing') }}
+          </button>
+          <button
+            type="submit"
+            class="button primary"
+            value="discard"
+          >
+            {{ t('Discard') }}
+          </button>
         </footer>
       </form>
     </dialog>
-
     <toast-list/>
-
     <!-- Live region announcing the result of a tap on the board. -->
-    <div id="board-status" class="sr-only" role="status" aria-live="polite">{{ announcement }}</div>`,
+    <div
+      id="board-status"
+      class="sr-only"
+      role="status"
+      aria-live="polite"
+    >
+      {{ announcement }}
+    </div>`,
 };
 
 /**

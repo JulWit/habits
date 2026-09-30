@@ -251,12 +251,29 @@ const ToastItem = {
     };
   },
   template: `
-    <div class="toast" :class="{'is-error': toast.error}"
-         @pointerenter="onEnter" @pointerleave="onLeave"
-         @focusin="onFocusIn" @focusout="onFocusOut">
+    <div
+      class="toast"
+      :class="{'is-error': toast.error}"
+      @pointerenter="onEnter"
+      @pointerleave="onLeave"
+      @focusin="onFocusIn"
+      @focusout="onFocusOut"
+    >
       <span class="text">{{ toast.text }}</span>
-      <button v-if="toast.actionLabel" type="button" class="button" @click="act">{{ toast.actionLabel }}</button>
-      <button type="button" class="icon-button" :aria-label="t('Close')" @click="close">×</button>
+      <button
+        v-if="toast.actionLabel"
+        type="button"
+        class="button"
+        @click="act"
+      >
+        {{ toast.actionLabel }}
+      </button>
+      <button
+        type="button"
+        class="icon-button"
+        :aria-label="t('Close')"
+        @click="close"
+      >×</button>
     </div>`,
 };
 
@@ -268,7 +285,16 @@ export const ToastList = {
     return {toasts};
   },
   template: `
-    <div id="toasts" class="toasts" role="status" aria-live="polite">
-      <toast-item v-for="item in toasts" :key="item.id" :toast="item"/>
+    <div
+      id="toasts"
+      class="toasts"
+      role="status"
+      aria-live="polite"
+    >
+      <toast-item
+        v-for="item in toasts"
+        :key="item.id"
+        :toast="item"
+      />
     </div>`,
 };

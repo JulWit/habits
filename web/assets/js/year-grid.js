@@ -64,15 +64,32 @@ export const YearGrid = {
   },
   template: `
     <div class="heatmap-scroll">
-      <div class="heatmap-body" :style="{'--weeks': String(grid.weeks)}">
+      <div
+        class="heatmap-body"
+        :style="{'--weeks': String(grid.weeks)}"
+      >
         <div class="heatmap-months">
-          <span v-for="month in grid.months" :key="month.name"
-                :style="{'grid-column': String(month.week)}">{{ month.name }}</span>
+          <span
+            v-for="month in grid.months"
+            :key="month.name"
+            :style="{'grid-column': String(month.week)}"
+          >
+            {{ month.name }}
+          </span>
         </div>
         <div class="heatmap">
-          <template v-for="day in grid.days" :key="day.iso">
-            <div v-if="day.inYear" v-bind="square(day.iso)"></div>
-            <div v-else class="heat is-outside"></div>
+          <template
+            v-for="day in grid.days"
+            :key="day.iso"
+          >
+            <div
+              v-if="day.inYear"
+              v-bind="square(day.iso)"
+            ></div>
+            <div
+              v-else
+              class="heat is-outside"
+            ></div>
           </template>
         </div>
       </div>

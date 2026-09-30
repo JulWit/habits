@@ -113,39 +113,98 @@ export const SkipEditor = {
     return {el, formEl, form, habit, error, busy, submit};
   },
   template: `
-    <dialog ref="el" id="skip-editor" class="dialog page is-sheet is-floating"
-            aria-labelledby="skip-editor-title">
-      <form ref="formEl" method="dialog" @submit.prevent="submit">
+    <dialog
+      ref="el"
+      id="skip-editor"
+      class="dialog page is-sheet is-floating"
+      aria-labelledby="skip-editor-title"
+    >
+      <form
+        ref="formEl"
+        method="dialog"
+        @submit.prevent="submit"
+      >
         <header class="page-head">
-          <button type="button" class="icon-button" data-page-back
-                  :title="t('Close')" :aria-label="t('Close')"><app-icon name="close"/></button>
+          <button
+            type="button"
+            class="icon-button"
+            data-page-back
+            :title="t('Close')"
+            :aria-label="t('Close')"
+          >
+            <app-icon name="close"/>
+          </button>
           <h2 id="skip-editor-title">{{ t('Skip days') }}</h2>
-          <button type="submit" class="button primary" :disabled="busy">{{ t('Skip') }}</button>
+          <button
+            type="submit"
+            class="button primary"
+            :disabled="busy"
+          >
+            {{ t('Skip') }}
+          </button>
         </header>
-
         <div class="page-body">
           <div class="field row">
             <label class="grow">
               <span class="field-label">{{ t('From') }}</span>
-              <input name="from" v-model="form.from" type="date" required>
+              <input
+                name="from"
+                v-model="form.from"
+                type="date"
+                required
+              >
             </label>
             <label class="grow">
               <span class="field-label">{{ t('Until') }}</span>
-              <input name="to" v-model="form.to" type="date" :min="form.from" required>
+              <input
+                name="to"
+                v-model="form.to"
+                type="date"
+                :min="form.from"
+                required
+              >
             </label>
           </div>
-
-          <fieldset v-if="habit" class="field">
+          <fieldset
+            v-if="habit"
+            class="field"
+          >
             <legend class="field-label">{{ t('Habits') }}</legend>
-            <div class="segmented" role="radiogroup" :aria-label="t('Habits')">
-              <label><input type="radio" name="scope" value="one" v-model="form.scope"><span>{{ habit.name }}</span></label>
-              <label><input type="radio" name="scope" value="all" v-model="form.scope"><span>{{ t('All habits') }}</span></label>
+            <div
+              class="segmented"
+              role="radiogroup"
+              :aria-label="t('Habits')"
+            >
+              <label>
+                <input
+                  type="radio"
+                  name="scope"
+                  value="one"
+                  v-model="form.scope"
+                >
+                <span>{{ habit.name }}</span>
+              </label>
+              <label>
+                <input
+                  type="radio"
+                  name="scope"
+                  value="all"
+                  v-model="form.scope"
+                >
+                <span>{{ t('All habits') }}</span>
+              </label>
             </div>
           </fieldset>
-
-          <p class="field-hint">{{ t('Only due days without an entry are skipped; days with an entry keep it. Skipped days neither break nor extend a streak. Archived habits are left out.') }}</p>
-
-          <p v-if="error" class="error" role="alert">{{ error }}</p>
+          <p class="field-hint">
+            {{ t('Only due days without an entry are skipped; days with an entry keep it. Skipped days neither break nor extend a streak. Archived habits are left out.') }}
+          </p>
+          <p
+            v-if="error"
+            class="error"
+            role="alert"
+          >
+            {{ error }}
+          </p>
         </div>
       </form>
     </dialog>`,

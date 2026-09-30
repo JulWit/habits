@@ -692,9 +692,16 @@ const ToolButton = {
   },
   // Disabled rather than hidden at a limit.
   template: `
-    <button type="button" class="icon-button" :class="{'drag-handle': handle}"
-            :data-role="role" :data-habit="habit" :title="label"
-            :aria-label="label" :disabled="disabled">
+    <button
+      type="button"
+      class="icon-button"
+      :class="{'drag-handle': handle}"
+      :data-role="role"
+      :data-habit="habit"
+      :title="label"
+      :aria-label="label"
+      :disabled="disabled"
+    >
       <app-icon :name="icon"/>
     </button>`,
 };
@@ -717,15 +724,30 @@ const BlockProgress = {
   },
   // No bar if nothing is due on the day.
   template: `
-    <div v-if="progress.due > 0" class="block-progress"
-         :class="{'is-complete': progress.done === progress.due}" :title="title">
-      <span class="block-progress-track" :style="{'--segments': String(progress.due)}"
-            role="progressbar" aria-valuemin="0" :aria-valuemax="progress.due"
-            :aria-valuenow="progress.done" :aria-label="t('Done on this day')">
-        <span v-for="i in progress.due" :key="i" class="block-progress-seg"
-              :class="{'is-done': i <= progress.done}"></span>
+    <div
+      v-if="progress.due > 0"
+      class="block-progress"
+      :class="{'is-complete': progress.done === progress.due}"
+      :title="title"
+    >
+      <span
+        class="block-progress-track"
+        :style="{'--segments': String(progress.due)}"
+        role="progressbar"
+        aria-valuemin="0"
+        :aria-valuemax="progress.due"
+        :aria-valuenow="progress.done"
+        :aria-label="t('Done on this day')"
+      >
+        <span
+          v-for="i in progress.due"
+          :key="i"
+          class="block-progress-seg"
+          :class="{'is-done': i <= progress.done}"
+        ></span>
       </span>
-      <span class="block-progress-count">{{ progress.done }}/{{ progress.due }}</span>
+      <span class="block-progress-count">{{ progress.done }}/{{ progress.due }}
+      </span>
     </div>`,
 };
 
@@ -755,24 +777,52 @@ const HabitRow = {
   // The tools are always rendered, to keep the column width; there are none
   // with a single habit.
   template: `
-    <div class="habit-row" :data-habit="habit.id">
+    <div
+      class="habit-row"
+      :data-habit="habit.id"
+    >
       <div class="habit-cell">
-        <habit-label :habit="habit" @click="open(habit.id)"/>
+        <habit-label
+          :habit="habit"
+          @click="open(habit.id)"
+        />
       </div>
-      <day-cell v-for="iso in dates" :key="iso" :habit="habit" :iso="iso"
-                :active="active" @click="tapCell(habit.id, iso)"
-                @contextmenu="onCellContextMenu($event, habit.id, iso)"/>
+      <day-cell
+        v-for="iso in dates"
+        :key="iso"
+        :habit="habit"
+        :iso="iso"
+        :active="active"
+        @click="tapCell(habit.id, iso)"
+        @contextmenu="onCellContextMenu($event, habit.id, iso)"
+      />
       <div class="habit-tools">
         <template v-if="siblings >= 2">
-          <tool-button v-if="byDragging()" role="drag-habit" icon="grip"
-                       :label="t('Move habit')" handle :habit="habit.id"/>
+          <tool-button
+            v-if="byDragging()"
+            role="drag-habit"
+            icon="grip"
+            :label="t('Move habit')"
+            handle
+            :habit="habit.id"
+          />
           <template v-else>
-            <tool-button role="move-habit-up" icon="chevronUp"
-                         :label="t('Move habit up')" :habit="habit.id"
-                         :disabled="at === 0" @click="move(habit.id, -1)"/>
-            <tool-button role="move-habit-down" icon="chevronDown"
-                         :label="t('Move habit down')" :habit="habit.id"
-                         :disabled="at === siblings - 1" @click="move(habit.id, 1)"/>
+            <tool-button
+              role="move-habit-up"
+              icon="chevronUp"
+              :label="t('Move habit up')"
+              :habit="habit.id"
+              :disabled="at === 0"
+              @click="move(habit.id, -1)"
+            />
+            <tool-button
+              role="move-habit-down"
+              icon="chevronDown"
+              :label="t('Move habit down')"
+              :habit="habit.id"
+              :disabled="at === siblings - 1"
+              @click="move(habit.id, 1)"
+            />
           </template>
         </template>
       </div>
@@ -795,10 +845,26 @@ const BoardBlock = {
   },
   setup(props) {
     const category = computed(() => props.block.category);
+    /**
+     * Returns what the row of `habit` depends on, for its v-memo.
+     * @param {!Habit} habit
+     * @return {!Array<*>}
+     */
+    const rowMemo = (habit) =>
+        [habit,
+         props.dates[0],
+         props.dates.length,
+         props.active,
+         state.today,
+         byDragging(),
+         props.block.habits.indexOf(habit),
+         props.block.habits.length,
+    ];
     return {
       state,
       byDragging,
       category,
+      rowMemo,
       // The place of the category among all, for the arrow buttons.
       at: computed(
           () => state.categories.findIndex((c) => c.id === category.value?.id)),
@@ -811,38 +877,85 @@ const BoardBlock = {
   // when their habit (which the state replaces on every change) or their place
   // changes.
   template: `
-    <section class="block" :data-category="category?.id">
-      <header v-if="labelled" class="block-head">
+    <section
+      class="block"
+      :data-category="category?.id"
+    >
+      <header
+        v-if="labelled"
+        class="block-head"
+      >
         <h2 class="block-title">
-          <button v-if="category" type="button" class="block-link"
-                  data-role="open-category" @click="openCategory">
-            <icon-badge class="habit-icon" :icon="category.icon" :color="category.color || null"/>
+          <button
+            v-if="category"
+            type="button"
+            class="block-link"
+            data-role="open-category"
+            @click="openCategory"
+          >
+            <icon-badge
+              class="habit-icon"
+              :icon="category.icon"
+              :color="category.color || null"
+            />
             <span class="block-link-name">{{ category.name }}</span>
           </button>
           <template v-else>{{ t('No category') }}</template>
         </h2>
-        <block-progress v-if="category?.showProgress === true"
-                        :habits="block.habits" :day="active"/>
-        <div v-if="category && state.categories.length >= 2" class="block-tools">
-          <tool-button v-if="byDragging()" role="drag-category" icon="grip"
-                       :label="t('Move category')" handle/>
+        <block-progress
+          v-if="category?.showProgress === true"
+          :habits="block.habits"
+          :day="active"
+        />
+        <div
+          v-if="category && state.categories.length >= 2"
+          class="block-tools"
+        >
+          <tool-button
+            v-if="byDragging()"
+            role="drag-category"
+            icon="grip"
+            :label="t('Move category')"
+            handle
+          />
           <template v-else>
-            <tool-button role="move-category-up" icon="chevronUp"
-                         :label="t('Move category up')" :disabled="at <= 0"
-                         @click="move(-1)"/>
-            <tool-button role="move-category-down" icon="chevronDown"
-                         :label="t('Move category down')"
-                         :disabled="at === state.categories.length - 1"
-                         @click="move(1)"/>
+            <tool-button
+              role="move-category-up"
+              icon="chevronUp"
+              :label="t('Move category up')"
+              :disabled="at <= 0"
+              @click="move(-1)"
+            />
+            <tool-button
+              role="move-category-down"
+              icon="chevronDown"
+              :label="t('Move category down')"
+              :disabled="at === state.categories.length - 1"
+              @click="move(1)"
+            />
           </template>
         </div>
       </header>
-      <p v-if="block.visible.length === 0" class="block-empty">{{ t('No habit in this category yet.') }}</p>
-      <div v-else class="block-rows">
-        <habit-row v-for="habit in block.visible" :key="habit.id"
-                   v-memo="[habit, dates[0], dates.length, active, state.today, byDragging(), block.habits.indexOf(habit), block.habits.length]"
-                   :habit="habit" :at="block.habits.indexOf(habit)"
-                   :siblings="block.habits.length" :dates="dates" :active="active"/>
+      <p
+        v-if="block.visible.length === 0"
+        class="block-empty"
+      >
+        {{ t('No habit in this category yet.') }}
+      </p>
+      <div
+        v-else
+        class="block-rows"
+      >
+        <habit-row
+          v-for="habit in block.visible"
+          :key="habit.id"
+          v-memo="rowMemo(habit)"
+          :habit="habit"
+          :at="block.habits.indexOf(habit)"
+          :siblings="block.habits.length"
+          :dates="dates"
+          :active="active"
+        />
       </div>
     </section>`,
 };
@@ -962,59 +1075,121 @@ export const BoardView = {
   // the board is shown even when the filter leaves no block, so the day header
   // stays available for choosing another day.
   template: `
-    <div ref="boardEl" id="board-grid" class="board"
-         :class="{'has-today': activeColumn >= 0}"
-         :style="activeColumn >= 0 ? {'--today-col': String(activeColumn)} : null"
-         :hidden="all.length === 0"
-         @keydown="onBoardKeydown" @focusin="onBoardFocus">
+    <div
+      ref="boardEl"
+      id="board-grid"
+      class="board"
+      :class="{'has-today': activeColumn >= 0}"
+      :style="activeColumn >= 0 ? {'--today-col': String(activeColumn)} : null"
+      :hidden="all.length === 0"
+      @keydown="onBoardKeydown"
+      @focusin="onBoardFocus"
+    >
       <template v-if="dates.length > 0">
         <div class="day-header">
           <!-- Backdrop behind the sticky header. An element, as it needs a
                clipped layer of its own over a background image. -->
-          <div class="day-header-backdrop" aria-hidden="true"></div>
+          <div
+            class="day-header-backdrop"
+            aria-hidden="true"
+          ></div>
           <!-- Paging, in the date row above the habit names. Back to today is
                the floating button. -->
-          <div class="day-nav" style="grid-column: 1; grid-row: 2">
-            <tool-button role="page-older" icon="chevronLeft"
-                         :label="t('Earlier days')"
-                         :disabled="offset >= maxBackDays()" @click="page(1)"/>
-            <tool-button role="page-newer" icon="chevronRight"
-                         :label="t('Later days')"
-                         :disabled="offset <= -MAX_AHEAD_DAYS" @click="page(-1)"/>
+          <div
+            class="day-nav"
+            style="grid-column: 1; grid-row: 2"
+          >
+            <tool-button
+              role="page-older"
+              icon="chevronLeft"
+              :label="t('Earlier days')"
+              :disabled="offset >= maxBackDays()"
+              @click="page(1)"
+            />
+            <tool-button
+              role="page-newer"
+              icon="chevronRight"
+              :label="t('Later days')"
+              :disabled="offset <= -MAX_AHEAD_DAYS"
+              @click="page(-1)"
+            />
           </div>
-          <div v-for="month in monthLabels" :key="month.start" class="month-label"
-               :class="{'has-divider': month.start > 0}" :title="month.title"
-               :style="{'grid-column': (month.start + 2) + ' / span ' + month.span, 'grid-row': '1'}">{{ month.name }}</div>
+          <div
+            v-for="month in monthLabels"
+            :key="month.start"
+            class="month-label"
+            :class="{'has-divider': month.start > 0}"
+            :title="month.title"
+            :style="{'grid-column': month.column, 'grid-row': '1'}"
+          >
+            {{ month.name }}
+          </div>
           <!-- Column 1 holds the habit names; a month starts with a divider,
                but not on the first column. -->
-          <head-day v-for="(iso, i) in dates" :key="iso" :iso="iso"
-                    :active="active" selectable
-                    :class="{'is-month-start': i > 0 && dayOfMonth(iso) === 1}"
-                    :style="{'grid-column': String(i + 2), 'grid-row': '2'}"
-                    @click="selectDay(iso)"/>
+          <head-day
+            v-for="(iso, i) in dates"
+            :key="iso"
+            :iso="iso"
+            :active="active"
+            selectable
+            :class="{'is-month-start': i > 0 && dayOfMonth(iso) === 1}"
+            :style="{'grid-column': String(i + 2), 'grid-row': '2'}"
+            @click="selectDay(iso)"
+          />
         </div>
-        <day-summary :habits="everyHabit" :day="active" @open="openDays"/>
-        <board-block v-for="block in blocks" :key="block.category?.id ?? ''"
-                     :block="block" :labelled="labelled" :dates="dates"
-                     :active="active"/>
+        <day-summary
+          :habits="everyHabit"
+          :day="active"
+          @open="openDays"
+        />
+        <board-block
+          v-for="block in blocks"
+          :key="block.category?.id ?? ''"
+          :block="block"
+          :labelled="labelled"
+          :dates="dates"
+          :active="active"
+        />
       </template>
     </div>
-    <p id="board-no-match" class="empty"
-       :hidden="!(onlyOpen && all.length > 0 && blocks.length === 0)">{{ t('Nothing left open on this day.') }}</p>
-    <div id="board-empty" class="empty" :hidden="all.length > 0">
+    <p
+      id="board-no-match"
+      class="empty"
+      :hidden="!(onlyOpen && all.length > 0 && blocks.length === 0)"
+    >
+      {{ t('Nothing left open on this day.') }}
+    </p>
+    <div
+      id="board-empty"
+      class="empty"
+      :hidden="all.length > 0"
+    >
       <h2>{{ t('No habits yet') }}</h2>
-      <p>{{ t('Create your first habit — daily, on certain weekdays or every few days.') }}</p>
-      <button class="button primary" type="button" @click="createHabit">{{ t('Create first habit') }}</button>
+      <p>
+        {{ t('Create your first habit — daily, on certain weekdays or every few days.') }}
+      </p>
+      <button
+        class="button primary"
+        type="button"
+        @click="createHabit"
+      >
+        {{ t('Create first habit') }}
+      </button>
     </div>
-    <button type="button" class="button today-pill"
-            :hidden="offset === 0 && selectedDay === null" @click="backToToday">
+    <button
+      type="button"
+      class="button today-pill"
+      :hidden="offset === 0 && selectedDay === null"
+      @click="backToToday"
+    >
       <app-icon name="toToday"/><span>{{ t('Back to today') }}</span>
     </button>`,
 };
 
 /**
- * A month label of the day header, spanning its columns.
- * @typedef {{start: number, span: number, name: string, title: string}}
+ * A month label of the day header, spanning its columns. `column` is its
+ * CSS grid-column; column 1 holds the habit names.
+ * @typedef {{start: number, column: string, name: string, title: string}}
  */
 let MonthLabel;
 
@@ -1039,7 +1214,12 @@ function monthLabels(dates) {
     const suffix = year === yearOf(state.today) ? '' : ` ${year}`;
     // Short month name if the span is too narrow.
     const name = (span >= 5 ? MONTH_LONG[month] : MONTH_SHORT[month]) + suffix;
-    out.push({start, span, name, title: `${MONTH_LONG[month]} ${year}`});
+    out.push({
+      start,
+      column: `${start + 2} / span ${span}`,
+      name,
+      title: `${MONTH_LONG[month]} ${year}`,
+    });
     start = i;
   }
   return out;

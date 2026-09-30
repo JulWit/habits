@@ -125,6 +125,16 @@ function isLimit() {
 }
 
 /**
+ * Reports whether a frequency counts days per week or month, which a limit
+ * cannot use.
+ * @param {string} freq
+ * @return {boolean}
+ */
+function countsDays(freq) {
+  return freq === 'times_per_week' || freq === 'times_per_month';
+}
+
+/**
  * Returns the input of the form, as the API takes it.
  * @return {!Object}
  */
@@ -314,10 +324,7 @@ export const HabitEditor = {
     const limit = computed(isLimit);
     // A limit leaves the frequencies with fixed days.
     watch(limit, (on) => {
-      if (on &&
-          (form.freq === 'times_per_week' || form.freq === 'times_per_month')) {
-        form.freq = 'daily';
-      }
+      if (on && countsDays(form.freq)) form.freq = 'daily';
     });
     const retroactive = computed(() => offersRetroactive(collect()));
     watch(retroactive, (offered) => {
@@ -370,6 +377,11 @@ export const HabitEditor = {
 
     const category =
         computed(() => form.categoryId ? categoryById(form.categoryId) : null);
+    // A deleted category is shown as such.
+    const categoryName = computed(() => {
+      if (!form.categoryId) return t('No category');
+      return category.value?.name ?? t('Deleted category');
+    });
 
     return {
       el,
@@ -384,6 +396,8 @@ export const HabitEditor = {
       retroactive,
       kindHint: computed(kindHint),
       category,
+      categoryName,
+      countsDays,
       KINDS,
       FREQUENCIES,
       KIND_FIELDS,
@@ -399,187 +413,425 @@ export const HabitEditor = {
   // fields of the chosen kind and frequency are shown. The icons are drawn in
   // the chosen colour.
   template: `
-    <dialog ref="el" id="habit-editor" class="dialog page is-sheet is-floating"
-            aria-labelledby="habit-editor-title">
-      <form ref="formEl" method="dialog" @submit.prevent="submit">
+    <dialog
+      ref="el"
+      id="habit-editor"
+      class="dialog page is-sheet is-floating"
+      aria-labelledby="habit-editor-title"
+    >
+      <form
+        ref="formEl"
+        method="dialog"
+        @submit.prevent="submit"
+      >
         <header class="page-head">
-          <button type="button" class="icon-button" data-page-back
-                  :title="t('Close')" :aria-label="t('Close')"><app-icon name="close"/></button>
-          <h2 id="habit-editor-title">{{ editing ? t('Edit habit') : t('New habit') }}</h2>
-          <button type="submit" class="button primary" :disabled="busy">{{ editing ? t('Save') : t('Create') }}</button>
+          <button
+            type="button"
+            class="icon-button"
+            data-page-back
+            :title="t('Close')"
+            :aria-label="t('Close')"
+          >
+            <app-icon name="close"/>
+          </button>
+          <h2 id="habit-editor-title">
+            {{ editing ? t('Edit habit') : t('New habit') }}
+          </h2>
+          <button
+            type="submit"
+            class="button primary"
+            :disabled="busy"
+          >
+            {{ editing ? t('Save') : t('Create') }}
+          </button>
         </header>
-
         <div class="page-body">
           <label class="field">
             <span class="field-label">{{ t('Name') }}</span>
-            <input name="name" v-model="form.name" type="text" maxlength="80" required
-                   autocomplete="off" :placeholder="t('e.g. drink water')">
+            <input
+              name="name"
+              v-model="form.name"
+              type="text"
+              maxlength="80"
+              required
+              autocomplete="off"
+              :placeholder="t('e.g. drink water')"
+            >
           </label>
-
           <fieldset class="field">
             <legend class="field-label">{{ t('Colour') }}</legend>
-            <color-swatches :colors="state.colors" v-model="form.color"/>
+            <color-swatches
+              :colors="state.colors"
+              v-model="form.color"
+            />
           </fieldset>
-
           <fieldset class="field">
             <legend class="field-label">{{ t('Icon') }}</legend>
-            <icon-choices :names="state.icons" v-model="form.icon"
-                          :style="{'--habit-color': colorValue(form.color)}"/>
+            <icon-choices
+              :names="state.icons"
+              v-model="form.icon"
+              :style="{'--habit-color': colorValue(form.color)}"
+            />
           </fieldset>
-
           <div class="field">
-            <span class="field-label" id="habit-editor-category-label">{{ t('Category') }}</span>
+            <span
+              class="field-label"
+              id="habit-editor-category-label"
+            >
+              {{ t('Category') }}
+            </span>
             <!-- Labelled by the field label and its own text. -->
-            <button type="button" class="picker" id="habit-editor-category" aria-haspopup="dialog"
-                    aria-labelledby="habit-editor-category-label habit-editor-category"
-                    @click="chooseCategory">
-              <icon-badge v-if="category" class="habit-icon is-small"
-                          :icon="category.icon" :color="category.color || null"/>
-              <!-- A deleted category is shown by name. -->
-              <span class="picker-value" :class="{'is-empty': !form.categoryId}">{{ !form.categoryId ? t('No category') : category?.name ?? t('Deleted category') }}</span>
+            <button
+              type="button"
+              class="picker"
+              id="habit-editor-category"
+              aria-haspopup="dialog"
+              aria-labelledby="habit-editor-category-label habit-editor-category"
+              @click="chooseCategory"
+            >
+              <icon-badge
+                v-if="category"
+                class="habit-icon is-small"
+                :icon="category.icon"
+                :color="category.color || null"
+              />
+              <span
+                class="picker-value"
+                :class="{'is-empty': !form.categoryId}"
+              >
+                {{ categoryName }}
+              </span>
               <span class="picker-caret"><app-icon name="chevron"/></span>
             </button>
           </div>
-
           <fieldset class="field">
             <legend class="field-label">{{ t('Kind') }}</legend>
-            <div class="segmented" role="radiogroup" :aria-label="t('Kind')">
-              <label v-for="kind in KINDS" :key="kind.value">
-                <input type="radio" name="kind" :value="kind.value" v-model="form.kind">
+            <div
+              class="segmented"
+              role="radiogroup"
+              :aria-label="t('Kind')"
+            >
+              <label
+                v-for="kind in KINDS"
+                :key="kind.value"
+              >
+                <input
+                  type="radio"
+                  name="kind"
+                  :value="kind.value"
+                  v-model="form.kind"
+                >
                 <span><app-icon :name="kind.icon"/>{{ kind.label }}</span>
               </label>
             </div>
-            <p v-if="kindHint" class="field-hint">{{ kindHint }}</p>
+            <p
+              v-if="kindHint"
+              class="field-hint"
+            >
+              {{ kindHint }}
+            </p>
           </fieldset>
-
-          <!-- A target to reach or a limit to stay within, for measured kinds. -->
-          <fieldset v-if="form.kind !== 'check'" class="field">
+          <!-- A target to reach or a limit to stay within, for measured
+               kinds. -->
+          <fieldset
+            v-if="form.kind !== 'check'"
+            class="field"
+          >
             <legend class="field-label">{{ t('Goal') }}</legend>
-            <div class="segmented" role="radiogroup" :aria-label="t('Goal')">
-              <label><input type="radio" name="targetType" value="at_least" v-model="form.targetType"><span>{{ t('At least') }}</span></label>
-              <label><input type="radio" name="targetType" value="at_most" v-model="form.targetType"><span>{{ t('At most') }}</span></label>
+            <div
+              class="segmented"
+              role="radiogroup"
+              :aria-label="t('Goal')"
+            >
+              <label>
+                <input
+                  type="radio"
+                  name="targetType"
+                  value="at_least"
+                  v-model="form.targetType"
+                >
+                <span>{{ t('At least') }}</span>
+              </label>
+              <label>
+                <input
+                  type="radio"
+                  name="targetType"
+                  value="at_most"
+                  v-model="form.targetType"
+                >
+                <span>{{ t('At most') }}</span>
+              </label>
             </div>
-            <p v-if="limit" class="field-hint">{{ t('A limit is kept on every due day that stays within it, days without an entry included. It needs fixed days, not a number per week or month.') }}</p>
+            <p
+              v-if="limit"
+              class="field-hint"
+            >
+              {{ t('A limit is kept on every due day that stays within it, days without an entry included. It needs fixed days, not a number per week or month.') }}
+            </p>
           </fieldset>
-
-          <div v-if="form.kind === 'count'" class="field row">
+          <div
+            v-if="form.kind === 'count'"
+            class="field row"
+          >
             <label class="grow">
               <span class="field-label">{{ targetLabel('count') }}</span>
-              <input name="targetCount" v-model="form.targets.count" type="number"
-                     :min="limit ? '0' : KIND_FIELDS.count.min" max="1000" step="any" inputmode="decimal">
+              <input
+                name="targetCount"
+                v-model="form.targets.count"
+                type="number"
+                :min="limit ? '0' : KIND_FIELDS.count.min"
+                max="1000"
+                step="any"
+                inputmode="decimal"
+              >
             </label>
             <label class="grow">
               <span class="field-label">{{ t('Unit') }}</span>
-              <input name="unit" v-model="form.unit" type="text" maxlength="16"
-                     :placeholder="t('e.g. glasses')" autocomplete="off">
+              <input
+                name="unit"
+                v-model="form.unit"
+                type="text"
+                maxlength="16"
+                :placeholder="t('e.g. glasses')"
+                autocomplete="off"
+              >
             </label>
           </div>
-
-          <div v-if="form.kind === 'count'" class="field">
+          <div
+            v-if="form.kind === 'count'"
+            class="field"
+          >
             <label>
               <span class="field-label">{{ t('Step') }}</span>
-              <input name="stepCount" v-model="form.steps.count" type="number" min="0.1"
-                     max="1000" step="any" :placeholder="t('e.g. 1')" inputmode="decimal">
+              <input
+                name="stepCount"
+                v-model="form.steps.count"
+                type="number"
+                min="0.1"
+                max="1000"
+                step="any"
+                :placeholder="t('e.g. 1')"
+                inputmode="decimal"
+              >
             </label>
-            <p class="field-hint">{{ t('A click on a day changes the entry by this much.') }}</p>
+            <p class="field-hint">
+              {{ t('A click on a day changes the entry by this much.') }}
+            </p>
           </div>
-
-          <div v-if="form.kind === 'time'" class="field">
+          <div
+            v-if="form.kind === 'time'"
+            class="field"
+          >
             <div class="field-row">
               <label class="grow">
                 <span class="field-label">{{ targetLabel('time') }}</span>
-                <input name="targetTime" v-model="form.targets.time" type="number"
-                       :min="limit ? '0' : KIND_FIELDS.time.min" max="1440" step="any" inputmode="decimal">
+                <input
+                  name="targetTime"
+                  v-model="form.targets.time"
+                  type="number"
+                  :min="limit ? '0' : KIND_FIELDS.time.min"
+                  max="1440"
+                  step="any"
+                  inputmode="decimal"
+                >
               </label>
               <label class="grow">
                 <span class="field-label">{{ t('Step in minutes') }}</span>
-                <input name="stepTime" v-model="form.steps.time" type="number" min="0.1"
-                       max="1440" step="any" :placeholder="t('e.g. 5')" inputmode="decimal">
+                <input
+                  name="stepTime"
+                  v-model="form.steps.time"
+                  type="number"
+                  min="0.1"
+                  max="1440"
+                  step="any"
+                  :placeholder="t('e.g. 5')"
+                  inputmode="decimal"
+                >
               </label>
             </div>
-            <p class="field-hint">{{ t('A click on a day changes the entry by this much.') }}</p>
+            <p class="field-hint">
+              {{ t('A click on a day changes the entry by this much.') }}
+            </p>
           </div>
-
-          <div v-if="form.kind === 'distance'" class="field">
+          <div
+            v-if="form.kind === 'distance'"
+            class="field"
+          >
             <!-- step="any" allows any decimal value. -->
             <div class="field-row">
               <label class="grow">
                 <span class="field-label">{{ targetLabel('distance') }}</span>
-                <input name="targetDistance" v-model="form.targets.distance" type="number"
-                       :min="limit ? '0' : KIND_FIELDS.distance.min" max="200" step="any" inputmode="decimal">
+                <input
+                  name="targetDistance"
+                  v-model="form.targets.distance"
+                  type="number"
+                  :min="limit ? '0' : KIND_FIELDS.distance.min"
+                  max="200"
+                  step="any"
+                  inputmode="decimal"
+                >
               </label>
               <label class="grow">
                 <span class="field-label">{{ t('Step in km') }}</span>
-                <input name="stepDistance" v-model="form.steps.distance" type="number" min="0.001"
-                       max="200" step="any" :placeholder="t('e.g. 0.5')" inputmode="decimal">
+                <input
+                  name="stepDistance"
+                  v-model="form.steps.distance"
+                  type="number"
+                  min="0.001"
+                  max="200"
+                  step="any"
+                  :placeholder="t('e.g. 0.5')"
+                  inputmode="decimal"
+                >
               </label>
             </div>
-            <p class="field-hint">{{ t('A click on a day changes the entry by this much.') }}</p>
+            <p class="field-hint">
+              {{ t('A click on a day changes the entry by this much.') }}
+            </p>
           </div>
-
           <fieldset class="field">
             <legend class="field-label">{{ t('Frequency') }}</legend>
-            <div class="segmented wrap" role="radiogroup" :aria-label="t('Frequency')">
-              <label v-for="freq in FREQUENCIES" :key="freq.value">
-                <input type="radio" name="freq" :value="freq.value" v-model="form.freq"
-                       :disabled="limit && (freq.value === 'times_per_week' || freq.value === 'times_per_month')">
+            <div
+              class="segmented wrap"
+              role="radiogroup"
+              :aria-label="t('Frequency')"
+            >
+              <label
+                v-for="freq in FREQUENCIES"
+                :key="freq.value"
+              >
+                <input
+                  type="radio"
+                  name="freq"
+                  :value="freq.value"
+                  v-model="form.freq"
+                  :disabled="limit && countsDays(freq.value)"
+                >
                 <span>{{ freq.label }}</span>
               </label>
             </div>
           </fieldset>
-
-          <div v-if="form.freq === 'times_per_week'" class="field">
+          <div
+            v-if="form.freq === 'times_per_week'"
+            class="field"
+          >
             <label>
-              <span class="field-label">{{ t('How many times per week') }}</span>
-              <input name="timesPerWeek" v-model="form.timesPerWeek" type="number" min="1" max="7" step="1" inputmode="numeric">
+              <span class="field-label">{{ t('How many times per week') }}
+              </span>
+              <input
+                name="timesPerWeek"
+                v-model="form.timesPerWeek"
+                type="number"
+                min="1"
+                max="7"
+                step="1"
+                inputmode="numeric"
+              >
             </label>
-            <p class="field-hint">{{ t('The week starts on Monday. Which days you pick is up to you.') }}</p>
+            <p class="field-hint">
+              {{ t('The week starts on Monday. Which days you pick is up to you.') }}
+            </p>
           </div>
-
-          <div v-if="form.freq === 'times_per_month'" class="field">
+          <div
+            v-if="form.freq === 'times_per_month'"
+            class="field"
+          >
             <label>
-              <span class="field-label">{{ t('How many times per month') }}</span>
-              <input name="timesPerMonth" v-model="form.timesPerMonth" type="number" min="1" max="28" step="1" inputmode="numeric">
+              <span class="field-label">{{ t('How many times per month') }}
+              </span>
+              <input
+                name="timesPerMonth"
+                v-model="form.timesPerMonth"
+                type="number"
+                min="1"
+                max="28"
+                step="1"
+                inputmode="numeric"
+              >
             </label>
-            <p class="field-hint">{{ t('Counted per calendar month. Which days you pick is up to you.') }}</p>
+            <p class="field-hint">
+              {{ t('Counted per calendar month. Which days you pick is up to you.') }}
+            </p>
           </div>
-
           <template v-if="form.freq === 'weekdays'">
             <div class="field">
-              <span class="field-label" id="habit-editor-weekdays-label">{{ t('On these days') }}</span>
-              <div class="weekdays" role="group" aria-labelledby="habit-editor-weekdays-label">
-                <button v-for="(label, i) in WEEKDAY_SHORT" :key="i" type="button" class="weekday"
-                        :aria-pressed="String(form.weekdays[i])" :aria-label="WEEKDAY_LONG[i]"
-                        @click="form.weekdays[i] = !form.weekdays[i]">{{ label }}</button>
+              <span
+                class="field-label"
+                id="habit-editor-weekdays-label"
+              >
+                {{ t('On these days') }}
+              </span>
+              <div
+                class="weekdays"
+                role="group"
+                aria-labelledby="habit-editor-weekdays-label"
+              >
+                <button
+                  v-for="(label, i) in WEEKDAY_SHORT"
+                  :key="i"
+                  type="button"
+                  class="weekday"
+                  :aria-pressed="String(form.weekdays[i])"
+                  :aria-label="WEEKDAY_LONG[i]"
+                  @click="form.weekdays[i] = !form.weekdays[i]"
+                >
+                  {{ label }}
+                </button>
               </div>
             </div>
-
             <div class="field">
               <label>
                 <span class="field-label">{{ t('Repeat') }}</span>
-                <select name="weekRepeat" v-model="form.weekRepeat" class="select" autocomplete="off">
+                <select
+                  name="weekRepeat"
+                  v-model="form.weekRepeat"
+                  class="select"
+                  autocomplete="off"
+                >
                   <option value="weekly">{{ t('Every week') }}</option>
                   <option value="interval">{{ t('Every few weeks') }}</option>
                   <option value="monthly">{{ t('Once a month') }}</option>
                 </select>
               </label>
             </div>
-
-            <div v-if="form.weekRepeat === 'interval'" class="field row">
+            <div
+              v-if="form.weekRepeat === 'interval'"
+              class="field row"
+            >
               <label class="grow">
                 <span class="field-label">{{ t('Every … weeks') }}</span>
-                <input name="weekInterval" v-model="form.weekInterval" type="number" min="2" max="52" step="1" inputmode="numeric">
+                <input
+                  name="weekInterval"
+                  v-model="form.weekInterval"
+                  type="number"
+                  min="2"
+                  max="52"
+                  step="1"
+                  inputmode="numeric"
+                >
               </label>
               <label class="grow">
                 <span class="field-label">{{ t('Starting on') }}</span>
-                <input name="weekAnchorDate" v-model="form.weekAnchorDate" type="date">
+                <input
+                  name="weekAnchorDate"
+                  v-model="form.weekAnchorDate"
+                  type="date"
+                >
               </label>
             </div>
-
-            <div v-if="form.weekRepeat === 'monthly'" class="field">
+            <div
+              v-if="form.weekRepeat === 'monthly'"
+              class="field"
+            >
               <label>
-                <span class="field-label">{{ t('Which one in the month') }}</span>
-                <select name="weekOfMonth" v-model="form.weekOfMonth" class="select" autocomplete="off">
+                <span class="field-label">{{ t('Which one in the month') }}
+                </span>
+                <select
+                  name="weekOfMonth"
+                  v-model="form.weekOfMonth"
+                  class="select"
+                  autocomplete="off"
+                >
                   <option value="1">{{ t('First') }}</option>
                   <option value="2">{{ t('Second') }}</option>
                   <option value="3">{{ t('Third') }}</option>
@@ -587,30 +839,61 @@ export const HabitEditor = {
                   <option value="-1">{{ t('Last') }}</option>
                 </select>
               </label>
-              <p class="field-hint">{{ t('First and Monday means the first Monday of every month.') }}</p>
+              <p class="field-hint">
+                {{ t('First and Monday means the first Monday of every month.') }}
+              </p>
             </div>
           </template>
-
-          <div v-if="form.freq === 'custom_interval'" class="field row">
+          <div
+            v-if="form.freq === 'custom_interval'"
+            class="field row"
+          >
             <label class="grow">
               <span class="field-label">{{ t('Every … days') }}</span>
-              <input name="intervalDays" v-model="form.intervalDays" type="number" min="1" max="365" step="1" inputmode="numeric">
+              <input
+                name="intervalDays"
+                v-model="form.intervalDays"
+                type="number"
+                min="1"
+                max="365"
+                step="1"
+                inputmode="numeric"
+              >
             </label>
             <label class="grow">
               <span class="field-label">{{ t('Starting on') }}</span>
-              <input name="anchorDate" v-model="form.anchorDate" type="date">
+              <input
+                name="anchorDate"
+                v-model="form.anchorDate"
+                type="date"
+              >
             </label>
           </div>
-
-          <div v-if="retroactive" class="field">
+          <div
+            v-if="retroactive"
+            class="field"
+          >
             <label class="switch">
-              <input type="checkbox" name="retroactive" v-model="form.retroactive" autocomplete="off">
+              <input
+                type="checkbox"
+                name="retroactive"
+                v-model="form.retroactive"
+                autocomplete="off"
+              >
               <span>{{ t('Apply to past days as well') }}</span>
             </label>
-            <p class="field-hint">{{ t('Off, the new target and frequency apply from today on. Past days keep the ones they had.') }}</p>
+            <p class="field-hint">
+              {{ t('Off, the new target and frequency apply from today on. Past days keep the ones they had.') }}
+            </p>
           </div>
-
-          <p v-if="error" ref="errorEl" class="error" role="alert">{{ error }}</p>
+          <p
+            v-if="error"
+            ref="errorEl"
+            class="error"
+            role="alert"
+          >
+            {{ error }}
+          </p>
         </div>
       </form>
     </dialog>`,

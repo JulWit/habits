@@ -207,8 +207,11 @@ const ToastItem = {
     let timer;
     let hovered = false;
     let focused = false;
+    /** Closes the toast. */
     const close = () => dismiss(props.toast.id);
+    /** Keeps the toast open while it is hovered or focused. */
     const hold = () => clearTimeout(timer);
+    /** Closes the toast after its timeout, unless it is hovered or focused. */
     const resume = () => {
       if (hovered || focused) return;
       clearTimeout(timer);

@@ -270,7 +270,12 @@ export function formatDistance(metres) {
 export function cellValue(habit, value) {
   const n =
       habit.kind === 'distance' ? value / 1000 : value / scale(habit.kind);
-  // Without grouping, so "1.000" is not counted as a short value.
+  /**
+   * Formats `x` with at most one decimal. Without grouping, so "1.000" is
+   * not counted as a short value.
+   * @param {number} x
+   * @return {string}
+   */
   const short = (x) =>
       x.toLocaleString(locale, {maximumFractionDigits: 1, useGrouping: false});
   const text = short(Math.round(n * 10) / 10);
@@ -348,41 +353,43 @@ export function describeTarget(habit, schedule = currentSchedule(habit)) {
 
 /**
  * Describes a frequency, e.g. "daily" or "Mon, Wed".
- * @param {!Object} f
+ * @param {!Object} frequency
  * @return {string}
  */
-export function describeFrequency(f) {
-  switch (f.kind) {
+export function describeFrequency(frequency) {
+  switch (frequency.kind) {
     case 'daily':
       return t('daily');
     case 'times_per_week':
-      return t('{n}× per week', {n: f.timesPerWeek});
+      return t('{n}× per week', {n: frequency.timesPerWeek});
     case 'times_per_month':
-      return t('{n}× per month', {n: f.timesPerMonth});
+      return t('{n}× per month', {n: frequency.timesPerMonth});
     case 'weekdays': {
       // Short weekday names.
-      const days = WEEKDAY_SHORT.filter((_, i) => f.weekdays & (1 << i));
-      if (f.weekOfMonth) {
-        const which = f.weekOfMonth === -1 ?
+      const days =
+          WEEKDAY_SHORT.filter((_, i) => frequency.weekdays & (1 << i));
+      if (frequency.weekOfMonth) {
+        const which = frequency.weekOfMonth === -1 ?
             t('last') :
-            [t('1st'), t('2nd'), t('3rd'), t('4th')][f.weekOfMonth - 1];
+            [t('1st'), t('2nd'), t('3rd'), t('4th')][frequency.weekOfMonth - 1];
         return t('{which} {days} of the month', {which, days: days.join(', ')});
       }
-      if (f.weekInterval > 1) {
+      if (frequency.weekInterval > 1) {
         return t(
             '{days} every {n} weeks',
-            {days: days.join(', '), n: f.weekInterval});
+            {days: days.join(', '), n: frequency.weekInterval});
       }
       if (days.length === 7) return t('daily');
-      if (days.length === 5 && !(f.weekdays & (1 << 5)) &&
-          !(f.weekdays & (1 << 6))) {
+      if (days.length === 5 && !(frequency.weekdays & (1 << 5)) &&
+          !(frequency.weekdays & (1 << 6))) {
         return t('Mon–Fri');
       }
       return days.join(', ');
     }
     case 'custom_interval':
-      return f.intervalDays === 1 ? t('daily') :
-                                    t('every {n} days', {n: f.intervalDays});
+      return frequency.intervalDays === 1 ?
+          t('daily') :
+          t('every {n} days', {n: frequency.intervalDays});
     default:
       return '';
   }

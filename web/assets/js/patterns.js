@@ -46,6 +46,13 @@ function iconTile() {
   const rows = 2 * Math.ceil(names.length / (2 * COLS));
   const height = rows * STEP_Y;
   const width = COLS * STEP_X;
+  /**
+   * Returns the icon `name` as a nested SVG at `x`, `y`.
+   * @param {string} name
+   * @param {number} x
+   * @param {number} y
+   * @return {string}
+   */
   const place = (name, x, y) => habitIcons[name].replace(
       '<svg ', `<svg x="${x}" y="${y}" width="${ICON}" height="${ICON}" `);
   const slots =

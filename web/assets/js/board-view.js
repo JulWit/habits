@@ -642,6 +642,7 @@ function attachLongPress(root) {
   let timer = null;
   let origin = null;
 
+  /** Stops waiting for a long press. */
   const cancel = () => {
     clearTimeout(timer);
     timer = null;
@@ -1052,6 +1053,12 @@ function monthLabels(dates) {
  * @param {function(): void} freeze
  */
 function initDragging(root, freeze) {
+  /**
+   * Returns the drag callbacks of a list that is saved with `save`.
+   * @param {function(!Array<string>): *} save
+   * @return {{onStart: function(): void, onDrop: function(!Array<string>):
+   *     void, onCancel: function(): void}}
+   */
   const callbacks = (save) => ({
     onStart: () => {
       freeze();

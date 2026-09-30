@@ -114,12 +114,14 @@ const RETRY_MS = 30_000;
  * may be outdated (isStale).
  */
 export function initSync() {
+  /** Shows the current sync status. */
   const paint = () => {
     syncStatus.text = statusText();
   };
   setStatusHandler(paint);
   paint();
 
+  /** Sends the waiting writes, or reloads the state after being offline. */
   const retry = () => {
     if (pending().length > 0) {
       syncOutbox();

@@ -43,7 +43,12 @@ function withDays(habit, isDue = () => true) {
  * @return {!Object<string, !Habit>}
  */
 function samples() {
-  // A single schedule since the first sample day.
+  /**
+   * Returns a single schedule since the first sample day.
+   * @param {number} targetValue
+   * @param {!Object=} frequency fields that differ from a daily frequency
+   * @return {!Array<!Object>}
+   */
   const schedules = (targetValue, frequency) => [{
     from: day(400),
     targetValue,

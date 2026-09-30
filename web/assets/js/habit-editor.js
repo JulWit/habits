@@ -160,28 +160,33 @@ function collect() {
     input.targetType = form.targetType;
   }
 
-  const f = input.frequency;
-  switch (f.kind) {
+  const frequency = input.frequency;
+  switch (frequency.kind) {
     case 'times_per_week':
-      f.timesPerWeek = Number(form.timesPerWeek);
+      frequency.timesPerWeek = Number(form.timesPerWeek);
       break;
     case 'times_per_month':
-      f.timesPerMonth = Number(form.timesPerMonth);
+      frequency.timesPerMonth = Number(form.timesPerMonth);
       break;
     case 'weekdays': {
-      f.weekdays = form.weekdays.reduce(
+      frequency.weekdays = form.weekdays.reduce(
           (mask, on, i) => (on ? mask | (1 << i) : mask), 0);
       const repeat = form.weekRepeat;
-      f.weekInterval = repeat === 'interval' ? Number(form.weekInterval) : 1;
-      f.weekOfMonth = repeat === 'monthly' ? Number(form.weekOfMonth) : 0;
+      frequency.weekInterval =
+          repeat === 'interval' ? Number(form.weekInterval) : 1;
+      frequency.weekOfMonth =
+          repeat === 'monthly' ? Number(form.weekOfMonth) : 0;
       if (repeat === 'interval') {
-        f.anchorDate = form.weekAnchorDate || state.today;
+        frequency.anchorDate = form.weekAnchorDate || state.today;
       }
       break;
     }
     case 'custom_interval':
-      f.intervalDays = Number(form.intervalDays);
-      f.anchorDate = form.anchorDate || state.today;
+      frequency.intervalDays = Number(form.intervalDays);
+      frequency.anchorDate = form.anchorDate || state.today;
+      break;
+    // 'daily' needs no further fields.
+    default:
       break;
   }
 

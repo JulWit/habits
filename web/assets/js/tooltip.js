@@ -48,6 +48,7 @@ export function initTooltips() {
     if (!text) return;
     hideTooltip();
     owner = el;
+    /** Shows the tooltip of the element under the pointer. */
     const show = () => showTooltip(el, text);
     if (performance.now() < warmUntil) {
       show();

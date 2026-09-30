@@ -409,6 +409,10 @@ export function launchOrbs({color, x, y}) {
 function flyOrb(orb, {x, y, size, landing, delay, duration, bend}) {
   let start = null;
 
+  /**
+   * Draws the orb at the time `now` and requests the next frame.
+   * @param {number} now
+   */
   const frame = (now) => {
     start ??= now + delay;
     const t = Math.min(1, Math.max(0, (now - start) / duration));

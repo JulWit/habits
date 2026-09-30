@@ -295,7 +295,13 @@ const CumulativeChart = {
           (bucket, i) =>
               chartColumn(props.habit, bucket, s.total, i, s.buckets.length));
     });
+    /**
+     * Formats a total of the habit.
+     * @param {number} value
+     * @return {string}
+     */
     const format = (value) => habitHelpers.formatTotal(props.habit, value);
+    /** Scrolls the chart to its newest column. */
     const showNewest = () => {
       if (scroller.value) {
         scroller.value.scrollLeft = scroller.value.scrollWidth;

@@ -22,6 +22,11 @@ export function toUTC(iso) {
  */
 export function fromUTC(ms) {
   const d = new Date(ms);
+  /**
+   * Returns `n` with at least two digits.
+   * @param {number} n
+   * @return {string}
+   */
   const pad = (n) => String(n).padStart(2, '0');
   const month = pad(d.getUTCMonth() + 1);
   return `${d.getUTCFullYear()}-${month}-${pad(d.getUTCDate())}`;

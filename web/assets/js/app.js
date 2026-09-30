@@ -166,6 +166,7 @@ const App = {
  */
 function initScrollState() {
   const root = document.documentElement;
+  /** Marks the document as scrolled once it has left the top. */
   const apply = () => {
     const on = window.scrollY > 4 ? 'on' : 'off';
     if (root.dataset.scrolled !== on) root.dataset.scrolled = on;
@@ -268,6 +269,7 @@ function initAppearance() {
 function rememberColorScheme() {
   const query = window.matchMedia?.('(prefers-color-scheme: dark)');
   if (!query) return;
+  /** Stores the current colour scheme in a cookie for the server. */
   const store = () => {
     const scheme = query.matches ? 'dark' : 'light';
     const secure = location.protocol === 'https:' ? '; Secure' : '';

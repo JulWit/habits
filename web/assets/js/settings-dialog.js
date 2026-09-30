@@ -238,6 +238,11 @@ export const SettingsDialog = {
     const preview = reactive({bandOpacity: null, bandFillOpacity: null});
 
     const settings = computed(() => state.settings);
+    /**
+     * Returns the choices the server offers for the setting `key`.
+     * @param {string} key
+     * @return {!Array<{value: string, label: string}>}
+     */
     const options = (key) => state.options?.[key] ?? [];
 
     // ---------- account and version ----------

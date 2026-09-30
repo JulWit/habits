@@ -118,7 +118,8 @@ export function initChartTooltips(container, selector) {
     const target = event.target.closest(selector);
     if (!target) return;
     showTooltip(target, [
-      tipLine('tip-date', target.dataset.tip ?? formatFull(target.dataset.date)),
+      tipLine(
+          'tip-date', target.dataset.tip ?? formatFull(target.dataset.date)),
       tipLine('tip-status', target.dataset.status),
     ]);
   });

@@ -56,8 +56,9 @@ export const AppBar = {
     const onBeforeToggle = (event) => {
       if (event.newState === 'closed' &&
           event.target.contains(document.activeElement)) {
-        document.querySelector(`[popovertarget="${menuId}"]`)
-            ?.focus({preventScroll: true});
+        document.querySelector(`[popovertarget="${menuId}"]`)?.focus({
+          preventScroll: true
+        });
       }
     };
 

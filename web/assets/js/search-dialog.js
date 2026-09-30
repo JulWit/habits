@@ -29,7 +29,6 @@ const active = ref(0);
 /** Counts the openings, so the list is measured once it can be. */
 const openings = ref(0);
 
-
 /**
  * The dialog, once mounted.
  * @type {?HTMLDialogElement}
@@ -232,4 +231,3 @@ export const SearchDialog = {
       <p v-if="results.length === 0" class="search-empty">{{ t('No habit or category matches.') }}</p>
     </dialog>`,
 };
-

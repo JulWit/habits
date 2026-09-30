@@ -15,7 +15,6 @@ import {hideTooltip} from './tooltip.js';
 import {computed, nextTick, onMounted, ref, watch} from './vue.js';
 import {centreToday, currentYear, initChartTooltips, sinceLabel, YearGrid} from './year-grid.js';
 
-
 /**
  * Formats a rate as a percentage, or a dash for none.
  * @param {?number} rate
@@ -69,7 +68,8 @@ function highlights(stats) {
   if (stats.bestMonth > 0) {
     const rate = stats.months[stats.bestMonth - stats.firstMonth].rate;
     items.push(factItem(
-        t('Best month'), MONTH_LONG[stats.bestMonth - 1], `Ø ${percent(rate)}`));
+        t('Best month'), MONTH_LONG[stats.bestMonth - 1],
+        `Ø ${percent(rate)}`));
   }
   return items;
 }
@@ -196,16 +196,19 @@ export const DayStatsView = {
       data,
       tiles: computed(() => statTiles(data.value.stats, `${year.value}-01-01`)),
       highlights: computed(() => highlights(data.value.stats)),
-      weekdays: computed(() => data.value.stats.weekdays.map(
-          (group, i) =>
-              bar({label: WEEKDAY_SHORT[i], name: WEEKDAY_LONG[i], ...group}))),
+      weekdays: computed(
+          () => data.value.stats.weekdays.map(
+              (group, i) => bar(
+                  {label: WEEKDAY_SHORT[i], name: WEEKDAY_LONG[i], ...group}))),
       // The server's months run from the first with due habits; firstMonth
       // is 1 for January.
       months: computed(() => (data.value.stats.months ?? []).map((group, i) => {
         const month = data.value.stats.firstMonth - 1 + i;
-        return bar({label: MONTH_SHORT[month], name: MONTH_LONG[month], ...group});
+        return bar(
+            {label: MONTH_SHORT[month], name: MONTH_LONG[month], ...group});
       })),
-      square: (iso) => heatSquare(iso, byDate.value.get(iso) ?? {due: 0, done: 0}),
+      square: (iso) =>
+          heatSquare(iso, byDate.value.get(iso) ?? {due: 0, done: 0}),
       legendRange: computed(
           () => `${formatDayMonth(`${year.value}-01-01`)} – ` +
               `${formatDayMonth(`${year.value}-12-31`)} ${year.value}`),
@@ -235,4 +238,3 @@ export const DayStatsView = {
       </template>
     </main>`,
 };
-

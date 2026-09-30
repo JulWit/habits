@@ -25,7 +25,8 @@ export const HeadDay = {
     selectable: Boolean,
   },
   setup(props) {
-    const isActive = computed(() => props.iso === (props.active ?? state.today));
+    const isActive =
+        computed(() => props.iso === (props.active ?? state.today));
     return {
       isActive,
       state,
@@ -62,9 +63,9 @@ export const HabitLabel = {
     const described = computed(() => habitHelpers.describeHabit(props.habit));
     // Tooltip with the full text, including the streak in words.
     const title = computed(() => {
-      const meta = [habitHelpers.describeStreak(props.habit), described.value]
-                       .filter(Boolean)
-                       .join(' · ');
+      const meta = [
+        habitHelpers.describeStreak(props.habit), described.value
+      ].filter(Boolean).join(' · ');
       return `${props.habit.name}\n${meta}`;
     });
     return {described, title};

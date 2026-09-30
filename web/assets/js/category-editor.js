@@ -1,7 +1,7 @@
 // Category edit page. It passes the input to its caller and stays open with
 // the error message if saving fails.
 
-import {colorValue, ColorSwatches, IconChoices} from './icons.js';
+import {ColorSwatches, colorValue, IconChoices} from './icons.js';
 import {closePage, guardPage, openPage} from './page-stack.js';
 import {categoryById, state} from './state.js';
 import {errorText} from './undo.js';
@@ -162,4 +162,3 @@ export const CategoryEditor = {
       </form>
     </dialog>`,
 };
-

@@ -15,7 +15,6 @@ import {categoryById, state} from './state.js';
 import {computed} from './vue.js';
 import {currentYear, sinceLabel} from './year-grid.js';
 
-
 /**
  * Returns the stat tiles from the server's day statistics of the category's
  * habits this year (GET /api/days?category=); dashes until they have arrived.
@@ -90,15 +89,18 @@ export const CategoryView = {
           () => state.habits.filter(
               (h) => h.categoryId === category.value.id && !h.archivedAt)),
       stats: computed(() => statTiles(category.value)),
-      details: computed(() => [factItem(
-          t('Progress'),
-          category.value.showProgress ? t('Shown on the board') :
-                                        t('Not shown'))]),
-      activity: computed(() => [
-        createdItem(category.value.createdAt),
-        changedItem(category.value.updatedAt),
-      ]),
-      menu: [{action: 'delete', label: t('Delete'), icon: 'trash', danger: true}],
+      details: computed(
+          () => [factItem(
+              t('Progress'),
+              category.value.showProgress ? t('Shown on the board') :
+                                            t('Not shown'))]),
+      activity: computed(
+          () =>
+              [createdItem(category.value.createdAt),
+               changedItem(category.value.updatedAt),
+    ]),
+      menu:
+          [{action: 'delete', label: t('Delete'), icon: 'trash', danger: true}],
       back: goHome,
       edit: () => {
         const id = category.value.id;
@@ -143,4 +145,3 @@ export const CategoryView = {
       </template>
     </main>`,
 };
-

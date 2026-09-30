@@ -225,8 +225,7 @@ const GuidePanel = {
       const styles = getComputedStyle(root.value);
       // Collapsed to one line.
       values.value = props.names.map(
-          (name) =>
-              styles.getPropertyValue(name).trim().replace(/\s+/g, ' '));
+          (name) => styles.getPropertyValue(name).trim().replace(/\s+/g, ' '));
     });
     const s = samples();
     return {

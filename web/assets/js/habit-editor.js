@@ -5,7 +5,7 @@ import {openCategoryPicker} from './category-picker.js';
 import {WEEKDAY_LONG, WEEKDAY_SHORT} from './dates.js';
 import * as habitHelpers from './habit-helpers.js';
 import {t} from './i18n.js';
-import {colorValue, ColorSwatches, IconChoices} from './icons.js';
+import {ColorSwatches, colorValue, IconChoices} from './icons.js';
 import {closePage, guardPage, openPage} from './page-stack.js';
 import {categoryById, state} from './state.js';
 import {errorText} from './undo.js';
@@ -169,8 +169,8 @@ function collect() {
       f.timesPerMonth = Number(form.timesPerMonth);
       break;
     case 'weekdays': {
-      f.weekdays =
-          form.weekdays.reduce((mask, on, i) => (on ? mask | (1 << i) : mask), 0);
+      f.weekdays = form.weekdays.reduce(
+          (mask, on, i) => (on ? mask | (1 << i) : mask), 0);
       const repeat = form.weekRepeat;
       f.weekInterval = repeat === 'interval' ? Number(form.weekInterval) : 1;
       f.weekOfMonth = repeat === 'monthly' ? Number(form.weekOfMonth) : 0;
@@ -253,7 +253,8 @@ export async function openEditor(habit, handler) {
   for (const [kind, fields] of Object.entries(KIND_FIELDS)) {
     const scale = habitHelpers.scale(kind);
     const own = habit?.kind === kind;
-    form.targets[kind] = own ? schedule.targetValue / scale : fields.defaultTarget;
+    form.targets[kind] =
+        own ? schedule.targetValue / scale : fields.defaultTarget;
     form.steps[kind] = own && habit.stepValue ? habit.stepValue / scale : '';
   }
   form.unit = habit?.kind === 'count' ? habit.unit : '';
@@ -264,7 +265,8 @@ export async function openEditor(habit, handler) {
   form.timesPerMonth = freq.timesPerMonth || 2;
   form.intervalDays = freq.intervalDays || 3;
   form.anchorDate = freq.anchorDate || state.today;
-  form.weekdays = form.weekdays.map((_, i) => ((freq.weekdays || 0) & (1 << i)) !== 0);
+  form.weekdays =
+      form.weekdays.map((_, i) => ((freq.weekdays || 0) & (1 << i)) !== 0);
 
   // Weekday schedules repeat every week, every n-th week, or in one week of
   // the month.
@@ -307,7 +309,8 @@ export const HabitEditor = {
     const limit = computed(isLimit);
     // A limit leaves the frequencies with fixed days.
     watch(limit, (on) => {
-      if (on && (form.freq === 'times_per_week' || form.freq === 'times_per_month')) {
+      if (on &&
+          (form.freq === 'times_per_week' || form.freq === 'times_per_month')) {
         form.freq = 'daily';
       }
     });
@@ -337,7 +340,8 @@ export const HabitEditor = {
     const submit = async () => {
       if (!formEl.value.reportValidity()) return;
       const input = collect();
-      if (input.frequency.kind === 'weekdays' && input.frequency.weekdays === 0) {
+      if (input.frequency.kind === 'weekdays' &&
+          input.frequency.weekdays === 0) {
         showError(t('Please select at least one weekday.'));
         return;
       }
@@ -359,8 +363,8 @@ export const HabitEditor = {
       if (chosen !== null) form.categoryId = chosen;
     };
 
-    const category = computed(
-        () => form.categoryId ? categoryById(form.categoryId) : null);
+    const category =
+        computed(() => form.categoryId ? categoryById(form.categoryId) : null);
 
     return {
       el,
@@ -606,4 +610,3 @@ export const HabitEditor = {
       </form>
     </dialog>`,
 };
-

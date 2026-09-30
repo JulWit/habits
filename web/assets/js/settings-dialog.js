@@ -255,7 +255,8 @@ export const SettingsDialog = {
       };
     });
 
-    const version = computed(() => state.build?.version || t('Development build'));
+    const version =
+        computed(() => state.build?.version || t('Development build'));
     const versionFacts = computed(() => {
       const build = state.build ?? {};
       // Twelve characters identify a commit well enough.
@@ -276,8 +277,9 @@ export const SettingsDialog = {
       const days = settings.value.overviewDays;
       const shown = currentDays();
       if (days === 0) {
-        return t('As many days are shown as fit in the window — currently {n}.',
-                 {n: shown});
+        return t(
+            'As many days are shown as fit in the window — currently {n}.',
+            {n: shown});
       }
       if (shown < days) {
         return t(
@@ -301,7 +303,8 @@ export const SettingsDialog = {
     // ---------- language and time ----------
 
     const zones = timeZoneGroups();
-    const zoneValues = new Set(zones.flatMap((g) => g.zones.map((z) => z.value)));
+    const zoneValues =
+        new Set(zones.flatMap((g) => g.zones.map((z) => z.value)));
     const serverZone = computed(() => {
       const server = state.serverTimeZone;
       // "Local" is a server zone without a name.
@@ -424,7 +427,8 @@ export const SettingsDialog = {
       }),
       // Only offered if the device is in a different time zone.
       offerDeviceZone: computed(
-          () => device && device !== (settings.value.timeZone || state.serverTimeZone)),
+          () => device &&
+              device !== (settings.value.timeZone || state.serverTimeZone)),
       archived: computed(() => archivedCount()),
       skipAll: () => actions.skipDays(null),
       /**
@@ -708,7 +712,6 @@ export const SettingsDialog = {
       </form>
     </dialog>`,
 };
-
 
 /** Opens the settings. */
 export function openSettings() {

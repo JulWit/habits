@@ -150,4 +150,3 @@ export const SkipEditor = {
       </form>
     </dialog>`,
 };
-

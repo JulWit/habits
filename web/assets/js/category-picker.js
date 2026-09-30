@@ -28,7 +28,6 @@ const error = ref('');
  */
 let settle = null;
 
-
 /**
  * The page, once mounted.
  * @type {?HTMLDialogElement}
@@ -111,7 +110,18 @@ export const CategoryPicker = {
       }
     };
 
-    return {el, nameInput, creating, current, newName, error, options, choose, create, finish};
+    return {
+      el,
+      nameInput,
+      creating,
+      current,
+      newName,
+      error,
+      options,
+      choose,
+      create,
+      finish
+    };
   },
   // Leaving the page by its back button, Escape or the system back cancels.
   // The selection is shown by the accent fill, as in the dropdowns.
@@ -143,4 +153,3 @@ export const CategoryPicker = {
       </div>
     </dialog>`,
 };
-

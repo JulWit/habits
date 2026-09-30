@@ -187,7 +187,8 @@ export function toast(text, opts = {}) {
   toasts.push({
     id,
     text,
-    actionLabel: opts.actionLabel && opts.onAction ? opts.actionLabel : undefined,
+    actionLabel: opts.actionLabel && opts.onAction ? opts.actionLabel :
+                                                     undefined,
     onAction: opts.onAction,
     error: opts.error ?? false,
     timeout: opts.timeout ?? DEFAULT_TIMEOUT,

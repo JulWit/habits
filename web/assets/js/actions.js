@@ -329,7 +329,8 @@ export function skipDays(habitId) {
     await refresh();
     offerUndo(
         changeId,
-        skipped === 1 ? t('1 day skipped') : t('{n} days skipped', {n: skipped}));
+        skipped === 1 ? t('1 day skipped') :
+                        t('{n} days skipped', {n: skipped}));
   });
 }
 

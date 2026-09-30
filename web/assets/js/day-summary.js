@@ -149,7 +149,8 @@ export const DaySummary = {
       WAVY_RING_PATH,
       // The year only if it is not the current one.
       date: computed(
-          () => formatFull(props.day, yearOf(props.day) !== yearOf(state.today))),
+          () =>
+              formatFull(props.day, yearOf(props.day) !== yearOf(state.today))),
       // The varying messages of a completed day speak of today.
       completeText: computed(
           () => props.day === state.today ? completeText(progress.value.due) :

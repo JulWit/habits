@@ -15,7 +15,6 @@ import {hideTooltip} from './tooltip.js';
 import {computed, nextTick, onMounted, ref, watch} from './vue.js';
 import {centreToday, currentYear, initChartTooltips, YearGrid} from './year-grid.js';
 
-
 /**
  * The year the heatmap and the cumulative chart show, e.g. "2025", and the
  * habit it was chosen for. Another habit opens with the current year; the
@@ -229,8 +228,8 @@ let Totals;
  * @param {number} count the number of buckets
  * @return {!Object}
  */
-function chartColumn(habit, {start, sum, cumulative: running}, total, index,
-                     count) {
+function chartColumn(
+    habit, {start, sum, cumulative: running}, total, index, count) {
   // Shown by the shared tooltip.
   const tip = bucketName(start);
   const runningTotal = habitHelpers.formatTotal(habit, running);
@@ -376,8 +375,8 @@ export const HabitView = {
   setup() {
     const root = ref(null);
     // Nothing is shown, or loaded, while the view is hidden.
-    const habit = computed(
-        () => route.view === 'habit' ? habitById(route.id) : null);
+    const habit =
+        computed(() => route.view === 'habit' ? habitById(route.id) : null);
     const shownId = computed(() => habit.value?.id ?? null);
 
     // Another habit opens with the current year. The tooltip's target is
@@ -409,8 +408,8 @@ export const HabitView = {
     const showYear = async (delta, event) => {
       const button = event.currentTarget;
       const [first, last] = range.value;
-      shownYear.value =
-          String(Math.min(last, Math.max(first, Number(shownYear.value) + delta)));
+      shownYear.value = String(
+          Math.min(last, Math.max(first, Number(shownYear.value) + delta)));
       await nextTick();
       // At the first or last year, the other arrow takes the focus.
       if (button.disabled) {
@@ -438,17 +437,26 @@ export const HabitView = {
         return `${formatDayMonth(`${year}-01-01`)} – ` +
             `${formatDayMonth(`${year}-12-31`)} ${year}`;
       }),
-      menu: computed(() => [
-        {action: 'skip', label: t('Skip days…'), icon: 'skip'},
-        archived.value ?
-            {action: 'archive', label: t('Reactivate'), icon: 'unarchive'} :
-            {
-              action: 'archive',
-              label: t('Archive', {context: 'verb'}),
-              icon: 'archive',
-            },
-        {action: 'delete', label: t('Delete'), icon: 'trash', danger: true},
-      ]),
+      menu: computed(
+          () =>
+              [{action: 'skip', label: t('Skip days…'), icon: 'skip'},
+               archived.value ? {
+                 action: 'archive',
+                 label: t('Reactivate'),
+                 icon: 'unarchive'
+               } :
+                                {
+                                  action: 'archive',
+                                  label: t('Archive', {context: 'verb'}),
+                                  icon: 'archive',
+                                },
+               {
+                 action: 'delete',
+                 label: t('Delete'),
+                 icon: 'trash',
+                 danger: true
+               },
+    ]),
       back: goHome,
       edit: () => actions.editHabit(habit.value.id),
       /**
@@ -510,4 +518,3 @@ export const HabitView = {
       </template>
     </main>`,
 };
-

@@ -709,7 +709,8 @@ const BlockProgress = {
     const progress = computed(() => dayProgress(props.habits, props.day));
     const title = computed(() => {
       const {due, done} = progress.value;
-      return `${formatLong(props.day)}: ${t('{done} of {due} done', {done, due})}`;
+      return `${formatLong(props.day)}: ${
+          t('{done} of {due} done', {done, due})}`;
     });
     return {progress, title};
   },
@@ -864,8 +865,7 @@ export const BoardView = {
     let frozen = [];
     const blocks = computed(() => {
       if (dragging.value) return frozen;
-      return all.value
-          .map((b) => ({...b, visible: b.habits.filter(matches)}))
+      return all.value.map((b) => ({...b, visible: b.habits.filter(matches)}))
           .filter((b) => !onlyOpen.value || b.visible.length > 0);
     });
 

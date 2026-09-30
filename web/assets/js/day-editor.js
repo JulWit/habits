@@ -146,7 +146,8 @@ function hint() {
   // The step is shown in input units.
   const unit = {distance: ' km', time: ' min'}[habit.kind] ?? '';
   return t(
-      '{goal} · step: {step}', {goal, step: `${step.toLocaleString(locale)}${unit}`});
+      '{goal} · step: {step}',
+      {goal, step: `${step.toLocaleString(locale)}${unit}`});
 }
 
 /** The day dialog (see openDayDialog). */
@@ -172,8 +173,9 @@ export const DayEditor = {
 
     const check = computed(() => day.habit?.kind === 'check');
     const unit = computed(
-        () => day.habit?.kind === 'distance' ? 'km' :
-                                              habitHelpers.unitLabel(day.habit));
+        () => day.habit?.kind === 'distance' ?
+            'km' :
+            habitHelpers.unitLabel(day.habit));
 
     return {
       el,
@@ -260,4 +262,3 @@ export const DayEditor = {
       </form>
     </dialog>`,
 };
-

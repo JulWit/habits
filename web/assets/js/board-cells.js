@@ -24,6 +24,11 @@ export const BoardHeadDay = {
     active: String,
     selectable: Boolean,
   },
+  /**
+   * @param {{iso: string, active: (string|undefined), selectable:
+   *     boolean}} props
+   * @return {!Object<string, *>} the bindings of the template
+   */
   setup(props) {
     const isActive =
         computed(() => props.iso === (props.active ?? state.today));
@@ -69,6 +74,10 @@ export const BoardHeadDay = {
 export const BoardHabitLabel = {
   name: 'BoardHabitLabel',
   props: {habit: {type: Object, required: true}},
+  /**
+   * @param {{habit: !Habit}} props
+   * @return {!Object<string, *>} the bindings of the template
+   */
   setup(props) {
     const described = computed(() => habitHelpers.describeHabit(props.habit));
     // Tooltip with the full text, including the streak in words.
@@ -120,6 +129,11 @@ export const BoardDayCell = {
     iso: {type: String, required: true},
     active: String,
   },
+  /**
+   * @param {{habit: !Habit, iso: string, active: (string|undefined)}}
+   *     props
+   * @return {!Object<string, *>} the bindings of the template
+   */
   setup(props) {
     return {
       cell: computed(() => describeCell(props.habit, props.iso)),

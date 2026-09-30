@@ -59,7 +59,29 @@ const KINDS = [
 
 /**
  * The input of the form as the fields hold it; numbers are kept as typed.
- * @const {!Object}
+ * `targets` and `steps` hold a field per measured kind.
+ * @const {{
+ *   name: string,
+ *   color: string,
+ *   icon: string,
+ *   categoryId: string,
+ *   kind: string,
+ *   targetType: string,
+ *   targets: !Object<string, (number|string)>,
+ *   steps: !Object<string, (number|string)>,
+ *   unit: string,
+ *   freq: string,
+ *   timesPerWeek: (number|string),
+ *   timesPerMonth: (number|string),
+ *   weekdays: !Array<boolean>,
+ *   weekRepeat: string,
+ *   weekInterval: (number|string),
+ *   weekAnchorDate: string,
+ *   weekOfMonth: string,
+ *   intervalDays: (number|string),
+ *   anchorDate: string,
+ *   retroactive: boolean,
+ * }}
  */
 const form = reactive({
   name: '',
@@ -86,7 +108,7 @@ const form = reactive({
 
 /**
  * The habit being edited, or null when creating one.
- * @type {!Object}
+ * @type {{value: ?Habit}}
  */
 const editing = ref(null);
 
@@ -98,7 +120,7 @@ const busy = ref(false);
 
 /**
  * Saves the input; set when the editor opens.
- * @type {?function(!Object): !Promise<void>}
+ * @type {?function(!HabitInput): !Promise<void>}
  */
 let onSubmit = null;
 
@@ -136,7 +158,7 @@ function countsDays(freq) {
 
 /**
  * Returns the input of the form, as the API takes it.
- * @return {!Object}
+ * @return {!HabitInput}
  */
 function collect() {
   const kind = form.kind;
@@ -207,7 +229,7 @@ function collect() {
 
 /**
  * Returns the part of the input that makes up the schedule.
- * @param {!Object} input
+ * @param {!HabitInput} input
  * @return {string}
  */
 function scheduleKey(input) {
@@ -219,7 +241,7 @@ function scheduleKey(input) {
  * Reports whether to offer applying a changed target or frequency to past
  * days as well. Only when editing, and not when the kind changes, which
  * converts the history anyway.
- * @param {!Object} input
+ * @param {!HabitInput} input
  * @return {boolean}
  */
 function offersRetroactive(input) {
@@ -311,6 +333,7 @@ export async function openEditor(habit, handler) {
 export const TheHabitEditor = {
   name: 'TheHabitEditor',
   components: {AppColorSwatches, AppIconChoices},
+  /** @return {!Object<string, *>} the bindings of the template */
   setup() {
     const el = ref(null);
     const formEl = ref(null);

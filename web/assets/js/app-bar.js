@@ -32,6 +32,12 @@ export const AppBar = {
     menu: {type: Array, default: () => []},
   },
   emits: ['back', 'edit', 'action'],
+  /**
+   * @param {{title: string, sub: string, edit: boolean, menu:
+   *     !Array<!MenuItem>}} props
+   * @param {{emit: function(string, ...*)}} context
+   * @return {!Object<string, *>} the bindings of the template
+   */
   setup(props, {emit}) {
     const menuId = `app-bar-menu-${++count}`;
 

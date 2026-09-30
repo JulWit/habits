@@ -203,6 +203,10 @@ export function toast(text, opts = {}) {
 const ToastListItem = {
   name: 'ToastListItem',
   props: {toast: {type: Object, required: true}},
+  /**
+   * @param {{toast: !Toast}} props
+   * @return {!Object<string, *>} the bindings of the template
+   */
   setup(props) {
     let timer;
     let hovered = false;
@@ -281,6 +285,7 @@ const ToastListItem = {
 export const TheToastList = {
   name: 'TheToastList',
   components: {ToastListItem},
+  /** @return {!Object<string, *>} the bindings of the template */
   setup() {
     return {toasts};
   },

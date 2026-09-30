@@ -20,7 +20,7 @@ const day = (back) => addDays(state.today, -back);
  * tomorrow, in the form the server sends them (domain.DayStatus): `isDue`
  * decides the due days, the entries whether they are done. The real ones come
  * from the server only.
- * @param {!Object} habit
+ * @param {!Object<string, *>} habit the fields of the habit
  * @param {function(string): boolean=} isDue
  * @return {!Habit}
  */
@@ -46,15 +46,18 @@ function samples() {
   /**
    * Returns a single schedule since the first sample day.
    * @param {number} targetValue
-   * @param {!Object=} frequency fields that differ from a daily frequency
-   * @return {!Array<!Object>}
+   * @param {!Object<string, *>=} frequency fields that differ from a daily
+   *     frequency
+   * @return {!Array<!Schedule>}
    */
   const schedules = (targetValue, frequency) => [{
     from: day(400),
     targetValue,
+    targetType: 'at_least',
     frequency: {
       kind: 'daily',
       timesPerWeek: 0,
+      timesPerMonth: 0,
       weekdays: 0,
       intervalDays: 0,
       weekInterval: 0,
@@ -241,6 +244,10 @@ const StyleGuidePanel = {
     theme: {type: String, required: true},
     names: {type: Array, required: true},
   },
+  /**
+   * @param {{theme: string, names: !Array<string>}} props
+   * @return {!Object<string, *>} the bindings of the template
+   */
   setup(props) {
     const root = ref(null);
     const values = ref([]);
@@ -613,6 +620,7 @@ const StyleGuidePanel = {
 export const TheStyleGuideView = {
   name: 'TheStyleGuideView',
   components: {StyleGuidePanel},
+  /** @return {!Object<string, *>} the bindings of the template */
   setup() {
     return {
       names: tokenNames(),

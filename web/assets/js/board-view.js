@@ -40,7 +40,7 @@ const offset = ref(0);
 /**
  * The day chosen in the day header, or null for today. Marker, band and day
  * summary refer to it. Not persisted; null follows a change of date.
- * @type {!Object}
+ * @type {{value: ?string}}
  */
 const selectedDay = ref(null);
 
@@ -713,6 +713,10 @@ const BoardBlockProgress = {
     habits: {type: Array, required: true},
     day: {type: String, required: true},
   },
+  /**
+   * @param {{habits: !Array<!Habit>, day: string}} props
+   * @return {!Object<string, *>} the bindings of the template
+   */
   setup(props) {
     const progress = computed(() => dayProgress(props.habits, props.day));
     const title = computed(() => {
@@ -766,6 +770,7 @@ const BoardHabitRow = {
     dates: {type: Array, required: true},
     active: {type: String, required: true},
   },
+  /** @return {!Object<string, *>} the bindings of the template */
   setup() {
     return {
       byDragging,
@@ -844,6 +849,16 @@ const BoardBlock = {
     dates: {type: Array, required: true},
     active: {type: String, required: true},
   },
+  /**
+   * @param {{
+   *   block: {category: ?Category, habits: !Array<!Habit>, visible:
+   *       !Array<!Habit>},
+   *   labelled: boolean,
+   *   dates: !Array<string>,
+   *   active: string,
+   * }} props
+   * @return {!Object<string, *>} the bindings of the template
+   */
   setup(props) {
     const category = computed(() => props.block.category);
     /**
@@ -969,6 +984,7 @@ const BoardBlock = {
 export const TheBoardView = {
   name: 'TheBoardView',
   components: {BoardBlock, BoardDaySummary, BoardHeadDay, BoardToolButton},
+  /** @return {!Object<string, *>} the bindings of the template */
   setup() {
     const boardEl = ref(null);
     const all = computed(() => groupedHabits());

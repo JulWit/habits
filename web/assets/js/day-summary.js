@@ -130,6 +130,10 @@ export const BoardDaySummary = {
     day: {type: String, required: true},
   },
   emits: ['open'],
+  /**
+   * @param {{habits: !Array<!Habit>, day: string}} props
+   * @return {!Object<string, *>} the bindings of the template
+   */
   setup(props) {
     const progress = computed(() => dayProgress(props.habits, props.day));
     const percent = computed(() => {

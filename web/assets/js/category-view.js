@@ -75,6 +75,7 @@ function shortStreak({currentStreak, streakUnit}) {
 export const TheCategoryView = {
   name: 'TheCategoryView',
   components: {AppBar, AppFactsPanel, AppStatRow},
+  /** @return {!Object<string, *>} the bindings of the template */
   setup() {
     // Nothing is shown, or loaded, while the view is hidden.
     const category = computed(

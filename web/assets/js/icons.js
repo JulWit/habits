@@ -456,6 +456,10 @@ function parseIcon(svg) {
 export const AppIcon = {
   name: 'AppIcon',
   props: {name: String, svg: String},
+  /**
+   * @param {{name: (string|undefined), svg: (string|undefined)}} props
+   * @return {function(): *} the render function
+   */
   setup(props) {
     return () => {
       const markup = props.svg ?? icons[props.name];
@@ -483,6 +487,10 @@ export function hasHabitIcon(name) {
 export const AppIconBadge = {
   name: 'AppIconBadge',
   props: {icon: String, color: String},
+  /**
+   * @param {{icon: (string|undefined), color: (string|undefined)}} props
+   * @return {!Object<string, *>} the bindings of the template
+   */
   setup(props) {
     return {
       habitIcons,
@@ -519,6 +527,7 @@ export const AppColorSwatches = {
     modelValue: String,
   },
   emits: ['update:modelValue'],
+  /** @return {!Object<string, *>} the bindings of the template */
   setup() {
     /**
      * Returns the CSS value shown by a swatch.
@@ -584,6 +593,11 @@ export const AppIconChoices = {
     modelValue: String,
   },
   emits: ['update:modelValue'],
+  /**
+   * @param {{names: !Array<string>, modelValue: (string|undefined)}}
+   *     props
+   * @return {!Object<string, *>} the bindings of the template
+   */
   setup(props) {
     return {
       habitIcons,

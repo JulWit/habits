@@ -118,7 +118,7 @@ const stateKey = () => `${STATE}.${user}`;
 
 /**
  * Keeps the loaded state for starting without a connection.
- * @param {!Object} loaded
+ * @param {!LoadedState} loaded
  */
 export function rememberState(loaded) {
   user = loaded.user?.id ?? '';
@@ -128,7 +128,7 @@ export function rememberState(loaded) {
 
 /**
  * Returns the last loaded state, or null.
- * @return {?Object}
+ * @return {?LoadedState}
  */
 export function rememberedState() {
   return read(stateKey(), null);
@@ -193,8 +193,8 @@ export function discard(habitId, date, value) {
  * Lays the waiting writes over a loaded state as pending writes (see
  * isPending in habit-helpers.js), so they stay visible until they are sent.
  * Writes to habits that no longer exist are left out.
- * @param {!Object} loaded
- * @return {!Object} `loaded`
+ * @param {!LoadedState} loaded
+ * @return {!LoadedState} `loaded`
  */
 export function overlay(loaded) {
   for (const w of pending()) {

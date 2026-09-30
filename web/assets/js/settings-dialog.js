@@ -187,6 +187,7 @@ const SettingsPage = {
     id: {type: String, required: true},
     title: {type: String, required: true},
   },
+  /** @return {!Object<string, *>} the bindings of the template */
   setup() {
     return {error};
   },
@@ -260,6 +261,7 @@ const SettingsMenuItem = {
 export const TheSettingsDialog = {
   name: 'TheSettingsDialog',
   components: {AppColorSwatches, SettingsMenuItem, SettingsPage},
+  /** @return {!Object<string, *>} the bindings of the template */
   setup() {
     const importInput = ref(null);
     const deleteDialog = ref(null);

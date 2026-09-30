@@ -22,7 +22,7 @@ const form = reactive({from: '', to: '', scope: 'one'});
 
 /**
  * The habit the page was opened for, or null for all habits.
- * @type {!Object}
+ * @type {{value: ?Habit}}
  */
 const habit = ref(null);
 
@@ -77,6 +77,7 @@ function collect() {
 /** The page for skipping days (see openSkipDialog). */
 export const TheSkipEditor = {
   name: 'TheSkipEditor',
+  /** @return {!Object<string, *>} the bindings of the template */
   setup() {
     const el = ref(null);
     const formEl = ref(null);

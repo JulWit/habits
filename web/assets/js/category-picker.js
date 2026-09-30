@@ -71,6 +71,7 @@ function choose(value) {
 /** The category picker (see openCategoryPicker). */
 export const TheCategoryPicker = {
   name: 'TheCategoryPicker',
+  /** @return {!Object<string, *>} the bindings of the template */
   setup() {
     const el = ref(null);
     const nameInput = ref(null);

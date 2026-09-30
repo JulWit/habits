@@ -27,8 +27,18 @@ const THRESHOLD = 4;
 export function enableDragReorder(
     {container, item, handle, key, onStart, onDrop, onCancel}) {
   /**
-   * The drag in progress, from the press on a handle on.
-   * @type {?Object}
+   * The drag in progress, from the press on a handle on. `order`, `list` and
+   * `anchor` are set once the pointer has moved far enough to start it.
+   * @type {?{
+   *   element: !HTMLElement,
+   *   grip: !Element,
+   *   pointerId: number,
+   *   startY: number,
+   *   active: boolean,
+   *   order: (!Array<!HTMLElement>|undefined),
+   *   list: (!HTMLElement|undefined),
+   *   anchor: (?Node|undefined),
+   * }}
    */
   let drag = null;
 

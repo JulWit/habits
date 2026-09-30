@@ -84,7 +84,7 @@ function statTiles(habit) {
  * Returns how the habit is set up: frequency, daily target (not for check
  * habits), earlier schedules, category and, if archived, its status.
  * @param {!Habit} habit
- * @return {!Array<!Object>}
+ * @return {!Array<!Fact>}
  */
 function details(habit) {
   const all = habit.schedules;
@@ -129,7 +129,7 @@ function describeSchedule(habit, schedule) {
  * Returns when the habit was created, last completed and last changed (the
  * server's updatedAt).
  * @param {!Habit} habit
- * @return {!Array<!Object>}
+ * @return {!Array<!Fact>}
  */
 function activity(habit) {
   // The server leaves it empty if the habit was never done.
@@ -148,7 +148,7 @@ function activity(habit) {
  * Returns the attributes of the square of a day in the heatmap.
  * @param {!Habit} habit
  * @param {string} iso
- * @return {!Object}
+ * @return {!Object<string, *>} the attributes
  */
 function heatSquare(habit, iso) {
   const {value} = habitHelpers.entryOn(habit, iso);
@@ -213,13 +213,6 @@ function heatStatus(habit, iso, value) {
 }
 
 /**
- * The totals of a year as the server sums them.
- * @typedef {{buckets: !Array<{start: string, sum: number, cumulative:
- *     number}>, total: number, best: number, activeDays: number}}
- */
-let Totals;
-
-/**
  * Returns a bar of the cumulative chart: its height is the running total,
  * the period's own sum is highlighted at its top.
  * @param {!Habit} habit
@@ -227,7 +220,8 @@ let Totals;
  * @param {number} total
  * @param {number} index
  * @param {number} count the number of buckets
- * @return {!Object}
+ * @return {{start: string, tip: string, status: string, height: string,
+ *     zero: boolean, gain: ?string, label: string}}
  */
 function chartColumn(
     habit, {start, sum, cumulative: running}, total, index, count) {
@@ -282,9 +276,13 @@ const HabitCumulativeChart = {
     habit: {type: Object, required: true},
     year: {type: String, required: true},
   },
+  /**
+   * @param {{habit: !Habit, year: string}} props
+   * @return {!Object<string, *>} the bindings of the template
+   */
   setup(props) {
     const scroller = ref(null);
-    /** @type {!Object} */
+    /** @type {{value: (!Totals|undefined)}} */
     const summary = computed(
         () => remote(
             `totals|${props.habit.id}|${props.year}|${grain.value}`,
@@ -442,6 +440,7 @@ export const TheHabitView = {
   name: 'TheHabitView',
   components:
       {AppBar, HabitCumulativeChart, AppFactsPanel, AppStatRow, AppYearGrid},
+  /** @return {!Object<string, *>} the bindings of the template */
   setup() {
     const root = ref(null);
     // Nothing is shown, or loaded, while the view is hidden.

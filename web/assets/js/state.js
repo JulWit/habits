@@ -11,15 +11,46 @@ import {reactive, ref} from './vue.js';
 export let Entry;
 
 /**
+ * How often a habit is due (domain.Frequency); `kind` decides which of the
+ * other fields apply, the others are 0 or "".
+ * @typedef {{
+ *   kind: string,
+ *   timesPerWeek: number,
+ *   timesPerMonth: number,
+ *   weekdays: number,
+ *   intervalDays: number,
+ *   weekInterval: number,
+ *   weekOfMonth: number,
+ *   anchorDate: string,
+ * }}
+ */
+export let Frequency;
+
+/**
  * A schedule of a habit, valid from `from` until the next one starts.
  * @typedef {{
  *   from: string,
  *   targetValue: number,
  *   targetType: string,
- *   frequency: !Object,
+ *   frequency: !Frequency,
  * }}
  */
 export let Schedule;
+
+/**
+ * The statistics of a habit (domain.Stats).
+ * @typedef {{
+ *   currentStreak: number,
+ *   bestStreak: number,
+ *   completionRate: number,
+ *   expected: number,
+ *   achieved: number,
+ *   total: number,
+ *   streakUnit: string,
+ *   lastDone: string,
+ * }}
+ */
+export let Stats;
 
 /**
  * A habit as the server sends it (habitView), with the pending writes the
@@ -36,7 +67,7 @@ export let Schedule;
  *   schedules: !Array<!Schedule>,
  *   position: number,
  *   archivedAt: ?string,
- *   stats: !Object,
+ *   stats: !Stats,
  *   entries: !Object<string, number>,
  *   streakRuns: !Array<{from: string, to: string}>,
  *   daysFrom: string,
@@ -66,6 +97,94 @@ export let Category;
  * @typedef {{category: ?Category, habits: !Array<!Habit>}}
  */
 export let Block;
+
+/**
+ * A habit as the editor sends it (POST /api/habits, PATCH /api/habits/{id}),
+ * with its values in stored units.
+ * @typedef {{
+ *   name: string,
+ *   color: string,
+ *   icon: string,
+ *   kind: string,
+ *   categoryId: string,
+ *   unit: string,
+ *   targetValue: number,
+ *   targetType: string,
+ *   stepValue: (number|undefined),
+ *   frequency: !Frequency,
+ *   retroactive: (boolean|undefined),
+ * }}
+ */
+export let HabitInput;
+
+/**
+ * A category as the editor sends it (PATCH /api/categories/{id}).
+ * @typedef {{name: string, color: string, icon: string, showProgress: boolean}}
+ */
+export let CategoryInput;
+
+/**
+ * The totals of a habit's year as the server sums them
+ * (GET /api/habits/{id}/totals).
+ * @typedef {{
+ *   buckets: !Array<{start: string, sum: number, cumulative: number}>,
+ *   total: number,
+ *   best: number,
+ *   activeDays: number,
+ * }}
+ */
+export let Totals;
+
+/**
+ * The day statistics of a year (domain.DayStats). A group has the average
+ * share of completed habits of a weekday or month, null if nothing was due.
+ * @typedef {{
+ *   perfect: number,
+ *   counted: number,
+ *   currentStreak: number,
+ *   bestStreak: number,
+ *   average: ?number,
+ *   completed: number,
+ *   emptyDays: number,
+ *   weekdays: !Array<{rate: ?number, perfect: number}>,
+ *   firstMonth: number,
+ *   months: !Array<{rate: ?number, perfect: number}>,
+ *   bestWeekday: number,
+ *   bestMonth: number,
+ * }}
+ */
+export let DayStats;
+
+/**
+ * The days of a year as GET /api/days sends them.
+ * @typedef {{
+ *   year: number,
+ *   totals: !Array<{date: string, due: number, done: number}>,
+ *   stats: !DayStats,
+ *   habits: number,
+ *   expected: number,
+ *   achieved: number,
+ * }}
+ */
+export let Days;
+
+/**
+ * The state as GET /api/state sends it; `settings` are keyed by their JSON
+ * name, `options` lists the choices of the enumerated settings.
+ * @typedef {{
+ *   user: {id: string, name: string, email: string, groups: !Array<string>},
+ *   settings: !Object<string, *>,
+ *   today: string,
+ *   nextDayIn: number,
+ *   categories: !Array<!Category>,
+ *   habits: !Array<!Habit>,
+ *   colors: !Array<string>,
+ *   icons: !Array<string>,
+ *   kinds: !Object<string, !Object<string, *>>,
+ *   options: !Object<string, !Array<!Object<string, string>>>,
+ * }}
+ */
+export let LoadedState;
 
 export const state = reactive({
   user: null,
@@ -101,8 +220,8 @@ function notify() {
 }
 
 /**
- * Replaces the state with what the server sent.
- * @param {!Object} next
+ * Replaces the state, or some of its fields, with what the server sent.
+ * @param {!Object<string, *>} next
  */
 export function replaceState(next) {
   Object.assign(state, next);

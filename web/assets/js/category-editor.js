@@ -8,12 +8,6 @@ import {errorText} from './undo.js';
 import {computed, nextTick, onMounted, reactive, ref, watch} from './vue.js';
 
 /**
- * What the editor sends.
- * @typedef {{name: string, color: string, icon: string, showProgress: boolean}}
- */
-let CategoryInput;
-
-/**
  * The input of the form.
  * @type {!CategoryInput}
  */
@@ -81,6 +75,7 @@ export async function openCategoryEditor(id, handler) {
 export const TheCategoryEditor = {
   name: 'TheCategoryEditor',
   components: {AppColorSwatches, AppIconChoices},
+  /** @return {!Object<string, *>} the bindings of the template */
   setup() {
     const el = ref(null);
     const formEl = ref(null);

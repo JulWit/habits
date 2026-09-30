@@ -44,7 +44,7 @@ function announce(text) {
 /**
  * Returns an answer without the ID of its undo step, as kept in the state.
  * @param {{changeId: (number|undefined)}} answer
- * @return {!Object}
+ * @return {!Object<string, *>}
  */
 function withoutChange({changeId, ...rest}) {
   return rest;

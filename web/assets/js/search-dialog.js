@@ -119,6 +119,7 @@ async function choose(entry) {
 /** The search dialog (see openSearch). The input controls the list. */
 export const TheSearchDialog = {
   name: 'TheSearchDialog',
+  /** @return {!Object<string, *>} the bindings of the template */
   setup() {
     const el = ref(null);
     const input = ref(null);

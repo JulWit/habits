@@ -40,6 +40,11 @@ export const AppYearGrid = {
     year: {type: String, required: true},
     square: {type: Function, required: true},
   },
+  /**
+   * @param {{year: string, square: function(string): !Object<string, *>}}
+   *     props
+   * @return {!Object<string, *>} the bindings of the template
+   */
   setup(props) {
     const grid = computed(() => {
       const yearStart = `${props.year}-01-01`;

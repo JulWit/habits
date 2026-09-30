@@ -31,7 +31,7 @@ const dayCount = (n) => (n === 1 ? t('1 day') : t('{n} days', {n}));
 
 /**
  * Returns the stat tiles of the year.
- * @param {!Object} stats the server's day statistics
+ * @param {!DayStats} stats
  * @param {string} from the first day counted
  * @return {!Array<!Array<string>>}
  */
@@ -51,8 +51,8 @@ function statTiles(stats, from) {
 /**
  * Returns the facts: completed habits, days without any, best weekday and
  * month.
- * @param {!Object} stats
- * @return {!Array<!Object>}
+ * @param {!DayStats} stats
+ * @return {!Array<!Fact>}
  */
 function highlights(stats) {
   const items = [
@@ -81,7 +81,7 @@ function highlights(stats) {
  * done}): the shade grows with the share of completed habits.
  * @param {string} iso
  * @param {{due: number, done: number}} total
- * @return {!Object}
+ * @return {!Object<string, *>} the attributes
  */
 function heatSquare(iso, {due, done}) {
   const ahead = iso > state.today;
@@ -125,7 +125,8 @@ function heatStatus(due, done, ahead) {
  * Returns the bar of a group: its average share, with the number of perfect
  * days in the tooltip.
  * @param {{label: string, name: string, rate: ?number, perfect: number}} group
- * @return {!Object}
+ * @return {{label: string, name: string, empty: boolean, status: string,
+ *     width: string, value: string}}
  */
 function bar({label, name, rate, perfect}) {
   const perfectDays = t('Perfect days: {n}', {n: perfect});
@@ -179,6 +180,7 @@ export const TheDayStatsView = {
   name: 'TheDayStatsView',
   components:
       {AppBar, DayStatsBarPanel, AppFactsPanel, AppStatRow, AppYearGrid},
+  /** @return {!Object<string, *>} the bindings of the template */
   setup() {
     const root = ref(null);
     const shown = computed(() => route.view === 'days');

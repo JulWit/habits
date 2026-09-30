@@ -57,6 +57,7 @@ const App = {
     TheStyleGuideView,
     TheToastList,
   },
+  /** @return {!Object<string, *>} the bindings of the template */
   setup() {
     // The style guide stays loaded once it has been shown.
     const guideShown = ref(false);

@@ -353,7 +353,7 @@ export function describeTarget(habit, schedule = currentSchedule(habit)) {
 
 /**
  * Describes a frequency, e.g. "daily" or "Mon, Wed".
- * @param {!Object} frequency
+ * @param {!Frequency} frequency
  * @return {string}
  */
 export function describeFrequency(frequency) {

@@ -121,7 +121,7 @@ export const api = {
   /**
    * Loads the complete state; `from` extends the entry window into the past.
    * @param {string=} from
-   * @return {!Promise<!Object>}
+   * @return {!Promise<!LoadedState>}
    */
   loadState: (from) => request(
       'GET',
@@ -139,7 +139,7 @@ export const api = {
    * @param {string} id
    * @param {string} year
    * @param {string} grain day, week or month
-   * @return {!Promise<!Object>}
+   * @return {!Promise<!Totals>}
    */
   habitTotals: (id, year, grain) => {
     const path = `/api/habits/${encodeURIComponent(id)}/totals`;
@@ -151,7 +151,7 @@ export const api = {
    * given.
    * @param {string} year
    * @param {string=} categoryId
-   * @return {!Promise<!Object>}
+   * @return {!Promise<!Days>}
    */
   days: (year, categoryId) => request(
       'GET',
@@ -160,7 +160,7 @@ export const api = {
           `/api/days?year=${year}`),
 
   /**
-   * @param {!Object} input
+   * @param {!HabitInput} input
    * @return {!Promise<!Habit>}
    */
   createHabit: (input) => request('POST', '/api/habits', input),
@@ -169,7 +169,7 @@ export const api = {
    * Saves what the editor shows; a new target or frequency starts today
    * unless `retroactive` is set, a new kind converts the history.
    * @param {string} id
-   * @param {!Object} input
+   * @param {!HabitInput} input
    * @return {!Promise<!Habit>}
    */
   updateHabit: (id, input) =>
@@ -234,20 +234,21 @@ export const api = {
   redo: (id = 0) => request('POST', '/api/redo', {id}),
 
   /**
-   * @param {!Object} settings the settings to change
-   * @return {!Promise<!Object>} all settings
+   * @param {!Object<string, *>} settings the settings to change, keyed by
+   *     their JSON name
+   * @return {!Promise<!Object<string, *>>} all settings
    */
   saveSettings: (settings) => request('PATCH', '/api/settings', settings),
 
   /**
    * Loads the habits with their history, and the categories.
-   * @return {!Promise<!Object>}
+   * @return {!Promise<!Object<string, *>>}
    */
   exportHabits: () => request('GET', '/api/export'),
 
   /**
-   * @param {!Object} file an export
-   * @return {!Promise<!Object>}
+   * @param {!Object<string, *>} file an export
+   * @return {!Promise<{habits: number, categories: number, skipped: number}>}
    */
   importHabits: (file) => request('POST', '/api/import', file),
 
@@ -258,14 +259,14 @@ export const api = {
   deleteAllData: () => request('DELETE', '/api/data'),
 
   /**
-   * @param {!Object} input
+   * @param {{name: string}} input
    * @return {!Promise<!Category>}
    */
   createCategory: (input) => request('POST', '/api/categories', input),
 
   /**
    * @param {string} id
-   * @param {!Object} input
+   * @param {!CategoryInput} input
    * @return {!Promise<!Category>}
    */
   updateCategory: (id, input) =>

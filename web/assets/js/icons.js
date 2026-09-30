@@ -3,6 +3,7 @@
 
 import {el, markup} from './dom.js';
 import {t} from './i18n.js';
+import {h} from './vue.js';
 
 /**
  * Wraps the shapes of an icon in its SVG element.
@@ -513,6 +514,79 @@ export function paintIcons(root = document) {
     node.insertAdjacentHTML('afterbegin', svg);
   }
 }
+
+// ---------- components ----------
+
+/**
+ * The attributes and the content of each icon's markup, parsed once.
+ * @type {!Map<string, {attrs: !Object<string, string>, body: string}>}
+ */
+const parsedIcons = new Map();
+
+/**
+ * Splits the markup of an icon into the attributes of its <svg> element and
+ * the shapes inside it.
+ * @param {string} svg
+ * @return {{attrs: !Object<string, string>, body: string}}
+ */
+function parseIcon(svg) {
+  let parsed = parsedIcons.get(svg);
+  if (!parsed) {
+    const [, attrText, body] = svg.trim().match(/^<svg([^>]*)>([\s\S]*)<\/svg>$/);
+    const attrs = {};
+    for (const [, name, value] of attrText.matchAll(/([\w:-]+)="([^"]*)"/g)) {
+      attrs[name] = value;
+    }
+    parsed = {attrs, body};
+    parsedIcons.set(svg, parsed);
+  }
+  return parsed;
+}
+
+/**
+ * An icon as an inline <svg> element: `name` names one of `icons`, or `svg`
+ * gives the markup itself (e.g. of a habit icon). Renders nothing for an
+ * unknown name. The markup is constant, so it is safe as innerHTML.
+ */
+export const AppIcon = {
+  name: 'AppIcon',
+  props: {name: String, svg: String},
+  setup(props) {
+    return () => {
+      const markup = props.svg ?? icons[props.name];
+      if (!markup) return null;
+      const {attrs, body} = parseIcon(markup);
+      return h('svg', {...attrs, innerHTML: body});
+    };
+  },
+};
+
+/**
+ * Reports whether `name` is a habit icon with a drawing.
+ * @param {?string|undefined} name
+ * @return {boolean}
+ */
+export function hasHabitIcon(name) {
+  return Boolean(name && habitIcons[name]);
+}
+
+/**
+ * The icon tile of a habit or category: its icon in its colour, or neutral
+ * without a colour. Renders nothing if the icon has no drawing; callers show
+ * a dot instead where needed (hasHabitIcon).
+ */
+export const IconBadge = {
+  name: 'IconBadge',
+  props: {icon: String, color: String},
+  setup(props) {
+    return {habitIcons, colorValue};
+  },
+  template: `
+    <span v-if="habitIcons[icon]" :class="{'is-neutral': !color}"
+          :style="color ? {'--habit-color': colorValue(color)} : null">
+      <app-icon :svg="habitIcons[icon]"/>
+    </span>`,
+};
 
 /**
  * Returns the CSS value of a palette colour. Habits, categories and the accent

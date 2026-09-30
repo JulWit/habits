@@ -54,17 +54,8 @@
   </div>
 </header>
 
-<main id="board-view" class="view">
-  <!-- No aria-live, as the board is re-rendered completely; changes are
-       announced via #board-status. -->
-  <div id="board-grid" class="board"></div>
-  <p id="board-no-match" class="empty" hidden>Nothing left open on this day.</p>
-  <div id="board-empty" class="empty" hidden>
-    <h2>No habits yet</h2>
-    <p>Create your first habit — daily, on certain weekdays or every few days.</p>
-    <button class="button primary" type="button" data-action="add-first">Create first habit</button>
-  </div>
-</main>
+<!-- The overview, rendered by board-view.js. -->
+<main id="board-view" class="view"></main>
 
 <main id="habit-view" class="view" hidden></main>
 

@@ -1,6 +1,9 @@
 // Drag-and-drop reordering of a vertical list, based on pointer events (mouse,
 // pen and touch). The dragged element is moved in the DOM while dragging;
-// settle() compensates the resulting layout jump.
+// settle() compensates the resulting layout jump. When the drag ends, the
+// element goes back to where it was and the new order is reported: the list
+// is rendered by Vue, which moves the elements itself and must find them
+// where it left them. Its user keeps the list from changing during a drag.
 
 /** Minimum pointer movement in pixels before a press starts a drag. */
 const THRESHOLD = 4;
@@ -70,8 +73,9 @@ export function enableDragReorder(
       if (Math.abs(dy) < THRESHOLD) return;
       drag.active = true;
       drag.order = items();
-      // The list being reordered.
+      // The list being reordered, and where the element goes back to.
       drag.list = drag.element.parentElement;
+      drag.anchor = drag.element.nextSibling;
       drag.element.classList.add('is-dragging');
       drag.list.classList.add('is-reordering');
       onStart?.();
@@ -92,7 +96,6 @@ export function enableDragReorder(
   document.addEventListener('keydown', (event) => {
     if (event.key !== 'Escape' || !drag?.active) return;
     event.preventDefault();
-    restore();
     finish(false);
   });
 
@@ -136,20 +139,12 @@ export function enableDragReorder(
   }
 
   /**
-   * Puts the entries back in the order the drag started with.
-   */
-  function restore() {
-    for (const element of drag.order) {
-      drag.list.append(element);
-    }
-  }
-
-  /**
-   * Ends the drag; reports the new order if `committed` and it changed.
+   * Ends the drag; puts the element back and reports the new order if
+   * `committed` and it changed.
    * @param {boolean} committed
    */
   function finish(committed) {
-    const {element, grip, pointerId, active, order, list} = drag;
+    const {element, grip, pointerId, active, order, list, anchor} = drag;
     if (grip.hasPointerCapture?.(pointerId)) {
       grip.releasePointerCapture(pointerId);
     }
@@ -165,6 +160,7 @@ export function enableDragReorder(
     element.style.transform = '';
     element.classList.remove('is-dragging');
     list.classList.remove('is-reordering');
+    list.insertBefore(element, anchor);
     const changed = committed && now.some((node, i) => node !== order[i]);
     if (changed) {
       onDrop(now.map((node) => node.dataset[key]));

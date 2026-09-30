@@ -1,5 +1,8 @@
 // Client-side copy of the server state. Every change goes to the server first;
-// its response replaces the local state.
+// its response replaces the local state. The state is reactive, so the Vue
+// components render again whenever it changes.
+
+import {reactive} from './vue.js';
 
 /**
  * A day's entry as the client handles it.
@@ -64,7 +67,7 @@ export let Category;
  */
 export let Block;
 
-export const state = {
+export const state = reactive({
   user: null,
   // Complete once the state is loaded.
   settings: {},
@@ -73,7 +76,9 @@ export const state = {
   habits: [],
   colors: [],
   icons: [],
-};
+  kinds: {},
+  options: {},
+});
 
 /** @type {!Set<function(!Object): void>} */
 const listeners = new Set();

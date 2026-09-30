@@ -3,7 +3,7 @@
 
 import * as actions from './actions.js';
 import {api} from './api.js';
-import {currentDays, initOverview, render as renderOverview} from './board-view.js';
+import {currentDays, editing, initOverview, measureBoard} from './board-view.js';
 import {initCategoryEditor} from './category-editor.js';
 import {initCategoryPicker} from './category-picker.js';
 import {initCategory, renderCategory} from './category-view.js';
@@ -21,9 +21,8 @@ import {initSkipDialog, openSkipDialog} from './skip-editor.js';
 import {habitById, replaceState, state, subscribe, upsertHabit} from './state.js';
 import {initTooltips} from './tooltip.js';
 import {errorText, redoLast, setChangeHandler, toast, undoLast} from './undo.js';
-
-/** Whether reorder mode is active. Not persisted. */
-let editing = false;
+import {createVueApp} from './vue-app.js';
+import {watchEffect} from './vue.js';
 
 const boardView = document.getElementById('board-view');
 const habitView = document.getElementById('habit-view');
@@ -65,18 +64,14 @@ const handlers = {
  */
 function initEditMode() {
   // The reorder mode switch in the settings dialog.
+  // The board shows the handles and measures its width again.
   const input = document.getElementById('settings-edit');
-  const apply = () => {
-    document.documentElement.dataset.edit = editing ? 'on' : 'off';
-    input.checked = editing;
-    // The handles change the available width, so re-render the board.
-    renderOverview();
-  };
   input.addEventListener('change', () => {
-    editing = input.checked;
-    apply();
+    editing.value = input.checked;
   });
-  apply();
+  watchEffect(() => {
+    input.checked = editing.value;
+  });
 }
 
 /**
@@ -324,8 +319,8 @@ async function showStyleguide() {
   if (styleguideDrawn) return;
   styleguideDrawn = true;
   try {
-    const module = await import('./style-guide-view.js');
-    module.renderStyleguide(styleGuideView);
+    const {StyleGuideView} = await import('./style-guide-view.js');
+    createVueApp(StyleGuideView).mount(styleGuideView);
   } catch (err) {
     styleguideDrawn = false;
     toast(errorText(err), {error: true});
@@ -451,8 +446,8 @@ function syncRoute() {
   }
 
   showView(boardView);
-  // Re-render, as the board could not be measured while hidden.
-  renderOverview();
+  // Measure again, as the board could not be measured while hidden.
+  measureBoard();
 }
 
 // ---------- theme ----------

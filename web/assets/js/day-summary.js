@@ -2,20 +2,20 @@
 // done, and a progress ring that the orbs of newly completed habits fly into.
 
 import {daysBetween, formatFull, yearOf} from './dates.js';
-import {el, markup} from './dom.js';
 import * as habitHelpers from './habit-helpers.js';
 import {t} from './i18n.js';
-import {colorValue, icons} from './icons.js';
+import {colorValue} from './icons.js';
 import {state} from './state.js';
+import {computed, reactive, watch} from './vue.js';
 
 /**
  * The board element, which holds the summary. Set by initSummary.
- * @type {!HTMLElement}
+ * @type {?HTMLElement}
  */
-let board;
+let board = null;
 
 /**
- * Sets the board element.
+ * Sets the board element, in which the orbs find their cells and the ring.
  * @param {!HTMLElement} boardElement
  */
 export function initSummary(boardElement) {
@@ -33,65 +33,6 @@ export function dayProgress(habits, day) {
   const due = habits.filter((h) => !h.archivedAt && habitHelpers.isDue(h, day));
   const done = due.filter((h) => habitHelpers.isDone(h, day));
   return {due: due.length, done: done.length};
-}
-
-/**
- * Builds the day summary below the header: the active day's date, progress
- * and ring. Refers to all habits, regardless of paging and filter.
- * @param {!Array<!Habit>} habits
- * @param {string} day
- * @return {!HTMLElement}
- */
-export function daySummary(habits, day) {
-  const {due, done} = dayProgress(habits, day);
-  const percent = due === 0 ? 0 : Math.round((done / due) * 100);
-  // The year only if it is not the current one.
-  const date = formatFull(day, yearOf(day) !== yearOf(state.today));
-
-  const summary = el(
-      'section',
-      {
-        class: ['day-summary', due > 0 && done === due && 'is-complete'],
-        // Opens the day statistics (board-view.js handles the click).
-        data: {role: 'open-days'},
-        role: 'button',
-        tabIndex: 0,
-        title: t('Show day statistics'),
-        'aria-label': `${date} — ${t('Show day statistics')}`,
-      },
-      el(
-          'div',
-          {class: 'day-summary-text'},
-          el('h2', {class: 'day-summary-date'}, date),
-          el('p', {class: 'day-summary-count'},
-             ...progressText(due, done, day === state.today)),
-          ),
-      // No ring if nothing is due on the day.
-      due > 0 && progressRing(percent, t('Done on this day')),
-  );
-  summary.addEventListener('keydown', (event) => {
-    if (event.key !== 'Enter' && event.key !== ' ') return;
-    event.preventDefault();
-    summary.click();
-  });
-  return summary;
-}
-
-/**
- * Describes the day's progress; a complete day gets a check.
- * @param {number} due
- * @param {number} done
- * @param {boolean} isToday
- * @return {!Array<string|!Node>}
- */
-function progressText(due, done, isToday) {
-  if (due === 0) return [t('Nothing due on this day')];
-  if (done < due) return [t('{done} of {due} done', {done, due})];
-  // Everything due on the day is done. The varying messages speak of today.
-  return [
-    markup(icons.check),
-    el('span', {}, isToday ? completeText(due) : t('All habits done!')),
-  ];
 }
 
 /**
@@ -144,82 +85,108 @@ const WAVY_RING_PATH = (() => {
 })();
 
 /**
- * The ring's value at the last render. A new ring animates from there to its
- * new value.
+ * What the ring shows: the fill animates from `from` to `to` (in percent)
+ * whenever `key` changes, as the fill is then drawn anew and its keyframe
+ * animation starts again. While orbs are in flight, `filling` replaces the
+ * animation with a transition that follows their landings.
+ */
+const ring = reactive({from: 0, to: 0, key: 0, filling: false});
+
+/**
+ * The ring's value when it last showed the actual progress, or null before
+ * the first. A new value animates from there.
  * @type {?number}
  */
 let lastRingPercent = null;
 
 /**
- * Builds the progress ring filled to `percent`, with the number in its centre
- * and `name` as its accessible label.
- * pathLength="100" allows dash lengths in percent.
+ * Shows `percent` on the ring: animated from the last value, or, while orbs
+ * are in flight, once they have landed.
  * @param {number} percent
- * @param {string} name
- * @return {!Element}
  */
-function progressRing(percent, name) {
-  const ns = 'http://www.w3.org/2000/svg';
-  const svg = document.createElementNS(ns, 'svg');
-  svg.setAttribute('viewBox', '0 0 40 40');
-  svg.setAttribute('aria-hidden', 'true');
-
-  const track = document.createElementNS(ns, 'circle');
-  track.setAttribute('class', 'day-summary-ring-track');
-  track.setAttribute('cx', '20');
-  track.setAttribute('cy', '20');
-  track.setAttribute('r', String(RING_R));
-
-  const fill = document.createElementNS(ns, 'path');
-  fill.setAttribute('class', 'day-summary-ring-fill');
-  fill.setAttribute('d', WAVY_RING_PATH);
-  fill.setAttribute('pathLength', '100');
-  svg.append(track, fill);
-
-  const label = el('span', {class: 'day-summary-percent'});
-  const ring =
-      el('div', {
-        class: 'day-summary-ring',
-        role: 'progressbar',
-        'aria-valuemin': '0',
-        'aria-valuemax': '100',
-        'aria-valuenow': String(percent),
-        'aria-label': name,
-      },
-         svg, label);
-
-  // While orbs are in flight, they advance the ring as they land.
+function showPercent(percent) {
   if (ringHold) {
     ringHold.target = percent;
-    fill.classList.add('is-filling');
-    showRing(ring, ringHold.shown);
-    return ring;
+    ring.filling = true;
+    ring.to = ringHold.shown;
+    return;
   }
-
-  // A keyframe animation starts as soon as the element is inserted.
-  const from = lastRingPercent ?? 0;
+  ring.from = lastRingPercent ?? 0;
+  ring.to = percent;
+  ring.filling = false;
+  ring.key++;
   lastRingPercent = percent;
-  fill.style.setProperty('--from', String(from));
-  fill.style.setProperty('--to', String(percent));
-  // Fade in from 0, as a round cap would show a dot at zero length.
-  fill.style.setProperty('--from-opacity', from === 0 ? '0' : '1');
-  fill.classList.toggle('is-empty', percent === 0);
-  label.textContent = `${percent}%`;
-  return ring;
 }
 
 /**
- * Sets an existing ring to `percent`.
- * @param {!Element} ring
- * @param {number} percent
+ * The day summary: the active day's date, progress and ring. Counts all
+ * habits, regardless of paging and filter. Emits `open` to open the day
+ * statistics.
  */
-function showRing(ring, percent) {
-  const fill = ring.querySelector('.day-summary-ring-fill');
-  fill.style.setProperty('--to', String(percent));
-  fill.classList.toggle('is-empty', percent === 0);
-  ring.querySelector('.day-summary-percent').textContent =
-      `${Math.round(percent)}%`;
-}
+export const DaySummary = {
+  name: 'DaySummary',
+  props: {
+    habits: {type: Array, required: true},
+    day: {type: String, required: true},
+  },
+  emits: ['open'],
+  setup(props) {
+    const progress = computed(() => dayProgress(props.habits, props.day));
+    const percent = computed(() => {
+      const {due, done} = progress.value;
+      return due === 0 ? 0 : Math.round((done / due) * 100);
+    });
+    // No ring, and nothing to animate, if nothing is due on the day.
+    watch(() => (progress.value.due > 0 ? percent.value : null), (value) => {
+      if (value !== null) showPercent(value);
+    }, {immediate: true});
+
+    return {
+      progress,
+      percent,
+      ring,
+      RING_R,
+      WAVY_RING_PATH,
+      // The year only if it is not the current one.
+      date: computed(
+          () => formatFull(props.day, yearOf(props.day) !== yearOf(state.today))),
+      // The varying messages of a completed day speak of today.
+      completeText: computed(
+          () => props.day === state.today ? completeText(progress.value.due) :
+                                            t('All habits done!')),
+    };
+  },
+  template: `
+    <section class="day-summary"
+             :class="{'is-complete': progress.due > 0 && progress.done === progress.due}"
+             data-role="open-days" role="button" tabindex="0"
+             :title="t('Show day statistics')"
+             :aria-label="date + ' — ' + t('Show day statistics')"
+             @click="$emit('open')"
+             @keydown.enter.space.prevent="$emit('open')">
+      <div class="day-summary-text">
+        <h2 class="day-summary-date">{{ date }}</h2>
+        <p class="day-summary-count">
+          <template v-if="progress.due === 0">{{ t('Nothing due on this day') }}</template>
+          <template v-else-if="progress.done < progress.due">{{ t('{done} of {due} done', progress) }}</template>
+          <template v-else><app-icon name="check"/><span>{{ completeText }}</span></template>
+        </p>
+      </div>
+      <div v-if="progress.due > 0" class="day-summary-ring" role="progressbar"
+           aria-valuemin="0" aria-valuemax="100" :aria-valuenow="percent"
+           :aria-label="t('Done on this day')">
+        <svg viewBox="0 0 40 40" aria-hidden="true">
+          <circle class="day-summary-ring-track" cx="20" cy="20" :r="RING_R"/>
+          <!-- pathLength="100" allows dash lengths in percent. -->
+          <path :key="ring.key" class="day-summary-ring-fill"
+                :class="{'is-filling': ring.filling, 'is-empty': ring.to === 0}"
+                :d="WAVY_RING_PATH" pathLength="100"
+                :style="{'--from': ring.from, '--to': ring.to, '--from-opacity': ring.from === 0 ? 0 : 1}"/>
+        </svg>
+        <span class="day-summary-percent">{{ Math.round(ring.to) }}%</span>
+      </div>
+    </section>`,
+};
 
 // ---------- ticking off: orbs into the ring ----------
 
@@ -232,12 +199,13 @@ function showRing(ring, percent) {
 let ringHold = null;
 
 /**
- * The IDs of the habits complete on the active day at the last render.
+ * The IDs of the habits complete on the active day at the last call of
+ * newlyDone.
  * @type {?Set<string>}
  */
 let lastDone = null;
 /**
- * The active day of the last render.
+ * The active day of the last call of newlyDone.
  * @type {?string}
  */
 let lastDoneDay = null;
@@ -254,9 +222,10 @@ let Flight;
 const ORBS_PER_HABIT = 6;
 
 /**
- * Returns the habits completed on the active day since the last render, each
- * with the position of its cell on the old board. Returns nothing on the first
- * render and after a change of the active day.
+ * Returns the habits completed on the active day since the last call, each
+ * with the position of its cell on the board. Must be called before the board
+ * is updated, while it still shows the cells. Returns nothing on the first
+ * call and after a change of the active day.
  * @param {!Array<!Habit>} habits
  * @param {string} day
  * @return {!Array<!Flight>}
@@ -269,7 +238,9 @@ export function newlyDone(habits, day) {
   lastDone = done;
   lastDoneDay = day;
   // No animation in a hidden page.
-  if (!before || prefersReducedMotion() || document.hidden) return [];
+  if (!before || !board || prefersReducedMotion() || document.hidden) {
+    return [];
+  }
 
   const fresh = due.filter((h) => done.has(h.id) && !before.has(h.id));
   // No ring, no orbs.
@@ -308,13 +279,20 @@ function prefersReducedMotion() {
 }
 
 /**
+ * Returns the ring element on the board, or null.
+ * @return {?Element}
+ */
+function ringElement() {
+  return board?.querySelector('.day-summary-ring') ?? null;
+}
+
+/**
  * Returns the screen position of the wave at `percent`, or null.
  * @param {number} percent
  * @return {?{x: number, y: number}}
  */
 function ringPoint(percent) {
-  const ring = board.querySelector('.day-summary-ring');
-  const r = ring?.getBoundingClientRect();
+  const r = ringElement()?.getBoundingClientRect();
   if (!r || r.width === 0) return null;
   // RING_R scaled from the viewBox.
   const radius = (r.width / 40) * RING_R;
@@ -333,7 +311,7 @@ function visibleTop() {
   let top = 0;
   for (const bar
            of [document.querySelector('.topbar'),
-               board.querySelector('.day-header')]) {
+               board?.querySelector('.day-header')]) {
     if (bar) top = Math.max(top, bar.getBoundingClientRect().bottom);
   }
   return top;
@@ -367,14 +345,17 @@ function flash(x, y, size, color) {
 }
 
 /**
- * Returns the layer for the orbs, above the board and below dialogs.
+ * Returns the layer for the orbs, above the board and below dialogs. It lies
+ * outside the Vue app, as the orbs are moved frame by frame.
  * @return {!HTMLElement}
  */
 function orbLayer() {
   let layer = document.getElementById('orb-layer');
   if (!layer) {
-    layer =
-        el('div', {id: 'orb-layer', class: 'orb-layer', 'aria-hidden': 'true'});
+    layer = document.createElement('div');
+    layer.id = 'orb-layer';
+    layer.className = 'orb-layer';
+    layer.setAttribute('aria-hidden', 'true');
     document.body.append(layer);
   }
   return layer;
@@ -483,23 +464,20 @@ function landOrb(landing, visible) {
   if (!hold) return;
   hold.pending--;
   hold.shown = hold.pending === 0 ? hold.target : landing;
+  ring.to = hold.shown;
 
-  const ring = board.querySelector('.day-summary-ring');
-  if (ring) {
-    showRing(ring, hold.shown);
-    if (visible) {
-      ring.animate(
-          [
-            {transform: 'scale(1)'},
-            {transform: 'scale(1.07)'},
-            {transform: 'scale(1)'},
-          ],
-          {duration: 220, easing: 'ease-out'},
-      );
-    }
+  if (visible) {
+    ringElement()?.animate(
+        [
+          {transform: 'scale(1)'},
+          {transform: 'scale(1.07)'},
+          {transform: 'scale(1)'},
+        ],
+        {duration: 220, easing: 'ease-out'},
+    );
   }
 
-  // Keep is-filling, so the keyframe animation does not replay.
+  // `filling` stays on, so the keyframe animation does not replay.
   if (hold.pending === 0) {
     ringHold = null;
     lastRingPercent = hold.target;

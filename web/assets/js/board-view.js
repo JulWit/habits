@@ -2,69 +2,69 @@
 // All blocks share the same grid, so a single day header aligns with all of
 // them.
 
-import {dayCell, dayEntry, habitLabel} from './board-cells.js';
+import {DayCell, HabitLabel, HeadDay} from './board-cells.js';
 import {addDays, dayOfMonth, daysBetween, formatLong, MONTH_LONG, MONTH_SHORT, monthIndex, weekdayIndex, yearOf} from './dates.js';
-import {dayProgress, daySummary, initSummary, launchOrbs, newlyDone} from './day-summary.js';
-import {el, markup} from './dom.js';
+import {dayProgress, DaySummary, initSummary, launchOrbs, newlyDone} from './day-summary.js';
 import {enableDragReorder} from './drag-reorder.js';
 import * as habitHelpers from './habit-helpers.js';
 import {t} from './i18n.js';
-import {categoryIconBadge, icons} from './icons.js';
-import {groupedHabits, state, subscribe} from './state.js';
+import {icons} from './icons.js';
+import {groupedHabits, state} from './state.js';
+import {createVueApp} from './vue-app.js';
+import {computed, nextTick, onBeforeUpdate, onMounted, onUpdated, ref, watch, watchEffect} from './vue.js';
 
 const LONG_PRESS_MS = 450;
 
 // Number of additional days loaded when paging back beyond the loaded entries.
 const PREFETCH_DAYS = 180;
 
-/** @type {!HTMLElement} */
-let board;
-/** @type {!HTMLElement} */
-let emptyState;
-/** @type {!HTMLElement} */
-let noMatch;
+/** Maximum number of days the board can be paged into the future. */
+const MAX_AHEAD_DAYS = 365;
+
+/** Minimum number of day columns. */
+const MIN_DAYS = 7;
+
 /**
  * The handlers of app.js.
  * @type {!Object<string, !Function>}
  */
 let actions;
-/**
- * Floating "back to today" button at the bottom centre of the screen.
- * @type {!HTMLElement}
- */
-let todayPill;
 
-/**
- * Reports whether reordering uses drag and drop (otherwise arrow buttons).
- * @return {boolean}
- */
-const byDragging = () => (state.settings?.reorderMode ?? 'drag') === 'drag';
+/** The board element (#board-grid), once mounted. @type {?HTMLElement} */
+let board = null;
 
-/** The number of day columns rendered last. */
-let renderedDays = 0;
-
-/** Maximum number of days the board can be paged into the future. */
-const MAX_AHEAD_DAYS = 365;
+/** Whether reorder mode is active: the handles are shown. Not persisted. */
+export const editing = ref(false);
 
 /**
  * Number of days the board is shifted into the past; negative values show the
  * future. The window is anchored at its right edge.
  */
-let offset = 0;
+const offset = ref(0);
 
 /**
  * The day chosen in the day header, or null for today. Marker, band and day
  * summary refer to it. Not persisted; null follows a change of date.
- * @type {?string}
+ * @type {!Object}
  */
-let selectedDay = null;
+const selectedDay = ref(null);
+
+/** The number of day columns shown; 0 before the board could be measured. */
+const days = ref(0);
+
+/**
+ * Whether a drag is in progress. The board keeps the blocks it showed when
+ * the drag started, as the dragged element must stay where drag-reorder.js
+ * put it.
+ */
+const dragging = ref(false);
 
 /**
  * Returns the active day: the selected one, or today.
  * @return {string}
  */
 function activeDay() {
-  return selectedDay ?? state.today;
+  return selectedDay.value ?? state.today;
 }
 
 /**
@@ -72,129 +72,105 @@ function activeDay() {
  * @param {string} iso
  */
 function selectDay(iso) {
-  const next = iso === state.today ? null : iso;
-  if (next === selectedDay) return;
-  selectedDay = next;
-  render();
+  selectedDay.value = iso === state.today ? null : iso;
 }
 
 /** Returns to today: the window and the active day. */
 function backToToday() {
-  selectedDay = null;
-  // showWindow() does not render without a change of the window.
-  if (offset === 0) {
-    render();
-  } else {
-    showWindow(0);
-  }
+  selectedDay.value = null;
+  showWindow(0);
 }
 
 /**
- * Returns the last day of the window, before week alignment.
+ * Returns the last day of a window `back` days before today, before week
+ * alignment.
+ * @param {number} back
  * @return {string}
  */
-function windowEnd() {
-  return addDays(state.today, -offset);
+function windowEnd(back) {
+  return addDays(state.today, -back);
 }
 
 /**
- * Returns the first day of a window of `days` columns. With week alignment,
- * the start moves forward to the next Monday, so the current week is shown in
- * full. Week alignment requires at least seven columns.
- * @param {number} days
+ * Returns the first day of a window of `count` columns `back` days before
+ * today. With week alignment, the start moves forward to the next Monday, so
+ * the current week is shown in full. Week alignment requires at least seven
+ * columns.
+ * @param {number} count
+ * @param {number} back
  * @return {string}
  */
-function windowStart(days) {
-  const plain = addDays(windowEnd(), -(days - 1));
-  if (!alignsWeeks(days)) return plain;
+function windowStart(count, back) {
+  const plain = addDays(windowEnd(back), -(count - 1));
+  if (!alignsWeeks(count)) return plain;
   const weekday = weekdayIndex(plain);
   return weekday === 0 ? plain : addDays(plain, 7 - weekday);
 }
 
 /**
  * Reports whether the columns are aligned to calendar weeks.
- * @param {number} days
+ * @param {number} count
  * @return {boolean}
  */
-function alignsWeeks(days) {
-  return (state.settings?.alignWeeks ?? false) && days >= 7;
+function alignsWeeks(count) {
+  return (state.settings?.alignWeeks ?? false) && count >= 7;
 }
 
 /**
  * Returns the paging step in days: whole weeks when aligned.
- * @param {number} days
+ * @param {number} count
  * @return {number}
  */
-function pageStep(days) {
-  return alignsWeeks(days) ? Math.floor(days / 7) * 7 : days;
+function pageStep(count) {
+  return alignsWeeks(count) ? Math.floor(count / 7) * 7 : count;
 }
 
 /**
- * Initialises the overview.
- * @param {!Object<string, !Function>} handlers the handlers of app.js
+ * Reports whether reordering uses drag and drop (otherwise arrow buttons).
+ * @return {boolean}
  */
-export function initOverview(handlers) {
-  actions = handlers;
-  board = document.getElementById('board-grid');
-  initSummary(board);
-  emptyState = document.getElementById('board-empty');
-  noMatch = document.getElementById('board-no-match');
-  initFilter();
-  initTodayPill();
+const byDragging = () => (state.settings?.reorderMode ?? 'drag') === 'drag';
 
-  board.addEventListener('click', onBoardClick);
-  board.addEventListener('contextmenu', onBoardContextMenu);
-  board.addEventListener('keydown', onBoardKeydown);
-  board.addEventListener('focusin', onBoardFocus);
-  attachLongPress(board);
-
-  emptyState.querySelector('[data-action="add-first"]')
-      .addEventListener('click', () => actions.createHabit());
-
-  subscribe(render);
-
-  // Drag and drop for both categories and habit rows; the handle determines
-  // which list is reordered. Rendering pauses during a drag (see dragging).
-  const dragCallbacks = (save) => ({
-    onStart: () => {
-      dragging = true;
-    },
-    onDrop: (ids) => {
-      dragging = false;
-      save(ids);
-    },
-    onCancel: () => {
-      dragging = false;
-      // Render changes that arrived during the drag.
-      render();
-    },
-  });
-  enableDragReorder({
-    container: board,
-    item: '.block[data-category]',
-    handle: '[data-role="drag-category"]',
-    key: 'category',
-    ...dragCallbacks(actions.setCategoryOrder),
-  });
-  enableDragReorder({
-    container: board,
-    item: '.habit-row',
-    handle: '[data-role="drag-habit"]',
-    key: 'habit',
-    ...dragCallbacks(actions.setHabitOrder),
-  });
-
-  // Re-render when the available width changes, including when the view
-  // becomes visible again. Observes the container, as the board's own width
-  // depends on the day count, and the body, as the other views take their
-  // width from the board's (--board-width) while the overview is hidden.
-  const observer = new ResizeObserver(() => {
-    const width = availableWidth();
-    if (width > 0 && visibleDays(width) !== renderedDays) render();
-  });
-  observer.observe(board.parentElement);
-  observer.observe(document.body);
+/**
+ * Returns the largest offset whose window starts no earlier than
+ * earliestEntry.
+ * @return {number}
+ */
+function maxBackDays() {
+  if (!state.earliestEntry) return Infinity;
+  return Math.max(
+      0, daysBetween(state.earliestEntry, state.today) - (days.value - 1));
 }
+
+/**
+ * Moves the window to `next` days before today, clamped to the allowed range.
+ * Loads missing entries first. Resolves once the board shows the window.
+ * @param {number} next
+ * @return {!Promise<void>}
+ */
+async function showWindow(next) {
+  const wanted = Math.min(maxBackDays(), Math.max(-MAX_AHEAD_DAYS, next));
+  if (wanted === offset.value) return;
+
+  const start = windowStart(days.value, wanted);
+  // ISO dates compare correctly as strings.
+  if (state.entriesFrom && start < state.entriesFrom) {
+    await actions.extendHistory(addDays(start, -PREFETCH_DAYS));
+  }
+  offset.value = wanted;
+  await nextTick();
+}
+
+/**
+ * Pages the window by one step into the past (1) or the future (-1).
+ * @param {number} direction
+ * @return {!Promise<void>}
+ */
+function page(direction) {
+  return showWindow(offset.value + direction * pageStep(days.value));
+}
+
+// ---------- measuring ----------
 
 /**
  * Returns the available width, measured on the container, as the board's own
@@ -204,7 +180,7 @@ export function initOverview(handlers) {
  * @return {number}
  */
 function availableWidth() {
-  const parent = board.parentElement;
+  const parent = board?.parentElement;
   if (!parent) return 0;
   const cs = getComputedStyle(parent);
   const outer = parent.hidden ? Math.min(
@@ -213,9 +189,6 @@ function availableWidth() {
                                 parent.clientWidth;
   return outer - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
 }
-
-/** Minimum number of day columns. */
-const MIN_DAYS = 7;
 
 /**
  * Returns a size token of <html> in pixels, or 0 if it is not set.
@@ -257,7 +230,7 @@ function fittingDays(width) {
 }
 
 /**
- * Returns the number of day columns to render: the setting, limited to what
+ * Returns the number of day columns to show: the setting, limited to what
  * fits, or as many as fit in automatic mode. Tightens the board if fewer than
  * a week would fit.
  * @param {number} width
@@ -269,11 +242,11 @@ function visibleDays(width) {
   const fits = fittingDays(width);
   const wanted = state.settings?.overviewDays ?? 0;
   // Automatic mode: as many as fit.
-  const days = wanted > 0 ? Math.min(wanted, fits) : fits;
+  const count = wanted > 0 ? Math.min(wanted, fits) : fits;
   // At least a week is shown, tightening the board if needed. A fixed setting
   // below seven is respected.
   const least = wanted > 0 ? Math.min(wanted, MIN_DAYS) : MIN_DAYS;
-  if (days >= least) return days;
+  if (count >= least) return count;
   tighten(width, least);
   return least;
 }
@@ -288,25 +261,44 @@ function loosen() {
 }
 
 /**
- * Shrinks the board so that `days` columns fit into `width`: first the day
+ * Shrinks the board so that `count` columns fit into `width`: first the day
  * columns down to --cell-tight-min, then the name column down to
  * --label-tight-min. Sets data-tight and the size tokens on <html>.
  * @param {number} width
- * @param {number} days
+ * @param {number} count
  */
-function tighten(width, days) {
+function tighten(width, count) {
   const root = document.documentElement;
   root.setAttribute('data-tight', '');
   const room = roomForColumns(width);
 
   // The widest cell that leaves the name column its minimum width.
-  const widest = Math.floor((room - token('--label-tight-min')) / days) - 2;
+  const widest = Math.floor((room - token('--label-tight-min')) / count) - 2;
   const cell =
       Math.max(token('--cell-tight-min'), Math.min(token('--cell'), widest));
-  const label = Math.max(0, Math.floor(room - days * (cell + 2)));
+  const label = Math.max(0, Math.floor(room - count * (cell + 2)));
 
   root.style.setProperty('--cell', `${cell}px`);
   root.style.setProperty('--label-min', `${label}px`);
+}
+
+/**
+ * Measures how many day columns fit and shows as many. The attributes on
+ * <html> it depends on (density, reordering, filter) must be set before.
+ */
+export function measureBoard() {
+  const root = document.documentElement;
+  // Reordering is disabled while filtering, as the order would be incomplete;
+  // without the handles the board has more room.
+  root.dataset.filtering = onlyOpen.value ? 'on' : 'off';
+  root.dataset.edit = editing.value ? 'on' : 'off';
+  if (!board || groupedHabits().length === 0) return;
+  // A hidden view has no width; the ResizeObserver measures again later.
+  const width = availableWidth();
+  if (width === 0) return;
+  days.value = visibleDays(width);
+  // Set on <html>, as the header also uses it.
+  root.style.setProperty('--days', String(days.value));
 }
 
 /**
@@ -314,47 +306,19 @@ function tighten(width, days) {
  * @return {number}
  */
 export function currentDays() {
-  return renderedDays;
+  return days.value;
 }
 
-/**
- * Returns the largest offset whose window starts no earlier than
- * earliestEntry.
- * @return {number}
- */
-function maxBackDays() {
-  if (!state.earliestEntry) return Infinity;
-  return Math.max(
-      0, daysBetween(state.earliestEntry, state.today) - (renderedDays - 1));
-}
-
-/**
- * Moves the window to `next` days before today, clamped to the allowed range.
- * Loads missing entries before rendering.
- * @param {number} next
- * @return {!Promise<void>}
- */
-async function showWindow(next) {
-  const wanted = Math.min(maxBackDays(), Math.max(-MAX_AHEAD_DAYS, next));
-  if (wanted === offset) return;
-  offset = wanted;
-
-  const start = windowStart(renderedDays);
-  // ISO dates compare correctly as strings.
-  if (state.entriesFrom && start < state.entriesFrom) {
-    await actions.extendHistory(addDays(start, -PREFETCH_DAYS));
-  }
-  render();
-}
+// ---------- filter ----------
 
 /** localStorage key of the filter toggle; kept per device. */
 const FILTER_KEY = 'habits.filterOpen';
 
 /**
  * Whether only habits due and still open on the active day are shown.
- *  Persisted in localStorage, so it survives a reload.
+ * Persisted in localStorage, so it survives a reload.
  */
-let onlyOpen = loadFilter();
+export const onlyOpen = ref(loadFilter());
 
 /**
  * Reads the stored filter. localStorage can be unavailable; the filter then
@@ -369,12 +333,11 @@ function loadFilter() {
   }
 }
 
-/**
- * Stores the filter, if localStorage is available.
- */
-function saveFilter() {
+/** Switches the filter and stores it, if localStorage is available. */
+export function toggleFilter() {
+  onlyOpen.value = !onlyOpen.value;
   try {
-    localStorage.setItem(FILTER_KEY, onlyOpen ? '1' : '0');
+    localStorage.setItem(FILTER_KEY, onlyOpen.value ? '1' : '0');
   } catch {
     // Not kept.
   }
@@ -387,152 +350,10 @@ function saveFilter() {
  * @return {boolean}
  */
 function matches(habit) {
-  if (!onlyOpen) return true;
+  if (!onlyOpen.value) return true;
   const day = activeDay();
   return !habit.archivedAt && habitHelpers.isDue(habit, day) &&
       !habitHelpers.isDone(habit, day);
-}
-
-/**
- * Whether a drag is in progress. Rendering is deferred until it ends, as it
- * would replace the dragged element.
- */
-let dragging = false;
-
-/** Initialises the filter toggle in the title bar. */
-function initFilter() {
-  const openOnly = document.getElementById('filter-open-habits');
-  openOnly.innerHTML = icons.filter;
-  openOnly.setAttribute('aria-pressed', String(onlyOpen));
-
-  openOnly.addEventListener('click', () => {
-    onlyOpen = !onlyOpen;
-    openOnly.setAttribute('aria-pressed', String(onlyOpen));
-    saveFilter();
-    render();
-  });
-}
-
-/** Creates the floating button that returns to today. */
-function initTodayPill() {
-  todayPill = el(
-      'button',
-      {type: 'button', class: 'button today-pill', hidden: true},
-      markup(icons.toToday),
-      // The label is set in render(), after a change of language.
-      el('span'),
-  );
-  todayPill.addEventListener('click', backToToday);
-  board.parentElement.append(todayPill);
-}
-
-/**
- * Renders the board, unless it is hidden or a drag is in progress.
- */
-export function render() {
-  if (!board || dragging) return;
-  todayPill.hidden = offset === 0 && selectedDay === null;
-  todayPill.lastChild.textContent = t('Back to today');
-  const all = groupedHabits();
-  // Blocks keep all habits for the progress bar, plus the filtered habits for
-  // the rows.
-  const blocks = all.map((b) => ({...b, visible: b.habits.filter(matches)}))
-                     .filter((b) => !onlyOpen || b.visible.length > 0);
-
-  // Reordering is disabled while filtering, as the order would be incomplete.
-  document.documentElement.dataset.filtering = onlyOpen ? 'on' : 'off';
-  emptyState.hidden = all.length > 0;
-  noMatch.hidden = !(onlyOpen && blocks.length === 0);
-  // With habits, the board is shown even when the filter leaves no block, so
-  // the day header stays available for choosing another day.
-  board.hidden = all.length === 0;
-  if (all.length === 0) {
-    board.replaceChildren();
-    renderedDays = 0;
-    return;
-  }
-
-  // A hidden view has no width; wait for the ResizeObserver.
-  const width = availableWidth();
-  if (width === 0) return;
-
-  const days = visibleDays(width);
-  renderedDays = days;
-  // Set on <html>, as the header also uses it.
-  document.documentElement.style.setProperty('--days', String(days));
-
-  // Dates of the columns, oldest first.
-  const start = windowStart(days);
-  const dates = Array.from({length: days}, (_, i) => addDays(start, i));
-
-  // Column of the active day for the band; -1 if not visible.
-  const active = activeDay();
-  const todayColumn = dates.indexOf(active);
-  board.classList.toggle('has-today', todayColumn >= 0);
-  if (todayColumn >= 0) {
-    board.style.setProperty('--today-col', String(todayColumn));
-  }
-
-  // A single uncategorised block is shown without heading.
-  const labelled = all.length > 1 || all[0].category !== null;
-
-  // Determine newly completed habits from the old board, for the orb animation.
-  const everyHabit = all.flatMap((b) => b.habits);
-  const flights = newlyDone(everyHabit, active);
-
-  // Before building, which moves reused rows out of the board.
-  const focused = focusedControl();
-  const frag = document.createDocumentFragment();
-  frag.append(dayHeader(dates, active), daySummary(everyHabit, active));
-  nextRowCache = new Map();
-  for (const block of blocks) {
-    frag.append(renderBlock(block, dates, labelled, active));
-  }
-  rowCache = nextRowCache;
-
-  board.replaceChildren(frag);
-  setTabStops();
-  restoreFocus(focused);
-  for (const flight of flights) {
-    launchOrbs(flight);
-  }
-}
-
-/**
- * Describes the focused control of the board, so that focus can be restored
- * after re-rendering.
- * @return {?{role: string, category: string, habit: string, date: string}}
- */
-function focusedControl() {
-  const focused = document.activeElement;
-  if (!focused || !board.contains(focused) || !focused.dataset.role) {
-    return null;
-  }
-  return {
-    role: focused.dataset.role,
-    category: focused.closest('.block')?.dataset.category ?? '',
-    habit: focused.dataset.habit ?? '',
-    date: focused.dataset.date ?? '',
-  };
-}
-
-/**
- * Focuses the control that `target` describes, if it is still there.
- * @param {?{role: string, category: string, habit: string, date: string}}
- *     target
- */
-function restoreFocus(target) {
-  if (!target) return;
-  const scope = target.category ?
-      board.querySelector(`.block[data-category="${target.category}"]`) :
-      board;
-  if (!scope) return;
-  let selector = `[data-role="${target.role}"]`;
-  if (target.habit) selector += `[data-habit="${target.habit}"]`;
-  if (target.date) selector += `[data-date="${target.date}"]`;
-  const next = scope.querySelector(selector);
-  // Do not focus a disabled button.
-  if (next && !next.disabled) rove(next);
 }
 
 // ---------- keyboard navigation ----------
@@ -541,7 +362,8 @@ function restoreFocus(target) {
 // (a roving tabindex, as in a grid): Tab enters at the cell focused last, at
 // first the active day of the first habit, and the arrow keys move from there.
 // Otherwise every day of every habit would be a tab stop of its own. Disabled
-// cells cannot take focus and are skipped.
+// cells cannot take focus and are skipped. The tab stops are set on the DOM
+// after each update, as they depend on the cells rendered.
 
 /**
  * The day cell focused last, as {habit, date}; kept across renders.
@@ -562,13 +384,13 @@ function setTabStops() {
       enabled.find((cell) => cell.dataset.date === activeDay()) ?? enabled[0];
   if (entry) entry.tabIndex = 0;
 
-  const days = [...board.querySelectorAll('[data-role="select-day"]')];
-  for (const day of days) {
+  const heads = [...board.querySelectorAll('[data-role="select-day"]')];
+  for (const day of heads) {
     day.tabIndex = -1;
   }
   const current =
-      days.find((day) => day.getAttribute('aria-pressed') === 'true') ??
-      days.at(-1);
+      heads.find((day) => day.getAttribute('aria-pressed') === 'true') ??
+      heads.at(-1);
   if (current) current.tabIndex = 0;
 }
 
@@ -609,27 +431,6 @@ function onBoardFocus(event) {
 }
 
 /**
- * Moves the focus between the cells and header days with the arrow keys.
- * @param {!KeyboardEvent} event
- */
-function onBoardKeydown(event) {
-  if (event.altKey || event.metaKey || event.shiftKey) return;
-  const target = event.target;
-  const role = target.dataset?.role;
-  if (role !== 'cell' && role !== 'select-day') return;
-  const move = MOVES[event.key];
-  // The header is a single row: up and down scroll the page as usual.
-  if (!move || (role === 'select-day' && move.dy)) return;
-  event.preventDefault();
-  if (role === 'select-day') {
-    const days = [...board.querySelectorAll('[data-role="select-day"]')];
-    rove(days[clampedStep(days, days.indexOf(target), move)]);
-    return;
-  }
-  moveFromCell(target, move, event.ctrlKey);
-}
-
-/**
  * Arrow keys and what they do: dx moves along the row, dy between rows,
  * edge jumps to the first (-1) or last (1) day.
  * @const {!Object<string, {dx: (number|undefined), dy: (number|undefined),
@@ -643,6 +444,27 @@ const MOVES = {
   Home: {edge: -1},
   End: {edge: 1},
 };
+
+/**
+ * Moves the focus between the cells and header days with the arrow keys.
+ * @param {!KeyboardEvent} event
+ */
+function onBoardKeydown(event) {
+  if (event.altKey || event.metaKey || event.shiftKey) return;
+  const target = event.target;
+  const role = target.dataset?.role;
+  if (role !== 'cell' && role !== 'select-day') return;
+  const move = MOVES[event.key];
+  // The header is a single row: up and down scroll the page as usual.
+  if (!move || (role === 'select-day' && move.dy)) return;
+  event.preventDefault();
+  if (role === 'select-day') {
+    const heads = [...board.querySelectorAll('[data-role="select-day"]')];
+    rove(heads[clampedStep(heads, heads.indexOf(target), move)]);
+    return;
+  }
+  moveFromCell(target, move, event.ctrlKey);
+}
 
 /**
  * Returns the index `move` leads to from `at` in `list`, within its bounds.
@@ -713,7 +535,7 @@ async function moveFromCell(cell, {dx = 0, dy = 0, edge = 0}, ctrl) {
       `[data-role="${dx < 0 ? 'page-older' : 'page-newer'}"]`);
   if (!pager || pager.disabled) return;
   const habit = cell.dataset.habit;
-  await showWindow(offset + (dx < 0 ? 1 : -1) * pageStep(renderedDays));
+  await page(dx < 0 ? 1 : -1);
   const paged = board.querySelector(`.habit-row[data-habit="${habit}"]`);
   if (!paged) return;
   // The nearest enabled day beyond the one left.
@@ -724,407 +546,54 @@ async function moveFromCell(cell, {dx = 0, dy = 0, edge = 0}, ctrl) {
 }
 
 /**
- * Builds the day header: month names in the first row, weekday and day in the
- * second, on a shared grid with explicit placement.
- * @param {!Array<string>} dates
- * @param {string} active
- * @return {!HTMLElement}
+ * Describes the focused control of the board, so that focus can be restored
+ * when an update moved or replaced it.
+ * @return {?{role: string, category: string, habit: string, date: string}}
  */
-function dayHeader(dates, active) {
-  const days = dates.map((iso, i) => {
-    const cell = dayCell(iso, {active, selectable: true});
-    // Month divider; not on the first column.
-    if (i > 0 && dayOfMonth(iso) === 1) cell.classList.add('is-month-start');
-    // Column 1 holds the habit names.
-    cell.style.gridColumn = String(i + 2);
-    cell.style.gridRow = '2';
-    return cell;
-  });
-  return el(
-      'div',
-      {class: 'day-header'},
-      // Backdrop behind the sticky header. An element, as it needs a clipped
-      // layer of its own over a background image.
-      el('div', {class: 'day-header-backdrop', 'aria-hidden': 'true'}),
-      dayNav(),
-      ...monthLabels(dates),
-      ...days,
-  );
-}
-
-/**
- * Builds a label per month, spanning its columns.
- * @param {!Array<string>} dates
- * @return {!Array<!HTMLElement>}
- */
-function monthLabels(dates) {
-  const out = [];
-  let start = 0;
-  for (let i = 1; i <= dates.length; i++) {
-    const sameMonth = i < dates.length &&
-        monthIndex(dates[i]) === monthIndex(dates[start]) &&
-        yearOf(dates[i]) === yearOf(dates[start]);
-    if (sameMonth) continue;
-
-    const span = i - start;
-    const month = monthIndex(dates[start]);
-    const year = yearOf(dates[start]);
-    // Only show the year if it is not the current one.
-    const suffix = year === yearOf(state.today) ? '' : ` ${year}`;
-    // Short month name if the span is too narrow.
-    const name = (span >= 5 ? MONTH_LONG[month] : MONTH_SHORT[month]) + suffix;
-
-    out.push(
-        el('div', {
-          // Month divider; not on the first label.
-          class: ['month-label', start > 0 && 'has-divider'],
-          title: `${MONTH_LONG[month]} ${year}`,
-          style:
-              {'grid-column': `${start + 2} / span ${span}`, 'grid-row': '1'},
-        },
-           name));
-
-    start = i;
+function focusedControl() {
+  const focused = document.activeElement;
+  if (!focused || !board.contains(focused) || !focused.dataset.role) {
+    return null;
   }
-  return out;
+  return {
+    role: focused.dataset.role,
+    category: focused.closest('.block')?.dataset.category ?? '',
+    habit: focused.dataset.habit ?? '',
+    date: focused.dataset.date ?? '',
+  };
 }
 
 /**
- * Builds the paging controls, in the date row above the habit names. Back to
- * today is the floating button (todayPill).
- * @return {!HTMLElement}
+ * Focuses the control that `target` describes, if it is still there.
+ * @param {?{role: string, category: string, habit: string, date: string}}
+ *     target
  */
-function dayNav() {
-  // Disabled rather than hidden at the limit.
-  return el(
-      'div',
-      {class: 'day-nav', style: {'grid-column': '1', 'grid-row': '2'}},
-      toolButton(
-          'page-older', icons.chevronLeft, t('Earlier days'),
-          {disabled: offset >= maxBackDays()}),
-      toolButton(
-          'page-newer', icons.chevronRight, t('Later days'),
-          {disabled: offset <= -MAX_AHEAD_DAYS}),
-  );
-}
-
-/**
- * Builds the name cell of a row.
- * @param {!Habit} habit
- * @return {!HTMLElement}
- */
-function nameCell(habit) {
-  return el('div', {class: 'habit-cell'}, habitLabel(habit));
-}
-
-/**
- * Builds the block of a category: its heading and the rows of the visible
- * habits.
- * @param {{category: ?Category, habits: !Array<!Habit>, visible:
- *     !Array<!Habit>}} block
- * @param {!Array<string>} dates
- * @param {boolean} labelled whether the block has a heading
- * @param {string} active
- * @return {!HTMLElement}
- */
-function renderBlock({category, habits, visible}, dates, labelled, active) {
-  return el(
-      'section',
-      {class: 'block', data: {category: category?.id}},
-      // The heading counts all habits of the category, the rows show the
-      // filtered.
-      labelled && blockHead(category, habits, active),
-      visible.length === 0 ?
-          el('p', {class: 'block-empty'}, t('No habit in this category yet.')) :
-          el('div', {class: 'block-rows'},
-             ...visible.map((habit) => habitRow(habit, habits, dates, active))),
-  );
-}
-
-/**
- * A row of the board with what it was built from.
- * @typedef {{habit: !Habit, key: string, row: !HTMLElement}}
- */
-let CachedRow;
-
-/**
- * The rows of the last render by habit ID, with what they were built from.
- * A tap changes one habit, so the board reuses the rows of the others instead
- * of building every cell again.
- * @type {!Map<string, !CachedRow>}
- */
-let rowCache = new Map();
-/**
- * The rows of the render in progress, which become rowCache.
- * @type {!Map<string, !CachedRow>}
- */
-let nextRowCache = new Map();
-
-/**
- * Returns the row of a habit: the one of the last render if the habit (which
- * the state replaces on every change, see state.js) and everything else the
- * row shows are the same, or a new one.
- * @param {!Habit} habit
- * @param {!Array<!Habit>} siblings the habits of its category
- * @param {!Array<string>} dates
- * @param {string} active
- * @return {!HTMLElement}
- */
-function habitRow(habit, siblings, dates, active) {
-  const key = [
-    dates[0],
-    dates.length,
-    active,
-    state.today,
-    byDragging(),
-    siblings.indexOf(habit),
-    siblings.length,
-  ].join('|');
-  const cached = rowCache.get(habit.id);
-  let row = cached?.row;
-  if (!cached || cached.habit !== habit || cached.key !== key) {
-    row = el(
-        'div',
-        {class: 'habit-row', data: {habit: habit.id}},
-        nameCell(habit),
-        ...dates.map((iso) => dayEntry(habit, iso, active)),
-        // Always rendered, to keep the column width.
-        el('div', {class: 'habit-tools'},
-           ...habitReorderButtons(habit, siblings)),
-    );
-  }
-  nextRowCache.set(habit.id, {habit, key, row});
-  return row;
-}
-
-/**
- * Builds the reorder controls of a row: a drag handle or arrow buttons,
- * depending on the setting. None with a single habit.
- * @param {!Habit} habit
- * @param {!Array<!Habit>} siblings
- * @return {!Array<!HTMLElement>}
- */
-function habitReorderButtons(habit, siblings) {
-  if (siblings.length < 2) return [];
-  if (byDragging()) {
-    return [toolButton(
-        'drag-habit', icons.grip, t('Move habit'),
-        {handle: true, habit: habit.id})];
-  }
-  const at = siblings.indexOf(habit);
-  return [
-    toolButton(
-        'move-habit-up', icons.chevronUp, t('Move habit up'),
-        {habit: habit.id, disabled: at === 0}),
-    toolButton(
-        'move-habit-down', icons.chevronDown, t('Move habit down'),
-        {habit: habit.id, disabled: at === siblings.length - 1}),
-  ];
-}
-
-/**
- * Builds a category's progress bar for `day`.
- * @param {!Array<!Habit>} habits
- * @param {string} day
- * @return {?HTMLElement}
- */
-function blockProgress(habits, day) {
-  const {due, done} = dayProgress(habits, day);
-  // No bar if nothing is due on the day.
-  if (due === 0) return null;
-
-  return el(
-      'div',
-      {
-        class: ['block-progress', done === due && 'is-complete'],
-        title: `${formatLong(day)}: ${t('{done} of {due} done', {done, due})}`,
-      },
-      // One segment per habit due on the day, followed by the count.
-      el('span', {
-        class: 'block-progress-track',
-        style: {'--segments': String(due)},
-        role: 'progressbar',
-        'aria-valuemin': '0',
-        'aria-valuemax': String(due),
-        'aria-valuenow': String(done),
-        'aria-label': t('Done on this day'),
-      },
-         ...Array.from(
-             {length: due},
-             (_, i) =>
-                 el('span',
-                    {class: ['block-progress-seg', i < done && 'is-done']}))),
-      el('span', {class: 'block-progress-count'}, `${done}/${due}`),
-  );
-}
-
-/**
- * Builds the heading of a block: the category, its progress and its reorder
- * controls.
- * @param {?Category} category
- * @param {!Array<!Habit>} habits
- * @param {string} day
- * @return {!HTMLElement}
- */
-function blockHead(category, habits, day) {
-  // Uncategorised habits have no category controls. Renaming and deleting are
-  // done in the category view.
-  const tools = category ? categoryReorderButtons(category) : [];
-  return el(
-      'header',
-      {class: 'block-head'},
-      el('h2', {class: 'block-title'},
-         category ? categoryLink(category) : t('No category')),
-      // Progress only if enabled for the category; never for uncategorised
-      // habits.
-      category?.showProgress === true && blockProgress(habits, day),
-      tools.length > 0 && el('div', {class: 'block-tools'}, ...tools),
-  );
-}
-
-/**
- * Builds the category's name as a button, so the category view is
- * keyboard-accessible.
- * @param {!Category} category
- * @return {!HTMLElement}
- */
-function categoryLink(category) {
-  return el(
-      'button',
-      {type: 'button', class: 'block-link', data: {role: 'open-category'}},
-      categoryIconBadge(category),
-      // Separate span, so a long name is truncated without the icon.
-      el('span', {class: 'block-link-name'}, category.name),
-  );
-}
-
-/**
- * Builds the reorder controls of a category: a drag handle or arrow buttons,
- * depending on the setting. None with a single category.
- * @param {!Category} category
- * @return {!Array<!HTMLElement>}
- */
-function categoryReorderButtons(category) {
-  if (state.categories.length < 2) return [];
-  if (byDragging()) {
-    return [toolButton(
-        'drag-category', icons.grip, t('Move category'), {handle: true})];
-  }
-  const at = state.categories.findIndex((c) => c.id === category.id);
-  return [
-    toolButton(
-        'move-category-up', icons.chevronUp, t('Move category up'),
-        {disabled: at <= 0}),
-    toolButton(
-        'move-category-down', icons.chevronDown, t('Move category down'),
-        {disabled: at === state.categories.length - 1}),
-  ];
-}
-
-/**
- * Builds an icon button of the board. `handle` makes it a drag handle,
- * `habit` names the habit it acts on.
- * @param {string} role
- * @param {string} icon SVG markup
- * @param {string} label
- * @param {{handle: (boolean|undefined), habit: (string|undefined), disabled:
- *     (boolean|undefined)}=} options
- * @return {!HTMLElement}
- */
-function toolButton(role, icon, label, {handle = false, habit, disabled} = {}) {
-  return el(
-      'button', {
-        type: 'button',
-        class: ['icon-button', handle && 'drag-handle'],
-        data: {role, habit},
-        title: label,
-        'aria-label': label,
-        disabled,
-      },
-      markup(icon));
-}
-
-// ---------- interaction ----------
-
-/**
- * Handles a click on a control of the board, by its data-role.
- * @param {!MouseEvent} event
- */
-function onBoardClick(event) {
-  if (suppressClick) {
-    suppressClick = false;
-    clearTimeout(suppressTimer);
-    return;
-  }
-  const target = event.target.closest('[data-role]');
+function restoreFocus(target) {
   if (!target) return;
-  const section = target.closest('.block');
-  const categoryId = section?.dataset.category;
-
-  switch (target.dataset.role) {
-    case 'open':
-      actions.openHabit(target.dataset.habit);
-      break;
-    case 'cell':
-      actions.tapEntry(target.dataset.habit, target.dataset.date);
-      break;
-    case 'open-category':
-      actions.openCategory(categoryId);
-      break;
-    case 'open-days':
-      actions.openDays();
-      break;
-    case 'move-habit-up':
-      actions.moveHabit(target.dataset.habit, -1);
-      break;
-    case 'move-habit-down':
-      actions.moveHabit(target.dataset.habit, 1);
-      break;
-    case 'move-category-up':
-      actions.moveCategory(categoryId, -1);
-      break;
-    case 'move-category-down':
-      actions.moveCategory(categoryId, 1);
-      break;
-    case 'page-older':
-      showWindow(offset + pageStep(renderedDays));
-      break;
-    case 'page-newer':
-      showWindow(offset - pageStep(renderedDays));
-      break;
-    case 'select-day':
-      selectDay(target.dataset.date);
-      break;
-  }
+  const scope = target.category ?
+      board.querySelector(`.block[data-category="${target.category}"]`) :
+      board;
+  if (!scope) return;
+  let selector = `[data-role="${target.role}"]`;
+  if (target.habit) selector += `[data-habit="${target.habit}"]`;
+  if (target.date) selector += `[data-date="${target.date}"]`;
+  const next = scope.querySelector(selector);
+  // Do not focus a disabled button.
+  if (next && !next.disabled) rove(next);
 }
 
-/**
- * Opens the value dialog on a right-click, or on a long press on touch.
- * @param {!MouseEvent} event
- */
-function onBoardContextMenu(event) {
-  const target = event.target.closest('[data-role="cell"]');
-  if (!target || target.disabled) return;
-  event.preventDefault();
-  // On touch, a long press also fires contextmenu (Firefox on Android after
-  // 500 ms). Only the first of the two counts, or a check would toggle twice.
-  if (suppressClick) return;
-  cancelLongPress();
-  actions.editEntry(target.dataset.habit, target.dataset.date);
-}
+// ---------- taps and long presses ----------
 
 /**
- * Whether the next click is suppressed. A long press opens the value dialog,
- * and the click that follows is suppressed; the flag is reset by a timer, as a
- * long press may end without a click.
+ * Whether the next click on a cell is suppressed. A long press opens the
+ * value dialog, and the click that follows is suppressed; the flag is reset
+ * by a timer, as a long press may end without a click.
  */
 let suppressClick = false;
 /** @type {number|undefined} */
 let suppressTimer;
 
-/**
- * Suppresses the click that follows a long press.
- */
+/** Suppresses the click that follows a long press. */
 function suppressNextClick() {
   suppressClick = true;
   clearTimeout(suppressTimer);
@@ -1132,6 +601,36 @@ function suppressNextClick() {
   suppressTimer = setTimeout(() => {
     suppressClick = false;
   }, 700);
+}
+
+/**
+ * Handles a tap on a day cell, unless it ends a long press.
+ * @param {string} habitId
+ * @param {string} iso
+ */
+function tapCell(habitId, iso) {
+  if (suppressClick) {
+    suppressClick = false;
+    clearTimeout(suppressTimer);
+    return;
+  }
+  actions.tapEntry(habitId, iso);
+}
+
+/**
+ * Opens the value dialog on a right-click, or on a long press on touch.
+ * @param {!MouseEvent} event
+ * @param {string} habitId
+ * @param {string} iso
+ */
+function onCellContextMenu(event, habitId, iso) {
+  if (event.currentTarget.disabled) return;
+  event.preventDefault();
+  // On touch, a long press also fires contextmenu (Firefox on Android after
+  // 500 ms). Only the first of the two counts, or a check would toggle twice.
+  if (suppressClick) return;
+  cancelLongPress();
+  actions.editEntry(habitId, iso);
 }
 
 /**
@@ -1177,4 +676,426 @@ function attachLongPress(root) {
   for (const type of ['pointerup', 'pointercancel', 'pointerleave']) {
     root.addEventListener(type, cancel);
   }
+}
+
+// ---------- components ----------
+
+/**
+ * An icon button of the board. `handle` makes it a drag handle, `habit`
+ * names the habit it acts on; `icon` names one of `icons`.
+ */
+const ToolButton = {
+  name: 'ToolButton',
+  props: {
+    role: String,
+    icon: String,
+    label: String,
+    handle: Boolean,
+    habit: String,
+    disabled: Boolean,
+  },
+  // Disabled rather than hidden at a limit.
+  template: `
+    <button type="button" class="icon-button" :class="{'drag-handle': handle}"
+            :data-role="role" :data-habit="habit" :title="label"
+            :aria-label="label" :disabled="disabled">
+      <app-icon :name="icon"/>
+    </button>`,
+};
+
+/** A category's progress bar for a day: one segment per habit due. */
+const BlockProgress = {
+  name: 'BlockProgress',
+  props: {
+    habits: {type: Array, required: true},
+    day: {type: String, required: true},
+  },
+  setup(props) {
+    const progress = computed(() => dayProgress(props.habits, props.day));
+    const title = computed(() => {
+      const {due, done} = progress.value;
+      return `${formatLong(props.day)}: ${t('{done} of {due} done', {done, due})}`;
+    });
+    return {progress, title};
+  },
+  // No bar if nothing is due on the day.
+  template: `
+    <div v-if="progress.due > 0" class="block-progress"
+         :class="{'is-complete': progress.done === progress.due}" :title="title">
+      <span class="block-progress-track" :style="{'--segments': String(progress.due)}"
+            role="progressbar" aria-valuemin="0" :aria-valuemax="progress.due"
+            :aria-valuenow="progress.done" :aria-label="t('Done on this day')">
+        <span v-for="i in progress.due" :key="i" class="block-progress-seg"
+              :class="{'is-done': i <= progress.done}"></span>
+      </span>
+      <span class="block-progress-count">{{ progress.done }}/{{ progress.due }}</span>
+    </div>`,
+};
+
+/**
+ * The row of a habit: its label, a cell per day and its reorder controls.
+ * `siblings` are the habits of its category, `at` its place among them.
+ */
+const HabitRow = {
+  name: 'HabitRow',
+  components: {DayCell, HabitLabel, ToolButton},
+  props: {
+    habit: {type: Object, required: true},
+    at: {type: Number, required: true},
+    siblings: {type: Number, required: true},
+    dates: {type: Array, required: true},
+    active: {type: String, required: true},
+  },
+  setup() {
+    return {
+      byDragging,
+      tapCell,
+      onCellContextMenu,
+      open: (id) => actions.openHabit(id),
+      move: (id, delta) => actions.moveHabit(id, delta),
+    };
+  },
+  // The tools are always rendered, to keep the column width; there are none
+  // with a single habit.
+  template: `
+    <div class="habit-row" :data-habit="habit.id">
+      <div class="habit-cell">
+        <habit-label :habit="habit" @click="open(habit.id)"/>
+      </div>
+      <day-cell v-for="iso in dates" :key="iso" :habit="habit" :iso="iso"
+                :active="active" @click="tapCell(habit.id, iso)"
+                @contextmenu="onCellContextMenu($event, habit.id, iso)"/>
+      <div class="habit-tools">
+        <template v-if="siblings >= 2">
+          <tool-button v-if="byDragging()" role="drag-habit" icon="grip"
+                       :label="t('Move habit')" handle :habit="habit.id"/>
+          <template v-else>
+            <tool-button role="move-habit-up" icon="chevronUp"
+                         :label="t('Move habit up')" :habit="habit.id"
+                         :disabled="at === 0" @click="move(habit.id, -1)"/>
+            <tool-button role="move-habit-down" icon="chevronDown"
+                         :label="t('Move habit down')" :habit="habit.id"
+                         :disabled="at === siblings - 1" @click="move(habit.id, 1)"/>
+          </template>
+        </template>
+      </div>
+    </div>`,
+};
+
+/**
+ * The block of a category: its heading with progress and reorder controls,
+ * and the rows of the habits that pass the filter. `block.habits` are all
+ * habits of the category, `block.visible` those shown.
+ */
+const BoardBlock = {
+  name: 'BoardBlock',
+  components: {BlockProgress, HabitRow, ToolButton},
+  props: {
+    block: {type: Object, required: true},
+    labelled: Boolean,
+    dates: {type: Array, required: true},
+    active: {type: String, required: true},
+  },
+  setup(props) {
+    const category = computed(() => props.block.category);
+    return {
+      state,
+      byDragging,
+      category,
+      // The place of the category among all, for the arrow buttons.
+      at: computed(
+          () => state.categories.findIndex((c) => c.id === category.value?.id)),
+      openCategory: () => actions.openCategory(category.value.id),
+      move: (delta) => actions.moveCategory(category.value.id, delta),
+    };
+  },
+  // Uncategorised habits have no category controls and no progress. Renaming
+  // and deleting are done in the category view. The rows are only built again
+  // when their habit (which the state replaces on every change) or their place
+  // changes.
+  template: `
+    <section class="block" :data-category="category?.id">
+      <header v-if="labelled" class="block-head">
+        <h2 class="block-title">
+          <button v-if="category" type="button" class="block-link"
+                  data-role="open-category" @click="openCategory">
+            <icon-badge class="habit-icon" :icon="category.icon" :color="category.color || null"/>
+            <span class="block-link-name">{{ category.name }}</span>
+          </button>
+          <template v-else>{{ t('No category') }}</template>
+        </h2>
+        <block-progress v-if="category?.showProgress === true"
+                        :habits="block.habits" :day="active"/>
+        <div v-if="category && state.categories.length >= 2" class="block-tools">
+          <tool-button v-if="byDragging()" role="drag-category" icon="grip"
+                       :label="t('Move category')" handle/>
+          <template v-else>
+            <tool-button role="move-category-up" icon="chevronUp"
+                         :label="t('Move category up')" :disabled="at <= 0"
+                         @click="move(-1)"/>
+            <tool-button role="move-category-down" icon="chevronDown"
+                         :label="t('Move category down')"
+                         :disabled="at === state.categories.length - 1"
+                         @click="move(1)"/>
+          </template>
+        </div>
+      </header>
+      <p v-if="block.visible.length === 0" class="block-empty">{{ t('No habit in this category yet.') }}</p>
+      <div v-else class="block-rows">
+        <habit-row v-for="habit in block.visible" :key="habit.id"
+                   v-memo="[habit, dates[0], dates.length, active, state.today, byDragging(), block.habits.indexOf(habit), block.habits.length]"
+                   :habit="habit" :at="block.habits.indexOf(habit)"
+                   :siblings="block.habits.length" :dates="dates" :active="active"/>
+      </div>
+    </section>`,
+};
+
+/**
+ * The overview: the day header, the day summary and a block per category,
+ * followed by the empty states and the button back to today.
+ */
+const BoardView = {
+  name: 'BoardView',
+  components: {BoardBlock, DaySummary, HeadDay, ToolButton},
+  setup() {
+    const boardEl = ref(null);
+    const all = computed(() => groupedHabits());
+    const everyHabit = computed(() => all.value.flatMap((b) => b.habits));
+    const active = computed(activeDay);
+
+    // Blocks keep all habits for the progress bar, plus the filtered habits
+    // for the rows.
+    let frozen = [];
+    const blocks = computed(() => {
+      if (dragging.value) return frozen;
+      return all.value
+          .map((b) => ({...b, visible: b.habits.filter(matches)}))
+          .filter((b) => !onlyOpen.value || b.visible.length > 0);
+    });
+
+    // Dates of the columns, oldest first.
+    const dates = computed(() => {
+      if (days.value === 0) return [];
+      const start = windowStart(days.value, offset.value);
+      return Array.from({length: days.value}, (_, i) => addDays(start, i));
+    });
+    // Column of the active day for the band; -1 if not visible.
+    const activeColumn = computed(() => dates.value.indexOf(active.value));
+
+    // Habits newly completed on the active day send orbs into the ring. They
+    // are found before the board is updated, while it shows their cells.
+    watch([everyHabit, active], ([habits, day]) => {
+      const flights = newlyDone(habits, day);
+      if (flights.length > 0) nextTick(() => flights.forEach(launchOrbs));
+    }, {immediate: true, flush: 'pre'});
+
+    // Everything the number of columns depends on. The attributes on <html>
+    // are set by then (app.js), so the board is measured after the update.
+    watch(
+        [
+          () => all.value.length > 0,
+          () => state.settings.density,
+          () => state.settings.font,
+          () => state.settings.overviewDays,
+          () => state.settings.reorderMode,
+          editing,
+          onlyOpen,
+        ],
+        measureBoard, {flush: 'post'});
+
+    // An update may move or replace the focused control, e.g. a row moved by
+    // its arrow button: focus it again.
+    let focused = null;
+    onBeforeUpdate(() => {
+      focused = focusedControl();
+    });
+    onUpdated(() => {
+      setTabStops();
+      if (!board.contains(document.activeElement)) restoreFocus(focused);
+    });
+
+    onMounted(() => {
+      board = boardEl.value;
+      initSummary(board);
+      attachLongPress(board);
+      initDragging(board, () => {
+        frozen = blocks.value;
+      });
+      // Measure again when the available width changes, including when the
+      // view becomes visible again. Observes the container, as the board's
+      // own width depends on the day count, and the body, as the other views
+      // take their width from the board's (--board-width) while the overview
+      // is hidden.
+      const observer = new ResizeObserver(measureBoard);
+      observer.observe(board.parentElement);
+      observer.observe(document.body);
+      measureBoard();
+    });
+
+    return {
+      boardEl,
+      all,
+      everyHabit,
+      blocks,
+      dates,
+      active,
+      activeColumn,
+      // A single uncategorised block is shown without heading.
+      labelled: computed(
+          () => all.value.length > 1 || all.value[0]?.category !== null),
+      monthLabels: computed(() => monthLabels(dates.value)),
+      offset,
+      selectedDay,
+      onlyOpen,
+      MAX_AHEAD_DAYS,
+      maxBackDays,
+      page,
+      selectDay,
+      backToToday,
+      dayOfMonth,
+      onBoardKeydown,
+      onBoardFocus,
+      createHabit: () => actions.createHabit(),
+      openDays: () => actions.openDays(),
+    };
+  },
+  // No aria-live, as changes are announced via #board-status. With habits,
+  // the board is shown even when the filter leaves no block, so the day header
+  // stays available for choosing another day.
+  template: `
+    <div ref="boardEl" id="board-grid" class="board"
+         :class="{'has-today': activeColumn >= 0}"
+         :style="activeColumn >= 0 ? {'--today-col': String(activeColumn)} : null"
+         :hidden="all.length === 0"
+         @keydown="onBoardKeydown" @focusin="onBoardFocus">
+      <template v-if="dates.length > 0">
+        <div class="day-header">
+          <!-- Backdrop behind the sticky header. An element, as it needs a
+               clipped layer of its own over a background image. -->
+          <div class="day-header-backdrop" aria-hidden="true"></div>
+          <!-- Paging, in the date row above the habit names. Back to today is
+               the floating button. -->
+          <div class="day-nav" style="grid-column: 1; grid-row: 2">
+            <tool-button role="page-older" icon="chevronLeft"
+                         :label="t('Earlier days')"
+                         :disabled="offset >= maxBackDays()" @click="page(1)"/>
+            <tool-button role="page-newer" icon="chevronRight"
+                         :label="t('Later days')"
+                         :disabled="offset <= -MAX_AHEAD_DAYS" @click="page(-1)"/>
+          </div>
+          <div v-for="month in monthLabels" :key="month.start" class="month-label"
+               :class="{'has-divider': month.start > 0}" :title="month.title"
+               :style="{'grid-column': (month.start + 2) + ' / span ' + month.span, 'grid-row': '1'}">{{ month.name }}</div>
+          <!-- Column 1 holds the habit names; a month starts with a divider,
+               but not on the first column. -->
+          <head-day v-for="(iso, i) in dates" :key="iso" :iso="iso"
+                    :active="active" selectable
+                    :class="{'is-month-start': i > 0 && dayOfMonth(iso) === 1}"
+                    :style="{'grid-column': String(i + 2), 'grid-row': '2'}"
+                    @click="selectDay(iso)"/>
+        </div>
+        <day-summary :habits="everyHabit" :day="active" @open="openDays"/>
+        <board-block v-for="block in blocks" :key="block.category?.id ?? ''"
+                     :block="block" :labelled="labelled" :dates="dates"
+                     :active="active"/>
+      </template>
+    </div>
+    <p id="board-no-match" class="empty"
+       :hidden="!(onlyOpen && all.length > 0 && blocks.length === 0)">{{ t('Nothing left open on this day.') }}</p>
+    <div id="board-empty" class="empty" :hidden="all.length > 0">
+      <h2>{{ t('No habits yet') }}</h2>
+      <p>{{ t('Create your first habit — daily, on certain weekdays or every few days.') }}</p>
+      <button class="button primary" type="button" @click="createHabit">{{ t('Create first habit') }}</button>
+    </div>
+    <button type="button" class="button today-pill"
+            :hidden="offset === 0 && selectedDay === null" @click="backToToday">
+      <app-icon name="toToday"/><span>{{ t('Back to today') }}</span>
+    </button>`,
+};
+
+/**
+ * A month label of the day header, spanning its columns.
+ * @typedef {{start: number, span: number, name: string, title: string}}
+ */
+let MonthLabel;
+
+/**
+ * Returns a label per month of `dates`, spanning its columns.
+ * @param {!Array<string>} dates
+ * @return {!Array<!MonthLabel>}
+ */
+function monthLabels(dates) {
+  const out = [];
+  let start = 0;
+  for (let i = 1; i <= dates.length; i++) {
+    const sameMonth = i < dates.length &&
+        monthIndex(dates[i]) === monthIndex(dates[start]) &&
+        yearOf(dates[i]) === yearOf(dates[start]);
+    if (sameMonth) continue;
+
+    const span = i - start;
+    const month = monthIndex(dates[start]);
+    const year = yearOf(dates[start]);
+    // Only show the year if it is not the current one.
+    const suffix = year === yearOf(state.today) ? '' : ` ${year}`;
+    // Short month name if the span is too narrow.
+    const name = (span >= 5 ? MONTH_LONG[month] : MONTH_SHORT[month]) + suffix;
+    out.push({start, span, name, title: `${MONTH_LONG[month]} ${year}`});
+    start = i;
+  }
+  return out;
+}
+
+/**
+ * Enables drag and drop for both categories and habit rows; the handle
+ * determines which list is reordered. `freeze` is called when a drag starts,
+ * so the board keeps its blocks until it ends.
+ * @param {!HTMLElement} root
+ * @param {function(): void} freeze
+ */
+function initDragging(root, freeze) {
+  const callbacks = (save) => ({
+    onStart: () => {
+      freeze();
+      dragging.value = true;
+    },
+    onDrop: (ids) => {
+      dragging.value = false;
+      save(ids);
+    },
+    onCancel: () => {
+      dragging.value = false;
+    },
+  });
+  enableDragReorder({
+    container: root,
+    item: '.block[data-category]',
+    handle: '[data-role="drag-category"]',
+    key: 'category',
+    ...callbacks(actions.setCategoryOrder),
+  });
+  enableDragReorder({
+    container: root,
+    item: '.habit-row',
+    handle: '[data-role="drag-habit"]',
+    key: 'habit',
+    ...callbacks(actions.setHabitOrder),
+  });
+}
+
+/**
+ * Mounts the overview into #board-view.
+ * @param {!Object<string, !Function>} handlers the handlers of app.js
+ */
+export function initOverview(handlers) {
+  actions = handlers;
+  createVueApp(BoardView).mount('#board-view');
+
+  // The filter toggle in the title bar.
+  const button = document.getElementById('filter-open-habits');
+  button.innerHTML = icons.filter;
+  button.addEventListener('click', toggleFilter);
+  watchEffect(() => {
+    button.setAttribute('aria-pressed', String(onlyOpen.value));
+  });
 }

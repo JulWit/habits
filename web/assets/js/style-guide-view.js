@@ -1,7 +1,7 @@
 // Style guide at #/styleguide: all UI building blocks in both themes. It uses
 // the same components as the overview. Its texts are not translated.
 
-import {DayCell, HabitLabel, HeadDay} from './board-cells.js';
+import {BoardDayCell, BoardHabitLabel, BoardHeadDay} from './board-cells.js';
 import {addDays, daysBetween, weekdayIndex} from './dates.js';
 import {STREAK_LEVELS} from './habit-helpers.js';
 import {colorValue} from './icons.js';
@@ -193,8 +193,8 @@ function tokenNames() {
 }
 
 /** A section with a title, an optional note and its specimens. */
-const GuideSection = {
-  name: 'GuideSection',
+const StyleGuideSection = {
+  name: 'StyleGuideSection',
   props: {title: String, note: String, block: Boolean},
   template: `
     <section class="sg-section">
@@ -215,8 +215,8 @@ const GuideSection = {
 };
 
 /** A labelled specimen. */
-const GuideSpecimen = {
-  name: 'GuideSpecimen',
+const StyleGuideSpecimen = {
+  name: 'StyleGuideSpecimen',
   props: {label: String},
   template: `
     <div class="sg-specimen"><slot/><span class="sg-label">{{ label }}</span>
@@ -227,9 +227,15 @@ const GuideSpecimen = {
  * Every section in one theme. The token values are read once the panel is in
  * the document, so each theme shows its own.
  */
-const GuidePanel = {
-  name: 'GuidePanel',
-  components: {DayCell, GuideSection, GuideSpecimen, HabitLabel, HeadDay},
+const StyleGuidePanel = {
+  name: 'StyleGuidePanel',
+  components: {
+    BoardDayCell,
+    StyleGuideSection,
+    StyleGuideSpecimen,
+    BoardHabitLabel,
+    BoardHeadDay
+  },
   props: {
     theme: {type: String, required: true},
     names: {type: Array, required: true},
@@ -274,7 +280,7 @@ const GuidePanel = {
       :data-theme="theme"
     >
       <h2 class="sg-theme-title">{{ theme === 'dark' ? 'Dark' : 'Light' }}</h2>
-      <guide-section
+      <style-guide-section
         title="Tokens"
         note="Read straight from the stylesheet, not maintained here."
         block
@@ -294,49 +300,49 @@ const GuidePanel = {
             <span class="sg-token-value">{{ values[i] }}</span>
           </div>
         </div>
-      </guide-section>
-      <guide-section
+      </style-guide-section>
+      <style-guide-section
         title="Buttons"
         note="Primary carries the single accent colour of the interface: dark grey on light, light on dark."
       >
-        <guide-specimen label=".button.primary">
+        <style-guide-specimen label=".button.primary">
           <button
             type="button"
             class="button primary"
           >Create</button>
-        </guide-specimen>
-        <guide-specimen label=".button">
+        </style-guide-specimen>
+        <style-guide-specimen label=".button">
           <button
             type="button"
             class="button"
           >Cancel</button>
-        </guide-specimen>
-        <guide-specimen label=".button.ghost">
+        </style-guide-specimen>
+        <style-guide-specimen label=".button.ghost">
           <button
             type="button"
             class="button ghost"
           >Later</button>
-        </guide-specimen>
-        <guide-specimen label=".button.danger">
+        </style-guide-specimen>
+        <style-guide-specimen label=".button.danger">
           <button
             type="button"
             class="button danger"
           >Delete</button>
-        </guide-specimen>
-        <guide-specimen label=":disabled">
+        </style-guide-specimen>
+        <style-guide-specimen label=":disabled">
           <button
             type="button"
             class="button primary"
             disabled
           >Save</button>
-        </guide-specimen>
-        <guide-specimen label=".button.round">
+        </style-guide-specimen>
+        <style-guide-specimen label=".button.round">
           <button
             type="button"
             class="button round"
           >+</button>
-        </guide-specimen>
-        <guide-specimen label=".icon-button">
+        </style-guide-specimen>
+        <style-guide-specimen label=".icon-button">
           <button
             type="button"
             class="icon-button"
@@ -344,8 +350,8 @@ const GuidePanel = {
           >
             <app-icon name="edit"/>
           </button>
-        </guide-specimen>
-        <guide-specimen label=".icon-button.is-back">
+        </style-guide-specimen>
+        <style-guide-specimen label=".icon-button.is-back">
           <button
             type="button"
             class="icon-button is-back"
@@ -353,9 +359,9 @@ const GuidePanel = {
           >
             <app-icon name="arrowLeft"/>
           </button>
-        </guide-specimen>
-      </guide-section>
-      <guide-section
+        </style-guide-specimen>
+      </style-guide-section>
+      <style-guide-section
         title="Form fields"
         note="Everything the editor and the settings use."
       >
@@ -379,7 +385,7 @@ const GuidePanel = {
             disabled
           >
         </label>
-        <guide-specimen label=".segmented">
+        <style-guide-specimen label=".segmented">
           <div
             class="segmented"
             role="radiogroup"
@@ -419,8 +425,8 @@ const GuidePanel = {
               <span><app-icon name="navigation"/>Distance</span>
             </label>
           </div>
-        </guide-specimen>
-        <guide-specimen label=".weekdays">
+        </style-guide-specimen>
+        <style-guide-specimen label=".weekdays">
           <div class="weekdays">
             <button
               v-for="(d, i) in weekdays"
@@ -432,8 +438,8 @@ const GuidePanel = {
               {{ d }}
             </button>
           </div>
-        </guide-specimen>
-        <guide-specimen label=".swatches">
+        </style-guide-specimen>
+        <style-guide-specimen label=".swatches">
           <div
             class="swatches"
             role="radiogroup"
@@ -449,8 +455,8 @@ const GuidePanel = {
               :aria-label="color"
             ></button>
           </div>
-        </guide-specimen>
-        <guide-specimen label=".stepper">
+        </style-guide-specimen>
+        <style-guide-specimen label=".stepper">
           <div class="stepper">
             <button
               type="button"
@@ -465,8 +471,8 @@ const GuidePanel = {
               class="button round"
             >+</button>
           </div>
-        </guide-specimen>
-        <guide-specimen label=".switch">
+        </style-guide-specimen>
+        <style-guide-specimen label=".switch">
           <label class="switch">
             <input
               type="checkbox"
@@ -474,67 +480,67 @@ const GuidePanel = {
             >
             <span>Show archived habits</span>
           </label>
-        </guide-specimen>
-        <guide-specimen label=".picker">
+        </style-guide-specimen>
+        <style-guide-specimen label=".picker">
           <button
             type="button"
             class="picker"
           >
             <span class="picker-value">Health</span>
           </button>
-        </guide-specimen>
-        <guide-specimen label="p.error">
+        </style-guide-specimen>
+        <style-guide-specimen label="p.error">
           <p class="error">Please select at least one weekday.</p>
-        </guide-specimen>
-      </guide-section>
-      <guide-section
+        </style-guide-specimen>
+      </style-guide-section>
+      <style-guide-section
         title="Board"
-        note="Built with the same components as the overview — HeadDay, HabitLabel, DayCell."
+        note="Built with the same components as the overview — BoardHeadDay, BoardHabitLabel, BoardDayCell."
       >
-        <guide-specimen label="HeadDay: today / normal">
-          <div class="sg-cells"><head-day :iso="today"/>
-            <head-day :iso="yesterday"/>
+        <style-guide-specimen label="BoardHeadDay: today / normal">
+          <div class="sg-cells"><board-head-day :iso="today"/>
+            <board-head-day :iso="yesterday"/>
           </div>
-        </guide-specimen>
-        <guide-specimen label="HabitLabel">
-          <habit-label :habit="s.time"/>
-        </guide-specimen>
-        <guide-specimen label="HabitLabel: archived">
-          <habit-label :habit="s.archived"/>
-        </guide-specimen>
-        <guide-specimen
+        </style-guide-specimen>
+        <style-guide-specimen label="BoardHabitLabel">
+          <board-habit-label :habit="s.time"/>
+        </style-guide-specimen>
+        <style-guide-specimen label="BoardHabitLabel: archived">
+          <board-habit-label :habit="s.archived"/>
+        </style-guide-specimen>
+        <style-guide-specimen
           v-for="[label, habit] in rows"
           :key="label"
           :label="label"
         >
           <div class="sg-cells">
-            <day-cell
+            <board-day-cell
               v-for="iso in dates"
               :key="iso"
               :habit="habit"
               :iso="iso"
             />
           </div>
-        </guide-specimen>
-        <guide-specimen label="streak levels: none, 1 week … 1 year">
+        </style-guide-specimen>
+        <style-guide-specimen label="streak levels: none, 1 week … 1 year">
           <div class="sg-cells">
-            <day-cell
+            <board-day-cell
               v-for="sample in streaks"
               :key="sample.iso"
               :habit="sample.habit"
               :iso="sample.iso"
             />
           </div>
-        </guide-specimen>
-        <guide-specimen label=".month-label">
+        </style-guide-specimen>
+        <style-guide-specimen label=".month-label">
           <div class="month-label">September</div>
-        </guide-specimen>
-      </guide-section>
-      <guide-section
+        </style-guide-specimen>
+      </style-guide-section>
+      <style-guide-section
         title="Heatmap"
         note='Levels 0–4, then "not scheduled" and the future.'
       >
-        <guide-specimen label="data-level 0 … 4 · is-off · is-future">
+        <style-guide-specimen label="data-level 0 … 4 · is-off · is-future">
           <div class="heatmap-sample">
             <div
               v-for="level in [0, 1, 2, 3, 4]"
@@ -545,13 +551,13 @@ const GuidePanel = {
             <div class="heat is-off"></div>
             <div class="heat is-future"></div>
           </div>
-        </guide-specimen>
-      </guide-section>
-      <guide-section
+        </style-guide-specimen>
+      </style-guide-section>
+      <style-guide-section
         title="Messages"
         note="In the running app toasts sit at the bottom right; here they stand in the flow."
       >
-        <guide-specimen label=".toast">
+        <style-guide-specimen label=".toast">
           <div class="toast"><span class="text">Habit deleted.</span>
             <button
               type="button"
@@ -563,8 +569,8 @@ const GuidePanel = {
               aria-label="Close"
             >&times;</button>
           </div>
-        </guide-specimen>
-        <guide-specimen label=".toast.is-error">
+        </style-guide-specimen>
+        <style-guide-specimen label=".toast.is-error">
           <div class="toast is-error">
             <span class="text">No connection to the server.</span>
             <button
@@ -573,33 +579,33 @@ const GuidePanel = {
               aria-label="Close"
             >&times;</button>
           </div>
-        </guide-specimen>
-      </guide-section>
-      <guide-section
+        </style-guide-specimen>
+      </style-guide-section>
+      <style-guide-section
         title="Text"
         note="The type sizes that appear outside the building blocks."
       >
-        <guide-specimen label="h2"><h2>Heading</h2></guide-specimen>
-        <guide-specimen label=".block-title">
+        <style-guide-specimen label="h2"><h2>Heading</h2></style-guide-specimen>
+        <style-guide-specimen label=".block-title">
           <h2 class="block-title">Category</h2>
-        </guide-specimen>
-        <guide-specimen label="p">
+        </style-guide-specimen>
+        <style-guide-specimen label="p">
           <p>Body text, as it appears in empty states.</p>
-        </guide-specimen>
-        <guide-specimen label=".habit-meta">
+        </style-guide-specimen>
+        <style-guide-specimen label=".habit-meta">
           <span class="habit-meta">20 min · daily</span>
-        </guide-specimen>
-        <guide-specimen label=".field-hint">
+        </style-guide-specimen>
+        <style-guide-specimen label=".field-hint">
           <p class="field-hint">A hint below a field.</p>
-        </guide-specimen>
-      </guide-section>
+        </style-guide-specimen>
+      </style-guide-section>
     </div>`,
 };
 
 /** The style guide: both themes side by side. */
-export const StyleGuideView = {
-  name: 'StyleGuideView',
-  components: {GuidePanel},
+export const TheStyleGuideView = {
+  name: 'TheStyleGuideView',
+  components: {StyleGuidePanel},
   setup() {
     return {
       names: tokenNames(),
@@ -617,11 +623,11 @@ export const StyleGuideView = {
       v-if="ready"
       class="sg-themes"
     >
-      <guide-panel
+      <style-guide-panel
         theme="light"
         :names="names"
       />
-      <guide-panel
+      <style-guide-panel
         theme="dark"
         :names="names"
       />

@@ -200,8 +200,8 @@ export function toast(text, opts = {}) {
  * A toast that closes itself after its timeout. The timeout pauses while the
  * toast is hovered or focused.
  */
-const ToastItem = {
-  name: 'ToastItem',
+const ToastListItem = {
+  name: 'ToastListItem',
   props: {toast: {type: Object, required: true}},
   setup(props) {
     let timer;
@@ -278,9 +278,9 @@ const ToastItem = {
 };
 
 /** The toasts, at the bottom of the screen. */
-export const ToastList = {
-  name: 'ToastList',
-  components: {ToastItem},
+export const TheToastList = {
+  name: 'TheToastList',
+  components: {ToastListItem},
   setup() {
     return {toasts};
   },
@@ -291,7 +291,7 @@ export const ToastList = {
       role="status"
       aria-live="polite"
     >
-      <toast-item
+      <toast-list-item
         v-for="item in toasts"
         :key="item.id"
         :toast="item"

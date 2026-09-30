@@ -34,8 +34,8 @@ export function sinceLabel(from) {
  * square of a day of the year (class, data, aria); days of the neighbouring
  * years are left blank.
  */
-export const YearGrid = {
-  name: 'YearGrid',
+export const AppYearGrid = {
+  name: 'AppYearGrid',
   props: {
     year: {type: String, required: true},
     square: {type: Function, required: true},

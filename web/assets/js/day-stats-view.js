@@ -9,11 +9,11 @@ import {formatDayMonth, formatFull, MONTH_LONG, MONTH_SHORT, WEEKDAY_LONG, WEEKD
 import {t} from './i18n.js';
 import {remote} from './remote-stats.js';
 import {goHome, route} from './route.js';
-import {factItem, FactsPanel, StatRow} from './stat-panels.js';
+import {AppFactsPanel, AppStatRow, factItem} from './stat-panels.js';
 import {state} from './state.js';
 import {hideTooltip} from './tooltip.js';
 import {computed, nextTick, onMounted, ref, watch} from './vue.js';
-import {centreToday, currentYear, initChartTooltips, sinceLabel, YearGrid} from './year-grid.js';
+import {AppYearGrid, centreToday, currentYear, initChartTooltips, sinceLabel} from './year-grid.js';
 
 /**
  * Formats a rate as a percentage, or a dash for none.
@@ -141,8 +141,8 @@ function bar({label, name, rate, perfect}) {
 /**
  * A panel of horizontal bars, one per group (see bar).
  */
-const BarPanel = {
-  name: 'BarPanel',
+const DayStatsBarPanel = {
+  name: 'DayStatsBarPanel',
   props: {
     title: {type: String, required: true},
     bars: {type: Array, required: true},
@@ -173,9 +173,10 @@ const BarPanel = {
 };
 
 /** The day statistics of the current year. */
-export const DayStatsView = {
-  name: 'DayStatsView',
-  components: {AppBar, BarPanel, FactsPanel, StatRow, YearGrid},
+export const TheDayStatsView = {
+  name: 'TheDayStatsView',
+  components:
+      {AppBar, DayStatsBarPanel, AppFactsPanel, AppStatRow, AppYearGrid},
   setup() {
     const root = ref(null);
     const shown = computed(() => route.view === 'days');
@@ -240,22 +241,22 @@ export const DayStatsView = {
         @back="back"
       />
       <template v-if="data">
-        <stat-row :stats="tiles"/>
-        <facts-panel
+        <app-stat-row :stats="tiles"/>
+        <app-facts-panel
           :title="t('Highlights')"
           :items="highlights"
         />
-        <bar-panel
+        <day-stats-bar-panel
           :title="t('By weekday')"
           :bars="weekdays"
         />
-        <bar-panel
+        <day-stats-bar-panel
           :title="t('By month')"
           :bars="months"
         />
         <section class="panel days-heatmap">
           <h3>{{ t('Year {year}', {year}) }}</h3>
-          <year-grid
+          <app-year-grid
             :year="year"
             :square="square"
           />

@@ -6,7 +6,7 @@ import * as actions from './actions.js';
 import {api} from './api.js';
 import {currentDays, editing} from './board-view.js';
 import {locale, t, userTimeZone} from './i18n.js';
-import {ColorSwatches, NEUTRAL} from './icons.js';
+import {AppColorSwatches, NEUTRAL} from './icons.js';
 import {refresh} from './loader.js';
 import {forget} from './outbox.js';
 import {openPage, topPage} from './page-stack.js';
@@ -223,8 +223,8 @@ const SettingsPage = {
 /**
  * A row of the settings menu that opens the page `page` (see page-stack.js).
  */
-const MenuItem = {
-  name: 'MenuItem',
+const SettingsMenuItem = {
+  name: 'SettingsMenuItem',
   props: {
     page: String,
     icon: {type: String, required: true},
@@ -256,9 +256,9 @@ const MenuItem = {
 };
 
 /** The settings pages. */
-export const SettingsDialog = {
-  name: 'SettingsDialog',
-  components: {ColorSwatches, MenuItem, SettingsPage},
+export const TheSettingsDialog = {
+  name: 'TheSettingsDialog',
+  components: {AppColorSwatches, SettingsMenuItem, SettingsPage},
   setup() {
     const importInput = ref(null);
     const deleteDialog = ref(null);
@@ -551,39 +551,39 @@ export const SettingsDialog = {
         class="menu"
         :aria-label="t('Settings sections')"
       >
-        <menu-item
+        <settings-menu-item
           page="settings-look"
           icon="palette"
           :title="t('Appearance')"
           :hint="t('Theme, font, colours and background')"
         />
-        <menu-item
+        <settings-menu-item
           page="settings-board"
           icon="board"
           :title="t('Overview')"
           :hint="t('Reordering and days shown')"
         />
-        <menu-item
+        <settings-menu-item
           page="settings-region"
           icon="globe"
           :title="t('Language & time')"
           :hint="t('Language and time zone')"
         />
         <!-- Hidden if there are no archived habits and the switch is off. -->
-        <menu-item
+        <settings-menu-item
           v-if="archived > 0 || settings.showArchived"
           page="settings-archive"
           icon="archive"
           :title="t('Archive')"
           :hint="t('Archived habits')"
         />
-        <menu-item
+        <settings-menu-item
           icon="skip"
           :title="t('Skip days')"
           :hint="t('Skip days of all habits')"
           @click="skipAll"
         />
-        <menu-item
+        <settings-menu-item
           page="settings-data"
           icon="transfer"
           :title="t('Data')"
@@ -594,7 +594,7 @@ export const SettingsDialog = {
         class="menu"
         :aria-label="t('About the app')"
       >
-        <menu-item
+        <settings-menu-item
           page="settings-version"
           icon="info"
           :title="t('Version')"
@@ -688,7 +688,7 @@ export const SettingsDialog = {
       </fieldset>
       <fieldset class="field">
         <legend class="field-label">{{ t('Accent colour') }}</legend>
-        <color-swatches
+        <app-color-swatches
           :colors="[NEUTRAL, ...state.colors]"
           :model-value="settings.bandColor"
           :aria-label="t('Accent colour')"

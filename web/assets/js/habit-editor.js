@@ -5,7 +5,7 @@ import {openCategoryPicker} from './category-picker.js';
 import {WEEKDAY_LONG, WEEKDAY_SHORT} from './dates.js';
 import * as habitHelpers from './habit-helpers.js';
 import {t} from './i18n.js';
-import {ColorSwatches, colorValue, IconChoices} from './icons.js';
+import {AppColorSwatches, AppIconChoices, colorValue} from './icons.js';
 import {closePage, guardPage, openPage} from './page-stack.js';
 import {categoryById, state} from './state.js';
 import {errorText} from './undo.js';
@@ -308,9 +308,9 @@ export async function openEditor(habit, handler) {
 }
 
 /** The habit page (see openEditor). */
-export const HabitEditor = {
-  name: 'HabitEditor',
-  components: {ColorSwatches, IconChoices},
+export const TheHabitEditor = {
+  name: 'TheHabitEditor',
+  components: {AppColorSwatches, AppIconChoices},
   setup() {
     const el = ref(null);
     const formEl = ref(null);
@@ -460,14 +460,14 @@ export const HabitEditor = {
           </label>
           <fieldset class="field">
             <legend class="field-label">{{ t('Colour') }}</legend>
-            <color-swatches
+            <app-color-swatches
               v-model="form.color"
               :colors="state.colors"
             />
           </fieldset>
           <fieldset class="field">
             <legend class="field-label">{{ t('Icon') }}</legend>
-            <icon-choices
+            <app-icon-choices
               v-model="form.icon"
               :names="state.icons"
               :style="{'--habit-color': colorValue(form.color)}"
@@ -489,7 +489,7 @@ export const HabitEditor = {
               aria-labelledby="habit-editor-category-label habit-editor-category"
               @click="chooseCategory"
             >
-              <icon-badge
+              <app-icon-badge
                 v-if="category"
                 class="habit-icon is-small"
                 :icon="category.icon"

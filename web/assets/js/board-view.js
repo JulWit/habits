@@ -3,9 +3,9 @@
 // them.
 
 import * as actions from './actions.js';
-import {DayCell, HabitLabel, HeadDay} from './board-cells.js';
+import {BoardDayCell, BoardHabitLabel, BoardHeadDay} from './board-cells.js';
 import {addDays, dayOfMonth, daysBetween, formatLong, MONTH_LONG, MONTH_SHORT, monthIndex, weekdayIndex, yearOf} from './dates.js';
-import {dayProgress, DaySummary, initSummary, launchOrbs, newlyDone} from './day-summary.js';
+import {BoardDaySummary, dayProgress, initSummary, launchOrbs, newlyDone} from './day-summary.js';
 import {enableDragReorder} from './drag-reorder.js';
 import * as habitHelpers from './habit-helpers.js';
 import {t} from './i18n.js';
@@ -680,8 +680,8 @@ function attachLongPress(root) {
  * An icon button of the board. `handle` makes it a drag handle, `habit`
  * names the habit it acts on; `icon` names one of `icons`.
  */
-const ToolButton = {
-  name: 'ToolButton',
+const BoardToolButton = {
+  name: 'BoardToolButton',
   props: {
     role: String,
     icon: String,
@@ -707,8 +707,8 @@ const ToolButton = {
 };
 
 /** A category's progress bar for a day: one segment per habit due. */
-const BlockProgress = {
-  name: 'BlockProgress',
+const BoardBlockProgress = {
+  name: 'BoardBlockProgress',
   props: {
     habits: {type: Array, required: true},
     day: {type: String, required: true},
@@ -755,9 +755,9 @@ const BlockProgress = {
  * The row of a habit: its label, a cell per day and its reorder controls.
  * `siblings` are the habits of its category, `at` its place among them.
  */
-const HabitRow = {
-  name: 'HabitRow',
-  components: {DayCell, HabitLabel, ToolButton},
+const BoardHabitRow = {
+  name: 'BoardHabitRow',
+  components: {BoardDayCell, BoardHabitLabel, BoardToolButton},
   props: {
     habit: {type: Object, required: true},
     at: {type: Number, required: true},
@@ -782,12 +782,12 @@ const HabitRow = {
       :data-habit="habit.id"
     >
       <div class="habit-cell">
-        <habit-label
+        <board-habit-label
           :habit="habit"
           @click="open(habit.id)"
         />
       </div>
-      <day-cell
+      <board-day-cell
         v-for="iso in dates"
         :key="iso"
         :habit="habit"
@@ -798,7 +798,7 @@ const HabitRow = {
       />
       <div class="habit-tools">
         <template v-if="siblings >= 2">
-          <tool-button
+          <board-tool-button
             v-if="byDragging()"
             role="drag-habit"
             icon="grip"
@@ -807,7 +807,7 @@ const HabitRow = {
             :habit="habit.id"
           />
           <template v-else>
-            <tool-button
+            <board-tool-button
               role="move-habit-up"
               icon="chevronUp"
               :label="t('Move habit up')"
@@ -815,7 +815,7 @@ const HabitRow = {
               :disabled="at === 0"
               @click="move(habit.id, -1)"
             />
-            <tool-button
+            <board-tool-button
               role="move-habit-down"
               icon="chevronDown"
               :label="t('Move habit down')"
@@ -836,7 +836,7 @@ const HabitRow = {
  */
 const BoardBlock = {
   name: 'BoardBlock',
-  components: {BlockProgress, HabitRow, ToolButton},
+  components: {BoardBlockProgress, BoardHabitRow, BoardToolButton},
   props: {
     block: {type: Object, required: true},
     labelled: Boolean,
@@ -893,7 +893,7 @@ const BoardBlock = {
             data-role="open-category"
             @click="openCategory"
           >
-            <icon-badge
+            <app-icon-badge
               class="habit-icon"
               :icon="category.icon"
               :color="category.color || null"
@@ -902,7 +902,7 @@ const BoardBlock = {
           </button>
           <template v-else>{{ t('No category') }}</template>
         </h2>
-        <block-progress
+        <board-block-progress
           v-if="category?.showProgress === true"
           :habits="block.habits"
           :day="active"
@@ -911,7 +911,7 @@ const BoardBlock = {
           v-if="category && state.categories.length >= 2"
           class="block-tools"
         >
-          <tool-button
+          <board-tool-button
             v-if="byDragging()"
             role="drag-category"
             icon="grip"
@@ -919,14 +919,14 @@ const BoardBlock = {
             handle
           />
           <template v-else>
-            <tool-button
+            <board-tool-button
               role="move-category-up"
               icon="chevronUp"
               :label="t('Move category up')"
               :disabled="at <= 0"
               @click="move(-1)"
             />
-            <tool-button
+            <board-tool-button
               role="move-category-down"
               icon="chevronDown"
               :label="t('Move category down')"
@@ -946,7 +946,7 @@ const BoardBlock = {
         v-else
         class="block-rows"
       >
-        <habit-row
+        <board-habit-row
           v-for="habit in block.visible"
           :key="habit.id"
           v-memo="rowMemo(habit)"
@@ -965,9 +965,9 @@ const BoardBlock = {
  * followed by the empty states and the button back to today. Rendered inside
  * <main id="board-view">, whose width it measures.
  */
-export const BoardView = {
-  name: 'BoardView',
-  components: {BoardBlock, DaySummary, HeadDay, ToolButton},
+export const TheBoardView = {
+  name: 'TheBoardView',
+  components: {BoardBlock, BoardDaySummary, BoardHeadDay, BoardToolButton},
   setup() {
     const boardEl = ref(null);
     const all = computed(() => groupedHabits());
@@ -1099,14 +1099,14 @@ export const BoardView = {
             class="day-nav"
             style="grid-column: 1; grid-row: 2"
           >
-            <tool-button
+            <board-tool-button
               role="page-older"
               icon="chevronLeft"
               :label="t('Earlier days')"
               :disabled="offset >= maxBackDays()"
               @click="page(1)"
             />
-            <tool-button
+            <board-tool-button
               role="page-newer"
               icon="chevronRight"
               :label="t('Later days')"
@@ -1126,7 +1126,7 @@ export const BoardView = {
           </div>
           <!-- Column 1 holds the habit names; a month starts with a divider,
                but not on the first column. -->
-          <head-day
+          <board-head-day
             v-for="(iso, i) in dates"
             :key="iso"
             :iso="iso"
@@ -1137,7 +1137,7 @@ export const BoardView = {
             @click="selectDay(iso)"
           />
         </div>
-        <day-summary
+        <board-day-summary
           :habits="everyHabit"
           :day="active"
           @open="openDays"

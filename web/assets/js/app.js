@@ -3,33 +3,33 @@
 // loader.js and data changes in actions.js.
 
 import * as actions from './actions.js';
-import {BoardView, onlyOpen, toggleFilter} from './board-view.js';
-import {CategoryEditor} from './category-editor.js';
-import {CategoryPicker} from './category-picker.js';
-import {CategoryView} from './category-view.js';
-import {DayEditor} from './day-editor.js';
-import {DayStatsView} from './day-stats-view.js';
-import {HabitEditor} from './habit-editor.js';
-import {HabitView} from './habit-view.js';
+import {onlyOpen, TheBoardView, toggleFilter} from './board-view.js';
+import {TheCategoryEditor} from './category-editor.js';
+import {TheCategoryPicker} from './category-picker.js';
+import {TheCategoryView} from './category-view.js';
+import {TheDayEditor} from './day-editor.js';
+import {TheDayStatsView} from './day-stats-view.js';
+import {TheHabitEditor} from './habit-editor.js';
+import {TheHabitView} from './habit-view.js';
 import {t} from './i18n.js';
-import {AppIcon, IconBadge} from './icons.js';
+import {AppIcon, AppIconBadge} from './icons.js';
 import {initSync, refresh, syncStatus} from './loader.js';
 import {definePatterns} from './patterns.js';
 import {goHome, route, syncRoute} from './route.js';
-import {openSearch, SearchDialog} from './search-dialog.js';
-import {openSettings, SettingsDialog} from './settings-dialog.js';
-import {SkipEditor} from './skip-editor.js';
+import {openSearch, TheSearchDialog} from './search-dialog.js';
+import {openSettings, TheSettingsDialog} from './settings-dialog.js';
+import {TheSkipEditor} from './skip-editor.js';
 import {state, stateRevision} from './state.js';
 import {initTooltips} from './tooltip.js';
-import {errorText, redoLast, toast, ToastList, undoLast} from './undo.js';
+import {errorText, redoLast, TheToastList, toast, undoLast} from './undo.js';
 import {createApp, defineAsyncComponent, ref, watch, watchEffect} from './vue.js';
 
 /**
  * The style guide, loaded on first use: it is only reachable at #/styleguide.
  */
-const StyleGuideView = defineAsyncComponent({
-  loader: () =>
-      import('./style-guide-view.js').then((module) => module.StyleGuideView),
+const TheStyleGuideView = defineAsyncComponent({
+  loader: () => import('./style-guide-view.js')
+                    .then((module) => module.TheStyleGuideView),
   onError: (err, retry, fail) => {
     toast(errorText(err), {error: true});
     fail();
@@ -43,19 +43,19 @@ const StyleGuideView = defineAsyncComponent({
 const App = {
   name: 'App',
   components: {
-    BoardView,
-    CategoryEditor,
-    CategoryPicker,
-    CategoryView,
-    DayEditor,
-    DayStatsView,
-    HabitEditor,
-    HabitView,
-    SearchDialog,
-    SettingsDialog,
-    SkipEditor,
-    StyleGuideView,
-    ToastList,
+    TheBoardView,
+    TheCategoryEditor,
+    TheCategoryPicker,
+    TheCategoryView,
+    TheDayEditor,
+    TheDayStatsView,
+    TheHabitEditor,
+    TheHabitView,
+    TheSearchDialog,
+    TheSettingsDialog,
+    TheSkipEditor,
+    TheStyleGuideView,
+    TheToastList,
   },
   setup() {
     // The style guide stays loaded once it has been shown.
@@ -170,27 +170,27 @@ const App = {
       class="view"
       :hidden="route.view !== 'board'"
     >
-      <board-view/>
+      <the-board-view/>
     </main>
-    <habit-view/>
-    <category-view/>
-    <day-stats-view/>
+    <the-habit-view/>
+    <the-category-view/>
+    <the-day-stats-view/>
     <main
       id="style-guide-view"
       class="view"
       :hidden="route.view !== 'styleguide'"
     >
-      <style-guide-view v-if="guideShown"/>
+      <the-style-guide-view v-if="guideShown"/>
     </main>
     <!-- Pages: full-screen dialogs with a back button, stacked (see
          page-stack.js). -->
-    <habit-editor/>
-    <settings-dialog/>
-    <category-picker/>
-    <category-editor/>
-    <skip-editor/>
-    <search-dialog/>
-    <day-editor/>
+    <the-habit-editor/>
+    <the-settings-dialog/>
+    <the-category-picker/>
+    <the-category-editor/>
+    <the-skip-editor/>
+    <the-search-dialog/>
+    <the-day-editor/>
     <!-- Asks before an editor with unsaved changes closes (see page-stack.js).
          The first button, keeping the changes, gets the focus. -->
     <dialog
@@ -223,7 +223,7 @@ const App = {
         </footer>
       </form>
     </dialog>
-    <toast-list/>
+    <the-toast-list/>
     <!-- Live region announcing the result of a tap on the board. -->
     <div
       id="board-status"
@@ -291,7 +291,7 @@ async function main() {
   const app = createApp(App);
   // What every template may use: the icons and t() for the UI texts.
   app.component('AppIcon', AppIcon);
-  app.component('IconBadge', IconBadge);
+  app.component('AppIconBadge', AppIconBadge);
   app.config.globalProperties.t = t;
   app.mount('#app');
   initRouting();

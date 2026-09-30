@@ -117,8 +117,8 @@ async function choose(entry) {
 }
 
 /** The search dialog (see openSearch). The input controls the list. */
-export const SearchDialog = {
-  name: 'SearchDialog',
+export const TheSearchDialog = {
+  name: 'TheSearchDialog',
   setup() {
     const el = ref(null);
     const input = ref(null);
@@ -273,7 +273,7 @@ export const SearchDialog = {
           @pointermove="active = i"
         >
           <template v-if="entry.kind === 'habit'">
-            <icon-badge
+            <app-icon-badge
               v-if="hasHabitIcon(entry.item.icon)"
               class="habit-icon is-small"
               :icon="entry.item.icon"
@@ -286,7 +286,7 @@ export const SearchDialog = {
             ></span>
           </template>
           <template v-else>
-            <icon-badge
+            <app-icon-badge
               v-if="hasHabitIcon(entry.item.icon)"
               class="habit-icon is-small"
               :icon="entry.item.icon"

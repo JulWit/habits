@@ -1,7 +1,7 @@
 // Category edit page. It passes the input to its caller and stays open with
 // the error message if saving fails.
 
-import {ColorSwatches, colorValue, IconChoices} from './icons.js';
+import {AppColorSwatches, AppIconChoices, colorValue} from './icons.js';
 import {closePage, guardPage, openPage} from './page-stack.js';
 import {categoryById, state} from './state.js';
 import {errorText} from './undo.js';
@@ -78,9 +78,9 @@ export async function openCategoryEditor(id, handler) {
 }
 
 /** The category page (see openCategoryEditor). */
-export const CategoryEditor = {
-  name: 'CategoryEditor',
-  components: {ColorSwatches, IconChoices},
+export const TheCategoryEditor = {
+  name: 'TheCategoryEditor',
+  components: {AppColorSwatches, AppIconChoices},
   setup() {
     const el = ref(null);
     const formEl = ref(null);
@@ -168,14 +168,14 @@ export const CategoryEditor = {
           </label>
           <fieldset class="field">
             <legend class="field-label">{{ t('Colour') }}</legend>
-            <color-swatches
+            <app-color-swatches
               v-model="form.color"
               :colors="['', ...state.colors]"
             />
           </fieldset>
           <fieldset class="field">
             <legend class="field-label">{{ t('Icon') }}</legend>
-            <icon-choices
+            <app-icon-choices
               v-model="form.icon"
               :names="state.icons"
               :class="{'is-neutral': !form.color}"

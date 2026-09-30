@@ -482,8 +482,8 @@ export function hasHabitIcon(name) {
  * without a colour. Renders nothing if the icon has no drawing; callers show
  * a dot instead where needed (hasHabitIcon).
  */
-export const IconBadge = {
-  name: 'IconBadge',
+export const AppIconBadge = {
+  name: 'AppIconBadge',
   props: {icon: String, color: String},
   setup(props) {
     return {habitIcons, colorValue};
@@ -509,8 +509,8 @@ export const NEUTRAL = 'neutral';
  * `colors` lists the palette names offered; "" stands for no colour and
  * NEUTRAL for the grey accent.
  */
-export const ColorSwatches = {
-  name: 'ColorSwatches',
+export const AppColorSwatches = {
+  name: 'AppColorSwatches',
   props: {
     colors: {type: Array, required: true},
     modelValue: String,
@@ -574,8 +574,8 @@ export const ColorSwatches = {
  * v-model to the chosen name ("" for none). Names without a drawing are
  * left out. The icons are drawn in the colour --habit-color set around them.
  */
-export const IconChoices = {
-  name: 'IconChoices',
+export const AppIconChoices = {
+  name: 'AppIconChoices',
   props: {
     names: {type: Array, default: () => []},
     modelValue: String,

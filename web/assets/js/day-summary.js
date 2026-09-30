@@ -123,8 +123,8 @@ function showPercent(percent) {
  * habits, regardless of paging and filter. Emits `open` to open the day
  * statistics.
  */
-export const DaySummary = {
-  name: 'DaySummary',
+export const BoardDaySummary = {
+  name: 'BoardDaySummary',
   props: {
     habits: {type: Array, required: true},
     day: {type: String, required: true},

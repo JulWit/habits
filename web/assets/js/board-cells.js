@@ -17,8 +17,8 @@ const CHECK_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true">' +
  * today; the actual today keeps is-current. With `selectable`, the day is a
  * button that makes its day the active one.
  */
-export const HeadDay = {
-  name: 'HeadDay',
+export const BoardHeadDay = {
+  name: 'BoardHeadDay',
   props: {
     iso: {type: String, required: true},
     active: String,
@@ -64,8 +64,8 @@ export const HeadDay = {
  * The label of a row: icon, name, streak and target. A button; its user
  * opens the habit on click.
  */
-export const HabitLabel = {
-  name: 'HabitLabel',
+export const BoardHabitLabel = {
+  name: 'BoardHabitLabel',
   props: {habit: {type: Object, required: true}},
   setup(props) {
     const described = computed(() => habitHelpers.describeHabit(props.habit));
@@ -88,7 +88,7 @@ export const HabitLabel = {
       :data-habit="habit.id"
       :title="title"
     >
-      <icon-badge
+      <app-icon-badge
         class="habit-icon"
         :icon="habit.icon"
         :color="habit.color"
@@ -110,8 +110,8 @@ export const HabitLabel = {
  * the server's status of the day (habit-helpers.js); a write still waiting
  * for the server is shown with its value only. Its user handles clicks.
  */
-export const DayCell = {
-  name: 'DayCell',
+export const BoardDayCell = {
+  name: 'BoardDayCell',
   props: {
     habit: {type: Object, required: true},
     iso: {type: String, required: true},

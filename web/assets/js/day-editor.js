@@ -151,8 +151,8 @@ function hint() {
 }
 
 /** The day dialog (see openDayDialog). */
-export const DayEditor = {
-  name: 'DayEditor',
+export const TheDayEditor = {
+  name: 'TheDayEditor',
   setup() {
     const el = ref(null);
     const input = ref(null);

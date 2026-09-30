@@ -10,7 +10,7 @@ import {t} from './i18n.js';
 import {colorValue, hasHabitIcon} from './icons.js';
 import {remote} from './remote-stats.js';
 import {goHome, openHabit, route} from './route.js';
-import {changedItem, createdItem, factItem, FactsPanel, rateLabel, StatRow} from './stat-panels.js';
+import {AppFactsPanel, AppStatRow, changedItem, createdItem, factItem, rateLabel} from './stat-panels.js';
 import {categoryById, state} from './state.js';
 import {computed} from './vue.js';
 import {currentYear, sinceLabel} from './year-grid.js';
@@ -72,9 +72,9 @@ function shortStreak({currentStreak, streakUnit}) {
  * The category view: its title bar, whether its progress is shown on the
  * board, its statistics, its habits in board order and its activity.
  */
-export const CategoryView = {
-  name: 'CategoryView',
-  components: {AppBar, FactsPanel, StatRow},
+export const TheCategoryView = {
+  name: 'TheCategoryView',
+  components: {AppBar, AppFactsPanel, AppStatRow},
   setup() {
     // Nothing is shown, or loaded, while the view is hidden.
     const category = computed(
@@ -127,18 +127,18 @@ export const CategoryView = {
           @action="remove"
         >
           <template #badge>
-            <icon-badge
+            <app-icon-badge
               class="habit-icon"
               :icon="category.icon"
               :color="category.color || null"
             />
           </template>
         </app-bar>
-        <facts-panel
+        <app-facts-panel
           :title="t('Details')"
           :items="details"
         />
-        <stat-row :stats="stats"/>
+        <app-stat-row :stats="stats"/>
         <section class="panel">
           <h3>{{ t('Habits') }}</h3>
           <p
@@ -159,7 +159,7 @@ export const CategoryView = {
               :style="{'--habit-color': colorValue(habit.color)}"
               @click="openHabit(habit.id)"
             >
-              <icon-badge
+              <app-icon-badge
                 v-if="hasHabitIcon(habit.icon)"
                 class="habit-icon"
                 :icon="habit.icon"
@@ -178,7 +178,7 @@ export const CategoryView = {
             </button>
           </div>
         </section>
-        <facts-panel
+        <app-facts-panel
           :title="t('Activity')"
           :items="activity"
         />

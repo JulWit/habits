@@ -75,8 +75,8 @@ function collect() {
 }
 
 /** The page for skipping days (see openSkipDialog). */
-export const SkipEditor = {
-  name: 'SkipEditor',
+export const TheSkipEditor = {
+  name: 'TheSkipEditor',
   setup() {
     const el = ref(null);
     const formEl = ref(null);

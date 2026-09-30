@@ -9,11 +9,11 @@ import {t} from './i18n.js';
 import {colorValue, hasHabitIcon} from './icons.js';
 import {remote} from './remote-stats.js';
 import {goHome, route} from './route.js';
-import {changedItem, createdItem, daysAgo, factItem, FactsPanel, rateLabel, StatRow} from './stat-panels.js';
+import {AppFactsPanel, AppStatRow, changedItem, createdItem, daysAgo, factItem, rateLabel} from './stat-panels.js';
 import {habitById, state} from './state.js';
 import {hideTooltip} from './tooltip.js';
 import {computed, nextTick, onMounted, ref, watch} from './vue.js';
-import {centreToday, currentYear, initChartTooltips, YearGrid} from './year-grid.js';
+import {AppYearGrid, centreToday, currentYear, initChartTooltips} from './year-grid.js';
 
 /**
  * The year the heatmap and the cumulative chart show, e.g. "2025", and the
@@ -275,8 +275,8 @@ function bucketName(start) {
  * the top. The server sums the values (GET /api/habits/{id}/totals). The
  * chart scrolls to its end (today) whenever it is drawn anew.
  */
-const CumulativeChart = {
-  name: 'CumulativeChart',
+const HabitCumulativeChart = {
+  name: 'HabitCumulativeChart',
   props: {
     habit: {type: Object, required: true},
     year: {type: String, required: true},
@@ -436,9 +436,10 @@ const CumulativeChart = {
  * cumulative chart (only for countable habits), the heatmap of a year and its
  * activity.
  */
-export const HabitView = {
-  name: 'HabitView',
-  components: {AppBar, CumulativeChart, FactsPanel, StatRow, YearGrid},
+export const TheHabitView = {
+  name: 'TheHabitView',
+  components:
+      {AppBar, HabitCumulativeChart, AppFactsPanel, AppStatRow, AppYearGrid},
   setup() {
     const root = ref(null);
     // Nothing is shown, or loaded, while the view is hidden.
@@ -558,7 +559,7 @@ export const HabitView = {
         >
           <template #badge>
             <!-- Without an icon, a dot in the habit's colour. -->
-            <icon-badge
+            <app-icon-badge
               v-if="hasHabitIcon(habit.icon)"
               class="habit-icon"
               :icon="habit.icon"
@@ -570,12 +571,12 @@ export const HabitView = {
             ></span>
           </template>
         </app-bar>
-        <facts-panel
+        <app-facts-panel
           :title="t('Details')"
           :items="details"
         />
-        <stat-row :stats="stats"/>
-        <cumulative-chart
+        <app-stat-row :stats="stats"/>
+        <habit-cumulative-chart
           v-if="isCountable(habit)"
           :key="habit.id"
           :habit="habit"
@@ -609,7 +610,7 @@ export const HabitView = {
               </button>
             </div>
           </div>
-          <year-grid
+          <app-year-grid
             :year="shownYear"
             :square="square"
           />
@@ -626,7 +627,7 @@ export const HabitView = {
             <span>{{ t('more') }}</span>
           </div>
         </section>
-        <facts-panel
+        <app-facts-panel
           :title="t('Activity')"
           :items="activity"
         />

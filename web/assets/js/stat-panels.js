@@ -21,8 +21,8 @@ export function rateLabel() {
  * A row of stat tiles from [label, value, icon] triples; icon names one of
  * `icons`, shown in the tile's corner.
  */
-export const StatRow = {
-  name: 'StatRow',
+export const AppStatRow = {
+  name: 'AppStatRow',
   props: {stats: {type: Array, required: true}},
   template: `
     <div class="stat-row">
@@ -50,7 +50,7 @@ export const StatRow = {
 let Fact;
 
 /**
- * Returns a fact for FactsPanel.
+ * Returns a fact for AppFactsPanel.
  * @param {string} label
  * @param {string} value
  * @param {string=} note
@@ -61,8 +61,8 @@ export function factItem(label, value, note = '') {
 }
 
 /** A panel with a heading and a list of facts (factItem). */
-export const FactsPanel = {
-  name: 'FactsPanel',
+export const AppFactsPanel = {
+  name: 'AppFactsPanel',
   props: {
     title: {type: String, required: true},
     items: {type: Array, required: true},

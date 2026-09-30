@@ -69,8 +69,8 @@ function choose(value) {
 }
 
 /** The category picker (see openCategoryPicker). */
-export const CategoryPicker = {
-  name: 'CategoryPicker',
+export const TheCategoryPicker = {
+  name: 'TheCategoryPicker',
   setup() {
     const el = ref(null);
     const nameInput = ref(null);
@@ -161,7 +161,7 @@ export const CategoryPicker = {
             :aria-selected="String(option.id === current)"
             @click="choose(option.id)"
           >
-            <icon-badge
+            <app-icon-badge
               class="habit-icon is-small"
               :icon="option.icon"
               :color="option.color || null"

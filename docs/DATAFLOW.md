@@ -8,11 +8,11 @@ beyond what it displays.
 ```
 browser                                      server
 ───────                                      ──────
-app.js ── load ──> api.js ── GET /api/state ──> httpapi ── View ──> store (SQLite)
+loader.js ─load──> api.js ── GET /api/state ──> httpapi ── View ──> store (SQLite)
                      │                             │
-state.js <───────────┘                          domain (schedules, statuses,
+state.js, reactive <─┘                          domain (schedules, statuses,
   │                                              streaks, statistics)
-  └─> board-view.js, board-cells.js, habit-view.js … render
+  └─> Vue components (board-view.js, habit-view.js …) render again
 
 tap ─> actions.js ─> state.js (shown as pending)
             │
@@ -39,10 +39,12 @@ write.
 
 ## Loading the state
 
-On start, the client requests `/api/state` with the last 200 days of entries
-and keeps it in `state.js`. The views subscribe to the state and re-render on
-changes. The detail view loads a habit's full history via
-`/api/habits/{id}`; `?from=` loads older entries for the board.
+On start, `loader.js` requests `/api/state` with the last 200 days of entries
+and keeps it in `state.js`. The state is reactive: the Vue components read it
+and render again when it changes. The detail view loads a habit's full
+history via `/api/habits/{id}`; `?from=` loads older entries for the board.
+The state also carries what the client offers to choose from: the colours,
+icons and kinds, and the choices of the enumerated settings (`options`).
 
 Statistics cover a habit's whole history, so the server loads all entries
 and computes them on every request (`computeHistory` in
@@ -80,7 +82,8 @@ The views that summarise many days load what they show from the server when
 they open: the day statistics (`/api/days`), also of a category's habits
 (`/api/days?category=`), and a habit's totals per day, week or month
 (`/api/habits/{id}/totals`). `remote-stats.js` keeps the last answer and loads
-it again once the state has changed.
+it again once the state has changed. A hidden view renders nothing, so it
+loads nothing either.
 
 ## Writing an entry
 
@@ -99,7 +102,8 @@ If the server rejects a write, the client drops the pending value, shows the
 error and reloads the state.
 
 The state replaces a habit object on every change instead of changing it in
-place, so the board can reuse the rows of the habits that did not change.
+place, so the board, which memoises its rows by their habit (`v-memo`), only
+renders the rows of the habits that changed.
 
 ## Undo
 

@@ -10,6 +10,20 @@ go build -o habits .
 The frontend has no build step (no npm, no bundler); `go build` is all that is
 needed for a release.
 
+## Vue
+
+The frontend uses [Vue 3](https://vuejs.org), embedded as its ESM browser
+build with the template compiler (`web/assets/vendor/vue.esm-browser.prod.js`,
+licence next to it); nothing is loaded from a CDN at runtime. To update it,
+replace the file with the one of the new version and check the app in the
+browser:
+
+```bash
+V=3.5.43
+curl -fL -o web/assets/vendor/vue.esm-browser.prod.js \
+  https://cdn.jsdelivr.net/npm/vue@$V/dist/vue.esm-browser.prod.js
+```
+
 ## Tests
 
 The tests use a temporary SQLite file and need no setup:

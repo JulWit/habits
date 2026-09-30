@@ -1,7 +1,8 @@
 # Agent guide
 
-A self-hosted habit tracker: Go server with SQLite and an embedded frontend of
-plain ES modules, compiled into a single binary. Details are in `docs/`; read
+A self-hosted habit tracker: Go server with SQLite and an embedded Vue frontend
+of plain ES modules without a build step, compiled into a single binary.
+Details are in `docs/`; read
 the relevant file before changing an area:
 
 - `docs/STRUCTURE.md`: where things live
@@ -29,10 +30,11 @@ These come first; the rules below follow from them.
   cache, and only entry writes wait in the outbox (see `docs/DATAFLOW.md`).
   Do not build new features around offline operation or client-side copies of
   server logic.
-- **Always a single binary.** Server, frontend, fonts and icons are embedded;
-  at runtime only the database file is created. Ideally `go build` is the only
-  build step: no npm, bundler, code generation or asset pipeline in the
-  regular build. No CGO, so cross-compiling keeps working.
+- **Always a single binary.** Server, frontend, Vue, fonts and icons are
+  embedded; at runtime only the database file is created. Ideally `go build`
+  is the only build step: no npm, bundler, code generation or asset pipeline
+  in the regular build (Vue compiles its templates in the browser). No CGO, so
+  cross-compiling keeps working.
 - **Follow the platform guidelines.** The UI follows Apple's Human Interface
   Guidelines and Google's Material Design guidelines as far as possible
   (touch target sizes, spacing, feedback, focus and keyboard handling, dialogs,
@@ -90,8 +92,13 @@ server after changing files in `web/`).
   is the key. Add the German translation to `de` in `i18n.js`.
 - **Writing endpoints** require `Content-Type: application/json` (CSRF
   protection). Keep it that way.
-- **CSP** forbids inline scripts and external origins. Put JS in
-  `web/assets/js/`, and embed fonts and images instead of loading them.
+- **CSP** forbids inline scripts and external origins; it allows eval only
+  for Vue's template compiler. Put JS in `web/assets/js/`, and embed fonts,
+  images and libraries (`web/assets/vendor/`) instead of loading them.
+- **Vue** is the embedded ESM browser build (`web/assets/vendor/`), imported
+  through `web/assets/js/vue.js`. The state in `state.js` is reactive; views
+  read it and render again by themselves. Do not build DOM by hand; DOM code
+  is left for measuring, focus, drag and drop and animations.
 - **Colours** are stored as palette names (`red`, `teal`, …), not CSS values.
   Use the tokens in `web/assets/css/base.css`.
 - No new dependencies (Go modules or frontend libraries) without asking.
@@ -104,9 +111,14 @@ server after changing files in `web/`).
 - Go follows the [Google Go style
   guide](https://google.github.io/styleguide/go/guide): standard library
   first, `gofmt`, tests in `_test.go` files next to the code.
-- JS: ES modules, no framework, no classes unless the file already uses them.
-  File names in kebab-case, with a suffix for views (`-view`) and dialogs
-  (`-editor`, `-picker`, `-dialog`); see `docs/STRUCTURE.md`.
+- JS: ES modules, no classes unless the file already uses them. File names in
+  kebab-case, with a suffix for views (`-view`) and dialogs (`-editor`,
+  `-picker`, `-dialog`); see `docs/STRUCTURE.md`.
+- Vue components are plain objects (`export const HabitView = {…}`) with
+  `setup()` (Composition API) and a `template` string in the same file, next
+  to the functions they use. Components used by one module stay in it;
+  shared state and the function that opens a dialog live at module level.
+  `app.js` registers `AppIcon`, `IconBadge` and `t` for every template.
 - JS follows the [Google JavaScript style
   guide](https://google.github.io/styleguide/jsguide.html): single quotes,
   80 columns, braces around every block except a one-line `if` without `else`,
@@ -116,10 +128,10 @@ server after changing files in `web/`).
   stay on one line, so they can be searched for.
 - Every function has a JSDoc comment with Closure types (`@param {string}`,
   `@return {?Habit}`); the shared data types are typedefs in `state.js`.
-- Element IDs in `index.html` follow the same names: a view or dialog has the
-  name of its module (`habit-view`, `day-editor`), and the elements inside it
-  are prefixed with that name, without a trailing `-dialog`
-  (`habit-editor-title`, `settings-band-colors`).
+- Element IDs in the templates follow the same names: a view or dialog has
+  the name of its module (`habit-view`, `day-editor`), and the elements inside
+  it are prefixed with that name, without a trailing `-dialog`
+  (`habit-editor-title`, `settings-look-title`).
 - Prose in docs and comments uses British spelling ("colour"); identifiers use
   American spelling (`color`).
 

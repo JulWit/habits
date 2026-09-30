@@ -55,10 +55,12 @@ trailing full stop. The client capitalises it when it shows it.
 
 A field in `settings.Settings` (`internal/settings`), its default in
 `Default` and, unless any value is fine, its check in `Validate`:
-`checkOption(key, value)` with an entry in `options` for a choice (the
-settings page renders its options from it), or a check function of its own.
-Then its control in `index.html` and `settings-dialog.js`. No migration is
-needed; stored documents without the field get the default.
+`checkOption(key, value)` with an entry in `options` for a choice (sent with
+the state as `options`; the settings page renders its choices from it), or a
+check function of its own. Then its control in the template of
+`settings-dialog.js`, and, if it changes the look before the state is loaded,
+an attribute in `index.html` and in `initAppearance` in `app.js`. No
+migration is needed; stored documents without the field get the default.
 
 Removing an option, or narrowing what a check accepts, needs a migration that
 rewrites the stored values (e.g. with `json_set` on `user_settings.data`):
@@ -81,6 +83,15 @@ Compute it in `internal/domain` and send it from the server, in the habit view
 or an endpoint of its own (see `handlers_stats.go`); a view loads the latter
 with `remote()` (`web/assets/js/remote-stats.js`). The client shows
 statistics, it does not compute them.
+
+## New view or dialog
+
+A component in a module of its own (`*-view.js`, or `*-editor.js`,
+`*-picker.js`, `*-dialog.js`), exported and placed in the template of `App` in
+`app.js`. A view shows itself when `route.view` names it (`route.js`, which
+also needs its hash) and renders nothing while hidden. A dialog renders its
+own `<dialog>`, keeps its input in reactive state at module level and exports
+the function that fills it and opens it with `openPage` (`page-stack.js`).
 
 ## New tool
 

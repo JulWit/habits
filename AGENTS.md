@@ -146,6 +146,16 @@ extend it along with the frontend.
   `setup()` included, has a JSDoc comment with Closure types (`@param
   {string}`, `@return {?Habit}`); the shared data types are typedefs in
   `state.js`. Prefer a typedef or record type to a bare `Object`.
+- HTML (`index.html` and the templates) and CSS follow the [Google HTML/CSS
+  style guide](https://google.github.io/styleguide/htmlcssguide.html):
+  lowercase, double quotes around attribute values, no entity references
+  besides the characters HTML reserves, no `style` attributes (custom
+  properties bound with `:style` excepted), IDs only where needed and with a
+  hyphen. In CSS: one selector and one declaration per line, declarations in
+  alphabetical order, a blank line between rules, single quotes, a leading
+  `0` (`0.5rem`), no unit after `0` unless required, three-digit hex colours
+  where possible, class selectors instead of ID and type-qualified ones, no
+  `!important`.
 - Element IDs in the templates follow the same names: a view or dialog has
   the name of its module (`habit-view`, `day-editor`), and the elements inside
   it are prefixed with that name, without a trailing `-dialog`

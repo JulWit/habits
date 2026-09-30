@@ -26,9 +26,13 @@ curl -fL -o web/assets/vendor/vue.esm-browser.prod.js \
 
 ## Formatting the frontend
 
-The JS follows the Google style (`.clang-format`), the templates in it the
-Vue style guide (one attribute per line, the guide's attribute order).
-Both formatters are developer tools, not build steps:
+The JS follows the [Google JavaScript style
+guide](https://google.github.io/styleguide/jsguide.html) (`.clang-format`),
+the templates in it the [Vue style guide](https://vuejs.org/style-guide/) (one
+attribute per line, the guide's attribute order), and the HTML and CSS the
+[Google HTML/CSS style
+guide](https://google.github.io/styleguide/htmlcssguide.html); see the style
+rules in `AGENTS.md`. Both formatters are developer tools, not build steps:
 
 ```bash
 uvx clang-format -i web/sw.js web/assets/js/*.js

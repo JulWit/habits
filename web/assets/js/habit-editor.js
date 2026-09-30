@@ -9,7 +9,6 @@ import {colorValue, ColorSwatches, IconChoices} from './icons.js';
 import {closePage, guardPage, openPage} from './page-stack.js';
 import {categoryById, state} from './state.js';
 import {errorText} from './undo.js';
-import {createVueApp} from './vue-app.js';
 import {computed, nextTick, onMounted, reactive, ref, watch} from './vue.js';
 
 /**
@@ -292,7 +291,7 @@ export async function openEditor(habit, handler) {
 }
 
 /** The habit page (see openEditor). */
-const HabitEditor = {
+export const HabitEditor = {
   name: 'HabitEditor',
   components: {ColorSwatches, IconChoices},
   setup() {
@@ -608,10 +607,3 @@ const HabitEditor = {
     </dialog>`,
 };
 
-/**
- * Mounts the habit page into `host`.
- * @param {!Element} host
- */
-export function initEditor(host) {
-  createVueApp(HabitEditor).mount(host);
-}

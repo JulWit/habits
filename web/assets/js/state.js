@@ -80,9 +80,6 @@ export const state = reactive({
   options: {},
 });
 
-/** @type {!Set<function(!Object): void>} */
-const listeners = new Set();
-
 /**
  * Counts the changes of the state, so that data loaded for a view (see
  * remote-stats.js) can tell whether it may be outdated. Reactive, so a view
@@ -98,20 +95,9 @@ export function stateRevision() {
   return revision.value;
 }
 
-/**
- * Calls `fn` after every change of the state.
- * @param {function(!Object): void} fn
- */
-export function subscribe(fn) {
-  listeners.add(fn);
-}
-
-/** Counts a change of the state and tells the listeners. */
+/** Counts a change of the state. */
 function notify() {
   revision.value++;
-  for (const fn of listeners) {
-    fn(state);
-  }
 }
 
 /**
@@ -188,7 +174,7 @@ export function removeHabit(id) {
 /**
  * Replaces a habit by a copy that `change` modifies. Habits are never changed
  * in place, so that a view can tell a changed habit by its identity (see the
- * row cache in board-view.js).
+ * memoised rows in board-view.js).
  * @param {string} id
  * @param {function(!Habit): void} change
  */

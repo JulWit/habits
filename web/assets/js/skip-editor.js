@@ -6,7 +6,6 @@ import {addDays} from './dates.js';
 import {closePage, openPage} from './page-stack.js';
 import {state} from './state.js';
 import {errorText} from './undo.js';
-import {createVueApp} from './vue-app.js';
 import {nextTick, onMounted, reactive, ref, watch} from './vue.js';
 
 /**
@@ -76,7 +75,7 @@ function collect() {
 }
 
 /** The page for skipping days (see openSkipDialog). */
-const SkipEditor = {
+export const SkipEditor = {
   name: 'SkipEditor',
   setup() {
     const el = ref(null);
@@ -152,10 +151,3 @@ const SkipEditor = {
     </dialog>`,
 };
 
-/**
- * Mounts the page for skipping days into `host`.
- * @param {!Element} host
- */
-export function initSkipDialog(host) {
-  createVueApp(SkipEditor).mount(host);
-}

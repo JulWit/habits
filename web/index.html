@@ -26,85 +26,8 @@
 <link rel="stylesheet" href="/assets/css/forms.css">
 </head>
 <body>
-
-<header class="topbar">
-  <div class="topbar-inner">
-    <h1 class="brand">
-      <!-- Logo: a check mark in a ring with four gaps at the bottom, matching
-           the day marks and the category progress. Square line caps, so the
-           gaps stay open; the ring stays inside the viewBox to avoid clipping. -->
-      <svg class="brand-mark" viewBox="0 0 24 24" aria-hidden="true"
-           fill="none" stroke="currentColor" stroke-width="2.4">
-        <path d="M2.98 15.28A9.6 9.6 0 1 1 21.02 15.28"/>
-        <path d="M20.14 17.09A9.6 9.6 0 0 1 16.41 20.53"/>
-        <path d="M14.54 21.26A9.6 9.6 0 0 1 9.46 21.26"/>
-        <path d="M7.59 20.53A9.6 9.6 0 0 1 3.86 17.09"/>
-        <path d="M8 12.3 10.9 15.2 16.1 9.2" stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>
-      <!-- The app name is not translated. -->
-      <span class="brand-text" translate="no">Habits</span>
-    </h1>
-    <div class="topbar-actions">
-      <span id="sync-status" class="sync-status" role="status" hidden></span>
-      <button id="add-habit" class="icon-button" type="button" data-icon="plus" title="New habit" aria-label="New habit"></button>
-      <button id="open-search" class="icon-button" type="button" data-icon="search" title="Search (/)" aria-label="Search" aria-haspopup="dialog"></button>
-      <button id="filter-open-habits" class="icon-button" type="button" title="Show only open" aria-label="Show only open" aria-pressed="false"></button>
-      <button id="open-settings" class="icon-button" type="button" title="Settings" aria-label="Settings" aria-haspopup="dialog"></button>
-    </div>
-  </div>
-</header>
-
-<!-- The overview, rendered by board-view.js. -->
-<main id="board-view" class="view"></main>
-
-<!-- The detail views render their own <main> (habit-view.js,
-     category-view.js, day-stats-view.js). -->
-<div id="habit-view-host"></div>
-<div id="category-view-host"></div>
-<div id="day-stats-view-host"></div>
-
-<!-- Style guide, only reachable at #/styleguide. -->
-<main id="style-guide-view" class="view" hidden></main>
-
-<!-- Pages: full-screen dialogs with a back button, stacked (see page-stack.js).
-     The habit page (habit-editor.js). -->
-<div id="habit-editor-host"></div>
-
-<!-- The settings pages (settings-dialog.js). -->
-<div id="settings-dialog-host"></div>
-
-<!-- The category picker (category-picker.js). -->
-<div id="category-picker-host"></div>
-
-<!-- The category page (category-editor.js). -->
-<div id="category-editor-host"></div>
-
-<!-- Skipping a range of days (skip-editor.js). -->
-<div id="skip-editor-host"></div>
-
-<!-- The search (search-dialog.js). -->
-<div id="search-dialog-host"></div>
-
-<!-- The day dialog (day-editor.js). -->
-<div id="day-editor-host"></div>
-
-<!-- Asks before an editor with unsaved changes closes (see page-stack.js). The
-     first button, keeping the changes, gets the focus. -->
-<dialog id="discard-dialog" class="dialog compact" aria-labelledby="discard-title">
-  <form method="dialog">
-    <h2 id="discard-title" class="dialog-head"></h2>
-    <footer class="dialog-foot">
-      <button type="submit" class="button ghost" value="keep">Keep editing</button>
-      <button type="submit" class="button primary" value="discard">Discard</button>
-    </footer>
-  </form>
-</dialog>
-
-<div id="toasts" class="toasts" role="status" aria-live="polite"></div>
-
-<!-- Live region announcing the result of a tap on the board. -->
-<div id="board-status" class="sr-only" role="status" aria-live="polite"></div>
-
+<!-- The app, rendered by Vue (see assets/js/app.js). -->
+<div id="app"></div>
 <script type="module" src="/assets/js/app.js"></script>
 </body>
 </html>

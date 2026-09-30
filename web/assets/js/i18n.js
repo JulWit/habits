@@ -684,33 +684,3 @@ export function userTimeZone() {
   }
   return undefined;
 }
-
-/** Attributes whose text is translated. */
-const TRANSLATED_ATTRIBUTES = ['title', 'aria-label', 'placeholder'];
-
-/**
- * Translates the text nodes and TRANSLATED_ATTRIBUTES below `root` in place.
- * Elements with translate="no" are skipped.
- * @param {!Element=} root
- */
-export function translateDocument(root = document.body) {
-  if (lang === 'en') return;
-  const skip = (el) => el?.closest('[translate="no"]');
-
-  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
-  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
-    const raw = node.nodeValue.trim();
-    // Normalise whitespace.
-    const text = raw.replace(/\s+/g, ' ');
-    if (!text || !(text in dictionary) || skip(node.parentElement)) continue;
-    // Keep the surrounding whitespace.
-    node.nodeValue = node.nodeValue.replace(raw, t(text));
-  }
-
-  for (const attr of TRANSLATED_ATTRIBUTES) {
-    for (const el of root.querySelectorAll(`[${attr}]`)) {
-      const text = el.getAttribute(attr);
-      if (text in dictionary && !skip(el)) el.setAttribute(attr, t(text));
-    }
-  }
-}

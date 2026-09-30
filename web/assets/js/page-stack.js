@@ -8,8 +8,8 @@
 // A page with a guard (guardPage) asks before it closes with unsaved changes,
 // however it is closed: its close button, Escape, the system back gesture or
 // the browser's back button.
-
-import {t} from './i18n.js';
+//
+// The pages are rendered by Vue; this module only opens and closes them.
 
 /**
  * Open pages, bottom first.
@@ -134,7 +134,6 @@ async function askToDiscard(page) {
 function confirmDiscard() {
   const dialog = document.getElementById('discard-dialog');
   if (dialog.open) return Promise.resolve(false);
-  document.getElementById('discard-title').textContent = t('Discard changes?');
   // Escape leaves the value empty, i.e. keeps editing.
   dialog.returnValue = '';
   dialog.showModal();

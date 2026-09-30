@@ -8,19 +8,13 @@ import {AppBar} from './app-bar.js';
 import {formatDayMonth, formatFull, MONTH_LONG, MONTH_SHORT, WEEKDAY_LONG, WEEKDAY_SHORT} from './dates.js';
 import {t} from './i18n.js';
 import {remote} from './remote-stats.js';
-import {route} from './route.js';
+import {goHome, route} from './route.js';
 import {factItem, FactsPanel, StatRow} from './stat-panels.js';
 import {state} from './state.js';
 import {hideTooltip} from './tooltip.js';
-import {createVueApp} from './vue-app.js';
 import {computed, nextTick, onMounted, ref, watch} from './vue.js';
 import {centreToday, currentYear, initChartTooltips, sinceLabel, YearGrid} from './year-grid.js';
 
-/**
- * The handlers of app.js.
- * @type {!Object<string, !Function>}
- */
-let actions;
 
 /**
  * Formats a rate as a percentage, or a dash for none.
@@ -168,7 +162,7 @@ const BarPanel = {
 };
 
 /** The day statistics of the current year. */
-const DayStatsView = {
+export const DayStatsView = {
   name: 'DayStatsView',
   components: {AppBar, BarPanel, FactsPanel, StatRow, YearGrid},
   setup() {
@@ -215,7 +209,7 @@ const DayStatsView = {
       legendRange: computed(
           () => `${formatDayMonth(`${year.value}-01-01`)} – ` +
               `${formatDayMonth(`${year.value}-12-31`)} ${year.value}`),
-      back: () => actions.closeDays(),
+      back: goHome,
     };
   },
   template: `
@@ -242,13 +236,3 @@ const DayStatsView = {
     </main>`,
 };
 
-/**
- * Mounts the day statistics view into `host`. It is shown when the route
- * names it.
- * @param {!Object<string, !Function>} handlers the handlers of app.js
- * @param {!Element} host
- */
-export function initDays(handlers, host) {
-  actions = handlers;
-  createVueApp(DayStatsView).mount(host);
-}

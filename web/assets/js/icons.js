@@ -421,19 +421,6 @@ export function colorLabel(name) {
   return label ? t(label) : name;
 }
 
-/**
- * Inserts the icon named in data-icon into each element below `root`. Elements
- * that already have their icon are skipped.
- * @param {!ParentNode=} root
- */
-export function paintIcons(root = document) {
-  for (const node of root.querySelectorAll('[data-icon]')) {
-    const svg = icons[node.dataset.icon];
-    if (!svg || node.querySelector('svg')) continue;
-    node.insertAdjacentHTML('afterbegin', svg);
-  }
-}
-
 // ---------- components ----------
 
 /**

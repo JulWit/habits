@@ -5,8 +5,8 @@ import * as habitHelpers from './habit-helpers.js';
 import {t} from './i18n.js';
 import {colorValue, hasHabitIcon} from './icons.js';
 import {closePage, openPage} from './page-stack.js';
+import {openCategory, openHabit} from './route.js';
 import {groupedHabits} from './state.js';
-import {createVueApp} from './vue-app.js';
 import {computed, nextTick, onMounted, ref, watch} from './vue.js';
 
 /**
@@ -29,11 +29,6 @@ const active = ref(0);
 /** Counts the openings, so the list is measured once it can be. */
 const openings = ref(0);
 
-/**
- * Callbacks set by app.js.
- * @type {!Object<string, !Function>}
- */
-let deps;
 
 /**
  * The dialog, once mounted.
@@ -107,14 +102,14 @@ async function choose(entry) {
   // The view takes the search's place in the history once its entry is gone.
   await closePage(dialog);
   if (entry.kind === 'habit') {
-    deps.openHabit(entry.item.id);
+    openHabit(entry.item.id);
   } else {
-    deps.openCategory(entry.item.id);
+    openCategory(entry.item.id);
   }
 }
 
 /** The search dialog (see openSearch). The input controls the list. */
-const SearchDialog = {
+export const SearchDialog = {
   name: 'SearchDialog',
   setup() {
     const el = ref(null);
@@ -238,19 +233,3 @@ const SearchDialog = {
     </dialog>`,
 };
 
-/**
- * Mounts the search into `host` and connects the search button of the title
- * bar.
- * @param {!Object<string, !Function>} handlers the handlers of app.js
- * @param {!Element} host
- */
-export function initSearch(handlers, host) {
-  deps = handlers;
-  createVueApp(SearchDialog).mount(host);
-
-  const button = document.getElementById('open-search');
-  button.addEventListener('click', openSearch);
-  // Without a keyboard the shortcut in the title means nothing; screen
-  // readers would still read it out.
-  if (matchMedia('(pointer: coarse)').matches) button.title = t('Search');
-}

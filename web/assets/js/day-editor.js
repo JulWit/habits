@@ -8,7 +8,6 @@ import {locale, t} from './i18n.js';
 import {closePage, openPage} from './page-stack.js';
 import {state} from './state.js';
 import {errorText, toast} from './undo.js';
-import {createVueApp} from './vue-app.js';
 import {computed, nextTick, onMounted, reactive, ref} from './vue.js';
 
 /**
@@ -151,7 +150,7 @@ function hint() {
 }
 
 /** The day dialog (see openDayDialog). */
-const DayEditor = {
+export const DayEditor = {
   name: 'DayEditor',
   setup() {
     const el = ref(null);
@@ -262,10 +261,3 @@ const DayEditor = {
     </dialog>`,
 };
 
-/**
- * Mounts the day dialog into `host`.
- * @param {!Element} host
- */
-export function initValueDialog(host) {
-  createVueApp(DayEditor).mount(host);
-}

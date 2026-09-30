@@ -2,24 +2,18 @@
 // is saved immediately: the state is updated first and restored if the server
 // rejects the change.
 
+import * as actions from './actions.js';
 import {api} from './api.js';
 import {currentDays, editing} from './board-view.js';
 import {locale, t, userTimeZone} from './i18n.js';
-import {ColorSwatches, icons, NEUTRAL} from './icons.js';
+import {ColorSwatches, NEUTRAL} from './icons.js';
+import {refresh} from './loader.js';
 import {forget} from './outbox.js';
 import {openPage, topPage} from './page-stack.js';
 import {factItem} from './stat-panels.js';
 import {archivedCount, replaceState, state} from './state.js';
 import {errorText, toast} from './undo.js';
-import {createVueApp} from './vue-app.js';
 import {computed, reactive, ref} from './vue.js';
-
-/**
- * Callbacks set by app.js.
- * @type {{reload: function(): !Promise<void>, skipDays: function(?string):
- *     void}}
- */
-let deps;
 
 /**
  * The last error and the page it belongs to; shown in the open settings page,
@@ -230,7 +224,7 @@ const MenuItem = {
 };
 
 /** The settings pages. */
-const SettingsDialog = {
+export const SettingsDialog = {
   name: 'SettingsDialog',
   components: {ColorSwatches, MenuItem, SettingsPage},
   setup() {
@@ -322,7 +316,7 @@ const SettingsDialog = {
      * @param {string} zone
      */
     const saveTimeZone = async (zone) => {
-      if (await saveSetting({timeZone: zone})) await deps.reload();
+      if (await saveSetting({timeZone: zone})) await refresh();
     };
 
     // ---------- data ----------
@@ -361,7 +355,7 @@ const SettingsDialog = {
         const counts = await api.importHabits(data);
         error.message = '';
         importResult.value = importSummary(counts);
-        await deps.reload();
+        await refresh();
       } catch (err) {
         const message = errorText(err);
         // The server names the habit or category that is invalid.
@@ -432,7 +426,7 @@ const SettingsDialog = {
       offerDeviceZone: computed(
           () => device && device !== (settings.value.timeZone || state.serverTimeZone)),
       archived: computed(() => archivedCount()),
-      skipAll: () => deps.skipDays(null),
+      skipAll: () => actions.skipDays(null),
       /**
        * Reloads the page to apply a new language, once the server has it.
        * @param {string} language
@@ -446,7 +440,7 @@ const SettingsDialog = {
        * @param {string} rateWindow
        */
       saveRateWindow: async (rateWindow) => {
-        if (await saveSetting({rateWindow})) await deps.reload();
+        if (await saveSetting({rateWindow})) await refresh();
       },
       /**
        * Previews a slider's value through the custom property `cssVar` while
@@ -715,21 +709,9 @@ const SettingsDialog = {
     </dialog>`,
 };
 
-/**
- * Mounts the settings pages into `host` and connects the settings button of
- * the title bar.
- * @param {{reload: function(): !Promise<void>, skipDays: function(?string):
- *     void}} handlers
- * @param {!Element} host
- */
-export function initSettings(handlers, host) {
-  deps = handlers;
-  createVueApp(SettingsDialog).mount(host);
 
-  const openButton = document.getElementById('open-settings');
-  openButton.innerHTML = icons.gear;
-  openButton.addEventListener('click', () => {
-    error.message = '';
-    openPage(document.getElementById('settings-dialog'));
-  });
+/** Opens the settings. */
+export function openSettings() {
+  error.message = '';
+  openPage(document.getElementById('settings-dialog'));
 }

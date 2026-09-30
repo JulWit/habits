@@ -1,7 +1,7 @@
 // Service worker for offline start. /api requests are never cached; all other
 // requests are served from the network, falling back to the cache.
 
-const CACHE = 'habits-v8';
+const CACHE = 'habits-v9';
 
 /**
  * Files cached on install. Other files are cached on first use.
@@ -10,6 +10,7 @@ const CACHE = 'habits-v8';
 const SHELL = [
   '/',
   '/assets/js/app.js',
+  '/assets/vendor/vue.esm-browser.prod.js',
   '/assets/css/base.css',
   '/assets/css/components.css',
   '/assets/css/forms.css',

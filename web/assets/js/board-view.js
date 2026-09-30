@@ -2,16 +2,17 @@
 // All blocks share the same grid, so a single day header aligns with all of
 // them.
 
+import * as actions from './actions.js';
 import {DayCell, HabitLabel, HeadDay} from './board-cells.js';
 import {addDays, dayOfMonth, daysBetween, formatLong, MONTH_LONG, MONTH_SHORT, monthIndex, weekdayIndex, yearOf} from './dates.js';
 import {dayProgress, DaySummary, initSummary, launchOrbs, newlyDone} from './day-summary.js';
 import {enableDragReorder} from './drag-reorder.js';
 import * as habitHelpers from './habit-helpers.js';
 import {t} from './i18n.js';
-import {icons} from './icons.js';
+import {extendHistory} from './loader.js';
+import {openCategory, openDays, openHabit, route} from './route.js';
 import {groupedHabits, state} from './state.js';
-import {createVueApp} from './vue-app.js';
-import {computed, nextTick, onBeforeUpdate, onMounted, onUpdated, ref, watch, watchEffect} from './vue.js';
+import {computed, nextTick, onBeforeUpdate, onMounted, onUpdated, ref, watch} from './vue.js';
 
 const LONG_PRESS_MS = 450;
 
@@ -23,12 +24,6 @@ const MAX_AHEAD_DAYS = 365;
 
 /** Minimum number of day columns. */
 const MIN_DAYS = 7;
-
-/**
- * The handlers of app.js.
- * @type {!Object<string, !Function>}
- */
-let actions;
 
 /** The board element (#board-grid), once mounted. @type {?HTMLElement} */
 let board = null;
@@ -155,7 +150,7 @@ async function showWindow(next) {
   const start = windowStart(days.value, wanted);
   // ISO dates compare correctly as strings.
   if (state.entriesFrom && start < state.entriesFrom) {
-    await actions.extendHistory(addDays(start, -PREFETCH_DAYS));
+    await extendHistory(addDays(start, -PREFETCH_DAYS));
   }
   offset.value = wanted;
   await nextTick();
@@ -751,7 +746,7 @@ const HabitRow = {
       byDragging,
       tapCell,
       onCellContextMenu,
-      open: (id) => actions.openHabit(id),
+      open: (id) => openHabit(id),
       move: (id, delta) => actions.moveHabit(id, delta),
     };
   },
@@ -805,7 +800,7 @@ const BoardBlock = {
       // The place of the category among all, for the arrow buttons.
       at: computed(
           () => state.categories.findIndex((c) => c.id === category.value?.id)),
-      openCategory: () => actions.openCategory(category.value.id),
+      openCategory: () => openCategory(category.value.id),
       move: (delta) => actions.moveCategory(category.value.id, delta),
     };
   },
@@ -852,9 +847,10 @@ const BoardBlock = {
 
 /**
  * The overview: the day header, the day summary and a block per category,
- * followed by the empty states and the button back to today.
+ * followed by the empty states and the button back to today. Rendered inside
+ * <main id="board-view">, whose width it measures.
  */
-const BoardView = {
+export const BoardView = {
   name: 'BoardView',
   components: {BoardBlock, DaySummary, HeadDay, ToolButton},
   setup() {
@@ -889,10 +885,12 @@ const BoardView = {
       if (flights.length > 0) nextTick(() => flights.forEach(launchOrbs));
     }, {immediate: true, flush: 'pre'});
 
-    // Everything the number of columns depends on. The attributes on <html>
+    // Everything the number of columns depends on, including whether the view
+    // is shown, as a hidden board cannot be measured. The attributes on <html>
     // are set by then (app.js), so the board is measured after the update.
     watch(
         [
+          () => route.view === 'board',
           () => all.value.length > 0,
           () => state.settings.density,
           () => state.settings.font,
@@ -956,7 +954,7 @@ const BoardView = {
       onBoardKeydown,
       onBoardFocus,
       createHabit: () => actions.createHabit(),
-      openDays: () => actions.openDays(),
+      openDays: () => openDays(),
     };
   },
   // No aria-live, as changes are announced via #board-status. With habits,
@@ -1080,22 +1078,5 @@ function initDragging(root, freeze) {
     handle: '[data-role="drag-habit"]',
     key: 'habit',
     ...callbacks(actions.setHabitOrder),
-  });
-}
-
-/**
- * Mounts the overview into #board-view.
- * @param {!Object<string, !Function>} handlers the handlers of app.js
- */
-export function initOverview(handlers) {
-  actions = handlers;
-  createVueApp(BoardView).mount('#board-view');
-
-  // The filter toggle in the title bar.
-  const button = document.getElementById('filter-open-habits');
-  button.innerHTML = icons.filter;
-  button.addEventListener('click', toggleFilter);
-  watchEffect(() => {
-    button.setAttribute('aria-pressed', String(onlyOpen.value));
   });
 }

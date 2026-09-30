@@ -8,25 +8,19 @@ import {openDayDialog} from './day-editor.js';
 import {openEditor} from './habit-editor.js';
 import * as habitHelpers from './habit-helpers.js';
 import {t} from './i18n.js';
+import {refresh} from './loader.js';
 import {discard, enqueue, flush, isConnectionError, isOffline, isSessionExpired, pending, setOffline} from './outbox.js';
+import {currentHabitId, goHome} from './route.js';
+import {openSkipDialog} from './skip-editor.js';
 import {applyEntryAnswer, categoryById, dropPending, groupedHabits, habitById, removeCategory, removeHabit, reorderCategoriesLocal, reorderHabitsLocal, showPending, state, upsertCategory, upsertHabit} from './state.js';
 import {errorText, offerUndo, toast} from './undo.js';
+import {ref} from './vue.js';
 
 /**
- * Callbacks set by app.js.
- * @type {{refresh: function(): !Promise<void>, currentHabitId: function():
- *     ?string, goHome: function(): void}}
+ * The text of the live region that announces the result of a tap on the
+ * board (#board-status).
  */
-let deps;
-
-/**
- * Sets the callbacks into app.js.
- * @param {{refresh: function(): !Promise<void>, currentHabitId: function():
- *     ?string, goHome: function(): void}} callbacks
- */
-export function configureActions(callbacks) {
-  deps = callbacks;
-}
+export const announcement = ref('');
 
 /**
  * The timer that fills in the live region.
@@ -40,12 +34,10 @@ let announceTimer;
  * @param {string} text
  */
 function announce(text) {
-  const el = document.getElementById('board-status');
-  if (!el) return;
   clearTimeout(announceTimer);
-  el.textContent = '';
+  announcement.value = '';
   announceTimer = setTimeout(() => {
-    el.textContent = text;
+    announcement.value = text;
   }, 50);
 }
 
@@ -189,7 +181,7 @@ async function writeEntry(habit, iso, change) {
     if (!canSendLater(err) || !isValueOnly(change)) {
       dropPending(habit.id, iso);
       toast(errorText(err), {error: true});
-      await deps.refresh();
+      await refresh();
       return;
     }
     queue(habit.id, iso, after.value, err);
@@ -316,26 +308,29 @@ export async function syncOutbox() {
   toast(
       n === 1 ? t('Back online — 1 change sent') :
                 t('Back online — {n} changes sent', {n}));
-  await deps.refresh();
+  await refresh();
 }
 
 /**
- * Skips a range of days ({from, to, habitIds}) as one undo step. Errors are
- * thrown for the dialog to display.
- * @param {{from: string, to: string, habitIds: (!Array<string>|undefined)}}
- *     input
- * @return {!Promise<void>}
+ * Opens the page for skipping days of a habit, or of all for null, and skips
+ * the range it sends as one undo step. Errors are thrown for the page to
+ * display.
+ * @param {?string} habitId
  */
-export async function skipDays(input) {
-  const {skipped, changeId} = await api.skipDays(input);
-  if (skipped === 0) {
-    toast(t('Nothing to skip: the days are not due or already have an entry.'));
-    return;
-  }
-  await deps.refresh();
-  offerUndo(
-      changeId,
-      skipped === 1 ? t('1 day skipped') : t('{n} days skipped', {n: skipped}));
+export function skipDays(habitId) {
+  const habit = habitId ? habitById(habitId) : null;
+  openSkipDialog(habit, async (input) => {
+    const {skipped, changeId} = await api.skipDays(input);
+    if (skipped === 0) {
+      toast(
+          t('Nothing to skip: the days are not due or already have an entry.'));
+      return;
+    }
+    await refresh();
+    offerUndo(
+        changeId,
+        skipped === 1 ? t('1 day skipped') : t('{n} days skipped', {n: skipped}));
+  });
 }
 
 // ---------- habits ----------
@@ -379,7 +374,7 @@ export async function deleteHabit(id) {
     return;
   }
   removeHabit(id);
-  if (deps.currentHabitId() === id) deps.goHome();
+  if (currentHabitId() === id) goHome();
   offerUndo(answer?.changeId, t('"{name}" deleted', {name: habit.name}));
 }
 
@@ -399,7 +394,7 @@ export async function toggleArchive(id) {
     toast(errorText(err), {error: true});
     return;
   }
-  if (archived && deps.currentHabitId() === id) deps.goHome();
+  if (archived && currentHabitId() === id) goHome();
   // The state keeps archived habits; the overview hides them unless shown.
   upsertHabit(withoutChange(answer));
   const name = habit.name;
@@ -562,7 +557,7 @@ export async function deleteCategory(id) {
     return;
   }
   removeCategory(id);
-  await deps.refresh();
+  await refresh();
 
   const name = category.name;
   let label;

@@ -1,6 +1,7 @@
 // Category detail view: its habits and its perfect days, i.e. days on which
 // every scheduled habit of the category was completed.
 
+import * as actions from './actions.js';
 import {api} from './api.js';
 import {AppBar} from './app-bar.js';
 import {openCategoryEditor} from './category-editor.js';
@@ -8,18 +9,12 @@ import * as habitHelpers from './habit-helpers.js';
 import {t} from './i18n.js';
 import {colorValue, hasHabitIcon} from './icons.js';
 import {remote} from './remote-stats.js';
-import {route} from './route.js';
+import {goHome, openHabit, route} from './route.js';
 import {changedItem, createdItem, factItem, FactsPanel, rateLabel, StatRow} from './stat-panels.js';
 import {categoryById, state} from './state.js';
-import {createVueApp} from './vue-app.js';
 import {computed} from './vue.js';
 import {currentYear, sinceLabel} from './year-grid.js';
 
-/**
- * The handlers of app.js.
- * @type {!Object<string, !Function>}
- */
-let actions;
 
 /**
  * Returns the stat tiles from the server's day statistics of the category's
@@ -78,7 +73,7 @@ function shortStreak({currentStreak, streakUnit}) {
  * The category view: its title bar, whether its progress is shown on the
  * board, its statistics, its habits in board order and its activity.
  */
-const CategoryView = {
+export const CategoryView = {
   name: 'CategoryView',
   components: {AppBar, FactsPanel, StatRow},
   setup() {
@@ -104,13 +99,13 @@ const CategoryView = {
         changedItem(category.value.updatedAt),
       ]),
       menu: [{action: 'delete', label: t('Delete'), icon: 'trash', danger: true}],
-      back: () => actions.closeCategory(),
+      back: goHome,
       edit: () => {
         const id = category.value.id;
         openCategoryEditor(id, (input) => actions.updateCategory(id, input));
       },
       remove: () => actions.deleteCategory(category.value.id),
-      openHabit: (id) => actions.openHabit(id),
+      openHabit,
     };
   },
   // The habit count is a stat tile. A habit without an icon gets a dot in its
@@ -149,13 +144,3 @@ const CategoryView = {
     </main>`,
 };
 
-/**
- * Mounts the category view into `host`. It shows the category the route
- * names.
- * @param {!Object<string, !Function>} handlers the handlers of app.js
- * @param {!Element} host
- */
-export function initCategory(handlers, host) {
-  actions = handlers;
-  createVueApp(CategoryView).mount(host);
-}

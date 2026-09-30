@@ -1,5 +1,6 @@
 // Habit detail view: statistics, activity chart and calendar heatmap.
 
+import * as actions from './actions.js';
 import {api} from './api.js';
 import {AppBar} from './app-bar.js';
 import {addDays, dayOfMonth, formatDayMonth, formatFull, formatLong, MONTH_LONG, MONTH_SHORT, monthIndex} from './dates.js';
@@ -7,19 +8,13 @@ import * as habitHelpers from './habit-helpers.js';
 import {t} from './i18n.js';
 import {colorValue, hasHabitIcon} from './icons.js';
 import {remote} from './remote-stats.js';
-import {route} from './route.js';
+import {goHome, route} from './route.js';
 import {changedItem, createdItem, daysAgo, factItem, FactsPanel, rateLabel, StatRow} from './stat-panels.js';
 import {habitById, state} from './state.js';
 import {hideTooltip} from './tooltip.js';
-import {createVueApp} from './vue-app.js';
 import {computed, nextTick, onMounted, ref, watch} from './vue.js';
 import {centreToday, currentYear, initChartTooltips, YearGrid} from './year-grid.js';
 
-/**
- * The handlers of app.js.
- * @type {!Object<string, !Function>}
- */
-let actions;
 
 /**
  * The year the heatmap and the cumulative chart show, e.g. "2025", and the
@@ -375,7 +370,7 @@ const CumulativeChart = {
  * cumulative chart (only for countable habits), the heatmap of a year and its
  * activity.
  */
-const HabitView = {
+export const HabitView = {
   name: 'HabitView',
   components: {AppBar, CumulativeChart, FactsPanel, StatRow, YearGrid},
   setup() {
@@ -454,7 +449,7 @@ const HabitView = {
             },
         {action: 'delete', label: t('Delete'), icon: 'trash', danger: true},
       ]),
-      back: () => actions.closeHabit(),
+      back: goHome,
       edit: () => actions.editHabit(habit.value.id),
       /**
        * Runs an action of the overflow menu.
@@ -516,12 +511,3 @@ const HabitView = {
     </main>`,
 };
 
-/**
- * Mounts the habit view into `host`. It shows the habit the route names.
- * @param {!Object<string, !Function>} handlers the handlers of app.js
- * @param {!Element} host
- */
-export function initDetail(handlers, host) {
-  actions = handlers;
-  createVueApp(HabitView).mount(host);
-}

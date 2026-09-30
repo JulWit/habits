@@ -1,10 +1,10 @@
 // Category picker, a page opened on top of the habit editor.
 
+import {createCategory} from './actions.js';
 import {t} from './i18n.js';
 import {closePage, openPage} from './page-stack.js';
 import {state} from './state.js';
 import {errorText} from './undo.js';
-import {createVueApp} from './vue-app.js';
 import {computed, onMounted, ref} from './vue.js';
 
 /**
@@ -28,11 +28,6 @@ const error = ref('');
  */
 let settle = null;
 
-/**
- * Callbacks set by app.js.
- * @type {{createCategory: function(string): !Promise<(!Category|undefined)>}}
- */
-let deps;
 
 /**
  * The page, once mounted.
@@ -75,7 +70,7 @@ function choose(value) {
 }
 
 /** The category picker (see openCategoryPicker). */
-const CategoryPicker = {
+export const CategoryPicker = {
   name: 'CategoryPicker',
   setup() {
     const el = ref(null);
@@ -106,7 +101,7 @@ const CategoryPicker = {
       }
       creating.value = true;
       try {
-        const created = await deps.createCategory(name);
+        const created = await createCategory(name);
         // Select the newly created category.
         if (created) choose(created.id);
       } catch (err) {
@@ -149,13 +144,3 @@ const CategoryPicker = {
     </dialog>`,
 };
 
-/**
- * Mounts the category picker into `host`.
- * @param {{createCategory: function(string): !Promise<(!Category|undefined)>}}
- *     handlers
- * @param {!Element} host
- */
-export function initCategoryPicker(handlers, host) {
-  deps = handlers;
-  createVueApp(CategoryPicker).mount(host);
-}

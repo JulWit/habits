@@ -5,7 +5,6 @@ import {colorValue, ColorSwatches, IconChoices} from './icons.js';
 import {closePage, guardPage, openPage} from './page-stack.js';
 import {categoryById, state} from './state.js';
 import {errorText} from './undo.js';
-import {createVueApp} from './vue-app.js';
 import {nextTick, onMounted, reactive, ref, watch} from './vue.js';
 
 /**
@@ -79,7 +78,7 @@ export async function openCategoryEditor(id, handler) {
 }
 
 /** The category page (see openCategoryEditor). */
-const CategoryEditor = {
+export const CategoryEditor = {
   name: 'CategoryEditor',
   components: {ColorSwatches, IconChoices},
   setup() {
@@ -164,10 +163,3 @@ const CategoryEditor = {
     </dialog>`,
 };
 
-/**
- * Mounts the category page into `host`.
- * @param {!Element} host
- */
-export function initCategoryEditor(host) {
-  createVueApp(CategoryEditor).mount(host);
-}

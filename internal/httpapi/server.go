@@ -173,12 +173,9 @@ func (s *server) handleIndex(w http.ResponseWriter, r *http.Request, user auth.U
 	data := struct {
 		settings.Settings
 		Lang string
-		// Options are the choices of the enumerated settings.
-		Options map[string][]settings.Option
 	}{
 		Settings: prefs,
 		Lang:     resolveLanguage(prefs.Language, r.Header.Get("Accept-Language")),
-		Options:  settings.Options(),
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")

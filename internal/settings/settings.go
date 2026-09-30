@@ -91,15 +91,15 @@ func (s Settings) Validate() error {
 // name shown in the settings (translated by the client); Icon names an icon of
 // the client, Lang the language the label is written in.
 type Option struct {
-	Value string
-	Label string
-	Icon  string
-	Lang  string
+	Value string `json:"value"`
+	Label string `json:"label"`
+	Icon  string `json:"icon,omitempty"`
+	Lang  string `json:"lang,omitempty"`
 }
 
 // options lists the allowed values of the enumerated settings, keyed by their
-// JSON names, in the order the settings pages offer them. index.html renders
-// its choices from these lists. Theme "system" follows the device, Language
+// JSON names, in the order the settings pages offer them. The client renders
+// its choices from these lists, which the state sends. Theme "system" follows the device, Language
 // "system" the browser's Accept-Language header and Font "system" is the
 // system font.
 var options = map[string][]Option{

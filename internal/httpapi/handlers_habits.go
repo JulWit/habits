@@ -54,6 +54,8 @@ type stateResponse struct {
 	ServerTimeZone string `json:"serverTimeZone"`
 	// Build describes the running binary.
 	Build buildInfo `json:"build"`
+	// Options are the choices of the enumerated settings.
+	Options map[string][]settings.Option `json:"options"`
 }
 
 // entryWindowDays is the default number of days of entries sent by
@@ -118,6 +120,7 @@ func (s *server) handleState(w http.ResponseWriter, r *http.Request, user auth.U
 			EarliestEntry:  domain.EarliestEntry,
 			ServerTimeZone: s.cfg.Location.String(),
 			Build:          currentBuild(),
+			Options:        settings.Options(),
 		}
 		return nil
 	})

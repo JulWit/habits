@@ -11,6 +11,7 @@ internal/httpapi            Routing, JSON API, frontend delivery
 scripts/genicons.go         Generates the PNG app icons
 scripts/firefox_test.py     Tests the frontend in Firefox with mouse, keyboard and touch
 scripts/format_templates.py Formats the Vue templates (Vue style guide)
+scripts/format_css.py       Formats the stylesheets (Google HTML/CSS style guide)
 .clang-format               Formatting of the frontend JS (Google style)
 web/                        Frontend (Vue, ES modules, no build step)
   index.html                  App shell, rendered as a Go template: the appearance

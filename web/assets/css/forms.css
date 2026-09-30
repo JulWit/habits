@@ -1,35 +1,40 @@
 /* ---------- dialogs ---------- */
 
 .dialog {
+  background: var(--surface);
   border: none;
   border-radius: var(--radius);
-  background: var(--surface);
   color: var(--text);
   padding: 0;
   width: min(34rem, calc(100vw - 2rem));
 }
 
-.dialog.compact { width: min(20rem, calc(100vw - 2rem)); }
+.dialog.compact {
+  width: min(20rem, calc(100vw - 2rem));
+}
+
 /* Neutral backdrop, without a colour cast in the dark theme. */
-.dialog::backdrop { background: rgba(0, 0, 0, .55); }
+.dialog::backdrop {
+  background: rgba(0, 0, 0, 0.55);
+}
 
 .dialog-head {
-  padding: calc(1.15 * var(--space)) calc(1.15 * var(--space)) calc(.25 * var(--space));
   font-size: var(--text-lg);
   font-weight: var(--weight-bold);
+  padding: calc(1.15 * var(--space)) calc(1.15 * var(--space)) calc(0.25 * var(--space));
 }
 
 .dialog-text {
-  margin: 0;
-  padding: calc(.35 * var(--space)) calc(1.15 * var(--space)) 0;
   color: var(--text-muted);
+  margin: 0;
+  padding: calc(0.35 * var(--space)) calc(1.15 * var(--space)) 0;
 }
 
 .dialog-foot {
   display: flex;
+  gap: calc(0.5 * var(--space));
   justify-content: flex-end;
-  gap: calc(.5 * var(--space));
-  padding: calc(.85 * var(--space)) calc(1.15 * var(--space)) calc(1.15 * var(--space));
+  padding: calc(0.85 * var(--space)) calc(1.15 * var(--space)) calc(1.15 * var(--space));
 }
 
 /* ---------- pages ---------- */
@@ -42,15 +47,15 @@
   --page-width: min(42rem, calc(var(--board-width) - var(--tools-outset)));
   /* Head and body share the column, however wide the window. */
   --page-inset: max(var(--gutter), calc((100% - var(--page-width)) / 2));
-  width: 100%;
-  height: 100%;
-  max-width: none;
-  max-height: none;
-  margin: 0;
-  border-radius: 0;
   background: transparent;
+  border-radius: 0;
+  height: 100%;
+  margin: 0;
+  max-height: none;
+  max-width: none;
   overflow-y: auto;
   overscroll-behavior: contain;
+  width: 100%;
 }
 
 /* The page background, as behind the overview (see body::before): colour and
@@ -62,64 +67,84 @@
 }
 
 /* Slides in from the right, as a new screen does. */
-.dialog.page[open] { animation: page-in .22s cubic-bezier(.2, .8, .2, 1); }
+.dialog.page[open] {
+  animation: page-in 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
 
 @keyframes page-in {
-  from { transform: translateX(2.5rem); opacity: 0; }
+  from {
+    opacity: 0;
+    transform: translateX(2.5rem);
+  }
 }
 
 /* The editors are full-screen dialogs, which rise from below. */
-.dialog.page.is-sheet[open] { animation: sheet-in .26s cubic-bezier(.2, .8, .2, 1); }
+.dialog.page.is-sheet[open] {
+  animation: sheet-in 0.26s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
 
 @keyframes sheet-in {
-  from { transform: translateY(3rem); opacity: 0; }
+  from {
+    opacity: 0;
+    transform: translateY(3rem);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .dialog.page[open],
-  .dialog.page.is-sheet[open] { animation: none; }
+  .dialog.page.is-sheet[open] {
+    animation: none;
+  }
 }
 
 /* Pages cover the view, so it need not scroll behind them. */
-html:has(.dialog.page[open]) { overflow: hidden; }
+html:has(.dialog.page[open]) {
+  overflow: hidden;
+}
 
 /* Title bar: back button, title and an optional action. Like the app's title
    bar, it uses the page background, so cards scrolling underneath are hidden
    (see base.css). */
 .page-head {
-  position: sticky;
-  top: 0;
-  z-index: 1;
-  display: flex;
   align-items: center;
-  gap: calc(.5 * var(--space));
+  display: flex;
+  gap: calc(0.5 * var(--space));
   min-height: var(--topbar-row);
   padding: env(safe-area-inset-top, 0px) var(--page-inset) 0;
   /* The back button's icon lines up with the card's edge. */
-  padding-left: calc(var(--page-inset) - .5rem);
+  padding-left: calc(var(--page-inset) - 0.5rem);
+  position: sticky;
+  top: 0;
+  z-index: 1;
 }
 
 .page-head h2 {
   flex: 1;
-  min-width: 0;
   font-size: var(--text-lg);
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.page-head .icon-button svg { width: var(--icon); height: var(--icon); }
+.page-head .icon-button svg {
+  height: var(--icon);
+  width: var(--icon);
+}
+
 @media (hover: hover) {
-  .page-head .icon-button:hover { background: var(--surface-2); }
+  .page-head .icon-button:hover {
+    background: var(--surface-2);
+  }
 }
 
 /* The content: one flat card on the page background, like the overview's. */
 .page-body {
-  margin: calc(.5 * var(--space)) var(--page-inset)
-    calc(3 * var(--space) + env(safe-area-inset-bottom, 0px));
-  padding: calc(1.25 * var(--space)) calc(1.15 * var(--space)) calc(.25 * var(--space));
-  border-radius: var(--radius);
   background: var(--surface);
+  border-radius: var(--radius);
+  margin: calc(0.5 * var(--space)) var(--page-inset)
+      calc(3 * var(--space) + env(safe-area-inset-bottom, 0px));
+  padding: calc(1.25 * var(--space)) calc(1.15 * var(--space)) calc(0.25 * var(--space));
 }
 
 /* On wide screens, the editors float as dialogs over the dimmed view instead
@@ -129,19 +154,24 @@ html:has(.dialog.page[open]) { overflow: hidden; }
 @media (min-width: 840px) and (min-height: 560px) {
   .dialog.page.is-floating {
     --page-inset: calc(1.15 * var(--space));
-    width: min(38rem, calc(100vw - 4rem));
+    background: var(--surface);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-float);
     /* Not auto, which stretches a modal dialog between its insets. */
     height: fit-content;
-    max-height: calc(100dvh - 4rem);
     margin: auto;
-    border-radius: var(--radius);
-    background: var(--surface);
-    box-shadow: var(--shadow-float);
+    max-height: calc(100dvh - 4rem);
+    width: min(38rem, calc(100vw - 4rem));
   }
 
   /* :root outranks the grain pattern's rules for backdrop and title bar. */
-  :root .dialog.page.is-floating::backdrop { background: rgba(0, 0, 0, .55); }
-  :root .dialog.page.is-floating .page-head { background: var(--surface); }
+  :root .dialog.page.is-floating::backdrop {
+    background: rgba(0, 0, 0, 0.55);
+  }
+
+  :root .dialog.page.is-floating .page-head {
+    background: var(--surface);
+  }
 
   /* The title bar's buttons keep the same distance from the top edge as the
      content from the other edges. */
@@ -152,9 +182,9 @@ html:has(.dialog.page[open]) { overflow: hidden; }
 
   /* The same padding on all sides. */
   .dialog.page.is-floating .page-body {
+    border-radius: 0;
     margin: 0;
     padding-block: var(--page-inset);
-    border-radius: 0;
   }
 
   /* The last shown field has no margin below, so the padding alone sets the
@@ -168,49 +198,51 @@ html:has(.dialog.page[open]) { overflow: hidden; }
 
 /* The settings menu has a card per section instead of one for the page. */
 .page-body:has(> .settings-menu) {
+  background: none;
   display: flex;
   flex-direction: column;
   gap: var(--card-gap);
   padding: 0;
-  background: none;
 }
 
 /* A section, each row opening its page. The rows reach to the card's edge. */
 .settings-menu {
+  background: var(--surface);
+  border-radius: var(--radius);
   display: flex;
   flex-direction: column;
   gap: 2px;
-  padding: calc(.35 * var(--space));
-  border-radius: var(--radius);
-  background: var(--surface);
+  padding: calc(0.35 * var(--space));
 }
 
 /* The signed-in user, a card above the sections. */
 .settings-account {
-  display: flex;
   align-items: center;
+  background: var(--surface);
+  border-radius: var(--radius);
+  display: flex;
   gap: var(--space);
   padding: var(--space) calc(1.1 * var(--space));
-  border-radius: var(--radius);
-  background: var(--surface);
 }
 
 /* Initials on the accent colour. */
 .settings-account-avatar {
-  display: grid;
-  place-items: center;
-  flex: none;
-  width: 2.75rem;
-  height: 2.75rem;
-  border-radius: 50%;
   background: var(--primary);
+  border-radius: 50%;
   color: var(--primary-text);
+  display: grid;
+  flex: none;
   font-size: var(--text-lg);
   font-weight: var(--weight-bold);
-  letter-spacing: .02em;
+  height: 2.75rem;
+  letter-spacing: 0.02em;
+  place-items: center;
+  width: 2.75rem;
 }
 
-.settings-account-text { min-width: 0; }
+.settings-account-text {
+  min-width: 0;
+}
 
 .settings-account-text p {
   margin: 0;
@@ -219,102 +251,156 @@ html:has(.dialog.page[open]) { overflow: hidden; }
   white-space: nowrap;
 }
 
-.settings-account-name { font-size: var(--text-lg); font-weight: var(--weight-bold); }
-.settings-account-detail { color: var(--text-muted); font-size: var(--text-md); }
-.settings-account-text .settings-account-groups { color: var(--text-faint); font-size: var(--text-sm); margin-top: 2px; }
+.settings-account-name {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
+}
+
+.settings-account-detail {
+  color: var(--text-muted);
+  font-size: var(--text-md);
+}
+
+.settings-account-text .settings-account-groups {
+  color: var(--text-faint);
+  font-size: var(--text-sm);
+  margin-top: 2px;
+}
 
 .settings-menu-item {
-  display: flex;
   align-items: center;
-  gap: var(--space);
-  width: 100%;
-  text-align: left;
-  border: none;
   background: transparent;
+  border: none;
   border-radius: var(--radius-sm);
-  padding: calc(.8 * var(--space)) calc(.75 * var(--space));
   cursor: pointer;
+  display: flex;
+  gap: var(--space);
+  padding: calc(0.8 * var(--space)) calc(0.75 * var(--space));
+  text-align: left;
   transition: var(--fill-fade);
+  width: 100%;
 }
 
 @media (hover: hover) {
-  .settings-menu-item:hover { background: var(--surface-2); }
+  .settings-menu-item:hover {
+    background: var(--surface-2);
+  }
 }
 
 .settings-menu-item-icon,
-.settings-menu-item-caret { display: flex; flex: none; }
-.settings-menu-item-icon { color: var(--text-muted); }
-.settings-menu-item-icon svg { width: 1.3rem; height: 1.3rem; }
-.settings-menu-item-caret { color: var(--text-faint); }
-.settings-menu-item-caret svg { width: 1rem; height: 1rem; }
+.settings-menu-item-caret {
+  display: flex;
+  flex: none;
+}
 
-.settings-menu-item-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.settings-menu-item-title { font-weight: var(--weight-emphasis); }
-.settings-menu-item-hint { font-size: var(--text-sm); color: var(--text-muted); }
+.settings-menu-item-icon {
+  color: var(--text-muted);
+}
+
+.settings-menu-item-icon svg {
+  height: 1.3rem;
+  width: 1.3rem;
+}
+
+.settings-menu-item-caret {
+  color: var(--text-faint);
+}
+
+.settings-menu-item-caret svg {
+  height: 1rem;
+  width: 1rem;
+}
+
+.settings-menu-item-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.settings-menu-item-title {
+  font-weight: var(--weight-emphasis);
+}
+
+.settings-menu-item-hint {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
 
 /* ---------- facts ---------- */
 
 /* Label and value rows, e.g. on the version page. */
-.settings-facts { margin: 0 0 calc(1.1 * var(--space)); }
+.settings-facts {
+  margin: 0 0 calc(1.1 * var(--space));
+}
 
 .settings-facts > div {
   display: flex;
-  justify-content: space-between;
   gap: var(--space);
-  padding: calc(.6 * var(--space)) 0;
+  justify-content: space-between;
+  padding: calc(0.6 * var(--space)) 0;
 }
 
 /* Dotted separators, like below the board's category headings. */
 .settings-facts > div + div {
   background: radial-gradient(circle, var(--border) 1px, transparent 1.3px)
-    left top / 10px 3px repeat-x;
+      left top / 10px 3px repeat-x;
 }
 
-.settings-facts dt { color: var(--text-muted); }
+.settings-facts dt {
+  color: var(--text-muted);
+}
 
 .settings-facts dd {
+  font-variant-numeric: tabular-nums;
   margin: 0;
   min-width: 0;
-  text-align: right;
   overflow-wrap: anywhere;
-  font-variant-numeric: tabular-nums;
+  text-align: right;
 }
 
 /* ---------- form fields ---------- */
 
 /* Form field with generous spacing, so hints belong visibly to their field. */
 .field {
-  display: block;
   border: none;
+  display: block;
   margin: 0 0 calc(1.75 * var(--space));
-  padding: 0;
   min-width: 0;
+  padding: 0;
 }
 
 .field.row,
-/* Two inputs side by side. */
-.field-row { display: flex; gap: calc(.75 * var(--space)); }
-.field .grow { flex: 1; min-width: 0; }
+/* Two inputs side by side. */ .field-row {
+  display: flex;
+  gap: calc(0.75 * var(--space));
+}
+
+.field .grow {
+  flex: 1;
+  min-width: 0;
+}
 
 .field-label {
+  color: var(--text-muted);
   display: block;
   font-size: var(--text-xs);
   font-weight: var(--weight-semibold);
-  color: var(--text-muted);
-  margin-bottom: calc(.3 * var(--space));
+  margin-bottom: calc(0.3 * var(--space));
   padding: 0;
 }
 
-.field input[type="text"],
-.field input[type="number"],
-.field input[type="date"],
+.field input[type='text'],
+.field input[type='number'],
+.field input[type='date'],
 .field textarea {
-  width: 100%;
   background: var(--field);
   border: 1px solid transparent;
   border-radius: var(--radius-sm);
-  padding: calc(.5 * var(--space)) calc(.6 * var(--space));
+  padding: calc(0.5 * var(--space)) calc(0.6 * var(--space));
   resize: vertical;
+  width: 100%;
 }
 
 .field input:focus,
@@ -322,8 +408,8 @@ html:has(.dialog.page[open]) { overflow: hidden; }
 .category-picker-create input:focus,
 .select:focus-visible {
   border-color: var(--primary);
-  outline: none;
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 22%, transparent);
+  outline: none;
 }
 
 /* ---------- segmented control ---------- */
@@ -331,14 +417,16 @@ html:has(.dialog.page[open]) { overflow: hidden; }
 .segmented {
   /* Inset of the options, so the selected one stands clear of the edge. */
   --segment-inset: 4px;
-  display: flex;
-  gap: var(--segment-inset);
   background: var(--control);
   border-radius: var(--radius-sm);
+  display: flex;
+  gap: var(--segment-inset);
   padding: var(--segment-inset);
 }
 
-.segmented.wrap { flex-wrap: wrap; }
+.segmented.wrap {
+  flex-wrap: wrap;
+}
 
 .segmented label {
   flex: 1 1 auto;
@@ -346,22 +434,22 @@ html:has(.dialog.page[open]) { overflow: hidden; }
 }
 
 .segmented input {
-  position: absolute;
   opacity: 0;
   pointer-events: none;
+  position: absolute;
 }
 
 .segmented span {
-  display: flex;
   align-items: center;
-  justify-content: center;
-  gap: calc(.35 * var(--space));
-  padding: calc(.6 * var(--space)) calc(.5 * var(--space));
   /* Rounded a little less than the container. */
   border-radius: var(--radius-xs);
-  font-size: var(--text-md);
   color: var(--text-muted);
   cursor: pointer;
+  display: flex;
+  font-size: var(--text-md);
+  gap: calc(0.35 * var(--space));
+  justify-content: center;
+  padding: calc(0.6 * var(--space)) calc(0.5 * var(--space));
   white-space: nowrap;
 }
 
@@ -371,44 +459,54 @@ html:has(.dialog.page[open]) { overflow: hidden; }
   font-weight: var(--weight-semibold);
 }
 
-.segmented span svg { width: .95rem; height: .95rem; flex: none; }
+.segmented span svg {
+  flex: none;
+  height: 0.95rem;
+  width: 0.95rem;
+}
 
-.segmented input:focus-visible + span { outline: 2px solid var(--primary); outline-offset: 1px; }
+.segmented input:focus-visible + span {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+}
 
 /* A choice that does not fit the others, e.g. a number per week for a limit. */
 .segmented input:disabled + span {
   color: var(--text-faint);
-  opacity: .6;
   cursor: not-allowed;
+  opacity: 0.6;
 }
 
 /* ---------- colour swatches ---------- */
 
-.app-color-swatches { display: flex; flex-wrap: wrap; gap: calc(.4 * var(--space)); }
+.app-color-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(0.4 * var(--space));
+}
 
 .app-color-swatches-item {
-  width: 1.75rem;
-  height: 1.75rem;
-  border-radius: 50%;
-  border: 2px solid transparent;
-  cursor: pointer;
-  /* Room between the colour and the selection ring; set on touch screens. */
-  padding: var(--swatch-pad, 0);
   /* The colour is set by the script. */
   background: var(--swatch, transparent) content-box;
+  border: 2px solid transparent;
+  border-radius: 50%;
+  cursor: pointer;
+  height: 1.75rem;
+  /* Room between the colour and the selection ring; set on touch screens. */
+  padding: var(--swatch-pad, 0);
+  width: 1.75rem;
 }
 
 /* "No colour": a struck-through empty ring, drawn in the content box, so it
    has the size of the colour discs. */
 .app-color-swatches-item.is-none {
-  background:
-    linear-gradient(to top right, transparent 46%, var(--text-muted) 46% 54%, transparent 54%)
-    content-box,
-    radial-gradient(closest-side, transparent calc(100% - 1.5px), var(--text-muted) calc(100% - 1px))
-    content-box;
+  background: linear-gradient(to top right, transparent 46%, var(--text-muted) 46% 54%, transparent 54%)
+      content-box,
+      radial-gradient(closest-side, transparent calc(100% - 1.5px), var(--text-muted) calc(100% - 1px))
+      content-box;
 }
 
-.app-color-swatches-item[aria-checked="true"] {
+.app-color-swatches-item[aria-checked='true'] {
   border-color: var(--text);
   transform: scale(1.06);
 }
@@ -419,26 +517,31 @@ html:has(.dialog.page[open]) { overflow: hidden; }
    (--habit-color). */
 .app-icon-choices {
   display: grid;
+  gap: calc(0.35 * var(--space));
   grid-template-columns: repeat(auto-fill, minmax(2.25rem, 1fr));
-  gap: calc(.35 * var(--space));
 }
 
 .app-icon-choices-item {
-  display: grid;
-  place-items: center;
   aspect-ratio: 1;
-  padding: 0;
+  background: color-mix(in srgb, var(--habit-color) 16%, transparent) padding-box;
   border: 2px solid transparent;
   border-radius: var(--radius-sm);
-  background: color-mix(in srgb, var(--habit-color) 16%, transparent) padding-box;
   color: var(--habit-color);
   cursor: pointer;
+  display: grid;
+  padding: 0;
+  place-items: center;
 }
 
-.app-icon-choices-item svg { width: 1.15rem; height: 1.15rem; }
+.app-icon-choices-item svg {
+  height: 1.15rem;
+  width: 1.15rem;
+}
 
 @media (hover: hover) {
-  .app-icon-choices-item:hover { background-color: color-mix(in srgb, var(--habit-color) 26%, transparent); }
+  .app-icon-choices-item:hover {
+    background-color: color-mix(in srgb, var(--habit-color) 26%, transparent);
+  }
 }
 
 .app-icon-choices-item.is-none {
@@ -446,28 +549,37 @@ html:has(.dialog.page[open]) { overflow: hidden; }
   border: 2px dashed var(--border-strong);
 }
 
-.app-icon-choices-item[aria-checked="true"] { border: 2px solid var(--text); }
+.app-icon-choices-item[aria-checked='true'] {
+  border: 2px solid var(--text);
+}
 
-.app-icon-choices-item:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
+.app-icon-choices-item:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+}
 
 /* ---------- weekday picker ---------- */
 
-.weekdays { display: flex; gap: calc(.3 * var(--space)); flex-wrap: wrap; }
+.weekdays {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(0.3 * var(--space));
+}
 
 .weekday {
-  width: 2.4rem;
-  height: 2.4rem;
-  border-radius: 50%;
+  background: var(--control);
   /* Transparent border, so selecting a day does not change its size. */
   border: var(--ring) solid transparent;
-  background: var(--control);
+  border-radius: 50%;
+  color: var(--text-muted);
   cursor: pointer;
   font-size: var(--text-sm);
   font-weight: var(--weight-semibold);
-  color: var(--text-muted);
+  height: 2.4rem;
+  width: 2.4rem;
 }
 
-.weekday[aria-pressed="true"] {
+.weekday[aria-pressed='true'] {
   background: var(--primary);
   border-color: var(--primary);
   color: var(--primary-text);
@@ -476,78 +588,90 @@ html:has(.dialog.page[open]) { overflow: hidden; }
 /* Dropdown styled like the category picker: flat, with its own chevron. */
 .select {
   appearance: none;
-  width: 100%;
-  border: 1px solid transparent;
-  border-radius: var(--radius-sm);
   /* The chevron in a grey that reads in both themes, as an image cannot use
      the colour tokens. */
-  background: var(--field) no-repeat right calc(.6 * var(--space)) center / 1rem
-    url(/assets/images/chevron-down.svg);
-  padding: calc(.5 * var(--space)) calc(1.2 * var(--space) + 1rem) calc(.5 * var(--space))
-    calc(.6 * var(--space));
+  background: var(--field) no-repeat right calc(0.6 * var(--space)) center / 1rem
+      url(/assets/images/chevron-down.svg);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
   cursor: pointer;
+  padding: calc(0.5 * var(--space)) calc(1.2 * var(--space) + 1rem) calc(0.5 * var(--space))
+      calc(0.6 * var(--space));
   transition: var(--fill-fade);
+  width: 100%;
 }
 
 @media (hover: hover) {
-  .select:hover { background-color: var(--field-hover); }
+  .select:hover {
+    background-color: var(--field-hover);
+  }
 }
 
 /* The ring only for the keyboard (see the text fields); a click opens the list
    instead. */
-.select:focus { outline: none; }
+.select:focus {
+  outline: none;
+}
 
 /* Where the list can be styled too: a flat pane, the chosen option in the
    accent colour. */
 @supports (appearance: base-select) {
   .select,
-  .select::picker(select) { appearance: base-select; }
+  .select::picker(select) {
+    appearance: base-select;
+  }
 
   .select {
-    display: flex;
     align-items: center;
     background-image: none;
-    padding-right: calc(.6 * var(--space));
+    display: flex;
+    padding-right: calc(0.6 * var(--space));
   }
 
   /* The chevron of the category picker, in the token colour. */
   .select::picker-icon {
-    content: "";
-    width: 1rem;
+    background: var(--text-faint);
+    content: '';
     height: 1rem;
     margin-left: auto;
-    background: var(--text-faint);
     mask: no-repeat center / contain
-      url(/assets/images/chevron-down.svg);
-    transition: rotate .15s ease;
+        url(/assets/images/chevron-down.svg);
+    transition: rotate 0.15s ease;
+    width: 1rem;
   }
 
-  .select:open::picker-icon { rotate: 180deg; }
+  .select:open::picker-icon {
+    rotate: 180deg;
+  }
 
-  .select:open { background-color: var(--field-hover); }
+  .select:open {
+    background-color: var(--field-hover);
+  }
 
   .select::picker(select) {
+    background: var(--float);
     border: none;
     border-radius: var(--radius-sm);
-    background: var(--float);
-    color: var(--text);
-    padding: 4px;
-    margin-block: 4px;
     /* Floats over the page, as the overflow menu does. */
     box-shadow: var(--shadow-float);
+    color: var(--text);
+    margin-block: 4px;
+    padding: 4px;
     /* Below the field; above only if it does not fit there. The default
        picks the side with more room, often above. */
     position-try-order: normal;
   }
 
   .select option {
-    padding: calc(.45 * var(--space)) calc(.6 * var(--space));
     border-radius: var(--radius-xs);
     cursor: pointer;
+    padding: calc(0.45 * var(--space)) calc(0.6 * var(--space));
   }
 
   /* The selection is shown by its colour. */
-  .select option::checkmark { display: none; }
+  .select option::checkmark {
+    display: none;
+  }
 
   .select option:hover,
   .select option:focus-visible {
@@ -562,64 +686,97 @@ html:has(.dialog.page[open]) { overflow: hidden; }
   }
 
   .select option:disabled {
-    color: var(--text-faint);
     background: none;
+    color: var(--text-faint);
     cursor: default;
   }
 }
 
 /* Font preview: the field and each option use their own font. */
-.settings-font { font-family: var(--font); }
-.settings-font option[value="system"] { font-family: var(--font-system); }
-.settings-font option[value="inter"] { font-family: "Inter", var(--font-system); }
-.settings-font option[value="roboto"] { font-family: "Roboto", var(--font-system); }
-.settings-font option[value="geist"] { font-family: "Geist", var(--font-system); }
-.settings-font option[value="opensans"] { font-family: "Open Sans", var(--font-system); }
+.settings-font {
+  font-family: var(--font);
+}
+
+.settings-font option[value='system'] {
+  font-family: var(--font-system);
+}
+
+.settings-font option[value='inter'] {
+  font-family: 'Inter', var(--font-system);
+}
+
+.settings-font option[value='roboto'] {
+  font-family: 'Roboto', var(--font-system);
+}
+
+.settings-font option[value='geist'] {
+  font-family: 'Geist', var(--font-system);
+}
+
+.settings-font option[value='opensans'] {
+  font-family: 'Open Sans', var(--font-system);
+}
 
 /* ---------- stepper ---------- */
 
 .stepper {
-  display: flex;
   align-items: center;
-  gap: calc(.75 * var(--space));
-  padding: var(--space) calc(1.15 * var(--space)) calc(.25 * var(--space));
+  display: flex;
+  gap: calc(0.75 * var(--space));
+  padding: var(--space) calc(1.15 * var(--space)) calc(0.25 * var(--space));
 }
 
 .stepper input {
-  flex: 1;
-  min-width: 0;
-  text-align: center;
-  font-size: var(--text-xl);
-  font-weight: var(--weight-bold);
   background: var(--field);
   border: 1px solid transparent;
   border-radius: var(--radius-sm);
-  padding: calc(.4 * var(--space));
+  flex: 1;
+  font-size: var(--text-xl);
+  font-weight: var(--weight-bold);
+  min-width: 0;
+  padding: calc(0.4 * var(--space));
+  text-align: center;
 }
 
 /* Quick value buttons below the stepper, in equal columns. */
 .day-editor-quick-steps {
   display: grid;
+  gap: calc(0.4 * var(--space));
   grid-template-columns: repeat(4, 1fr);
-  gap: calc(.4 * var(--space));
-  padding: calc(.7 * var(--space)) calc(1.15 * var(--space)) 0;
+  padding: calc(0.7 * var(--space)) calc(1.15 * var(--space)) 0;
 }
 
 .day-editor-quick-steps .button {
-  padding-inline: calc(.2 * var(--space));
   font-variant-numeric: tabular-nums;
+  padding-inline: calc(0.2 * var(--space));
 }
 
-.day-editor-hint { padding: 0 calc(1.15 * var(--space)); margin-top: calc(.4 * var(--space)); }
+.day-editor-hint {
+  margin-top: calc(0.4 * var(--space));
+  padding: 0 calc(1.15 * var(--space));
+}
 
 /* ---------- day dialog ---------- */
 
 /* The value controls, dimmed while the day is skipped, which clears the value. */
-.day-editor-value { border: none; margin: 0; padding: 0; min-width: 0; }
-.day-editor-value:disabled { opacity: .45; }
-.day-editor-value > .switch { padding: calc(.9 * var(--space)) calc(1.15 * var(--space)) 0; }
+.day-editor-value {
+  border: none;
+  margin: 0;
+  min-width: 0;
+  padding: 0;
+}
 
-.day-editor-skip { padding: calc(.9 * var(--space)) calc(1.15 * var(--space)) 0; }
+.day-editor-value:disabled {
+  opacity: 0.45;
+}
+
+.day-editor-value > .switch {
+  padding: calc(0.9 * var(--space)) calc(1.15 * var(--space)) 0;
+}
+
+.day-editor-skip {
+  padding: calc(0.9 * var(--space)) calc(1.15 * var(--space)) 0;
+}
 
 /* ---------- narrow screens ---------- */
 
@@ -627,12 +784,12 @@ html:has(.dialog.page[open]) { overflow: hidden; }
    heading keeps its text for screen readers. */
 @container topbar (max-width: 270px) {
   .brand-text {
-    position: absolute;
-    width: 1px;
+    clip-path: inset(50%);
     height: 1px;
     overflow: hidden;
-    clip-path: inset(50%);
+    position: absolute;
     white-space: nowrap;
+    width: 1px;
   }
 }
 
@@ -643,76 +800,113 @@ html:has(.dialog.page[open]) { overflow: hidden; }
     --cell: 34px;
     --label-min: 120px;
     --label-tight-min: 120px;
-    --topbar-row: calc(2.25rem + .85 * var(--space));
+    --topbar-row: calc(2.25rem + 0.85 * var(--space));
   }
 
   /* Narrow page gutter and card padding, so the room goes to the names. The
      smaller corner radius on the board keeps the today band clear of the
      rounded corners at 8px padding. */
-  :root { --gutter: 8px; --block-pad-x: 8px; }
-  .board-view-grid { --radius: 10px; }
+  :root {
+    --gutter: 8px;
+    --block-pad-x: 8px;
+  }
 
-  .brand { font-size: 1.05rem; }
+  .board-view-grid {
+    --radius: 10px;
+  }
+
+  .brand {
+    font-size: 1.05rem;
+  }
+
   .field.row,
-  .field-row { flex-direction: column; gap: var(--space); }
+  .field-row {
+    flex-direction: column;
+    gap: var(--space);
+  }
 }
 
 /* ---------- category picker ---------- */
 
 /* Input-like button that opens the category picker. */
 .picker {
-  display: flex;
   align-items: center;
-  gap: calc(.5 * var(--space));
-  width: 100%;
-  text-align: left;
   background: var(--field);
   border: 1px solid transparent;
   border-radius: var(--radius-sm);
-  padding: calc(.5 * var(--space)) calc(.6 * var(--space));
   cursor: pointer;
+  display: flex;
+  gap: calc(0.5 * var(--space));
+  padding: calc(0.5 * var(--space)) calc(0.6 * var(--space));
+  text-align: left;
   transition: var(--fill-fade);
+  width: 100%;
 }
 
 @media (hover: hover) {
-  .picker:hover { background: var(--field-hover); }
+  .picker:hover {
+    background: var(--field-hover);
+  }
 }
 
-.picker-value { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.picker-value.is-empty { color: var(--text-faint); }
-.picker-caret { display: flex; color: var(--text-faint); }
-.picker-caret svg { width: 1rem; height: 1rem; }
+.picker-value {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.picker-value.is-empty {
+  color: var(--text-faint);
+}
+
+.picker-caret {
+  color: var(--text-faint);
+  display: flex;
+}
+
+.picker-caret svg {
+  height: 1rem;
+  width: 1rem;
+}
 
 /* Category list of the picker. */
 .category-picker-list {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  margin-bottom: calc(.85 * var(--space));
+  margin-bottom: calc(0.85 * var(--space));
 }
 
 .category-picker-option {
-  display: flex;
   align-items: center;
-  gap: var(--row-gap);
-  text-align: left;
-  border: none;
   background: transparent;
+  border: none;
   border-radius: var(--radius-sm);
-  padding: var(--row-pad);
   cursor: pointer;
+  display: flex;
+  gap: var(--row-gap);
+  padding: var(--row-pad);
+  text-align: left;
   transition: var(--fill-fade);
 }
 
 @media (hover: hover) {
-  .category-picker-option:hover { background: var(--surface-2); }
+  .category-picker-option:hover {
+    background: var(--surface-2);
+  }
 }
-.category-picker-option.is-stale { color: var(--text-faint); font-style: italic; }
+
+.category-picker-option.is-stale {
+  color: var(--text-faint);
+  font-style: italic;
+}
 
 /* The chosen category in the accent colour, as the chosen option of a
    dropdown. Hover and pressed states follow the primary button (see the
    pressed state below). */
-.category-picker-option[aria-selected="true"] {
+.category-picker-option[aria-selected='true'] {
   background: var(--primary);
   color: var(--primary-text);
   font-weight: var(--weight-semibold);
@@ -720,75 +914,86 @@ html:has(.dialog.page[open]) { overflow: hidden; }
 
 /* The icon tile takes the text colour, as a habit colour may clash with the
    accent. Not via --habit-color, which is set inline. */
-.category-picker-option[aria-selected="true"] .habit-icon {
-  color: inherit;
+.category-picker-option[aria-selected='true'] .habit-icon {
   background: color-mix(in srgb, currentColor 16%, transparent);
+  color: inherit;
 }
 
-.category-picker-option-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.category-picker-option-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
 /* Creating a category in the picker. */
 .category-picker-create {
   display: flex;
-  gap: calc(.5 * var(--space));
-  padding-top: calc(.85 * var(--space));
+  gap: calc(0.5 * var(--space));
+  padding-top: calc(0.85 * var(--space));
 }
 
 /* The create row has no margin of its own, unlike form fields, so the card
    gets the same padding below as above. */
-.page-body:has(> .category-picker-create) { padding-bottom: calc(1.25 * var(--space)); }
+.page-body:has(> .category-picker-create) {
+  padding-bottom: calc(1.25 * var(--space));
+}
 
 .category-picker-create input {
-  flex: 1;
-  min-width: 0;
   background: var(--field);
   border: 1px solid transparent;
   border-radius: var(--radius-sm);
-  padding: calc(.5 * var(--space)) calc(.6 * var(--space));
+  flex: 1;
+  min-width: 0;
+  padding: calc(0.5 * var(--space)) calc(0.6 * var(--space));
 }
 
 /* Checkbox with label, for on/off settings. */
 .switch {
-  display: flex;
   align-items: center;
-  gap: calc(.55 * var(--space));
   cursor: pointer;
+  display: flex;
+  gap: calc(0.55 * var(--space));
 }
 
 .switch input {
-  width: 1.05rem;
-  height: 1.05rem;
   accent-color: var(--primary);
   cursor: pointer;
   flex: none;
+  height: 1.05rem;
+  width: 1.05rem;
 }
 
 /* Slider with its value beside it. */
 .slider {
-  display: grid;
-  grid-template-columns: 1fr auto;
   align-items: center;
-  gap: calc(.2 * var(--space)) calc(.6 * var(--space));
-  margin-top: calc(.9 * var(--space));
+  display: grid;
+  gap: calc(0.2 * var(--space)) calc(0.6 * var(--space));
+  grid-template-columns: 1fr auto;
+  margin-top: calc(0.9 * var(--space));
 }
 
-.slider .field-label { grid-column: 1; margin: 0; }
+.slider .field-label {
+  grid-column: 1;
+  margin: 0;
+}
 
 .slider output {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
   grid-column: 2;
   grid-row: 1 / span 2;
   min-width: 3.2rem;
   text-align: right;
-  color: var(--text-muted);
-  font-size: var(--text-sm);
-  font-variant-numeric: tabular-nums;
 }
 
-.slider input[type="range"] {
-  grid-column: 1;
-  width: 100%;
+.slider input[type='range'] {
   accent-color: var(--primary);
   cursor: pointer;
+  grid-column: 1;
+  width: 100%;
 }
 
 /* ---------- pressed state ----------
@@ -802,20 +1007,28 @@ html:has(.dialog.page[open]) { overflow: hidden; }
 .category-view-habit:active,
 .board-block-link:active,
 .board-habit-row-label .board-habit-label:active,
-.board-day-cell:active:not(:disabled) { background: var(--border); }
+.board-day-cell:active:not(:disabled) {
+  background: var(--border);
+}
 
 /* The today column keeps its band colour, a step darker than on hover. */
 .board-day-cell.is-today:active:not(:disabled) {
   background: color-mix(in srgb, var(--band-shown) 76%, var(--text));
 }
 
-html[data-today-band="off"] .board-day-cell.is-today:active:not(:disabled) { background: var(--border); }
+html[data-today-band='off'] .board-day-cell.is-today:active:not(:disabled) {
+  background: var(--border);
+}
 
 /* The chosen category keeps its accent fill, like a primary button. */
-.category-picker-option[aria-selected="true"]:active { background: var(--primary-hover); }
+.category-picker-option[aria-selected='true']:active {
+  background: var(--primary-hover);
+}
 
 @media (hover: hover) {
-  .category-picker-option[aria-selected="true"]:hover { background: var(--primary-hover); }
+  .category-picker-option[aria-selected='true']:hover {
+    background: var(--primary-hover);
+  }
 }
 
 /* ---------- touch screens ----------
@@ -829,21 +1042,30 @@ html[data-today-band="off"] .board-day-cell.is-today:active:not(:disabled) { bac
   :root {
     --hit: 48px;
     /* The title bar grows with its buttons. After the narrow-screen rule. */
-    --topbar-row: calc(var(--hit) + .85 * var(--space));
+    --topbar-row: calc(var(--hit) + 0.85 * var(--space));
   }
 
   .icon-button:not(.board-habit-row-tools *, .board-block-tools *),
   .button {
-    min-width: var(--hit);
     min-height: var(--hit);
+    min-width: var(--hit);
   }
 
   /* The buttons bring their own room. */
-  .topbar-actions { gap: calc(.15 * var(--space)); }
+  .topbar-actions {
+    gap: calc(0.15 * var(--space));
+  }
+
   html[data-tight] .board-view-day-nav,
-  .board-view-day-nav { gap: 0; }
+  .board-view-day-nav {
+    gap: 0;
+  }
+
   /* The usual arrow size, also on a tight board. */
-  html[data-tight] .board-view-day-nav .icon-button svg { width: var(--icon); height: var(--icon); }
+  html[data-tight] .board-view-day-nav .icon-button svg {
+    height: var(--icon);
+    width: var(--icon);
+  }
 
   .settings-menu-item,
   .picker,
@@ -855,39 +1077,60 @@ html[data-today-band="off"] .board-day-cell.is-today:active:not(:disabled) { bac
   .switch,
   .app-bar-menu-item,
   .field input,
-  .category-picker-create input { min-height: var(--hit); }
-
-  /* The segment fills the control's inset too, so the whole height counts. */
-  .segmented label { position: relative; }
-
-  .segmented label::after {
-    content: "";
-    position: absolute;
-    inset: calc(-1 * var(--segment-inset)) 0;
+  .category-picker-create input {
+    min-height: var(--hit);
   }
 
-  .segmented span { min-height: calc(var(--hit) - 2 * var(--segment-inset)); }
+  /* The segment fills the control's inset too, so the whole height counts. */
+  .segmented label {
+    position: relative;
+  }
+
+  .segmented label::after {
+    content: '';
+    inset: calc(-1 * var(--segment-inset)) 0;
+    position: absolute;
+  }
+
+  .segmented span {
+    min-height: calc(var(--hit) - 2 * var(--segment-inset));
+  }
 
   /* A ring of room around each colour; the selection ring lies on it. */
-  .app-color-swatches { gap: 0; }
-  .app-color-swatches-item { --swatch-pad: 5px; width: var(--hit); height: var(--hit); }
+  .app-color-swatches {
+    gap: 0;
+  }
 
-  .app-icon-choices { grid-template-columns: repeat(auto-fill, minmax(var(--hit), 1fr)); }
+  .app-color-swatches-item {
+    --swatch-pad: 5px;
+    height: var(--hit);
+    width: var(--hit);
+  }
+
+  .app-icon-choices {
+    grid-template-columns: repeat(auto-fill, minmax(var(--hit), 1fr));
+  }
 
   /* Seven equal columns, shrinking slightly on very narrow cards instead of
      wrapping a day into a second row. */
   .weekdays {
     display: grid;
-    grid-template-columns: repeat(7, minmax(0, var(--hit)));
     gap: 2px;
+    grid-template-columns: repeat(7, minmax(0, var(--hit)));
   }
 
-  .weekday { width: auto; height: auto; aspect-ratio: 1; }
+  .weekday {
+    aspect-ratio: 1;
+    height: auto;
+    width: auto;
+  }
 
   /* iOS zooms into fields below 16px when they are focused. */
   .field input,
   .field textarea,
   .select,
   .category-picker-create input,
-  .search-input { font-size: max(16px, 1rem); }
+  .search-input {
+    font-size: max(16px, 1rem);
+  }
 }

@@ -32,16 +32,21 @@ the templates in it the [Vue style guide](https://vuejs.org/style-guide/) (one
 attribute per line, the guide's attribute order), and the HTML and CSS the
 [Google HTML/CSS style
 guide](https://google.github.io/styleguide/htmlcssguide.html); see the style
-rules in `AGENTS.md`. Both formatters are developer tools, not build steps:
+rules in `AGENTS.md`. The formatters are developer tools, not build steps:
 
 ```bash
 uvx clang-format -i web/sw.js web/assets/js/*.js
 uv run scripts/format_templates.py web/assets/js/*.js
+uv run scripts/format_css.py web/assets/css/*.css
 ```
 
-`scripts/format_templates.py --check` only lists the files it would change.
-It changes whitespace only where Vue renders the same; a line it cannot break
-(a long expression) stays longer than 80 columns and belongs in `setup()`.
+With `--check`, both scripts only list the files they would change.
+`format_templates.py` changes whitespace only where Vue renders the same; a
+line it cannot break (a long expression) stays longer than 80 columns and
+belongs in `setup()`. `format_css.py` puts every selector and declaration on
+a line of its own and the declarations in alphabetical order, custom
+properties first in the order written; it refuses to move a declaration past
+another that sets the same property (`padding-left` past `padding`).
 
 ## Tests
 

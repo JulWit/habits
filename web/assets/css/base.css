@@ -7,8 +7,6 @@
    [data-theme] is matched without an html prefix, so the style guide can apply
    a theme to a subtree. */
 :root {
-  color-scheme: light dark;
-
   --bg: light-dark(#e6e8ec, #0f0f0f);
   --surface: light-dark(#fff, #191919);
   --surface-2: light-dark(#eceef2, #252525);
@@ -51,7 +49,6 @@
   --c-violet: #7c3aed;
   --c-pink: #db2777;
   --c-slate: #64748b;
-
   /* The red of the habit colours. */
   --danger: var(--c-red);
   /* The red as text (buttons, errors, menus), at 4.5:1 on every surface. */
@@ -82,29 +79,29 @@
   /* Type scale. xs: captions, column heads, field labels; sm: hints and
      secondary lines; md: secondary text in sentences; section: card headings;
      lg: titles; xl: figures. */
-  --text-xs: .75rem;
-  --text-sm: .8rem;
-  --text-md: .85rem;
-  --text-section: .9rem;
+  --text-xs: 0.75rem;
+  --text-sm: 0.8rem;
+  --text-md: 0.85rem;
+  --text-section: 0.9rem;
   --text-base: 1rem;
   --text-lg: 1.1rem;
   --text-xl: 1.5rem;
   /* Letter spacing of text in capitals. */
-  --caps-spacing: .05em;
+  --caps-spacing: 0.05em;
   /* Icon size in icon buttons, menu entries and the floating button. */
   --icon: 1.2rem;
   /* Shadows, only for what floats above the flat surfaces: menus, tooltips and
      the floating button; and dragged cards and rows. */
-  --shadow-float: 0 8px 24px rgb(0 0 0 / .22);
-  --shadow-drag: 0 10px 26px rgb(0 0 0 / .32);
+  --shadow-float: 0 8px 24px rgb(0 0 0 / 0.22);
+  --shadow-drag: 0 10px 26px rgb(0 0 0 / 0.32);
   /* Fade of the hover and pressed fill of buttons and rows. */
-  --fill-fade: background-color .12s ease;
+  --fill-fade: background-color 0.12s ease;
   /* Dimmed disabled controls. */
-  --disabled-opacity: .45;
+  --disabled-opacity: 0.45;
   /* Card padding. The side padding keeps the day columns and the today band
      clear of the rounded corners. In px, as board-view.js reads it as a
      number. */
-  --block-pad: calc(.35 * var(--space));
+  --block-pad: calc(0.35 * var(--space));
   --block-pad-x: 12px;
   /* Page gutter left and right of title bar and view. Does not scale with
      density. */
@@ -134,26 +131,49 @@
   /* Width of a board with --days columns, so the header can match it without
      JavaScript. */
   --board-width: calc(
-    var(--label-min) + var(--days, 7) * (var(--cell) + 2px)
-    + var(--tools-track) + 2px + 2 * (var(--block-pad-x) + 1px)
-  );
+      var(--label-min) + var(--days, 7) * (var(--cell) + 2px)
+      + var(--tools-track) + 2px + 2 * (var(--block-pad-x) + 1px)
+      );
   /* Font stacks. The chosen font (data-font) always falls back to the system
      stack. */
-  --font-system: system-ui, -apple-system, "Segoe UI", roboto, "Helvetica Neue", arial, sans-serif;
-  --font: "Inter", var(--font-system);
+  --font-system: system-ui, -apple-system, 'Segoe UI', roboto, 'Helvetica Neue', arial, sans-serif;
+  --font: 'Inter', var(--font-system);
+  color-scheme: light dark;
 }
 
 /* The theme only sets color-scheme. */
-[data-theme="system"] { color-scheme: light dark; }
-[data-theme="light"] { color-scheme: light; }
-[data-theme="dark"] { color-scheme: dark; }
+[data-theme='system'] {
+  color-scheme: light dark;
+}
+
+[data-theme='light'] {
+  color-scheme: light;
+}
+
+[data-theme='dark'] {
+  color-scheme: dark;
+}
 
 /* One rule per key in store.Fonts. */
-html[data-font="system"] { --font: var(--font-system); }
-html[data-font="inter"] { --font: "Inter", var(--font-system); }
-html[data-font="roboto"] { --font: "Roboto", var(--font-system); }
-html[data-font="geist"] { --font: "Geist", var(--font-system); }
-html[data-font="opensans"] { --font: "Open Sans", var(--font-system); }
+html[data-font='system'] {
+  --font: var(--font-system);
+}
+
+html[data-font='inter'] {
+  --font: 'Inter', var(--font-system);
+}
+
+html[data-font='roboto'] {
+  --font: 'Roboto', var(--font-system);
+}
+
+html[data-font='geist'] {
+  --font: 'Geist', var(--font-system);
+}
+
+html[data-font='opensans'] {
+  --font: 'Open Sans', var(--font-system);
+}
 
 /* ---------- density ----------
 
@@ -163,11 +183,11 @@ html[data-font="opensans"] { --font: "Open Sans", var(--font-system); }
    number. The page gutter does not scale (see .view). */
 :root {
   /* Gap between cards: on the board, in the settings and the detail views. */
-  --card-gap: calc(.85 * var(--space));
+  --card-gap: calc(0.85 * var(--space));
   /* Padding and icon gap of list rows (search, category picker, category view,
      overflow menu). */
-  --row-pad: calc(.6 * var(--space)) calc(.7 * var(--space));
-  --row-gap: calc(.6 * var(--space));
+  --row-pad: calc(0.6 * var(--space)) calc(0.7 * var(--space));
+  --row-gap: calc(0.6 * var(--space));
   --space: 1rem;
   --leading: 1.45;
   --weight-medium: 500;
@@ -176,8 +196,8 @@ html[data-font="opensans"] { --font: "Open Sans", var(--font-system); }
   --weight-bold: 650;
 }
 
-html[data-density="compact"] {
-  --space: .7rem;
+html[data-density='compact'] {
+  --space: 0.7rem;
   --leading: 1.35;
   --cell: 36px;
   --weight-medium: 450;
@@ -186,7 +206,7 @@ html[data-density="compact"] {
   --weight-bold: 600;
 }
 
-html[data-density="comfortable"] {
+html[data-density='comfortable'] {
   --space: 1.3rem;
   --leading: 1.55;
   --cell: 44px;
@@ -199,8 +219,13 @@ html[data-density="comfortable"] {
 /* Narrower columns on phones, per density. Restated here, as the density
    selectors outrank the narrow-screen rules. */
 @media (max-width: 40rem) {
-  html[data-density="compact"] { --cell: 32px; }
-  html[data-density="comfortable"] { --cell: 34px; }
+  html[data-density='compact'] {
+    --cell: 32px;
+  }
+
+  html[data-density='comfortable'] {
+    --cell: 34px;
+  }
 }
 
 /* ---------- a tight board ----------
@@ -214,31 +239,73 @@ html[data-density="comfortable"] {
 }
 
 /* Button mode: two arrows instead of one handle. */
-html[data-reorder="buttons"] { --tools-col: 64px; }
+html[data-reorder='buttons'] {
+  --tools-col: 64px;
+}
 
 /* Smaller handles on a tight board, while reordering and not filtering. */
-html[data-tight][data-edit="on"]:not([data-filtering="on"]) { --tools-col: 24px; }
-html[data-tight][data-edit="on"][data-reorder="buttons"]:not([data-filtering="on"]) { --tools-col: 48px; }
+html[data-tight][data-edit='on']:not([data-filtering='on']) {
+  --tools-col: 24px;
+}
+
+html[data-tight][data-edit='on'][data-reorder='buttons']:not([data-filtering='on']) {
+  --tools-col: 48px;
+}
 
 /* ---------- the today band in a habit colour ----------
 
    The attribute holds a palette name, see --c-red and following. */
-html[data-band="red"] { --band-ink: var(--c-red); }
-html[data-band="orange"] { --band-ink: var(--c-orange); }
-html[data-band="yellow"] { --band-ink: var(--c-yellow); }
-html[data-band="lime"] { --band-ink: var(--c-lime); }
-html[data-band="green"] { --band-ink: var(--c-green); }
-html[data-band="teal"] { --band-ink: var(--c-teal); }
-html[data-band="sky"] { --band-ink: var(--c-sky); }
-html[data-band="blue"] { --band-ink: var(--c-blue); }
-html[data-band="indigo"] { --band-ink: var(--c-indigo); }
-html[data-band="violet"] { --band-ink: var(--c-violet); }
-html[data-band="pink"] { --band-ink: var(--c-pink); }
-html[data-band="slate"] { --band-ink: var(--c-slate); }
+html[data-band='red'] {
+  --band-ink: var(--c-red);
+}
+
+html[data-band='orange'] {
+  --band-ink: var(--c-orange);
+}
+
+html[data-band='yellow'] {
+  --band-ink: var(--c-yellow);
+}
+
+html[data-band='lime'] {
+  --band-ink: var(--c-lime);
+}
+
+html[data-band='green'] {
+  --band-ink: var(--c-green);
+}
+
+html[data-band='teal'] {
+  --band-ink: var(--c-teal);
+}
+
+html[data-band='sky'] {
+  --band-ink: var(--c-sky);
+}
+
+html[data-band='blue'] {
+  --band-ink: var(--c-blue);
+}
+
+html[data-band='indigo'] {
+  --band-ink: var(--c-indigo);
+}
+
+html[data-band='violet'] {
+  --band-ink: var(--c-violet);
+}
+
+html[data-band='pink'] {
+  --band-ink: var(--c-pink);
+}
+
+html[data-band='slate'] {
+  --band-ink: var(--c-slate);
+}
 
 /* A chosen accent colour tints the today band and also colours buttons,
    selections and the focus ring; the neutral one keeps the neutral --primary. */
-html[data-band]:not([data-band="neutral"]) {
+html[data-band]:not([data-band='neutral']) {
   --today: var(--band-ink, var(--today-neutral));
   --primary: var(--band-ink, light-dark(#24262b, #e3e3e3));
   /* Replaced below where relative colours work. */
@@ -247,18 +314,22 @@ html[data-band]:not([data-band="neutral"]) {
 }
 
 /* White text is too faint on yellow. */
-html[data-band="yellow"] { --primary-text: #1b1d21; }
+html[data-band='yellow'] {
+  --primary-text: #1b1d21;
+}
 
 /* Where relative colours work, the text follows the accent: white on dark
    colours, near-black on light ones. The threshold (OKLCH lightness) is where
    near-black starts to reach more contrast than white; above it are orange,
    yellow, lime, green and teal. Behind @supports, as a custom property holding
    an unsupported colour would make every use of it invalid. */
-:root { --ink-flip: .595; }
+:root {
+  --ink-flip: 0.595;
+}
 
 @supports (color: oklch(from red l c h)) {
-  html[data-band]:not([data-band="neutral"]) {
-    --primary-text: oklch(from var(--primary) clamp(.2, calc((var(--ink-flip) - l) * 1000), 1) 0 0);
+  html[data-band]:not([data-band='neutral']) {
+    --primary-text: oklch(from var(--primary) clamp(0.2, calc((var(--ink-flip) - l) * 1000), 1) 0 0);
   }
 }
 
@@ -278,69 +349,79 @@ html[data-band="yellow"] { --primary-text: #1b1d21; }
    background colour by overlay: mid grey leaves it unchanged, lighter and darker grains lighten and
    darken it in proportion. The page thus stays as dark (or light) as plain,
    and the grain follows the theme although an SVG cannot use its colours. */
-html[data-pattern="grain"] {
+html[data-pattern='grain'] {
   --pattern-image: url(/assets/images/grain.svg);
   --pattern-size: 180px 180px;
 }
 
 /* Every layer that paints the pattern (see body::before, the sticky bars and
    the page backdrop) blends it with the background colour. */
-html[data-pattern="grain"] body::before,
-html[data-pattern="grain"] :is(.topbar, .app-bar, .page-head, .board-view-day-header, .board-view-day-header-backdrop),
-html[data-pattern="grain"] .dialog.page::backdrop {
-  background-color: var(--bg);
+html[data-pattern='grain'] body::before,
+html[data-pattern='grain'] :is(.topbar, .app-bar, .page-head, .board-view-day-header, .board-view-day-header-backdrop),
+html[data-pattern='grain'] .dialog.page::backdrop {
   background-blend-mode: overlay;
+  background-color: var(--bg);
 }
 
-html[data-pattern="dots"] {
+html[data-pattern='dots'] {
   --pattern-image: radial-gradient(var(--pattern-ink) 1.1px, transparent 1.2px);
   --pattern-size: 22px 22px;
 }
 
-html[data-pattern="grid"] {
-  --pattern-image:
-    linear-gradient(var(--pattern-ink) 1px, transparent 1px),
-    linear-gradient(90deg, var(--pattern-ink) 1px, transparent 1px);
+html[data-pattern='grid'] {
+  --pattern-image: linear-gradient(var(--pattern-ink) 1px, transparent 1px),
+      linear-gradient(90deg, var(--pattern-ink) 1px, transparent 1px);
   --pattern-size: 26px 26px;
 }
 
 /* Ruled lines, as on writing paper. */
-html[data-pattern="lines"] {
+html[data-pattern='lines'] {
   --pattern-image: linear-gradient(var(--pattern-ink) 1px, transparent 1px);
   --pattern-size: 100% 28px;
 }
 
 /* The habit icons in a staggered grid, and polka dots in halftone waves. Their
    SVG tiles are drawn by patterns.js. */
-html[data-pattern="icons"] {
+html[data-pattern='icons'] {
   --pattern-image: var(--pattern-icons, none);
   --pattern-size: var(--pattern-icons-size, auto);
 }
 
-html[data-pattern="halftone"] {
+html[data-pattern='halftone'] {
   --pattern-image: var(--pattern-halftone, none);
   --pattern-size: var(--pattern-halftone-size, auto);
 }
 
 /* Fixed background layer behind the content, so the pattern does not scroll. */
 body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
   background-image: var(--pattern-image);
   background-size: var(--pattern-size);
+  content: '';
+  inset: 0;
+  pointer-events: none;
+  position: fixed;
+  z-index: -1;
 }
 
-* { box-sizing: border-box; }
+* {
+  box-sizing: border-box;
+}
 
 /* Thin scrollbars without track or arrows. The standard properties are only a
    fallback, as Chromium ignores ::-webkit-scrollbar when they are set. */
-::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar {
+  height: 6px;
+  width: 6px;
+}
+
 ::-webkit-scrollbar-track,
-::-webkit-scrollbar-corner { background: transparent; }
-::-webkit-scrollbar-button { display: none; }
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+::-webkit-scrollbar-button {
+  display: none;
+}
 
 ::-webkit-scrollbar-thumb {
   background: var(--border-strong);
@@ -349,17 +430,18 @@ body::before {
 
 @supports not selector(::-webkit-scrollbar) {
   * {
-    scrollbar-width: thin;
     scrollbar-color: var(--border-strong) transparent;
+    scrollbar-width: thin;
   }
 }
 
-html, body {
-  margin: 0;
-  padding: 0;
+html,
+body {
   color: var(--text);
   font-family: var(--font);
   line-height: var(--leading);
+  margin: 0;
+  padding: 0;
   -webkit-text-size-adjust: 100%;
 }
 
@@ -381,19 +463,33 @@ body {
   padding-bottom: calc(5 * var(--space) + env(safe-area-inset-bottom, 0px));
 }
 
-h1, h2, h3 { margin: 0; font-weight: var(--weight-bold); letter-spacing: -.01em; }
+h1,
+h2,
+h3 {
+  font-weight: var(--weight-bold);
+  letter-spacing: -0.01em;
+  margin: 0;
+}
 
-button, input, textarea, select { font: inherit; color: inherit; }
+button,
+input,
+textarea,
+select {
+  color: inherit;
+  font: inherit;
+}
 
 :focus-visible {
+  border-radius: var(--radius-2xs);
   outline: 2px solid var(--primary);
   outline-offset: 2px;
-  border-radius: var(--radius-2xs);
 }
 
 /* The one !important: hidden must win over every display a class sets, as
    Vue toggles the attribute rather than a class. */
-[hidden] { display: none !important; }
+[hidden] {
+  display: none !important;
+}
 
 /* ---------- layout ---------- */
 
@@ -404,27 +500,27 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .app-bar,
 .page-head,
 .board-view-day-header,
-html[data-scrolled="on"] .board-view-day-header-backdrop {
+html[data-scrolled='on'] .board-view-day-header-backdrop {
+  background-attachment: fixed;
   background-color: var(--bg);
   background-image: var(--pattern-image);
   background-size: var(--pattern-size);
-  background-attachment: fixed;
 }
 
 .topbar {
+  /* Counted in --topbar-row. */
+  border-bottom: 1px solid transparent;
   position: sticky;
   top: 0;
   z-index: 20;
-  /* Counted in --topbar-row. */
-  border-bottom: 1px solid transparent;
 }
 
 /* Shell width, shared by header and view. 100rem is 1500px (root font size
    15px). */
 .topbar-inner,
 .view {
-  max-width: 100rem;
   margin: 0 auto;
+  max-width: 100rem;
   padding: 0 var(--gutter);
 }
 
@@ -437,80 +533,94 @@ html[data-scrolled="on"] .board-view-day-header-backdrop {
 
 /* Brand and buttons. */
 .topbar-inner {
-  display: grid;
-  grid-template-columns: 1fr auto;
   align-items: center;
-  gap: var(--space);
-  min-height: var(--topbar-row);
-  /* Slightly more inset than the view below. */
-  padding-inline: calc(var(--gutter) + .5 * var(--space));
-  position: relative;
   /* Container for queries on the bar's width, which follows the board rather
      than the window. */
   container: topbar / inline-size;
+  display: grid;
+  gap: var(--space);
+  grid-template-columns: 1fr auto;
+  min-height: var(--topbar-row);
+  /* Slightly more inset than the view below. */
+  padding-inline: calc(var(--gutter) + 0.5 * var(--space));
+  position: relative;
 }
 
-.topbar-inner .topbar-actions { justify-self: end; }
+.topbar-inner .topbar-actions {
+  justify-self: end;
+}
 
-.view { padding-top: calc(1.25 * var(--space)); }
+.view {
+  padding-top: calc(1.25 * var(--space));
+}
 
 /* Less top padding, as the day header has its own. */
-.board-view { padding-top: calc(.8 * var(--space)); }
+.board-view {
+  padding-top: calc(0.8 * var(--space));
+}
 
 .brand {
-  display: flex;
   align-items: center;
-  gap: calc(.5 * var(--space));
+  display: flex;
   font-size: 1.15rem;
+  gap: calc(0.5 * var(--space));
 }
 
 .brand-mark {
-  width: 1.5rem;
-  height: 1.5rem;
   color: var(--text);
+  height: 1.5rem;
+  width: 1.5rem;
 }
 
 .topbar-actions {
-  display: flex;
   align-items: center;
-  gap: calc(.5 * var(--space));
+  display: flex;
+  gap: calc(0.5 * var(--space));
 }
 
 /* Offline, or writes waiting in the outbox (outbox.js). */
 .sync-status {
-  padding: 2px 10px;
   border: 1px solid var(--border-strong);
   border-radius: 999px;
-  font-size: var(--text-xs);
   color: var(--text-muted);
+  font-size: var(--text-xs);
+  padding: 2px 10px;
   white-space: nowrap;
 }
-.sync-status[hidden] { display: none; }
+
+.sync-status[hidden] {
+  display: none;
+}
 
 /* ---------- buttons ---------- */
 
 .button {
-  display: inline-flex;
   align-items: center;
-  justify-content: center;
-  gap: calc(.4 * var(--space));
-  border: 1px solid transparent;
   background: var(--surface-2);
+  border: 1px solid transparent;
   border-radius: var(--radius-sm);
-  padding: calc(.45 * var(--space)) calc(.8 * var(--space));
   cursor: pointer;
+  display: inline-flex;
   font-weight: var(--weight-emphasis);
+  gap: calc(0.4 * var(--space));
+  justify-content: center;
+  padding: calc(0.45 * var(--space)) calc(0.8 * var(--space));
+  transition: background 0.12s ease, border-color 0.12s ease, transform 0.06s ease;
   white-space: nowrap;
-  transition: background .12s ease, border-color .12s ease, transform .06s ease;
 }
 
 /* Hover only where a pointer can rest: touch browsers (Firefox on Android
    among them) keep :hover on the last tapped element, so a tapped button or
    day would stay tinted. Taps show the :active fill instead. */
 @media (hover: hover) {
-  .button:hover { background: var(--border); }
+  .button:hover {
+    background: var(--border);
+  }
 }
-.button:active { transform: translateY(1px); }
+
+.button:active {
+  transform: translateY(1px);
+}
 
 .button.primary {
   background: var(--primary);
@@ -533,108 +643,144 @@ html[data-scrolled="on"] .board-view-day-header-backdrop {
 }
 
 @media (hover: hover) {
-  .button.ghost:hover { background: var(--surface-2); color: var(--text); }
+  .button.ghost:hover {
+    background: var(--surface-2);
+    color: var(--text);
+  }
 }
 
 /* Pressed, one step beyond hover. */
-.button:active:not(.primary, .ghost) { background: var(--border-strong); }
-.button.ghost:active { background: var(--border); }
+.button:active:not(.primary, .ghost) {
+  background: var(--border-strong);
+}
 
-.button.danger { color: var(--danger-text); }
+.button.ghost:active {
+  background: var(--border);
+}
+
+.button.danger {
+  color: var(--danger-text);
+}
+
 @media (hover: hover) {
-  .button.danger:hover { background: color-mix(in srgb, var(--danger) 12%, var(--surface)); }
+  .button.danger:hover {
+    background: color-mix(in srgb, var(--danger) 12%, var(--surface));
+  }
 }
 
 .button.round {
-  width: 2.6rem;
-  height: 2.6rem;
-  padding: 0;
   border-radius: 50%;
   font-size: 1.25rem;
+  height: 2.6rem;
+  padding: 0;
+  width: 2.6rem;
 }
 
 
 /* Icon in a button with caption. */
 .button svg {
-  width: 1.05rem;
-  height: 1.05rem;
   flex: none;
+  height: 1.05rem;
+  width: 1.05rem;
 }
 
 .icon-button {
-  display: inline-flex;
   align-items: center;
-  justify-content: center;
-  width: 2.25rem;
-  height: 2.25rem;
+  background: transparent;
   border: 1px solid transparent;
   border-radius: var(--radius-sm);
-  background: transparent;
   cursor: pointer;
+  display: inline-flex;
   font-size: 1.1rem;
-  transition: var(--fill-fade);
+  height: 2.25rem;
+  justify-content: center;
   line-height: 1;
+  transition: var(--fill-fade);
+  width: 2.25rem;
 }
 
 @media (hover: hover) {
-  .icon-button:hover { background: var(--surface-2); }
+  .icon-button:hover {
+    background: var(--surface-2);
+  }
 }
 
 /* Pressed state of toggle buttons, e.g. the reorder mode. */
-.icon-button[aria-pressed="true"] {
+.icon-button[aria-pressed='true'] {
   background: var(--primary);
   color: var(--primary-text);
 }
 
 @media (hover: hover) {
-  .icon-button[aria-pressed="true"]:hover { background: var(--primary-hover); }
+  .icon-button[aria-pressed='true']:hover {
+    background: var(--primary-hover);
+  }
 }
 
 /* Pressed, one step beyond hover, so a tap shows (touch has no hover). Not on
    pressed toggles, and not on the reorder handles, which have their own. */
-.icon-button:active:not(:disabled):not([aria-pressed="true"], .board-habit-row-tools *, .board-block-tools *) {
+.icon-button:active:not(:disabled):not([aria-pressed='true'], .board-habit-row-tools *, .board-block-tools *) {
   background: var(--border);
 }
 
 /* SVG icons need an explicit size. */
-.icon-button svg { width: var(--icon); height: var(--icon); display: block; }
+.icon-button svg {
+  display: block;
+  height: var(--icon);
+  width: var(--icon);
+}
 
 /* The back button is larger. */
-.icon-button.is-back { width: 2.5rem; height: 2.5rem; }
-.icon-button.is-back svg { width: 1.45rem; height: 1.45rem; }
+.icon-button.is-back {
+  height: 2.5rem;
+  width: 2.5rem;
+}
+
+.icon-button.is-back svg {
+  height: 1.45rem;
+  width: 1.45rem;
+}
 
 /* ---------- misc text ---------- */
 
 .field-hint {
   color: var(--text-faint);
   font-size: var(--text-sm);
-  margin: calc(.75 * var(--space)) calc(.25 * var(--space)) 0;
+  margin: calc(0.75 * var(--space)) calc(0.25 * var(--space)) 0;
 }
 
 /* Spacing below a hint that is followed by another control. */
-.field-hint:not(:last-child) { margin-bottom: calc(.9 * var(--space)); }
+.field-hint:not(:last-child) {
+  margin-bottom: calc(0.9 * var(--space));
+}
 
 .error {
   color: var(--danger-text);
   font-size: var(--text-md);
-  margin: calc(.5 * var(--space)) 0 0;
+  margin: calc(0.5 * var(--space)) 0 0;
 }
 
 .empty {
-  text-align: center;
-  padding: calc(4 * var(--space)) var(--space);
   color: var(--text-muted);
+  padding: calc(4 * var(--space)) var(--space);
+  text-align: center;
 }
 
-.empty h2 { color: var(--text); margin-bottom: calc(.5 * var(--space)); }
-.empty p { margin: 0 0 calc(1.25 * var(--space)); }
+.empty h2 {
+  color: var(--text);
+  margin-bottom: calc(0.5 * var(--space));
+}
+
+.empty p {
+  margin: 0 0 calc(1.25 * var(--space));
+}
 
 /* Visually hidden, but available to screen readers. */
 .sr-only {
-  position: absolute;
-  width: 1px;
+  clip-path: inset(50%);
   height: 1px;
   overflow: hidden;
-  clip-path: inset(50%);
+  position: absolute;
   white-space: nowrap;
+  width: 1px;
 }

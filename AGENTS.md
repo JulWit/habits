@@ -153,12 +153,15 @@ extend it along with the frontend.
   style guide](https://google.github.io/styleguide/htmlcssguide.html):
   lowercase, double quotes around attribute values, no entity references
   besides the characters HTML reserves, no `style` attributes (custom
-  properties bound with `:style` excepted), IDs only where needed and with a
-  hyphen. In CSS: one selector and one declaration per line, declarations in
-  alphabetical order, a blank line between rules, single quotes, a leading
-  `0` (`0.5rem`), no unit after `0` unless required, three-digit hex colours
-  where possible, class selectors instead of ID and type-qualified ones, no
-  `!important`.
+  properties bound with `:style`, and those the server writes into
+  `index.html`, excepted), IDs only where needed and with a hyphen. In CSS:
+  class selectors instead of ID and type-qualified ones, three-digit hex
+  colours where possible, lowercase values outside strings, no data URIs
+  (images go into `web/assets/images/`), and no `!important` besides the one
+  for `[hidden]`. Format with `uv run scripts/format_css.py
+  web/assets/css/*.css`: one selector and one declaration per line,
+  declarations in alphabetical order (custom properties first, grouped by
+  meaning), a blank line between rules, single quotes, a leading `0`.
 - Element IDs in the templates follow the same names: a view or dialog has
   the name of its module (`habit-view`, `day-editor`), and the elements inside
   it are prefixed with that name, without a trailing `-dialog`

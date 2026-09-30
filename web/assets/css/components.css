@@ -1160,7 +1160,8 @@ html[data-filtering="on"] {
 
 .mark.is-skipped::after { display: none; }
 
-.mark.is-skipped svg { width: .95rem; height: .95rem; }
+/* The skip sign fills only half of its box, so it takes most of the mark. */
+.mark.is-skipped svg { width: 90%; height: 90%; }
 
 /* A value over the limit: the full ring, with the value in the danger colour. */
 .mark.is-over .mark-value { color: var(--danger-text); }

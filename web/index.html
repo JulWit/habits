@@ -1,33 +1,52 @@
 <!doctype html>
-<html lang="{{.Lang}}" data-theme="{{.Theme}}" data-font="{{.Font}}" data-density="{{.Density}}" data-pattern="{{.Pattern}}" data-band="{{.BandColor}}" data-today-band="{{if .ShowBand}}on{{else}}off{{end}}" style="--today-opacity: {{.BandOpacity}}%; --band-opacity: {{.BandFillOpacity}}%">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Habits</title>
-<!-- Firefox on Android cannot render SVG favicons, so a PNG comes first;
-     browsers that support SVG prefer the last entry. -->
-<link rel="icon" href="/assets/images/icon-192.png" type="image/png" sizes="192x192">
-<link rel="icon" href="/assets/images/icon.svg" type="image/svg+xml" sizes="any">
-<!-- use-credentials sends cookies with the manifest request; without them,
-     Authelia answers with its login page. -->
-<link rel="manifest" href="/manifest.webmanifest" crossorigin="use-credentials">
-<link rel="apple-touch-icon" href="/assets/images/icon-192.png">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Habits">
-<!-- Colour of the system bars (status and navigation bar), matching --bg. A
-     chosen theme overrides the colour scheme, so both entries then carry its
-     colour; app.js updates them when the theme changes. -->
-<meta name="theme-color" content="{{if eq .Theme "dark"}}#0f0f0f{{else}}#e6e8ec{{end}}" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="{{if eq .Theme "light"}}#e6e8ec{{else}}#0f0f0f{{end}}" media="(prefers-color-scheme: dark)">
-<link rel="stylesheet" href="/assets/css/fonts.css">
-<link rel="stylesheet" href="/assets/css/base.css">
-<link rel="stylesheet" href="/assets/css/components.css">
-<link rel="stylesheet" href="/assets/css/forms.css">
-</head>
-<body>
-<!-- The app, rendered by Vue (see assets/js/app.js). -->
-<div id="app"></div>
-<script type="module" src="/assets/js/app.js"></script>
-</body>
+<html
+    lang="{{.Lang}}"
+    data-theme="{{.Theme}}"
+    data-font="{{.Font}}"
+    data-density="{{.Density}}"
+    data-pattern="{{.Pattern}}"
+    data-band="{{.BandColor}}"
+    data-today-band="{{if .ShowBand}}on{{else}}off{{end}}"
+    style="--today-opacity: {{.BandOpacity}}%; --band-opacity: {{.BandFillOpacity}}%">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>Habits</title>
+
+    <!-- Firefox on Android cannot render SVG favicons, so a PNG comes first;
+         browsers that support SVG prefer the last entry. -->
+    <link rel="icon" href="/assets/images/icon-192.png" type="image/png"
+        sizes="192x192">
+    <link rel="icon" href="/assets/images/icon.svg" type="image/svg+xml"
+        sizes="any">
+    <!-- use-credentials sends cookies with the manifest request; without them,
+         Authelia answers with its login page. -->
+    <link rel="manifest" href="/manifest.webmanifest"
+        crossorigin="use-credentials">
+    <link rel="apple-touch-icon" href="/assets/images/icon-192.png">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Habits">
+
+    <!-- Colour of the system bars (status and navigation bar), matching --bg. A
+         chosen theme overrides the colour scheme, so both entries then carry
+         its colour; app.js updates them when the theme changes. -->
+    <meta name="theme-color"
+        content="{{if eq .Theme "dark"}}#0f0f0f{{else}}#e6e8ec{{end}}"
+        media="(prefers-color-scheme: light)">
+    <meta name="theme-color"
+        content="{{if eq .Theme "light"}}#e6e8ec{{else}}#0f0f0f{{end}}"
+        media="(prefers-color-scheme: dark)">
+
+    <link rel="stylesheet" href="/assets/css/fonts.css">
+    <link rel="stylesheet" href="/assets/css/base.css">
+    <link rel="stylesheet" href="/assets/css/components.css">
+    <link rel="stylesheet" href="/assets/css/forms.css">
+  </head>
+  <body>
+    <!-- The app, rendered by Vue (see assets/js/app.js). -->
+    <div id="app"></div>
+    <script type="module" src="/assets/js/app.js"></script>
+  </body>
 </html>

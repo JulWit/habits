@@ -93,9 +93,10 @@ func TestSecurityHeadersAreOnEveryResponse(t *testing.T) {
 		if !strings.Contains(csp, "frame-ancestors 'none'") {
 			t.Errorf("%s: CSP without frame-ancestors: %q", path, csp)
 		}
-		// script-src must not allow inline scripts or eval.
-		if strings.Contains(csp, "script-src 'self' 'unsafe") {
-			t.Errorf("%s: script-src was loosened: %q", path, csp)
+		// script-src allows eval for Vue's template compiler, but no inline
+		// scripts and no other origins.
+		if !strings.Contains(csp, "script-src 'self' 'unsafe-eval';") {
+			t.Errorf("%s: script-src is not exactly 'self' 'unsafe-eval': %q", path, csp)
 		}
 	}
 }

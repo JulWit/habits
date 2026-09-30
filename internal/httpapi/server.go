@@ -100,9 +100,11 @@ func New(cfg config.Config, st *store.Store, log *slog.Logger, webFS fs.FS) (htt
 }
 
 // contentSecurityPolicy is sent with every response. Inline styles are allowed
-// because index.html sets style attributes; inline scripts are not.
+// because index.html and the Vue templates set style attributes; inline
+// scripts are not. 'unsafe-eval' lets Vue compile the templates of the
+// components in the browser (new Function), as the frontend has no build step.
 const contentSecurityPolicy = "default-src 'self'; " +
-	"script-src 'self'; " +
+	"script-src 'self' 'unsafe-eval'; " +
 	"style-src 'self' 'unsafe-inline'; " +
 	"img-src 'self' data:; " +
 	"font-src 'self'; " +

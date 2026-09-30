@@ -271,6 +271,13 @@ export const TheSettingsDialog = {
     const preview = reactive({bandOpacity: null, bandFillOpacity: null});
 
     const settings = computed(() => state.settings);
+    // What the sliders show: the value while they move, else the setting.
+    const sliders = computed(
+        () => ({
+          bandOpacity: preview.bandOpacity ?? settings.value.bandOpacity,
+          bandFillOpacity:
+              preview.bandFillOpacity ?? settings.value.bandFillOpacity,
+        }));
     /**
      * Returns the choices the server offers for the setting `key`.
      * @param {string} key
@@ -435,7 +442,7 @@ export const TheSettingsDialog = {
       options,
       editing,
       error,
-      preview,
+      sliders,
       account,
       version,
       versionFacts,
@@ -705,11 +712,11 @@ export const TheSettingsDialog = {
             max="100"
             step="5"
             autocomplete="off"
-            :value="preview.bandOpacity ?? settings.bandOpacity"
+            :value="sliders.bandOpacity"
             @input="slide('bandOpacity', '--today-opacity', $event)"
             @change="release('bandOpacity', $event)"
           >
-          <output>{{ preview.bandOpacity ?? settings.bandOpacity }}%</output>
+          <output>{{ sliders.bandOpacity }}%</output>
         </label>
       </fieldset>
       <fieldset class="field">
@@ -738,12 +745,11 @@ export const TheSettingsDialog = {
             max="100"
             step="5"
             autocomplete="off"
-            :value="preview.bandFillOpacity ?? settings.bandFillOpacity"
+            :value="sliders.bandFillOpacity"
             @input="slide('bandFillOpacity', '--band-opacity', $event)"
             @change="release('bandFillOpacity', $event)"
           >
-          <output>
-            {{ preview.bandFillOpacity ?? settings.bandFillOpacity }}%</output>
+          <output>{{ sliders.bandFillOpacity }}%</output>
         </label>
       </fieldset>
       <label class="field">

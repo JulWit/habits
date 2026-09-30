@@ -1054,6 +1054,15 @@ export const TheBoardView = {
       dates,
       active,
       activeColumn,
+      // The band's column, if the active day is shown.
+      bandStyle: computed(
+          () => activeColumn.value >= 0 ?
+              {'--today-col': String(activeColumn.value)} :
+              null),
+      // The filter leaves no block although there are habits.
+      noMatch: computed(
+          () => onlyOpen.value && all.value.length > 0 &&
+              blocks.value.length === 0),
       // A single uncategorised block is shown without heading.
       labelled: computed(
           () => all.value.length > 1 || all.value[0]?.category !== null),
@@ -1082,7 +1091,7 @@ export const TheBoardView = {
       ref="boardEl"
       class="board-view-grid"
       :class="{'has-today': activeColumn >= 0}"
-      :style="activeColumn >= 0 ? {'--today-col': String(activeColumn)} : null"
+      :style="bandStyle"
       :hidden="all.length === 0"
       @keydown="onBoardKeydown"
       @focusin="onBoardFocus"
@@ -1157,7 +1166,7 @@ export const TheBoardView = {
     <p
       id="board-no-match"
       class="empty"
-      :hidden="!(onlyOpen && all.length > 0 && blocks.length === 0)"
+      :hidden="!noMatch"
     >
       {{ t('Nothing left open on this day.') }}
     </p>

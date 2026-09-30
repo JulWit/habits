@@ -484,13 +484,18 @@ export const AppIconBadge = {
   name: 'AppIconBadge',
   props: {icon: String, color: String},
   setup(props) {
-    return {habitIcons, colorValue};
+    return {
+      habitIcons,
+      style: computed(
+          () =>
+              props.color ? {'--habit-color': colorValue(props.color)} : null),
+    };
   },
   template: `
     <span
       v-if="habitIcons[icon]"
       :class="{'is-neutral': !color}"
-      :style="color ? {'--habit-color': colorValue(color)} : null"
+      :style="style"
     >
       <app-icon :svg="habitIcons[icon]"/>
     </span>`,

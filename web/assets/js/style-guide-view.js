@@ -261,7 +261,9 @@ const StyleGuidePanel = {
       today: day(0),
       yesterday: day(1),
       streaks: streakScale(s.check),
-      weekdays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+      // Monday, Wednesday and Friday are picked.
+      weekdays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(
+          (name, i) => ({name, picked: i === 0 || i === 2 || i === 4})),
       // A sample per kind, and one that is not due on the shown days.
       rows: [
         ['Check', s.check],
@@ -432,13 +434,13 @@ const StyleGuidePanel = {
         <style-guide-specimen label=".weekdays">
           <div class="weekdays">
             <button
-              v-for="(d, i) in weekdays"
-              :key="d"
+              v-for="d in weekdays"
+              :key="d.name"
               type="button"
               class="weekday"
-              :aria-pressed="String(i === 0 || i === 2 || i === 4)"
+              :aria-pressed="String(d.picked)"
             >
-              {{ d }}
+              {{ d.name }}
             </button>
           </div>
         </style-guide-specimen>

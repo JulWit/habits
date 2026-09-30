@@ -497,7 +497,10 @@ export const TheHabitView = {
       shownYear,
       range,
       showYear,
-      colorValue,
+      // The habit's colour for the view.
+      colorStyle: computed(
+          () => habit.value ? {'--habit-color': colorValue(habit.value.color)} :
+                              null),
       hasHabitIcon,
       isCountable: habitHelpers.isCountable,
       stats: computed(() => statTiles(habit.value)),
@@ -552,7 +555,7 @@ export const TheHabitView = {
       ref="root"
       class="view"
       :hidden="!habit"
-      :style="habit ? {'--habit-color': colorValue(habit.color)} : null"
+      :style="colorStyle"
     >
       <template v-if="habit">
         <app-bar

@@ -89,10 +89,10 @@ extend it along with the frontend.
   data change goes through `web/assets/js/actions.js`, which offers the undo
   with `offerUndo(changeId, text)`.
 - **Errors** are created with `domain.Invalid(code, template, params...)`. Each
-  new `code` needs a German entry in `deErrors` in `web/assets/js/i18n.js`;
+  new `code` needs a German entry in `DE_ERRORS` in `web/assets/js/i18n.js`;
   `TestEveryProblemCodeIsTranslated` enforces this.
 - **UI text** is written in English and wrapped in `t('...')`; the English text
-  is the key. Add the German translation to `de` in `i18n.js`.
+  is the key. Add the German translation to `DE` in `i18n.js`.
 - **Writing endpoints** require `Content-Type: application/json` (CSRF
   protection). Keep it that way.
 - **CSP** forbids inline scripts and external origins; it allows eval only
@@ -138,9 +138,10 @@ extend it along with the frontend.
   guide](https://google.github.io/styleguide/jsguide.html): single quotes,
   80 columns (templates included), braces around every block except a
   one-line `if` without `else`, a trailing comma in wrapped array and object
-  literals, and no import cycles between modules: a module that must call
-  back into one that imports it gets the function passed in (see `initSync`
-  in `loader.js`). Format with
+  literals, `CONSTANT_CASE` for module constants that are never changed
+  (`ICONS`, `STATUS`), and no import cycles between modules: a module that
+  must call back into one that imports it gets the function passed in (see
+  `initSync` in `loader.js`). Format with
   `uvx clang-format -i web/sw.js web/assets/js/*.js` (`.clang-format`; a
   developer tool, not a build step). Long UI texts in `t('…')` and `i18n.js`
   stay on one line, so they can be searched for.

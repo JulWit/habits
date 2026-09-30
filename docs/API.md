@@ -44,11 +44,11 @@ English message:
  "detail": "name is longer than 80 characters", "params": {"max": 80}}
 ```
 
-The client translates by `code` (`deErrors` in `i18n.js`) and fills in
+The client translates by `code` (`DE_ERRORS` in `i18n.js`) and fills in
 `params`; without a translation it shows `detail` with its first letter in
 upper case. A new validation error uses `domain.Invalid(code, template,
 params...)` with a template in lower case and without a trailing full stop, as
-it is an error string, and needs an entry in `deErrors`;
+it is an error string, and needs an entry in `DE_ERRORS`;
 `TestEveryProblemCodeIsTranslated` checks that every code has one.
 
 ## `/api/state`

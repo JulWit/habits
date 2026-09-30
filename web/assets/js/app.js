@@ -254,11 +254,15 @@ function initScrollState() {
   apply();
 }
 
-/** Registers the service worker. Failures are ignored. */
+/** Registers the service worker, which lets the app start offline. */
 function initServiceWorker() {
   if (!('serviceWorker' in navigator)) return;
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch(() => {});
+  window.addEventListener('load', async () => {
+    try {
+      await navigator.serviceWorker.register('/sw.js');
+    } catch {
+      // Not fatal: the app works online without the service worker.
+    }
   });
 }
 

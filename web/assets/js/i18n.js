@@ -23,7 +23,7 @@ export const locale = lang === 'de' ? 'de-DE' : 'en-GB';
  * German translations, keyed by the English text. An array holds singular and
  * plural, selected by `n`.
  */
-const de = {
+const DE = {
   // ---------- shell: header, board, empty state ----------
   'New habit': 'Neue Gewohnheit',
   'Search': 'Suche',
@@ -540,7 +540,7 @@ const de = {
  * server's English message is shown for codes missing here and in English.
  * Placeholders are filled from the problem's params.
  */
-const deErrors = {
+const DE_ERRORS = {
   // Network and session (api.js).
   offline: 'Keine Verbindung zum Server',
   session_expired: 'Sitzung abgelaufen — bitte lade die Seite neu',
@@ -643,14 +643,14 @@ const deErrors = {
  * @return {string|undefined}
  */
 export function errorTemplate(code) {
-  return lang === 'de' ? deErrors[code] : undefined;
+  return lang === 'de' ? DE_ERRORS[code] : undefined;
 }
 
 /**
  * The translations of the UI language; empty for English.
  * @const {!Object<string, (string|!Array<string>)>}
  */
-const dictionary = lang === 'de' ? de : {};
+const dictionary = lang === 'de' ? DE : {};
 
 /**
  * Translates `text` and fills in its {placeholders} from `vars`. Unknown texts

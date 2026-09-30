@@ -6,7 +6,7 @@
  * light grey on the light one.
  */
 
-import {habitIcons} from './icons.js';
+import {HABIT_ICONS} from './icons.js';
 
 const INK = 'color="#808080" fill="#808080" opacity=".12"';
 
@@ -43,7 +43,7 @@ const ICON = 22;
  * @return {{image: string, size: string}}
  */
 function iconTile() {
-  const names = Object.keys(habitIcons);
+  const names = Object.keys(HABIT_ICONS);
   // An even number of rows, so the shift continues across the tile edge.
   const rows = 2 * Math.ceil(names.length / (2 * COLS));
   const height = rows * STEP_Y;
@@ -55,7 +55,7 @@ function iconTile() {
    * @param {number} y
    * @return {string}
    */
-  const place = (name, x, y) => habitIcons[name].replace(
+  const place = (name, x, y) => HABIT_ICONS[name].replace(
       '<svg ', `<svg x="${x}" y="${y}" width="${ICON}" height="${ICON}" `);
   const slots =
       Array.from({length: rows * COLS}, (_, i) => names[i % names.length]);

@@ -47,7 +47,7 @@ A dictionary in `i18n.js`, an entry under `"language"` in `options`
 ## New validation error
 
 Use `domain.Invalid(code, template, params...)` and add an entry to
-`deErrors` in `i18n.js`; `TestEveryProblemCodeIsTranslated` checks that every
+`DE_ERRORS` in `i18n.js`; `TestEveryProblemCodeIsTranslated` checks that every
 code has one. The template is an error string: lower case and without a
 trailing full stop. The client capitalises it when it shows it.
 

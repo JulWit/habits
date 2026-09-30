@@ -680,7 +680,7 @@ function attachLongPress(root) {
 
 /**
  * An icon button of the board. `handle` makes it a drag handle, `habit`
- * names the habit it acts on; `icon` names one of `icons`.
+ * names the habit it acts on; `icon` names one of `ICONS`.
  */
 const BoardToolButton = {
   name: 'BoardToolButton',

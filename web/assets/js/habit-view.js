@@ -166,7 +166,7 @@ function heatSquare(habit, iso) {
       formatFull(iso);
 
   return {
-    class: [
+    'class': [
       'heatmap-day',
       // Used by centreToday().
       iso === state.today && 'is-today',

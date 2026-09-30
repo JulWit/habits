@@ -94,14 +94,14 @@ function heatSquare(iso, {due, done}) {
       t('Today, {date}', {date: formatFull(iso)}) :
       formatFull(iso);
   return {
-    class: [
+    'class': [
       'heatmap-day',
       iso === state.today && 'is-today',
       ahead && 'is-future',
       !ahead && due === 0 && 'is-off',
       counted && done === due && 'is-perfect',
     ],
-    style: counted ? {'--rate': (done / due).toFixed(3)} : null,
+    'style': counted ? {'--rate': (done / due).toFixed(3)} : null,
     'data-date': iso,
     'data-status': status,
     'role': 'img',

@@ -16,9 +16,9 @@ func TestEveryProblemCodeIsTranslated(t *testing.T) {
 	if err != nil {
 		t.Fatalf("os.ReadFile(i18n.js): %v", err)
 	}
-	_, block, found := strings.Cut(string(i18n), "const deErrors = {")
+	_, block, found := strings.Cut(string(i18n), "const DE_ERRORS = {")
 	if !found {
-		t.Fatal("i18n.js has no deErrors")
+		t.Fatal("i18n.js has no DE_ERRORS")
 	}
 	block, _, _ = strings.Cut(block, "\n};")
 	translated := map[string]bool{}

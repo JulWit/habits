@@ -19,7 +19,7 @@ const draw = (body) => `<svg viewBox="0 0 24 24" aria-hidden="true"
  * The interface icons as SVG markup, keyed by name.
  * @const {!Object<string, string>}
  */
-export const icons = {
+export const ICONS = {
   sun: draw(
       '<circle cx="12" cy="12" r="4.1"/>' +
           '<path d="M12 2.6v2.3M12 19.1v2.3M21.4 12h-2.3M4.9 12H2.6' +
@@ -211,7 +211,7 @@ export const icons = {
  * Drawings of the habit icons, keyed by the names in domain.HabitIcons. Names
  * without a drawing are not offered.
  */
-export const habitIcons = {
+export const HABIT_ICONS = {
   droplet: draw(
       '<path d="M12 21.5a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5' +
       'c-.5 2.5-2 4.9-4 6.5-2 1.6-3 3.5-3 5.5a7 7 0 0 0 7 7z"/>'),
@@ -272,12 +272,12 @@ export const habitIcons = {
           'l1.4 1.4M19.1 10.9l-1.4 1.4' +
           'M2 18h2M20 18h2M22 22H2"/>',
       ),
-  moon: icons.moon,
-  sun: icons.sun,
+  moon: ICONS.moon,
+  sun: ICONS.sun,
   book: draw(
       '<path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2zM22 3h-6' +
       'a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>'),
-  pencil: icons.edit,
+  pencil: ICONS.edit,
   lightbulb: draw(
       '<path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5' +
           'A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/>' +
@@ -293,7 +293,7 @@ export const habitIcons = {
   music: draw(
       '<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/>' +
       '<circle cx="18" cy="16" r="3"/>'),
-  palette: icons.palette,
+  palette: ICONS.palette,
   camera: draw(
       '<path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16' +
           'a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3z"/>' +
@@ -330,7 +330,7 @@ export const habitIcons = {
   target: draw(
       '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/>' +
       '<circle cx="12" cy="12" r="2"/>'),
-  clock: icons.clock,
+  clock: ICONS.clock,
   hourglass: draw(
       '<path d="M5 22h14M5 2h14M17 22v-4.2a2 2 0 0 0-.6-1.4L12 12' +
           'l-4.4 4.4a2 2 0 0 0-.6 1.4V22' +
@@ -339,8 +339,8 @@ export const habitIcons = {
   calendar: draw(
       '<rect x="3" y="4" width="18" height="18" rx="2"/>' +
       '<path d="M8 2v4M16 2v4M3 10h18"/>'),
-  calendarcheck: icons.calendarCheck,
-  check: icons.check,
+  calendarcheck: ICONS.calendarCheck,
+  check: ICONS.check,
 };
 
 // Names of the icons and colours, for screen readers and tooltips. Missing
@@ -451,7 +451,7 @@ function parseIcon(svg) {
 }
 
 /**
- * An icon as an inline <svg> element: `name` names one of `icons`, or `svg`
+ * An icon as an inline <svg> element: `name` names one of `ICONS`, or `svg`
  * gives the markup itself (e.g. of a habit icon). Renders nothing for an
  * unknown name. The markup is constant, so it is safe as innerHTML.
  */
@@ -464,7 +464,7 @@ export const AppIcon = {
    */
   setup(props) {
     return () => {
-      const markup = props.svg ?? icons[props.name];
+      const markup = props.svg ?? ICONS[props.name];
       if (!markup) return null;
       const {attrs, body} = parseIcon(markup);
       return h('svg', {...attrs, innerHTML: body});
@@ -478,7 +478,7 @@ export const AppIcon = {
  * @return {boolean}
  */
 export function hasHabitIcon(name) {
-  return Boolean(name && habitIcons[name]);
+  return Boolean(name && HABIT_ICONS[name]);
 }
 
 /**
@@ -495,7 +495,7 @@ export const AppIconBadge = {
    */
   setup(props) {
     return {
-      habitIcons,
+      HABIT_ICONS,
       style: computed(
           () =>
               props.color ? {'--habit-color': colorValue(props.color)} : null),
@@ -503,11 +503,11 @@ export const AppIconBadge = {
   },
   template: `
     <span
-      v-if="habitIcons[icon]"
+      v-if="HABIT_ICONS[icon]"
       :class="{'is-neutral': !color}"
       :style="style"
     >
-      <app-icon :svg="habitIcons[icon]"/>
+      <app-icon :svg="HABIT_ICONS[icon]"/>
     </span>`,
 };
 
@@ -602,7 +602,7 @@ export const AppIconChoices = {
    */
   setup(props) {
     return {
-      habitIcons,
+      HABIT_ICONS,
       /**
        * Returns the tooltip of a choice.
        * @param {string} name
@@ -617,7 +617,7 @@ export const AppIconChoices = {
       label: (name) =>
           name ? t('Icon {name}', {name: iconLabel(name)}) : t('No icon'),
       offered: computed(
-          () => ['', ...props.names.filter((name) => habitIcons[name])]),
+          () => ['', ...props.names.filter((name) => HABIT_ICONS[name])]),
     };
   },
   // "No icon" is an empty tile.
@@ -641,7 +641,7 @@ export const AppIconChoices = {
       >
         <app-icon
           v-if="name"
-          :svg="habitIcons[name]"
+          :svg="HABIT_ICONS[name]"
         />
       </button>
     </div>`,

@@ -21,7 +21,7 @@ export function rateLabel() {
 
 /**
  * A row of stat tiles from [label, value, icon] triples; icon names one of
- * `icons`, shown in the tile's corner.
+ * `ICONS`, shown in the tile's corner.
  */
 export const AppStatRow = {
   name: 'AppStatRow',

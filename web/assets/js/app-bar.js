@@ -6,7 +6,7 @@
  */
 
 /**
- * An item of the overflow menu; `icon` names one of `icons`.
+ * An item of the overflow menu; `icon` names one of `ICONS`.
  * @typedef {{action: string, label: string, icon: string, danger:
  *     (boolean|undefined)}}
  */

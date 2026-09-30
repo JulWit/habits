@@ -68,7 +68,12 @@ export function initTooltips() {
     if (!el.matches?.(':focus-visible')) return;
     const text =
         el.closest('[title], [data-tooltip]') === el ? takeTitle(el) : '';
-    if (text) showTooltip(el, text);
+    if (!text) return;
+    // In the next task: the focus may come from a closing popover, which
+    // returns it to its button, and no popover can open until that is done.
+    setTimeout(() => {
+      if (document.activeElement === el) showTooltip(el, text);
+    });
   });
 
   document.addEventListener('focusout', hideTooltip);

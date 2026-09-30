@@ -771,9 +771,9 @@ export const SettingsDialog = {
         <legend class="field-label">{{ t('Reordering') }}</legend>
         <label class="switch">
           <input
+            v-model="editing"
             type="checkbox"
             autocomplete="off"
-            v-model="editing"
           >
           <span>{{ t('Arrange') }}</span>
         </label>
@@ -1013,8 +1013,8 @@ export const SettingsDialog = {
       </div>
     </settings-page>
     <dialog
-      ref="deleteDialog"
       id="delete-all-dialog"
+      ref="deleteDialog"
       class="dialog compact"
       aria-labelledby="delete-all-title"
       aria-describedby="delete-all-text"

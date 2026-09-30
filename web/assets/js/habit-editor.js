@@ -414,8 +414,8 @@ export const HabitEditor = {
   // the chosen colour.
   template: `
     <dialog
-      ref="el"
       id="habit-editor"
+      ref="el"
       class="dialog page is-sheet is-floating"
       aria-labelledby="habit-editor-title"
     >
@@ -449,8 +449,8 @@ export const HabitEditor = {
           <label class="field">
             <span class="field-label">{{ t('Name') }}</span>
             <input
-              name="name"
               v-model="form.name"
+              name="name"
               type="text"
               maxlength="80"
               required
@@ -461,30 +461,30 @@ export const HabitEditor = {
           <fieldset class="field">
             <legend class="field-label">{{ t('Colour') }}</legend>
             <color-swatches
-              :colors="state.colors"
               v-model="form.color"
+              :colors="state.colors"
             />
           </fieldset>
           <fieldset class="field">
             <legend class="field-label">{{ t('Icon') }}</legend>
             <icon-choices
-              :names="state.icons"
               v-model="form.icon"
+              :names="state.icons"
               :style="{'--habit-color': colorValue(form.color)}"
             />
           </fieldset>
           <div class="field">
             <span
-              class="field-label"
               id="habit-editor-category-label"
+              class="field-label"
             >
               {{ t('Category') }}
             </span>
             <!-- Labelled by the field label and its own text. -->
             <button
+              id="habit-editor-category"
               type="button"
               class="picker"
-              id="habit-editor-category"
               aria-haspopup="dialog"
               aria-labelledby="habit-editor-category-label habit-editor-category"
               @click="chooseCategory"
@@ -516,10 +516,10 @@ export const HabitEditor = {
                 :key="kind.value"
               >
                 <input
+                  v-model="form.kind"
                   type="radio"
                   name="kind"
                   :value="kind.value"
-                  v-model="form.kind"
                 >
                 <span><app-icon :name="kind.icon"/>{{ kind.label }}</span>
               </label>
@@ -545,19 +545,19 @@ export const HabitEditor = {
             >
               <label>
                 <input
+                  v-model="form.targetType"
                   type="radio"
                   name="targetType"
                   value="at_least"
-                  v-model="form.targetType"
                 >
                 <span>{{ t('At least') }}</span>
               </label>
               <label>
                 <input
+                  v-model="form.targetType"
                   type="radio"
                   name="targetType"
                   value="at_most"
-                  v-model="form.targetType"
                 >
                 <span>{{ t('At most') }}</span>
               </label>
@@ -576,8 +576,8 @@ export const HabitEditor = {
             <label class="grow">
               <span class="field-label">{{ targetLabel('count') }}</span>
               <input
-                name="targetCount"
                 v-model="form.targets.count"
+                name="targetCount"
                 type="number"
                 :min="limit ? '0' : KIND_FIELDS.count.min"
                 max="1000"
@@ -588,8 +588,8 @@ export const HabitEditor = {
             <label class="grow">
               <span class="field-label">{{ t('Unit') }}</span>
               <input
-                name="unit"
                 v-model="form.unit"
+                name="unit"
                 type="text"
                 maxlength="16"
                 :placeholder="t('e.g. glasses')"
@@ -604,8 +604,8 @@ export const HabitEditor = {
             <label>
               <span class="field-label">{{ t('Step') }}</span>
               <input
-                name="stepCount"
                 v-model="form.steps.count"
+                name="stepCount"
                 type="number"
                 min="0.1"
                 max="1000"
@@ -626,8 +626,8 @@ export const HabitEditor = {
               <label class="grow">
                 <span class="field-label">{{ targetLabel('time') }}</span>
                 <input
-                  name="targetTime"
                   v-model="form.targets.time"
+                  name="targetTime"
                   type="number"
                   :min="limit ? '0' : KIND_FIELDS.time.min"
                   max="1440"
@@ -638,8 +638,8 @@ export const HabitEditor = {
               <label class="grow">
                 <span class="field-label">{{ t('Step in minutes') }}</span>
                 <input
-                  name="stepTime"
                   v-model="form.steps.time"
+                  name="stepTime"
                   type="number"
                   min="0.1"
                   max="1440"
@@ -662,8 +662,8 @@ export const HabitEditor = {
               <label class="grow">
                 <span class="field-label">{{ targetLabel('distance') }}</span>
                 <input
-                  name="targetDistance"
                   v-model="form.targets.distance"
+                  name="targetDistance"
                   type="number"
                   :min="limit ? '0' : KIND_FIELDS.distance.min"
                   max="200"
@@ -674,8 +674,8 @@ export const HabitEditor = {
               <label class="grow">
                 <span class="field-label">{{ t('Step in km') }}</span>
                 <input
-                  name="stepDistance"
                   v-model="form.steps.distance"
+                  name="stepDistance"
                   type="number"
                   min="0.001"
                   max="200"
@@ -701,10 +701,10 @@ export const HabitEditor = {
                 :key="freq.value"
               >
                 <input
+                  v-model="form.freq"
                   type="radio"
                   name="freq"
                   :value="freq.value"
-                  v-model="form.freq"
                   :disabled="limit && countsDays(freq.value)"
                 >
                 <span>{{ freq.label }}</span>
@@ -719,8 +719,8 @@ export const HabitEditor = {
               <span class="field-label">{{ t('How many times per week') }}
               </span>
               <input
-                name="timesPerWeek"
                 v-model="form.timesPerWeek"
+                name="timesPerWeek"
                 type="number"
                 min="1"
                 max="7"
@@ -740,8 +740,8 @@ export const HabitEditor = {
               <span class="field-label">{{ t('How many times per month') }}
               </span>
               <input
-                name="timesPerMonth"
                 v-model="form.timesPerMonth"
+                name="timesPerMonth"
                 type="number"
                 min="1"
                 max="28"
@@ -756,8 +756,8 @@ export const HabitEditor = {
           <template v-if="form.freq === 'weekdays'">
             <div class="field">
               <span
-                class="field-label"
                 id="habit-editor-weekdays-label"
+                class="field-label"
               >
                 {{ t('On these days') }}
               </span>
@@ -783,8 +783,8 @@ export const HabitEditor = {
               <label>
                 <span class="field-label">{{ t('Repeat') }}</span>
                 <select
-                  name="weekRepeat"
                   v-model="form.weekRepeat"
+                  name="weekRepeat"
                   class="select"
                   autocomplete="off"
                 >
@@ -801,8 +801,8 @@ export const HabitEditor = {
               <label class="grow">
                 <span class="field-label">{{ t('Every … weeks') }}</span>
                 <input
-                  name="weekInterval"
                   v-model="form.weekInterval"
+                  name="weekInterval"
                   type="number"
                   min="2"
                   max="52"
@@ -813,8 +813,8 @@ export const HabitEditor = {
               <label class="grow">
                 <span class="field-label">{{ t('Starting on') }}</span>
                 <input
-                  name="weekAnchorDate"
                   v-model="form.weekAnchorDate"
+                  name="weekAnchorDate"
                   type="date"
                 >
               </label>
@@ -827,8 +827,8 @@ export const HabitEditor = {
                 <span class="field-label">{{ t('Which one in the month') }}
                 </span>
                 <select
-                  name="weekOfMonth"
                   v-model="form.weekOfMonth"
+                  name="weekOfMonth"
                   class="select"
                   autocomplete="off"
                 >
@@ -851,8 +851,8 @@ export const HabitEditor = {
             <label class="grow">
               <span class="field-label">{{ t('Every … days') }}</span>
               <input
-                name="intervalDays"
                 v-model="form.intervalDays"
+                name="intervalDays"
                 type="number"
                 min="1"
                 max="365"
@@ -863,8 +863,8 @@ export const HabitEditor = {
             <label class="grow">
               <span class="field-label">{{ t('Starting on') }}</span>
               <input
-                name="anchorDate"
                 v-model="form.anchorDate"
+                name="anchorDate"
                 type="date"
               >
             </label>
@@ -875,9 +875,9 @@ export const HabitEditor = {
           >
             <label class="switch">
               <input
+                v-model="form.retroactive"
                 type="checkbox"
                 name="retroactive"
-                v-model="form.retroactive"
                 autocomplete="off"
               >
               <span>{{ t('Apply to past days as well') }}</span>

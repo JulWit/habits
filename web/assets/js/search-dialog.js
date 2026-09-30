@@ -212,8 +212,8 @@ export const SearchDialog = {
   // dot.
   template: `
     <dialog
-      ref="el"
       id="search-dialog"
+      ref="el"
       class="dialog search-dialog"
       :aria-label="t('Search')"
       @click="onBackdrop"
@@ -226,8 +226,8 @@ export const SearchDialog = {
           <app-icon name="search"/>
         </span>
         <input
-          ref="input"
           id="search-input"
+          ref="input"
           v-model="query"
           type="search"
           :placeholder="t('Search habits and categories…')"
@@ -253,8 +253,8 @@ export const SearchDialog = {
         </button>
       </div>
       <div
-        ref="list"
         id="search-results"
+        ref="list"
         class="search-results"
         role="listbox"
         :aria-label="t('Results')"

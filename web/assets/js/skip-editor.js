@@ -114,8 +114,8 @@ export const SkipEditor = {
   },
   template: `
     <dialog
-      ref="el"
       id="skip-editor"
+      ref="el"
       class="dialog page is-sheet is-floating"
       aria-labelledby="skip-editor-title"
     >
@@ -148,8 +148,8 @@ export const SkipEditor = {
             <label class="grow">
               <span class="field-label">{{ t('From') }}</span>
               <input
-                name="from"
                 v-model="form.from"
+                name="from"
                 type="date"
                 required
               >
@@ -157,8 +157,8 @@ export const SkipEditor = {
             <label class="grow">
               <span class="field-label">{{ t('Until') }}</span>
               <input
-                name="to"
                 v-model="form.to"
+                name="to"
                 type="date"
                 :min="form.from"
                 required
@@ -177,19 +177,19 @@ export const SkipEditor = {
             >
               <label>
                 <input
+                  v-model="form.scope"
                   type="radio"
                   name="scope"
                   value="one"
-                  v-model="form.scope"
                 >
                 <span>{{ habit.name }}</span>
               </label>
               <label>
                 <input
+                  v-model="form.scope"
                   type="radio"
                   name="scope"
                   value="all"
-                  v-model="form.scope"
                 >
                 <span>{{ t('All habits') }}</span>
               </label>

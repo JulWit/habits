@@ -1076,8 +1076,8 @@ export const BoardView = {
   // stays available for choosing another day.
   template: `
     <div
-      ref="boardEl"
       id="board-grid"
+      ref="boardEl"
       class="board"
       :class="{'has-today': activeColumn >= 0}"
       :style="activeColumn >= 0 ? {'--today-col': String(activeColumn)} : null"

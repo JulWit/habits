@@ -125,8 +125,8 @@ export const CategoryEditor = {
   // colour, or neutral without one.
   template: `
     <dialog
-      ref="el"
       id="category-editor"
+      ref="el"
       class="dialog page is-sheet is-floating"
       aria-labelledby="category-editor-title"
     >
@@ -158,8 +158,8 @@ export const CategoryEditor = {
           <label class="field">
             <span class="field-label">{{ t('Name') }}</span>
             <input
-              name="name"
               v-model="form.name"
+              name="name"
               type="text"
               maxlength="60"
               required
@@ -169,15 +169,15 @@ export const CategoryEditor = {
           <fieldset class="field">
             <legend class="field-label">{{ t('Colour') }}</legend>
             <color-swatches
-              :colors="['', ...state.colors]"
               v-model="form.color"
+              :colors="['', ...state.colors]"
             />
           </fieldset>
           <fieldset class="field">
             <legend class="field-label">{{ t('Icon') }}</legend>
             <icon-choices
-              :names="state.icons"
               v-model="form.icon"
+              :names="state.icons"
               :class="{'is-neutral': !form.color}"
               :style="iconStyle"
             />
@@ -186,9 +186,9 @@ export const CategoryEditor = {
             <legend class="field-label">{{ t('Progress') }}</legend>
             <label class="switch">
               <input
+                v-model="form.showProgress"
                 type="checkbox"
                 name="showProgress"
-                v-model="form.showProgress"
                 autocomplete="off"
               >
               <span>{{ t("Show today's progress") }}</span>

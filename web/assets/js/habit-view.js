@@ -357,10 +357,10 @@ const CumulativeChart = {
             :key="key"
           >
             <input
+              v-model="grain"
               type="radio"
               name="cum-grain"
               :value="key"
-              v-model="grain"
             >
             <span>{{ info.label }}</span>
           </label>
@@ -542,8 +542,8 @@ export const HabitView = {
   // then its activity. Frequency and target are in the details panel.
   template: `
     <main
-      ref="root"
       id="habit-view"
+      ref="root"
       class="view"
       :hidden="!habit"
       :style="habit ? {'--habit-color': colorValue(habit.color)} : null"

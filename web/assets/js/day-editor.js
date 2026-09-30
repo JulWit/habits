@@ -224,8 +224,8 @@ export const DayEditor = {
   // skipping. Any value is allowed, not only multiples of the step.
   template: `
     <dialog
-      ref="el"
       id="day-editor"
+      ref="el"
       class="dialog compact"
       aria-labelledby="day-editor-title"
       @click="onBackdrop"
@@ -255,8 +255,8 @@ export const DayEditor = {
               >−</button>
               <input
                 ref="input"
-                name="value"
                 v-model="day.value"
+                name="value"
                 type="number"
                 min="0"
                 :max="day.max"
@@ -298,9 +298,9 @@ export const DayEditor = {
             class="switch"
           >
             <input
+              v-model="day.done"
               type="checkbox"
               name="done"
-              v-model="day.done"
               autocomplete="off"
             >
             <span>{{ t('Completed') }}</span>
@@ -309,9 +309,9 @@ export const DayEditor = {
         <div class="day-skip">
           <label class="switch">
             <input
+              v-model="day.skipped"
               type="checkbox"
               name="skipped"
-              v-model="day.skipped"
               autocomplete="off"
             >
             <span>{{ t('Skip this day') }}</span>

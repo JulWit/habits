@@ -228,8 +228,8 @@ export const DayStatsView = {
   },
   template: `
     <main
-      ref="root"
       id="day-stats-view"
+      ref="root"
       class="view"
       :hidden="!shown"
     >

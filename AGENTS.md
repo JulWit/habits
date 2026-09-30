@@ -125,8 +125,10 @@ extend it along with the frontend.
 - Vue code follows the [Vue style guide](https://vuejs.org/style-guide/). In
   templates, tags are kebab-case and self-closing without content; an element
   with more than one attribute has one attribute per line and its closing
-  bracket on a line of its own; expressions stay simple, anything longer goes
-  into a `computed` or a function in `setup()`.
+  bracket on a line of its own; attributes follow the guide's order (`v-for`,
+  `v-if`, `id`, `ref` and `:key`, `v-model`, other attributes, `@events`);
+  expressions stay simple, anything longer goes into a `computed` or a
+  function in `setup()`.
 - JS follows the [Google JavaScript style
   guide](https://google.github.io/styleguide/jsguide.html): single quotes,
   80 columns (templates included), braces around every block except a

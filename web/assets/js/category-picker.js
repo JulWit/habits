@@ -127,8 +127,8 @@ export const CategoryPicker = {
   // The selection is shown by the accent fill, as in the dropdowns.
   template: `
     <dialog
-      ref="el"
       id="category-picker"
+      ref="el"
       class="dialog page is-floating"
       aria-labelledby="category-picker-title"
       @close="finish(null)"

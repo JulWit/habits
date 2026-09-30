@@ -24,6 +24,21 @@ curl -fL -o web/assets/vendor/vue.esm-browser.prod.js \
   https://cdn.jsdelivr.net/npm/vue@$V/dist/vue.esm-browser.prod.js
 ```
 
+## Formatting the frontend
+
+The JS follows the Google style (`.clang-format`), the templates in it the
+Vue style guide (one attribute per line, the guide's attribute order).
+Both formatters are developer tools, not build steps:
+
+```bash
+uvx clang-format -i web/sw.js web/assets/js/*.js
+uv run scripts/format_templates.py web/assets/js/*.js
+```
+
+`scripts/format_templates.py --check` only lists the files it would change.
+It changes whitespace only where Vue renders the same; a line it cannot break
+(a long expression) stays longer than 80 columns and belongs in `setup()`.
+
 ## Tests
 
 The tests use a temporary SQLite file and need no setup:

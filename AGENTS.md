@@ -132,6 +132,8 @@ extend it along with the frontend.
   its own; attributes follow the guide's order (`v-for`, `v-if`, `id`, `ref`
   and `:key`, `v-model`, other attributes, `@events`); expressions stay
   simple, anything longer goes into a `computed` or a function in `setup()`.
+  Format the templates with `uv run scripts/format_templates.py
+  web/assets/js/*.js`, after clang-format.
 - JS follows the [Google JavaScript style
   guide](https://google.github.io/styleguide/jsguide.html): single quotes,
   80 columns (templates included), braces around every block except a

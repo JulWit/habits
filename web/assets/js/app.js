@@ -3,7 +3,7 @@
 
 import * as actions from './actions.js';
 import {api} from './api.js';
-import {currentDays, editing, initOverview, measureBoard} from './board-view.js';
+import {initOverview, measureBoard} from './board-view.js';
 import {initCategoryEditor} from './category-editor.js';
 import {initCategoryPicker} from './category-picker.js';
 import {initCategory} from './category-view.js';
@@ -23,7 +23,6 @@ import {route} from './route.js';
 import {initTooltips} from './tooltip.js';
 import {errorText, redoLast, setChangeHandler, toast, undoLast} from './undo.js';
 import {createVueApp} from './vue-app.js';
-import {watchEffect} from './vue.js';
 
 const boardView = document.getElementById('board-view');
 const styleGuideView = document.getElementById('style-guide-view');
@@ -56,21 +55,6 @@ const handlers = {
   skipDays: (habitId) =>
       openSkipDialog(habitId ? habitById(habitId) : null, actions.skipDays),
 };
-
-/**
- * Connects the reorder mode switch in the settings.
- */
-function initEditMode() {
-  // The reorder mode switch in the settings dialog.
-  // The board shows the handles and measures its width again.
-  const input = document.getElementById('settings-edit');
-  input.addEventListener('change', () => {
-    editing.value = input.checked;
-  });
-  watchEffect(() => {
-    input.checked = editing.value;
-  });
-}
 
 /**
  * Sets a class on the root element while the page is scrolled. Used for the
@@ -118,14 +102,10 @@ async function main() {
   initDetail(handlers, document.getElementById('habit-view-host'));
   initCategory(handlers, document.getElementById('category-view-host'));
   initDays(handlers, document.getElementById('day-stats-view-host'));
-  initEditMode();
   initScrollState();
   initServiceWorker();
-  initSettings({
-    effectiveDays: currentDays,
-    reload: refresh,
-    skipDays: handlers.skipDays,
-  });
+  initSettings(
+      {reload: refresh, skipDays: handlers.skipDays}, host('settings-dialog'));
   initShortcuts();
   initTooltips();
   initSync();

@@ -1,285 +1,65 @@
-// Settings pages. Every change is saved immediately: the state is updated
-// first and restored if the server rejects the change.
+// Settings pages: a list of sections, each opening its own page. Every change
+// is saved immediately: the state is updated first and restored if the server
+// rejects the change.
 
 import {api} from './api.js';
-import {el} from './dom.js';
+import {currentDays, editing} from './board-view.js';
 import {locale, t, userTimeZone} from './i18n.js';
-import {colorLabel, colorValue, icons} from './icons.js';
+import {ColorSwatches, icons, NEUTRAL} from './icons.js';
 import {forget} from './outbox.js';
 import {openPage, topPage} from './page-stack.js';
 import {factItem} from './stat-panels.js';
-import {archivedCount, replaceState, state, subscribe} from './state.js';
+import {archivedCount, replaceState, state} from './state.js';
 import {errorText, toast} from './undo.js';
-
-/** @type {!HTMLDialogElement} */
-let dialog;
-/** @type {!Array<!HTMLInputElement>} */
-let themeInputs;
-/** @type {!HTMLSelectElement} */
-let fontSelect;
-/** @type {!Array<!HTMLInputElement>} */
-let densityInputs;
-/** @type {!HTMLSelectElement} */
-let patternSelect;
-/** @type {!HTMLSelectElement} */
-let rateWindowSelect;
-/** @type {!HTMLElement} */
-let bandChoices;
-/** @type {!HTMLInputElement} */
-let bandOpacity;
-/** @type {!HTMLOutputElement} */
-let bandOpacityOut;
-/** @type {!HTMLInputElement} */
-let bandFillOpacity;
-/** @type {!HTMLOutputElement} */
-let bandFillOpacityOut;
-/** @type {!HTMLInputElement} */
-let showBandInput;
-/** @type {!Array<!HTMLInputElement>} */
-let reorderInputs;
-/** @type {!HTMLElement} */
-let reorderHint;
-/** @type {!Array<!HTMLInputElement>} */
-let dayInputs;
-/** @type {!HTMLElement} */
-let daysHint;
-/** @type {!HTMLInputElement} */
-let archivedInput;
-/** @type {!HTMLInputElement} */
-let alignInput;
-/** @type {!HTMLElement} */
-let alignHint;
-/** @type {!HTMLElement} */
-let archiveItem;
-/** @type {!HTMLElement} */
-let archiveHint;
-/** @type {!HTMLElement} */
-let errorBox;
-/** @type {!HTMLSelectElement} */
-let languageSelect;
-/** @type {!HTMLSelectElement} */
-let timeZoneSelect;
-/** @type {!HTMLElement} */
-let timeZoneHint;
-/** @type {!HTMLButtonElement} */
-let timeZoneDevice;
+import {createVueApp} from './vue-app.js';
+import {computed, reactive, ref} from './vue.js';
 
 /**
- * Returns the number of day columns actually shown. Set by app.js.
- * @type {function(): number}
+ * Callbacks set by app.js.
+ * @type {{reload: function(): !Promise<void>, skipDays: function(?string):
+ *     void}}
  */
-let effectiveDays;
-/**
- * Reloads the state from the server. Set by app.js.
- * @type {function(): !Promise<void>}
- */
-let reload;
+let deps;
 
 /**
- * Initialises the settings page.
- * @param {{effectiveDays: function(): number, reload: function():
- *     !Promise<void>, skipDays: function(?string): void}} handlers
+ * The last error and the page it belongs to; shown in the open settings page,
+ * since pages cover the toasts.
  */
-export function initSettings(handlers) {
-  effectiveDays = handlers.effectiveDays;
-  reload = handlers.reload;
-  // Skipping days of all habits opens its own page (skip-editor.js).
-  document.getElementById('settings-skip')
-      .addEventListener('click', () => handlers.skipDays(null));
+const error = reactive({page: '', message: ''});
 
-  dialog = document.getElementById('settings-dialog');
-  themeInputs = [...document.querySelectorAll('input[name="settings-theme"]')];
-  fontSelect = document.getElementById('settings-font');
-  densityInputs =
-      [...document.querySelectorAll('input[name="settings-density"]')];
-  patternSelect = document.getElementById('settings-pattern');
-  rateWindowSelect = document.getElementById('settings-rate-window');
-  bandChoices = document.getElementById('settings-band-colors');
-  bandOpacity = document.getElementById('settings-band-opacity');
-  bandOpacityOut = document.getElementById('settings-band-opacity-out');
-  bandFillOpacity = document.getElementById('settings-band-fill-opacity');
-  bandFillOpacityOut =
-      document.getElementById('settings-band-fill-opacity-out');
-  showBandInput = document.getElementById('settings-show-band');
-  reorderInputs =
-      [...document.querySelectorAll('input[name="settings-reorder"]')];
-  reorderHint = document.getElementById('settings-reorder-hint');
-  dayInputs = [...document.querySelectorAll('input[name="settings-days"]')];
-  daysHint = document.getElementById('settings-days-hint');
-  archivedInput = document.getElementById('settings-archived');
-  alignInput = document.getElementById('settings-align-weeks');
-  alignHint = document.getElementById('settings-align-hint');
-  archiveItem = document.getElementById('settings-archive-item');
-  archiveHint = document.getElementById('settings-archive-hint');
-  errorBox = document.getElementById('settings-error');
-  languageSelect = document.getElementById('settings-language');
-  timeZoneSelect = document.getElementById('settings-timezone');
-  timeZoneHint = document.getElementById('settings-timezone-hint');
-  timeZoneDevice = document.getElementById('settings-timezone-device');
-
-  const openButton = document.getElementById('open-settings');
-  openButton.innerHTML = icons.gear;
-  openButton.addEventListener('click', () => {
-    errorBox.hidden = true;
-    paint();
-    openPage(dialog);
-  });
-
-  for (const input of themeInputs) {
-    input.addEventListener('change', () => saveSetting({theme: input.value}));
+/**
+ * Shows an error in the open settings page, or as a toast outside of them.
+ * @param {string} message
+ */
+function report(message) {
+  const page = topPage();
+  if (page?.id.startsWith('settings-')) {
+    error.page = page.id;
+    error.message = message;
+    return;
   }
-  fontSelect.addEventListener(
-      'change', () => saveSetting({font: fontSelect.value}));
-  for (const input of densityInputs) {
-    input.addEventListener('change', () => saveSetting({density: input.value}));
-  }
-  patternSelect.addEventListener(
-      'change', () => saveSetting({pattern: patternSelect.value}));
-  bandChoices.addEventListener('click', (event) => {
-    const swatch = event.target.closest('.swatch');
-    if (swatch) saveSetting({bandColor: swatch.dataset.color});
-  });
-  // The sliders preview their value while they move and save it on release.
-  bindSlider(bandOpacity, bandOpacityOut, 'bandOpacity', '--today-opacity');
-  bindSlider(
-      bandFillOpacity, bandFillOpacityOut, 'bandFillOpacity', '--band-opacity');
-  showBandInput.addEventListener(
-      'change', () => saveSetting({showBand: showBandInput.checked}));
-
-  alignInput.addEventListener(
-      'change', () => saveSetting({alignWeeks: alignInput.checked}));
-  for (const input of reorderInputs) {
-    input.addEventListener(
-        'change', () => saveSetting({reorderMode: input.value}));
-  }
-  for (const input of dayInputs) {
-    input.addEventListener(
-        'change', () => saveSetting({overviewDays: Number(input.value)}));
-  }
-
-  languageSelect.addEventListener('change', async () => {
-    // Reload the page to apply the new language, once the server has it.
-    if (await saveSetting({language: languageSelect.value})) {
-      location.reload();
-    }
-  });
-  timeZoneSelect.addEventListener(
-      'change', () => saveTimeZone(timeZoneSelect.value));
-  timeZoneDevice.addEventListener(
-      'click', () => saveTimeZone(deviceTimeZone()));
-
-  rateWindowSelect.addEventListener('change', async () => {
-    // The server computes the rate, so the statistics are reloaded.
-    if (await saveSetting({rateWindow: rateWindowSelect.value})) {
-      await reload();
-    }
-  });
-
-  // The state holds the archived habits; the overview shows them at once.
-  archivedInput.addEventListener(
-      'change', () => saveSetting({showArchived: archivedInput.checked}));
-
-  initTransfer();
-  initDeleteAll();
-
-  // Update the hint with the number of columns actually shown.
-  subscribe(paint);
+  toast(message, {error: true});
 }
 
 /**
- * Shows the current settings in the controls.
+ * Saves settings. The state is updated immediately and restored if the
+ * server rejects the change. Resolves to whether the change was saved.
+ * @param {!Object<string, *>} patch
+ * @return {!Promise<boolean>}
  */
-function paint() {
-  // Before the state is loaded, there is nothing to show.
-  if (!dialog || !state.user) return;
-  const settings = state.settings;
-
-  for (const input of themeInputs) {
-    input.checked = input.value === settings.theme;
+async function saveSetting(patch) {
+  const before = {...state.settings};
+  // Apply immediately; restored on failure.
+  replaceState({settings: {...state.settings, ...patch}});
+  try {
+    replaceState({settings: await api.saveSettings(patch)});
+    error.message = '';
+    return true;
+  } catch (err) {
+    replaceState({settings: before});
+    report(errorText(err));
+    return false;
   }
-  fontSelect.value = settings.font;
-  for (const input of densityInputs) {
-    input.checked = input.value === settings.density;
-  }
-  patternSelect.value = settings.pattern;
-  rateWindowSelect.value = settings.rateWindow;
-  paintBandChoices(settings.bandColor);
-  bandOpacity.value = String(settings.bandOpacity);
-  showPercent(bandOpacityOut, bandOpacity.value);
-  showBandInput.checked = settings.showBand;
-  bandFillOpacity.value = String(settings.bandFillOpacity);
-  showPercent(bandFillOpacityOut, bandFillOpacity.value);
-  // The slider is only shown while the band is on.
-  bandFillOpacity.closest('.slider').hidden = !settings.showBand;
-  for (const input of reorderInputs) {
-    input.checked = input.value === settings.reorderMode;
-  }
-  reorderHint.textContent = settings.reorderMode === 'drag' ?
-      t('Categories and habits are moved by their handle.') :
-      t('Categories and habits are moved with arrows — by keyboard too.');
-
-  const days = settings.overviewDays;
-  const shown = effectiveDays();
-  for (const input of dayInputs) {
-    input.checked = Number(input.value) === days;
-  }
-  if (days === 0) {
-    daysHint.textContent =
-        t('As many days are shown as fit in the window — currently {n}.',
-          {n: shown});
-  } else if (shown < days) {
-    daysHint.textContent = t(
-        'Only {n} days fit in the window right now. In a wider window it will be {days}.',
-        {n: shown, days});
-  } else {
-    daysHint.textContent = t('{n} days are shown right now.', {n: shown});
-  }
-
-  alignInput.checked = settings.alignWeeks;
-  if (!settings.alignWeeks) {
-    alignHint.textContent = t('The overview ends on today.');
-  } else if (shown < 7) {
-    // Week alignment requires at least seven columns.
-    alignHint.textContent =
-        t('Possible from 7 columns on — {n} fit right now.', {n: shown});
-  } else {
-    alignHint.textContent = t(
-        'The overview shows whole calendar weeks, including the remaining days of this week.');
-  }
-
-  paintRegion();
-  paintAccount();
-  paintVersion();
-
-  const archived = archivedCount();
-  archivedInput.checked = settings.showArchived;
-  // Hidden if there are no archived habits and the switch is off.
-  archiveItem.hidden = archived === 0 && !settings.showArchived;
-  archiveHint.textContent = archived === 1 ?
-      t('1 habit is archived.') :
-      t('{n} habits are archived.', {n: archived});
-}
-
-// ---------- account ----------
-
-/** Fills the card of the signed-in user from state.user. */
-function paintAccount() {
-  const user = state.user;
-  // Without a display name (e.g. single-user mode), the ID stands in.
-  const name = user.name || user.id || t('Unknown');
-  // The ID is only worth a line if the name does not show it already.
-  const detail = user.email || (user.id !== name ? user.id : '');
-  const groups = user.groups ?? [];
-
-  document.getElementById('settings-account-avatar').textContent =
-      initials(name);
-  document.getElementById('settings-account-name').textContent = name;
-  const detailEl = document.getElementById('settings-account-detail');
-  detailEl.textContent = detail;
-  detailEl.hidden = !detail;
-  const groupsEl = document.getElementById('settings-account-groups');
-  groupsEl.textContent = t('Groups: {list}', {list: groups.join(', ')});
-  groupsEl.hidden = groups.length === 0;
 }
 
 /**
@@ -294,30 +74,6 @@ function initials(name) {
   return letters.map((w) => [...w][0].toUpperCase()).join('');
 }
 
-// ---------- version ----------
-
-/** Fills the version page and the version row's hint from state.build. */
-function paintVersion() {
-  const build = state.build;
-  const version = build.version || t('Development build');
-  // Twelve characters identify a commit well enough.
-  const revision = build.revision ? build.revision.slice(0, 12) +
-          (build.modified ? ` (${t('modified')})` : '') :
-                                    t('Unknown');
-
-  document.getElementById('settings-version-hint').textContent = version;
-
-  const facts = [
-    [t('Version'), version],
-    [t('Commit'), revision],
-    [t('Built'), formatBuildTime(build.time)],
-    [t('Go version'), build.goVersion || t('Unknown')],
-  ];
-  document.getElementById('settings-version-facts')
-      .replaceChildren(
-          ...facts.map(([label, value]) => factItem(label, value)));
-}
-
 /**
  * Formats the RFC 3339 build time in the user's language, or "Unknown".
  * @param {string} time
@@ -327,61 +83,6 @@ function formatBuildTime(time) {
   const date = time ? new Date(time) : null;
   if (!date || Number.isNaN(date.getTime())) return t('Unknown');
   return date.toLocaleString(locale, {dateStyle: 'medium', timeStyle: 'short'});
-}
-
-// ---------- import & export ----------
-
-/** Wires the export and import buttons. */
-function initTransfer() {
-  const exportButton = document.getElementById('settings-export');
-  const importButton = document.getElementById('settings-import');
-  const fileInput = document.getElementById('settings-import-file');
-  const result = document.getElementById('settings-import-result');
-
-  exportButton.addEventListener('click', async () => {
-    exportButton.disabled = true;
-    try {
-      const data = await api.exportHabits();
-      download(`habits-${state.today}.json`, JSON.stringify(data, null, 2));
-      errorBox.hidden = true;
-    } catch (err) {
-      report(errorText(err));
-    } finally {
-      exportButton.disabled = false;
-    }
-  });
-
-  importButton.addEventListener('click', () => fileInput.click());
-  fileInput.addEventListener('change', async () => {
-    const file = fileInput.files[0];
-    // Cleared, so that choosing the same file again fires "change".
-    fileInput.value = '';
-    if (!file) return;
-    result.hidden = true;
-
-    let data;
-    try {
-      data = JSON.parse(await file.text());
-    } catch {
-      report(t('The file is not an export of the habits.'));
-      return;
-    }
-    importButton.disabled = true;
-    try {
-      const counts = await api.importHabits(data);
-      errorBox.hidden = true;
-      result.textContent = importSummary(counts);
-      result.hidden = false;
-      await reload();
-    } catch (err) {
-      const message = errorText(err);
-      // The server names the habit or category that is invalid.
-      const name = err.params?.habit ?? err.params?.category;
-      report(name ? t('"{name}": {message}', {name, message}) : message);
-    } finally {
-      importButton.disabled = false;
-    }
-  });
 }
 
 /**
@@ -408,32 +109,6 @@ function importSummary({habits, categories, skipped}) {
   return parts.join(' ');
 }
 
-/** Wires the button that deletes all data, after asking. */
-function initDeleteAll() {
-  const button = document.getElementById('settings-delete-all');
-  const confirm = document.getElementById('delete-all-dialog');
-
-  button.addEventListener('click', () => {
-    // Escape leaves the value empty, i.e. cancels.
-    confirm.returnValue = '';
-    confirm.showModal();
-  });
-  confirm.addEventListener('close', async () => {
-    if (confirm.returnValue !== 'delete') return;
-    button.disabled = true;
-    try {
-      await api.deleteAllData();
-      // Nothing remembered may bring the data back, and the page starts over
-      // with the default settings and without undo steps.
-      forget();
-      location.reload();
-    } catch (err) {
-      report(errorText(err));
-      button.disabled = false;
-    }
-  });
-}
-
 /**
  * Offers `text` as a JSON file to save.
  * @param {string} name
@@ -451,8 +126,6 @@ function download(name, text) {
   setTimeout(() => URL.revokeObjectURL(url), 10_000);
 }
 
-// ---------- region & language ----------
-
 /**
  * Returns the browser's time zone, or "".
  * @return {string}
@@ -466,74 +139,32 @@ function deviceTimeZone() {
 }
 
 /**
- * Returns all time zones known to the browser, or a short fallback list for
- * browsers without Intl.supportedValuesOf.
- * @return {!Array<string>}
+ * Returns all time zones known to the browser, grouped by region, or a short
+ * fallback list for browsers without Intl.supportedValuesOf. Each zone is
+ * named without its region and underscores.
+ * @return {!Array<{region: string, zones: !Array<{value: string, label:
+ *     string}>}>}
  */
-function knownTimeZones() {
+function timeZoneGroups() {
+  let known;
   try {
-    return Intl.supportedValuesOf('timeZone');
+    known = Intl.supportedValuesOf('timeZone');
   } catch {
-    return ['UTC', 'Europe/Berlin', 'Europe/London', 'America/New_York'];
+    known = ['UTC', 'Europe/Berlin', 'Europe/London', 'America/New_York'];
   }
-}
-
-/**
- * Builds the time zone list, grouped by region, with the server's time zone
- * first. Built once.
- */
-function buildTimeZoneOptions() {
-  if (timeZoneSelect.options.length > 0) return;
-  timeZoneSelect.append(el('option', {value: ''}));
-
   const groups = new Map();
-  for (const zone of knownTimeZones()) {
+  for (const zone of known) {
     const region =
         zone.includes('/') ? zone.slice(0, zone.indexOf('/')) : t('Other');
     if (!groups.has(region)) groups.set(region, []);
-    groups.get(region).push(zone);
+    groups.get(region).push({
+      value: zone,
+      label: zone.slice(zone.indexOf('/') + 1)
+                 .replaceAll('_', ' ')
+                 .replaceAll('/', ' / '),
+    });
   }
-  for (const [region, zones] of groups) {
-    timeZoneSelect.append(
-        el('optgroup', {label: region},
-           ...zones.map(
-               (zone) =>
-                   // Without the region prefix and underscores.
-               el('option', {value: zone},
-                  zone.slice(zone.indexOf('/') + 1)
-                      .replaceAll('_', ' ')
-                      .replaceAll('/', ' / ')))));
-  }
-}
-
-/**
- * Shows the language and time zone settings.
- */
-function paintRegion() {
-  languageSelect.value = state.settings.language;
-
-  buildTimeZoneOptions();
-  const server = state.serverTimeZone;
-  // "Local" is a server zone without a name.
-  timeZoneSelect.options[0].textContent = server && server !== 'Local' ?
-      t('Server default ({zone})', {zone: server}) :
-      t('Server default');
-
-  const chosen = state.settings.timeZone;
-  // Add the chosen zone if the browser does not list it.
-  if (chosen && ![...timeZoneSelect.options].some((o) => o.value === chosen)) {
-    timeZoneSelect.append(el('option', {value: chosen}, chosen));
-  }
-  timeZoneSelect.value = chosen;
-
-  timeZoneHint.textContent = timeZoneText();
-
-  // Only offered if the device is in a different time zone.
-  const device = deviceTimeZone();
-  const inForce = chosen || server;
-  timeZoneDevice.hidden = !device || device === inForce;
-  timeZoneDevice.textContent =
-      t('Use this device\'s time zone ({zone})', {zone: device});
+  return [...groups].map(([region, zones]) => ({region, zones}));
 }
 
 /**
@@ -553,107 +184,552 @@ function timeZoneText() {
 }
 
 /**
- * Saves the time zone and reloads the state, as it changes "today".
- * @param {string} zone
- * @return {!Promise<void>}
+ * A settings page: a full-screen dialog with a back button, its content and
+ * the error of the last change made on it.
  */
-async function saveTimeZone(zone) {
-  if (await saveSetting({timeZone: zone})) await reload();
-}
+const SettingsPage = {
+  name: 'SettingsPage',
+  props: {
+    id: {type: String, required: true},
+    title: {type: String, required: true},
+  },
+  setup() {
+    return {error};
+  },
+  template: `
+    <dialog :id="id" class="dialog page" :aria-labelledby="id + '-title'">
+      <header class="page-head">
+        <button type="button" class="icon-button" data-page-back
+                :title="t('Back')" :aria-label="t('Back')"><app-icon name="arrowLeft"/></button>
+        <h2 :id="id + '-title'">{{ title }}</h2>
+      </header>
+      <div class="page-body">
+        <slot/>
+        <p v-if="error.message && error.page === id" class="error">{{ error.message }}</p>
+      </div>
+    </dialog>`,
+};
 
 /**
- * Band colour for a grey today band, as store.NeutralBand.
- * @const {string}
+ * A row of the settings menu that opens the page `page` (see page-stack.js).
  */
-const NEUTRAL_BAND = 'neutral';
+const MenuItem = {
+  name: 'MenuItem',
+  props: {
+    page: String,
+    icon: {type: String, required: true},
+    title: {type: String, required: true},
+    hint: String,
+  },
+  template: `
+    <button type="button" class="menu-item" :data-open-page="page">
+      <span class="menu-icon" aria-hidden="true"><app-icon :name="icon"/></span>
+      <span class="menu-text"><span class="menu-title">{{ title }}</span><span class="menu-hint">{{ hint }}</span></span>
+      <span class="menu-caret" aria-hidden="true"><app-icon name="chevronRight"/></span>
+    </button>`,
+};
+
+/** The settings pages. */
+const SettingsDialog = {
+  name: 'SettingsDialog',
+  components: {ColorSwatches, MenuItem, SettingsPage},
+  setup() {
+    const importInput = ref(null);
+    const deleteDialog = ref(null);
+    const exporting = ref(false);
+    const importing = ref(false);
+    const deleting = ref(false);
+    const importResult = ref('');
+    // The sliders' values while they move, before they are saved.
+    const preview = reactive({bandOpacity: null, bandFillOpacity: null});
+
+    const settings = computed(() => state.settings);
+    const options = (key) => state.options?.[key] ?? [];
+
+    // ---------- account and version ----------
+
+    const account = computed(() => {
+      const user = state.user ?? {};
+      // Without a display name (e.g. single-user mode), the ID stands in.
+      const name = user.name || user.id || t('Unknown');
+      return {
+        name,
+        initials: initials(name),
+        // The ID is only worth a line if the name does not show it already.
+        detail: user.email || (user.id !== name ? user.id : ''),
+        groups: user.groups ?? [],
+      };
+    });
+
+    const version = computed(() => state.build?.version || t('Development build'));
+    const versionFacts = computed(() => {
+      const build = state.build ?? {};
+      // Twelve characters identify a commit well enough.
+      const revision = build.revision ? build.revision.slice(0, 12) +
+              (build.modified ? ` (${t('modified')})` : '') :
+                                        t('Unknown');
+      return [
+        factItem(t('Version'), version.value),
+        factItem(t('Commit'), revision),
+        factItem(t('Built'), formatBuildTime(build.time)),
+        factItem(t('Go version'), build.goVersion || t('Unknown')),
+      ];
+    });
+
+    // ---------- overview ----------
+
+    const daysHint = computed(() => {
+      const days = settings.value.overviewDays;
+      const shown = currentDays();
+      if (days === 0) {
+        return t('As many days are shown as fit in the window — currently {n}.',
+                 {n: shown});
+      }
+      if (shown < days) {
+        return t(
+            'Only {n} days fit in the window right now. In a wider window it will be {days}.',
+            {n: shown, days});
+      }
+      return t('{n} days are shown right now.', {n: shown});
+    });
+
+    const alignHint = computed(() => {
+      const shown = currentDays();
+      if (!settings.value.alignWeeks) return t('The overview ends on today.');
+      // Week alignment requires at least seven columns.
+      if (shown < 7) {
+        return t('Possible from 7 columns on — {n} fit right now.', {n: shown});
+      }
+      return t(
+          'The overview shows whole calendar weeks, including the remaining days of this week.');
+    });
+
+    // ---------- language and time ----------
+
+    const zones = timeZoneGroups();
+    const zoneValues = new Set(zones.flatMap((g) => g.zones.map((z) => z.value)));
+    const serverZone = computed(() => {
+      const server = state.serverTimeZone;
+      // "Local" is a server zone without a name.
+      return server && server !== 'Local' ?
+          t('Server default ({zone})', {zone: server}) :
+          t('Server default');
+    });
+    const device = deviceTimeZone();
+
+    /**
+     * Saves the time zone and reloads the state, as it changes "today".
+     * @param {string} zone
+     */
+    const saveTimeZone = async (zone) => {
+      if (await saveSetting({timeZone: zone})) await deps.reload();
+    };
+
+    // ---------- data ----------
+
+    /** Downloads an export of the habits. */
+    const exportHabits = async () => {
+      exporting.value = true;
+      try {
+        const data = await api.exportHabits();
+        download(`habits-${state.today}.json`, JSON.stringify(data, null, 2));
+        error.message = '';
+      } catch (err) {
+        report(errorText(err));
+      } finally {
+        exporting.value = false;
+      }
+    };
+
+    /** Imports the chosen file. */
+    const importFile = async () => {
+      const file = importInput.value.files[0];
+      // Cleared, so that choosing the same file again fires "change".
+      importInput.value.value = '';
+      if (!file) return;
+      importResult.value = '';
+
+      let data;
+      try {
+        data = JSON.parse(await file.text());
+      } catch {
+        report(t('The file is not an export of the habits.'));
+        return;
+      }
+      importing.value = true;
+      try {
+        const counts = await api.importHabits(data);
+        error.message = '';
+        importResult.value = importSummary(counts);
+        await deps.reload();
+      } catch (err) {
+        const message = errorText(err);
+        // The server names the habit or category that is invalid.
+        const name = err.params?.habit ?? err.params?.category;
+        report(name ? t('"{name}": {message}', {name, message}) : message);
+      } finally {
+        importing.value = false;
+      }
+    };
+
+    /** Asks before deleting all data; Escape leaves the answer empty. */
+    const askToDeleteAll = () => {
+      deleteDialog.value.returnValue = '';
+      deleteDialog.value.showModal();
+    };
+
+    /** Deletes all data if the user confirmed it. */
+    const deleteAll = async () => {
+      if (deleteDialog.value.returnValue !== 'delete') return;
+      deleting.value = true;
+      try {
+        await api.deleteAllData();
+        // Nothing remembered may bring the data back, and the page starts
+        // over with the default settings and without undo steps.
+        forget();
+        location.reload();
+      } catch (err) {
+        report(errorText(err));
+        deleting.value = false;
+      }
+    };
+
+    return {
+      state,
+      settings,
+      options,
+      editing,
+      error,
+      preview,
+      account,
+      version,
+      versionFacts,
+      daysHint,
+      alignHint,
+      zones,
+      serverZone,
+      device,
+      importInput,
+      deleteDialog,
+      exporting,
+      importing,
+      deleting,
+      importResult,
+      NEUTRAL,
+      save: saveSetting,
+      saveTimeZone,
+      exportHabits,
+      importFile,
+      askToDeleteAll,
+      deleteAll,
+      timeZoneText,
+      // The chosen zone is offered even if the browser does not list it.
+      unlistedZone: computed(() => {
+        const chosen = settings.value.timeZone;
+        return chosen && !zoneValues.has(chosen) ? chosen : '';
+      }),
+      // Only offered if the device is in a different time zone.
+      offerDeviceZone: computed(
+          () => device && device !== (settings.value.timeZone || state.serverTimeZone)),
+      archived: computed(() => archivedCount()),
+      skipAll: () => deps.skipDays(null),
+      /**
+       * Reloads the page to apply a new language, once the server has it.
+       * @param {string} language
+       */
+      saveLanguage: async (language) => {
+        if (await saveSetting({language})) location.reload();
+      },
+      /**
+       * Saves the completion rate's window; the server computes the rate, so
+       * the statistics are reloaded.
+       * @param {string} rateWindow
+       */
+      saveRateWindow: async (rateWindow) => {
+        if (await saveSetting({rateWindow})) await deps.reload();
+      },
+      /**
+       * Previews a slider's value through the custom property `cssVar` while
+       * it moves.
+       * @param {string} key
+       * @param {string} cssVar
+       * @param {string} value
+       */
+      slide: (key, cssVar, value) => {
+        preview[key] = value;
+        document.documentElement.style.setProperty(cssVar, `${value}%`);
+      },
+      /**
+       * Saves a slider's value on release.
+       * @param {string} key
+       * @param {string} value
+       */
+      release: async (key, value) => {
+        await saveSetting({[key]: Number(value)});
+        preview[key] = null;
+      },
+    };
+  },
+  template: `
+    <settings-page id="settings-dialog" :title="t('Settings')">
+      <!-- The signed-in user. -->
+      <section class="account" :aria-label="t('Current user')">
+        <span class="account-avatar" aria-hidden="true">{{ account.initials }}</span>
+        <div class="account-text">
+          <p class="account-name">{{ account.name }}</p>
+          <p v-if="account.detail" class="account-detail">{{ account.detail }}</p>
+          <p v-if="account.groups.length > 0" class="account-groups">{{ t('Groups: {list}', {list: account.groups.join(', ')}) }}</p>
+        </div>
+      </section>
+      <nav class="menu" :aria-label="t('Settings sections')">
+        <menu-item page="settings-look" icon="palette" :title="t('Appearance')" :hint="t('Theme, font, colours and background')"/>
+        <menu-item page="settings-board" icon="board" :title="t('Overview')" :hint="t('Reordering and days shown')"/>
+        <menu-item page="settings-region" icon="globe" :title="t('Language & time')" :hint="t('Language and time zone')"/>
+        <!-- Hidden if there are no archived habits and the switch is off. -->
+        <menu-item v-if="archived > 0 || settings.showArchived" page="settings-archive"
+                   icon="archive" :title="t('Archive')" :hint="t('Archived habits')"/>
+        <menu-item icon="skip" :title="t('Skip days')" :hint="t('Skip days of all habits')" @click="skipAll"/>
+        <menu-item page="settings-data" icon="transfer" :title="t('Data')" :hint="t('Import, export and delete')"/>
+      </nav>
+      <nav class="menu" :aria-label="t('About the app')">
+        <menu-item page="settings-version" icon="info" :title="t('Version')" :hint="version"/>
+      </nav>
+    </settings-page>
+
+    <settings-page id="settings-version" :title="t('Version')">
+      <dl class="facts">
+        <div v-for="item in versionFacts" :key="item.label">
+          <dt>{{ item.label }}</dt><dd>{{ item.value }}</dd>
+        </div>
+      </dl>
+    </settings-page>
+
+    <settings-page id="settings-look" :title="t('Appearance')">
+      <fieldset class="field">
+        <legend class="field-label">{{ t('Theme') }}</legend>
+        <div class="segmented" role="radiogroup" :aria-label="t('Theme')">
+          <label v-for="o in options('theme')" :key="o.value">
+            <input type="radio" name="settings-theme" :value="o.value" autocomplete="off"
+                   :checked="settings.theme === o.value" @change="save({theme: o.value})">
+            <span><app-icon :name="o.icon"/>{{ t(o.label) }}</span>
+          </label>
+        </div>
+      </fieldset>
+
+      <label class="field">
+        <span class="field-label">{{ t('Font') }}</span>
+        <select id="settings-font" class="select" autocomplete="off"
+                :value="settings.font" @change="save({font: $event.target.value})">
+          <option v-for="o in options('font')" :key="o.value" :value="o.value">{{ t(o.label) }}</option>
+        </select>
+      </label>
+
+      <fieldset class="field">
+        <legend class="field-label">{{ t('Density') }}</legend>
+        <div class="segmented" role="radiogroup" :aria-label="t('Density')">
+          <label v-for="o in options('density')" :key="o.value">
+            <input type="radio" name="settings-density" :value="o.value" autocomplete="off"
+                   :checked="settings.density === o.value" @change="save({density: o.value})">
+            <span>{{ t(o.label) }}</span>
+          </label>
+        </div>
+        <p class="field-hint">{{ t('Spacing inside and around every element, and how heavy its emphasis is set.') }}</p>
+      </fieldset>
+
+      <fieldset class="field">
+        <legend class="field-label">{{ t('Accent colour') }}</legend>
+        <color-swatches :colors="[NEUTRAL, ...state.colors]" :model-value="settings.bandColor"
+                        :aria-label="t('Accent colour')"
+                        @update:model-value="save({bandColor: $event})"/>
+        <!-- The sliders preview their value while they move and save it on
+             release. -->
+        <label class="slider">
+          <span class="field-label">{{ t('Opacity') }}</span>
+          <input type="range" min="0" max="100" step="5" autocomplete="off"
+                 :value="preview.bandOpacity ?? settings.bandOpacity"
+                 @input="slide('bandOpacity', '--today-opacity', $event.target.value)"
+                 @change="release('bandOpacity', $event.target.value)">
+          <output>{{ preview.bandOpacity ?? settings.bandOpacity }}%</output>
+        </label>
+      </fieldset>
+
+      <fieldset class="field">
+        <legend class="field-label">{{ t('Today band') }}</legend>
+        <label class="switch">
+          <input type="checkbox" autocomplete="off" :checked="settings.showBand"
+                 @change="save({showBand: $event.target.checked})">
+          <span>{{ t("Band through today's column") }}</span>
+        </label>
+        <p class="field-hint">{{ t("Off, only today's date in the header is marked.") }}</p>
+        <!-- Only while the band is on. -->
+        <label v-if="settings.showBand" class="slider">
+          <span class="field-label">{{ t('Band opacity') }}</span>
+          <input type="range" min="0" max="100" step="5" autocomplete="off"
+                 :value="preview.bandFillOpacity ?? settings.bandFillOpacity"
+                 @input="slide('bandFillOpacity', '--band-opacity', $event.target.value)"
+                 @change="release('bandFillOpacity', $event.target.value)">
+          <output>{{ preview.bandFillOpacity ?? settings.bandFillOpacity }}%</output>
+        </label>
+      </fieldset>
+
+      <label class="field">
+        <span class="field-label">{{ t('Background pattern') }}</span>
+        <select class="select" autocomplete="off" :value="settings.pattern"
+                @change="save({pattern: $event.target.value})">
+          <option v-for="o in options('pattern')" :key="o.value" :value="o.value">{{ t(o.label) }}</option>
+        </select>
+      </label>
+    </settings-page>
+
+    <settings-page id="settings-board" :title="t('Overview')">
+      <fieldset class="field">
+        <legend class="field-label">{{ t('Reordering') }}</legend>
+        <label class="switch">
+          <input type="checkbox" autocomplete="off" v-model="editing">
+          <span>{{ t('Arrange') }}</span>
+        </label>
+        <p class="field-hint">{{ t('Shows the handles for moving habits and categories. Applies until the page is next loaded.') }}</p>
+        <div class="segmented" role="radiogroup" :aria-label="t('Reordering')">
+          <label v-for="o in options('reorderMode')" :key="o.value">
+            <input type="radio" name="settings-reorder" :value="o.value" autocomplete="off"
+                   :checked="settings.reorderMode === o.value" @change="save({reorderMode: o.value})">
+            <span><app-icon :name="o.icon"/>{{ t(o.label) }}</span>
+          </label>
+        </div>
+        <p class="field-hint">{{ settings.reorderMode === 'drag' ? t('Categories and habits are moved by their handle.') : t('Categories and habits are moved with arrows — by keyboard too.') }}</p>
+      </fieldset>
+
+      <fieldset class="field">
+        <legend class="field-label">{{ t('Days in the overview') }}</legend>
+        <div class="segmented wrap" role="radiogroup" :aria-label="t('Days in the overview')">
+          <label v-for="n in [0, 7, 14, 21, 28]" :key="n">
+            <input type="radio" name="settings-days" :value="n" autocomplete="off"
+                   :checked="settings.overviewDays === n" @change="save({overviewDays: n})">
+            <span>{{ n === 0 ? t('Automatic') : n }}</span>
+          </label>
+        </div>
+        <p class="field-hint">{{ daysHint }}</p>
+        <label class="switch">
+          <input type="checkbox" autocomplete="off" :checked="settings.alignWeeks"
+                 @change="save({alignWeeks: $event.target.checked})">
+          <span>{{ t('Start the week on Monday') }}</span>
+        </label>
+        <p class="field-hint">{{ alignHint }}</p>
+      </fieldset>
+
+      <label class="field">
+        <span class="field-label">{{ t('Completion rate over') }}</span>
+        <select class="select" autocomplete="off" :value="settings.rateWindow"
+                @change="saveRateWindow($event.target.value)">
+          <option v-for="o in options('rateWindow')" :key="o.value" :value="o.value">{{ t(o.label) }}</option>
+        </select>
+        <span class="field-hint">{{ t("The rate in a habit's statistics: the share of its due days completed in this time, skipped days left out.") }}</span>
+      </label>
+    </settings-page>
+
+    <settings-page id="settings-region" :title="t('Language & time')">
+      <div class="field">
+        <label>
+          <span class="field-label">{{ t('Language') }}</span>
+          <!-- Each language is named in its own language. -->
+          <select class="select" autocomplete="off" :value="settings.language"
+                  @change="saveLanguage($event.target.value)">
+            <option v-for="o in options('language')" :key="o.value" :value="o.value"
+                    :lang="o.lang || undefined">{{ o.lang ? o.label : t(o.label) }}</option>
+          </select>
+        </label>
+        <p class="field-hint">{{ t('The page reloads to switch the language.') }}</p>
+      </div>
+
+      <div class="field">
+        <label>
+          <span class="field-label">{{ t('Time zone') }}</span>
+          <select class="select" autocomplete="off" :value="settings.timeZone"
+                  @change="saveTimeZone($event.target.value)">
+            <option value="">{{ serverZone }}</option>
+            <option v-if="unlistedZone" :value="unlistedZone">{{ unlistedZone }}</option>
+            <optgroup v-for="group in zones" :key="group.region" :label="group.region">
+              <option v-for="zone in group.zones" :key="zone.value" :value="zone.value">{{ zone.label }}</option>
+            </optgroup>
+          </select>
+        </label>
+        <p class="field-hint">{{ timeZoneText() }}</p>
+        <button v-if="offerDeviceZone" type="button" class="button"
+                @click="saveTimeZone(device)">{{ t("Use this device's time zone ({zone})", {zone: device}) }}</button>
+      </div>
+    </settings-page>
+
+    <settings-page id="settings-archive" :title="t('Archive')">
+      <fieldset class="field">
+        <legend class="field-label">{{ t('Archive') }}</legend>
+        <!-- The state holds the archived habits; the overview shows them at
+             once. -->
+        <label class="switch">
+          <input type="checkbox" autocomplete="off" :checked="settings.showArchived"
+                 @change="save({showArchived: $event.target.checked})">
+          <span>{{ t('Show archived habits') }}</span>
+        </label>
+        <p class="field-hint">{{ archived === 1 ? t('1 habit is archived.') : t('{n} habits are archived.', {n: archived}) }}</p>
+      </fieldset>
+    </settings-page>
+
+    <settings-page id="settings-data" :title="t('Data')">
+      <div class="field">
+        <span class="field-label">{{ t('Export') }}</span>
+        <p class="field-hint">{{ t('Saves your habits with their schedules and recorded days, and your categories, as a file: a backup that importing restores. Statistics are computed again.') }}</p>
+        <button type="button" class="button" :disabled="exporting" @click="exportHabits">
+          <app-icon name="download"/>{{ t('Export habits') }}
+        </button>
+      </div>
+
+      <div class="field">
+        <span class="field-label">{{ t('Import') }}</span>
+        <p class="field-hint">{{ t('Adds the habits of an exported file with their history. Habits whose name already exists are skipped; categories of the same name are shared.') }}</p>
+        <input ref="importInput" type="file" accept=".json,application/json" hidden @change="importFile">
+        <button type="button" class="button" :disabled="importing" @click="importInput.click()">
+          <app-icon name="upload"/>{{ t('Import habits') }}
+        </button>
+        <p v-if="importResult" class="field-hint" role="status">{{ importResult }}</p>
+      </div>
+
+      <div class="field">
+        <span class="field-label">{{ t('Delete') }}</span>
+        <p class="field-hint">{{ t('Deletes all your habits with their recorded days, your categories and your settings. This cannot be undone; export your habits first to keep them.') }}</p>
+        <button type="button" class="button danger" :disabled="deleting" @click="askToDeleteAll">
+          <app-icon name="trash"/>{{ t('Delete all data') }}
+        </button>
+      </div>
+    </settings-page>
+
+    <dialog ref="deleteDialog" id="delete-all-dialog" class="dialog compact"
+            aria-labelledby="delete-all-title" aria-describedby="delete-all-text"
+            @close="deleteAll">
+      <form method="dialog">
+        <h2 id="delete-all-title" class="dialog-head">{{ t('Delete all data?') }}</h2>
+        <p id="delete-all-text" class="dialog-text">{{ t('All habits, recorded days, categories and settings will be deleted for good.') }}</p>
+        <footer class="dialog-foot">
+          <button type="submit" class="button ghost" value="cancel">{{ t('Cancel') }}</button>
+          <button type="submit" class="button danger" value="delete">{{ t('Delete') }}</button>
+        </footer>
+      </form>
+    </dialog>`,
+};
 
 /**
- * Builds the band colour choices: neutral, followed by the habit palette.
- * @param {string} chosen
+ * Mounts the settings pages into `host` and connects the settings button of
+ * the title bar.
+ * @param {{reload: function(): !Promise<void>, skipDays: function(?string):
+ *     void}} handlers
+ * @param {!Element} host
  */
-function paintBandChoices(chosen) {
-  const wanted = [NEUTRAL_BAND, ...state.colors];
-  if (bandChoices.childElementCount !== wanted.length) {
-    bandChoices.replaceChildren(...wanted.map((color) => {
-      const neutral = color === NEUTRAL_BAND;
-      return el('button', {
-        type: 'button',
-        class: 'swatch',
-        data: {color},
-        role: 'radio',
-        style:
-            {'--swatch': neutral ? 'var(--today-neutral)' : colorValue(color)},
-        'aria-label': neutral ? t('Neutral') :
-                                t('Colour {color}', {color: colorLabel(color)}),
-        title: neutral ? t('Neutral') : colorLabel(color),
-      });
-    }));
-  }
-  for (const node of bandChoices.children) {
-    node.setAttribute('aria-checked', String(node.dataset.color === chosen));
-  }
-}
+export function initSettings(handlers, host) {
+  deps = handlers;
+  createVueApp(SettingsDialog).mount(host);
 
-/**
- * Saves settings. The state is updated immediately via replaceState and
- * restored if the server rejects the change. Resolves to whether the change
- * was saved.
- * @param {!Object<string, *>} patch
- * @return {!Promise<boolean>}
- */
-async function saveSetting(patch) {
-  const before = {...state.settings};
-  // Apply immediately; restored on failure.
-  replaceState({settings: {...state.settings, ...patch}});
-  try {
-    replaceState({settings: await api.saveSettings(patch)});
-    errorBox.hidden = true;
-    return true;
-  } catch (err) {
-    replaceState({settings: before});
-    report(errorText(err));
-    return false;
-  }
-}
-
-/**
- * Shows a slider's value, in percent, next to it.
- * @param {!HTMLOutputElement} out
- * @param {number|string} value
- */
-function showPercent(out, value) {
-  out.textContent = `${value}%`;
-}
-
-/**
- * Wires a percent slider: while it moves, it shows its value in `out` and
- * previews it through the custom property `cssVar`; on release, it saves the
- * value as the setting `key`.
- * @param {!HTMLInputElement} slider
- * @param {!HTMLOutputElement} out
- * @param {string} key
- * @param {string} cssVar
- */
-function bindSlider(slider, out, key, cssVar) {
-  slider.addEventListener('input', () => {
-    showPercent(out, slider.value);
-    document.documentElement.style.setProperty(cssVar, `${slider.value}%`);
+  const openButton = document.getElementById('open-settings');
+  openButton.innerHTML = icons.gear;
+  openButton.addEventListener('click', () => {
+    error.message = '';
+    openPage(document.getElementById('settings-dialog'));
   });
-  slider.addEventListener(
-      'change', () => saveSetting({[key]: Number(slider.value)}));
-}
-
-/**
- * Shows an error in the open settings page, since pages cover the toasts.
- * @param {string} message
- */
-function report(message) {
-  const page = topPage();
-  if (page?.id.startsWith('settings-')) {
-    page.querySelector('.page-body').append(errorBox);
-    errorBox.textContent = message;
-    errorBox.hidden = false;
-    return;
-  }
-  toast(message, {error: true});
 }

@@ -7,7 +7,7 @@
 import {addDays} from './dates.js';
 import {closePage, openPage} from './page-stack.js';
 import {state} from './state.js';
-import {errorText} from './undo.js';
+import {errorText} from './toast.js';
 import {nextTick, onMounted, reactive, ref, watch} from './vue.js';
 
 /**

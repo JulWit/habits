@@ -138,7 +138,9 @@ extend it along with the frontend.
   guide](https://google.github.io/styleguide/jsguide.html): single quotes,
   80 columns (templates included), braces around every block except a
   one-line `if` without `else`, a trailing comma in wrapped array and object
-  literals. Format with
+  literals, and no import cycles between modules: a module that must call
+  back into one that imports it gets the function passed in (see `initSync`
+  in `loader.js`). Format with
   `uvx clang-format -i web/sw.js web/assets/js/*.js` (`.clang-format`; a
   developer tool, not a build step). Long UI texts in `t('…')` and `i18n.js`
   stay on one line, so they can be searched for.

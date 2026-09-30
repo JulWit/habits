@@ -11,7 +11,7 @@ import {t} from './i18n.js';
 import {AppColorSwatches, AppIconChoices, colorValue} from './icons.js';
 import {closePage, guardPage, openPage} from './page-stack.js';
 import {categoryById, state} from './state.js';
-import {errorText} from './undo.js';
+import {errorText} from './toast.js';
 import {computed, nextTick, onMounted, reactive, ref, watch} from './vue.js';
 
 /**
@@ -126,6 +126,12 @@ const busy = ref(false);
  * @type {?function(!HabitInput): !Promise<void>}
  */
 let onSubmit = null;
+
+/**
+ * Creates a category for the category picker; set when the editor opens.
+ * @type {?function(string): !Promise<(!Category|undefined)>}
+ */
+let onCreateCategory = null;
 
 /** The input as opened, to detect unsaved changes. */
 let initial = '';
@@ -277,10 +283,13 @@ function kindHint() {
 /**
  * Opens the habit page.
  * @param {?Habit} habit the habit to edit, or null to create one
- * @param {function(!Object): !Promise<void>} handler saves the input
+ * @param {function(!HabitInput): !Promise<void>} handler saves the input
+ * @param {function(string): !Promise<(!Category|undefined)>} createCategory
+ *     creates a category in the category picker
  */
-export async function openEditor(habit, handler) {
+export async function openEditor(habit, handler, createCategory) {
   onSubmit = handler;
+  onCreateCategory = createCategory;
   editing.value = habit;
   const schedule = habit ? habitHelpers.currentSchedule(habit) : null;
 
@@ -397,7 +406,8 @@ export const TheHabitEditor = {
     /** Lets the user choose the category on the picker page. */
     const chooseCategory = async () => {
       // null means the picker was cancelled.
-      const chosen = await openCategoryPicker(form.categoryId);
+      const chosen =
+          await openCategoryPicker(form.categoryId, onCreateCategory);
       if (chosen !== null) form.categoryId = chosen;
     };
 

@@ -9,7 +9,7 @@ import * as habitHelpers from './habit-helpers.js';
 import {locale, t} from './i18n.js';
 import {closePage, openPage} from './page-stack.js';
 import {state} from './state.js';
-import {errorText, toast} from './undo.js';
+import {errorText, toast} from './toast.js';
 import {computed, nextTick, onMounted, reactive, ref} from './vue.js';
 
 /**

@@ -4,12 +4,11 @@
  * Writes still waiting in the outbox are laid over every loaded state and sent.
  */
 
-import {syncOutbox} from './actions.js';
 import {api} from './api.js';
 import {t} from './i18n.js';
 import {isConnectionError, isOffline, overlay, pending, rememberedState, rememberState, setOffline, setStatusHandler, statusText} from './outbox.js';
 import {replaceState, state, upsertHabit} from './state.js';
-import {errorText, toast} from './undo.js';
+import {errorText, toast} from './toast.js';
 import {reactive} from './vue.js';
 
 /**
@@ -24,6 +23,14 @@ export const syncStatus = reactive({text: ''});
  * @type {?string}
  */
 let historyFrom = null;
+
+/**
+ * Sends the writes waiting in the outbox (actions.syncOutbox); set by
+ * initSync. Passed in rather than imported, as actions.js imports this module
+ * and modules must not import each other in a cycle.
+ * @type {function(): !Promise<void>}
+ */
+let syncOutbox = async () => {};
 
 /** When the state was last loaded (Date.now()), 0 before the first load. */
 let lastLoaded = 0;
@@ -114,8 +121,10 @@ const RETRY_MS = 30_000;
  * connection, when the page becomes visible, and every RETRY_MS while
  * something is pending. A page that becomes visible also reloads a state that
  * may be outdated (isStale).
+ * @param {function(): !Promise<void>} send sends the waiting writes
  */
-export function initSync() {
+export function initSync(send) {
+  syncOutbox = send;
   /** Shows the current sync status. */
   const paint = () => {
     syncStatus.text = statusText();

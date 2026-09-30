@@ -15,7 +15,8 @@ import {discard, enqueue, flush, isConnectionError, isOffline, isSessionExpired,
 import {currentHabitId, goHome} from './route.js';
 import {openSkipDialog} from './skip-editor.js';
 import {applyEntryAnswer, categoryById, dropPending, groupedHabits, habitById, removeCategory, removeHabit, reorderCategoriesLocal, reorderHabitsLocal, showPending, state, upsertCategory, upsertHabit} from './state.js';
-import {errorText, offerUndo, toast} from './undo.js';
+import {errorText, toast} from './toast.js';
+import {offerUndo} from './undo.js';
 import {ref} from './vue.js';
 
 /**
@@ -346,7 +347,7 @@ export function createHabit() {
     const created = withoutChange(await api.createHabit(input));
     upsertHabit(created);
     toast(t('"{name}" created', {name: created.name}));
-  });
+  }, createCategory);
 }
 
 /**
@@ -358,7 +359,7 @@ export function editHabit(id) {
   if (!habit) return;
   openEditor(habit, async (input) => {
     upsertHabit(withoutChange(await api.updateHabit(id, input)));
-  });
+  }, createCategory);
 }
 
 /**

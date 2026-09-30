@@ -7,7 +7,7 @@
 
 import {isConnectionError} from './outbox.js';
 import {stateRevision} from './state.js';
-import {errorText, toast} from './undo.js';
+import {errorText, toast} from './toast.js';
 import {shallowRef} from './vue.js';
 
 /**

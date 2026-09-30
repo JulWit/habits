@@ -22,8 +22,9 @@ import {openSearch, TheSearchDialog} from './search-dialog.js';
 import {openSettings, TheSettingsDialog} from './settings-dialog.js';
 import {TheSkipEditor} from './skip-editor.js';
 import {state, stateRevision} from './state.js';
+import {errorText, TheToastList, toast} from './toast.js';
 import {initTooltips} from './tooltip.js';
-import {errorText, redoLast, TheToastList, toast, undoLast} from './undo.js';
+import {redoLast, undoLast} from './undo.js';
 import {createApp, defineAsyncComponent, ref, watch, watchEffect} from './vue.js';
 
 /**
@@ -302,7 +303,7 @@ async function main() {
   initServiceWorker();
   initShortcuts();
   initTooltips();
-  initSync();
+  initSync(actions.syncOutbox);
   await refresh();
 }
 

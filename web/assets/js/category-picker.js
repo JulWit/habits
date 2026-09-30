@@ -2,11 +2,10 @@
  * @fileoverview Category picker, a page opened on top of the habit editor.
  */
 
-import {createCategory} from './actions.js';
 import {t} from './i18n.js';
 import {closePage, openPage} from './page-stack.js';
 import {state} from './state.js';
-import {errorText} from './undo.js';
+import {errorText} from './toast.js';
 import {computed, onMounted, ref} from './vue.js';
 
 /**
@@ -25,6 +24,12 @@ const newName = ref('');
 const error = ref('');
 
 /**
+ * Creates a category from its name; set when the picker opens.
+ * @type {?function(string): !Promise<(!Category|undefined)>}
+ */
+let onCreate = null;
+
+/**
  * Resolves the promise returned by openCategoryPicker.
  * @type {?function(?string): void}
  */
@@ -39,9 +44,12 @@ let dialog = null;
 /**
  * Opens the category picker.
  * @param {string} selected the current category ID, "" for none
+ * @param {function(string): !Promise<(!Category|undefined)>} create creates a
+ *     category from its name, undefined if that failed
  * @return {!Promise<?string>} the chosen ID, or null if cancelled
  */
-export function openCategoryPicker(selected) {
+export function openCategoryPicker(selected, create) {
+  onCreate = create;
   current.value = selected ?? NONE;
   error.value = '';
   newName.value = '';
@@ -103,7 +111,7 @@ export const TheCategoryPicker = {
       }
       creating.value = true;
       try {
-        const created = await createCategory(name);
+        const created = await onCreate(name);
         // Select the newly created category.
         if (created) choose(created.id);
       } catch (err) {

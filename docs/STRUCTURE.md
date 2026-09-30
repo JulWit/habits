@@ -30,7 +30,8 @@ web/                        Frontend (Vue, ES modules, no build step)
     state.js                    Reactive client-side state; typedefs Habit, Category, Entry, …
     api.js                      API client
     actions.js                  All data changes
-    undo.js                     Undo/redo through the server, and toasts
+    undo.js                     Undo/redo through the server
+    toast.js                    Toasts and the messages of errors
     outbox.js                   Offline: remembered state and waiting entry writes
     remote-stats.js             Statistics a view loads from the server
     habit-helpers.js            Reads the day statuses; value, schedule and streak helpers

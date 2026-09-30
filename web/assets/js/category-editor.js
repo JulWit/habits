@@ -6,7 +6,7 @@
 import {AppColorSwatches, AppIconChoices, colorValue} from './icons.js';
 import {closePage, guardPage, openPage} from './page-stack.js';
 import {categoryById, state} from './state.js';
-import {errorText} from './undo.js';
+import {errorText} from './toast.js';
 import {computed, nextTick, onMounted, reactive, ref, watch} from './vue.js';
 
 /**

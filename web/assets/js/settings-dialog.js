@@ -14,7 +14,7 @@ import {forget} from './outbox.js';
 import {openPage, topPage} from './page-stack.js';
 import {factItem} from './stat-panels.js';
 import {archivedCount, replaceState, state} from './state.js';
-import {errorText, toast} from './undo.js';
+import {errorText, toast} from './toast.js';
 import {computed, reactive, ref} from './vue.js';
 
 /**

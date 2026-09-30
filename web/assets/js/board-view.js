@@ -1124,10 +1124,7 @@ export const TheBoardView = {
           ></div>
           <!-- Paging, in the date row above the habit names. Back to today is
                the floating button. -->
-          <div
-            class="board-view-day-nav"
-            style="grid-column: 1; grid-row: 2"
-          >
+          <div class="board-view-day-nav">
             <board-tool-button
               role="page-older"
               icon="chevronLeft"

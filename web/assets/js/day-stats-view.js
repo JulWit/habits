@@ -270,8 +270,7 @@ export const TheDayStatsView = {
             :square="square"
           />
           <div class="heatmap-legend">
-            <span>{{ legendRange }}</span>
-            <span style="flex: 1"></span>
+            <span class="heatmap-legend-range">{{ legendRange }}</span>
             <span>0 %</span>
             <span
               v-for="rate in [0, 0.25, 0.5, 0.75]"
@@ -281,7 +280,7 @@ export const TheDayStatsView = {
             ></span>
             <span
               class="heatmap-day is-perfect"
-              style="--rate: 1"
+              :style="{'--rate': '1'}"
             ></span>
             <span>100 %</span>
           </div>

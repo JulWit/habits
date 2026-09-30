@@ -261,7 +261,7 @@ def board_input(run, f):
     run.click(f.cell(f.check_habit))
     time.sleep(1.2)
     run.check("clearing offers undo in a toast",
-              run.js("return !!document.querySelector('#toasts .toast-list-item:last-child .button');"))
+              run.js("return !!document.querySelector('.toast-list .toast-list-item:last-child .button');"))
     run.actions().key_down(Keys.CONTROL).send_keys("z").key_up(Keys.CONTROL).perform()
     time.sleep(1.5)
     run.check("Ctrl+Z undoes it", f.done(f.check_habit))
@@ -328,7 +328,7 @@ def search_and_views(run, f):
     archived = lambda: run.api("GET", f"/api/habits/{f.check_habit}")["archivedAt"]
     run.check("archiving from the menu returns to the board",
               run.shown("board-view") and archived())
-    run.click("#toasts .toast-list-item:last-child .button")
+    run.click(".toast-list .toast-list-item:last-child .button")
     time.sleep(1.5)
     run.check("undo in the toast reactivates the habit",
               not archived()

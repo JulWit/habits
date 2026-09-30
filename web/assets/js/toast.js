@@ -191,7 +191,6 @@ export const TheToastList = {
   },
   template: `
     <div
-      id="toasts"
       class="toast-list"
       role="status"
       aria-live="polite"

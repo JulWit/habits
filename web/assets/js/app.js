@@ -301,7 +301,7 @@ async function main() {
   app.component('AppIcon', AppIcon);
   app.component('AppIconBadge', AppIconBadge);
   app.config.globalProperties.t = t;
-  app.mount('#app');
+  app.mount('#app-root');
   initRouting();
   initScrollState();
   initServiceWorker();

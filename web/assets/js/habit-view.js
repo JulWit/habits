@@ -625,8 +625,7 @@ export const TheHabitView = {
             :square="square"
           />
           <div class="heatmap-legend">
-            <span>{{ legendRange }}</span>
-            <span style="flex: 1"></span>
+            <span class="heatmap-legend-range">{{ legendRange }}</span>
             <span>{{ t('less') }}</span>
             <span
               v-for="level in [0, 1, 2, 3, 4]"

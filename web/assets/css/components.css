@@ -669,6 +669,8 @@ html[data-scrolled="on"] .board-view-day-header-backdrop {
 /* Paging controls above the habit names, smaller than regular icon buttons. */
 .board-view-day-nav {
   display: flex;
+  grid-column: 1;
+  grid-row: 2;
   /* Aligned with the date row. */
   align-items: center;
   gap: calc(.15 * var(--space));
@@ -1438,6 +1440,9 @@ html.route-detail .view { padding-top: 0; }
   color: var(--text-faint);
   font-size: var(--text-xs);
 }
+
+/* The range counted, pushing the scale to the right. */
+.heatmap-legend-range { flex: 1; }
 
 
 /* ---------- tooltips ----------

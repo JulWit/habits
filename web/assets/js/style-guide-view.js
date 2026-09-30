@@ -583,7 +583,7 @@ const StyleGuidePanel = {
               type="button"
               class="icon-button"
               aria-label="Close"
-            >&times;</button>
+            >×</button>
           </div>
         </style-guide-specimen>
         <style-guide-specimen label=".toast-list-item.is-error">
@@ -594,7 +594,7 @@ const StyleGuidePanel = {
               type="button"
               class="icon-button"
               aria-label="Close"
-            >&times;</button>
+            >×</button>
           </div>
         </style-guide-specimen>
       </style-guide-section>

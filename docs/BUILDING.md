@@ -32,6 +32,28 @@ The tests use a temporary SQLite file and need no setup:
 go test ./...
 ```
 
+### Frontend in Firefox
+
+`scripts/firefox_test.py` tests the frontend in an installed Firefox with real
+input: mouse and keyboard at desktop width, touch at 500 px (the narrowest
+window Firefox allows; the tight layout of a phone is checked on a narrowed
+board). It needs [uv](https://docs.astral.sh/uv/), which installs Selenium from
+the script's inline metadata; Selenium Manager fetches geckodriver. It is a
+developer tool, not part of the build.
+
+The script creates its own category and habits, deletes them afterwards and
+restores the settings it changes, but the undo steps of its changes remain.
+Run it against a server with a scratch database:
+
+```bash
+HABITS_ADDR=127.0.0.1:8091 HABITS_DB=/tmp/habits-scratch.db go run . &
+uv run scripts/firefox_test.py http://127.0.0.1:8091
+```
+
+It prints each check, and any JavaScript error the page raised, and exits
+with 1 if one failed. `--screenshots DIR` saves screenshots of the main
+screens; `FIREFOX` names another Firefox binary.
+
 ## Cross-compiling
 
 The SQLite driver [`modernc.org/sqlite`](https://pkg.go.dev/modernc.org/sqlite)

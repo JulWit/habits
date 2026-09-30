@@ -61,7 +61,10 @@ without them instead: `tr -d '\r' < path/file.go | gofmt -l`.
 
 There is no npm, no bundler and no JS test runner. Frontend changes are checked
 in the browser (`go run .`, then reload; assets are embedded, so restart the
-server after changing files in `web/`).
+server after changing files in `web/`). `scripts/firefox_test.py` drives an
+installed Firefox through the main flows with mouse, keyboard and touch; run
+it against a server with a scratch database (see `docs/BUILDING.md`) and
+extend it along with the frontend.
 
 ## Rules
 

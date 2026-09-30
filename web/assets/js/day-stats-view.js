@@ -240,7 +240,7 @@ export const TheDayStatsView = {
     <main
       id="day-stats-view"
       ref="root"
-      class="view"
+      class="view stats-view"
       :hidden="!shown"
     >
       <app-bar

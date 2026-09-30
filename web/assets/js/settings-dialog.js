@@ -658,7 +658,7 @@ export const TheSettingsDialog = {
         <span class="field-label">{{ t('Font') }}</span>
         <select
           id="settings-font"
-          class="select"
+          class="select settings-font"
           autocomplete="off"
           :value="settings.font"
           @change="save({font: $event.target.value})"

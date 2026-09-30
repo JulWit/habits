@@ -171,7 +171,7 @@ const App = {
     </header>
     <main
       id="board-view"
-      class="view"
+      class="view board-view"
       :hidden="route.view !== 'board'"
     >
       <the-board-view/>

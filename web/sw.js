@@ -18,6 +18,8 @@ const SHELL = [
   '/assets/css/components.css',
   '/assets/css/forms.css',
   '/assets/css/fonts.css',
+  '/assets/images/chevron-down.svg',
+  '/assets/images/grain.svg',
   '/assets/images/icon.svg',
   '/assets/images/icon-192.png',
 ];

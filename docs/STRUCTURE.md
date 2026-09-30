@@ -18,7 +18,8 @@ web/                        Frontend (Vue, ES modules, no build step)
   sw.js                       Service worker for offline start
   assets/css/                 Design tokens, components, forms, fonts
   assets/fonts/               Embedded woff2 fonts and their licences
-  assets/images/              App icon (SVG and PNG)
+  assets/images/              App icon (SVG and PNG), the chevron of dropdowns and
+                              the grain pattern
   assets/vendor/              Vue's ESM browser build and its licence
   assets/js/                  One module per file, named in kebab-case:
                               *-view for a view, *-editor, *-picker or *-dialog

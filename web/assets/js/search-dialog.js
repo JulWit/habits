@@ -233,6 +233,7 @@ export const TheSearchDialog = {
           ref="input"
           v-model="query"
           type="search"
+          class="search-input"
           :placeholder="t('Search habits and categories…')"
           autocomplete="off"
           spellcheck="false"

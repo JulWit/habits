@@ -118,7 +118,7 @@ export const TheCategoryView = {
   template: `
     <main
       id="category-view"
-      class="view"
+      class="view stats-view"
       :hidden="!category"
     >
       <template v-if="category">

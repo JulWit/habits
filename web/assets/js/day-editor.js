@@ -291,7 +291,7 @@ export const TheDayEditor = {
             </div>
             <p
               id="day-editor-hint"
-              class="field-hint"
+              class="field-hint day-editor-hint"
             >
               {{ hint }}
             </p>

@@ -10,7 +10,7 @@
   color-scheme: light dark;
 
   --bg: light-dark(#e6e8ec, #0f0f0f);
-  --surface: light-dark(#ffffff, #191919);
+  --surface: light-dark(#fff, #191919);
   --surface-2: light-dark(#eceef2, #252525);
   --border: light-dark(#dcdfe6, #323232);
   --border-strong: light-dark(#c3c8d2, #454545);
@@ -23,7 +23,7 @@
   --control: light-dark(#e6e8ec, #252525);
   /* What floats above the page (menus, dropdown lists, toasts, the floating
      button): raised in both themes, white on light. */
-  --float: light-dark(#ffffff, #252525);
+  --float: light-dark(#fff, #252525);
   /* Not pure white, to avoid halation on dark backgrounds. */
   --text: light-dark(#1b1d21, #ececec);
   /* Muted and faint text keep the same steps in both themes: about 7:1 and
@@ -33,7 +33,7 @@
   /* Accent for buttons, selections, checkboxes and the focus ring. Neutral,
      unless an accent colour is chosen (see the today band below). */
   --primary: light-dark(#24262b, #e3e3e3);
-  --primary-text: light-dark(#ffffff, #121212);
+  --primary-text: light-dark(#fff, #121212);
   /* Darker on light, brighter on dark. */
   --primary-hover: light-dark(#15161a, #f4f4f4);
   /* The habit palette, as domain.Colors. Habits, categories and the accent
@@ -61,7 +61,7 @@
   --done-text: light-dark(#15803d, #22c55e);
   /* Tooltips, inverted: dark on light, light on dark. */
   --tooltip-bg: light-dark(#24262b, #e3e3e3);
-  --tooltip-text: light-dark(#ffffff, #121212);
+  --tooltip-text: light-dark(#fff, #121212);
   /* Neutral colour of the today band. */
   --today-neutral: light-dark(#c2c7d1, #424242);
   --today: var(--today-neutral);
@@ -139,7 +139,7 @@
   );
   /* Font stacks. The chosen font (data-font) always falls back to the system
      stack. */
-  --font-system: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-system: system-ui, -apple-system, "Segoe UI", roboto, "Helvetica Neue", arial, sans-serif;
   --font: "Inter", var(--font-system);
 }
 
@@ -242,7 +242,7 @@ html[data-band]:not([data-band="neutral"]) {
   --today: var(--band-ink, var(--today-neutral));
   --primary: var(--band-ink, light-dark(#24262b, #e3e3e3));
   /* Replaced below where relative colours work. */
-  --primary-text: #ffffff;
+  --primary-text: #fff;
   --primary-hover: color-mix(in srgb, var(--primary) 85%, #000);
 }
 
@@ -279,7 +279,7 @@ html[data-band="yellow"] { --primary-text: #1b1d21; }
    darken it in proportion. The page thus stays as dark (or light) as plain,
    and the grain follows the theme although an SVG cannot use its colours. */
 html[data-pattern="grain"] {
-  --pattern-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='.75 0 0 0 -.05 .75 0 0 0 -.05 .75 0 0 0 -.05 0 0 0 0 1'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  --pattern-image: url(/assets/images/grain.svg);
   --pattern-size: 180px 180px;
 }
 
@@ -391,6 +391,8 @@ button, input, textarea, select { font: inherit; color: inherit; }
   border-radius: var(--radius-2xs);
 }
 
+/* The one !important: hidden must win over every display a class sets, as
+   Vue toggles the attribute rather than a class. */
 [hidden] { display: none !important; }
 
 /* ---------- layout ---------- */
@@ -429,9 +431,7 @@ html[data-scrolled="on"] .board-view-day-header-backdrop {
 /* The habit, category and day statistics views are as wide as the overview's
    cards (the board without its reorder column), so switching views keeps the
    width. */
-#habit-view,
-#category-view,
-#day-stats-view {
+.stats-view {
   max-width: calc(var(--board-width) - var(--tools-outset) + 2 * var(--gutter));
 }
 
@@ -455,7 +455,7 @@ html[data-scrolled="on"] .board-view-day-header-backdrop {
 .view { padding-top: calc(1.25 * var(--space)); }
 
 /* Less top padding, as the day header has its own. */
-#board-view { padding-top: calc(.8 * var(--space)); }
+.board-view { padding-top: calc(.8 * var(--space)); }
 
 .brand {
   display: flex;

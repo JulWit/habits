@@ -20,7 +20,7 @@
 
 .search-icon svg { width: 1.1rem; height: 1.1rem; }
 
-#search-input {
+.search-input {
   width: 100%;
   background: var(--field);
   border: 1px solid transparent;
@@ -30,13 +30,13 @@
   font-size: var(--text-base);
 }
 
-#search-input::placeholder { color: var(--text-faint); }
-#search-input:focus { outline: none; }
+.search-input::placeholder { color: var(--text-faint); }
+.search-input:focus { outline: none; }
 
 /* The browser's clear button is replaced by .search-clear, as Firefox has
    none. Room on the right for it. */
-#search-input::-webkit-search-cancel-button { -webkit-appearance: none; appearance: none; }
-#search-input { padding-right: 2.6rem; }
+.search-input::-webkit-search-cancel-button { -webkit-appearance: none; appearance: none; }
+.search-input { padding-right: 2.6rem; }
 
 .search-clear {
   position: absolute;
@@ -1173,8 +1173,8 @@ html[data-filtering="on"] {
 
 /* The habit and category views have their own title bar (app-bar.js), as
    Material's top app bar, instead of the app's. */
-html.route-detail .topbar { display: none; }
-html.route-detail .view { padding-top: 0; }
+.route-detail .topbar { display: none; }
+.route-detail .view { padding-top: 0; }
 
 /* Sticky, on the page background like the pages' title bars, and across the
    view's gutter, so content scrolling underneath is hidden. The icons of the
@@ -1509,9 +1509,9 @@ html.route-detail .view { padding-top: 0; }
 .board-view-today-pill:active { transform: translateX(-50%) translateY(1px); }
 
 /* Room below the last row, so it can be scrolled clear of the button. */
-#board-view:has(.board-view-today-pill:not([hidden])) { padding-bottom: 5rem; }
+.board-view:has(.board-view-today-pill:not([hidden])) { padding-bottom: 5rem; }
 /* Toasts appear above the floating button. */
-#board-view:not([hidden]):has(.board-view-today-pill:not([hidden])) ~ .toast-list {
+.board-view:not([hidden]):has(.board-view-today-pill:not([hidden])) ~ .toast-list {
   bottom: calc(4.75rem + env(safe-area-inset-bottom, 0px));
 }
 

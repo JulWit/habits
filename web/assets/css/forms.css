@@ -482,7 +482,7 @@ html:has(.dialog.page[open]) { overflow: hidden; }
   /* The chevron in a grey that reads in both themes, as an image cannot use
      the colour tokens. */
   background: var(--field) no-repeat right calc(.6 * var(--space)) center / 1rem
-    url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="%238b909a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9.5 12 15.5l6-6"/></svg>');
+    url(/assets/images/chevron-down.svg);
   padding: calc(.5 * var(--space)) calc(1.2 * var(--space) + 1rem) calc(.5 * var(--space))
     calc(.6 * var(--space));
   cursor: pointer;
@@ -518,7 +518,7 @@ html:has(.dialog.page[open]) { overflow: hidden; }
     margin-left: auto;
     background: var(--text-faint);
     mask: no-repeat center / contain
-      url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="%23000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9.5 12 15.5l6-6"/></svg>');
+      url(/assets/images/chevron-down.svg);
     transition: rotate .15s ease;
   }
 
@@ -569,12 +569,12 @@ html:has(.dialog.page[open]) { overflow: hidden; }
 }
 
 /* Font preview: the field and each option use their own font. */
-#settings-font { font-family: var(--font); }
-#settings-font option[value="system"] { font-family: var(--font-system); }
-#settings-font option[value="inter"] { font-family: "Inter", var(--font-system); }
-#settings-font option[value="roboto"] { font-family: "Roboto", var(--font-system); }
-#settings-font option[value="geist"] { font-family: "Geist", var(--font-system); }
-#settings-font option[value="opensans"] { font-family: "Open Sans", var(--font-system); }
+.settings-font { font-family: var(--font); }
+.settings-font option[value="system"] { font-family: var(--font-system); }
+.settings-font option[value="inter"] { font-family: "Inter", var(--font-system); }
+.settings-font option[value="roboto"] { font-family: "Roboto", var(--font-system); }
+.settings-font option[value="geist"] { font-family: "Geist", var(--font-system); }
+.settings-font option[value="opensans"] { font-family: "Open Sans", var(--font-system); }
 
 /* ---------- stepper ---------- */
 
@@ -610,7 +610,7 @@ html:has(.dialog.page[open]) { overflow: hidden; }
   font-variant-numeric: tabular-nums;
 }
 
-#day-editor-hint { padding: 0 calc(1.15 * var(--space)); margin-top: calc(.4 * var(--space)); }
+.day-editor-hint { padding: 0 calc(1.15 * var(--space)); margin-top: calc(.4 * var(--space)); }
 
 /* ---------- day dialog ---------- */
 
@@ -889,5 +889,5 @@ html[data-today-band="off"] .board-day-cell.is-today:active:not(:disabled) { bac
   .field textarea,
   .select,
   .category-picker-create input,
-  #search-input { font-size: max(16px, 1rem); }
+  .search-input { font-size: max(16px, 1rem); }
 }

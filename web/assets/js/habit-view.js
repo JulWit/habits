@@ -555,7 +555,7 @@ export const TheHabitView = {
     <main
       id="habit-view"
       ref="root"
-      class="view"
+      class="view stats-view"
       :hidden="!habit"
       :style="colorStyle"
     >

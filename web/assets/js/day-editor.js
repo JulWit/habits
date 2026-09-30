@@ -1,6 +1,8 @@
-// Day dialog, opened by a long press or right-click on a day cell: the value
-// (or for a check habit whether it is done) and whether the day is skipped.
-// It passes only what changed to its caller.
+/**
+ * @fileoverview Day dialog, opened by a long press or right-click on a day
+ * cell: the value (or for a check habit whether it is done) and whether the day
+ * is skipped. It passes only what changed to its caller.
+ */
 
 import {formatRelative} from './dates.js';
 import * as habitHelpers from './habit-helpers.js';

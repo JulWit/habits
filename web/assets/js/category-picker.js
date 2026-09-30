@@ -1,4 +1,6 @@
-// Category picker, a page opened on top of the habit editor.
+/**
+ * @fileoverview Category picker, a page opened on top of the habit editor.
+ */
 
 import {createCategory} from './actions.js';
 import {t} from './i18n.js';

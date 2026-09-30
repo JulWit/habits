@@ -1,6 +1,8 @@
-// Entry point: the app's shell (title bar, views, pages, toasts), appearance
-// and keyboard shortcuts. Routing is in route.js, loading the state in
-// loader.js and data changes in actions.js.
+/**
+ * @fileoverview Entry point: the app's shell (title bar, views, pages, toasts),
+ * appearance and keyboard shortcuts. Routing is in route.js, loading the state
+ * in loader.js and data changes in actions.js.
+ */
 
 import * as actions from './actions.js';
 import {onlyOpen, TheBoardView, toggleFilter} from './board-view.js';

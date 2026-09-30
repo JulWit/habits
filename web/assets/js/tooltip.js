@@ -1,12 +1,14 @@
-// Tooltips: one styled pane for the whole app, in place of the browser's own
-// title tooltips. Shown when the mouse rests on an element (at once when it
-// moves on from another tooltip) and on keyboard focus; hidden on leaving,
-// clicking, Escape and scrolling. Touch shows none: a tap triggers the
-// element, and a long press has its own meaning on the board.
-//
-// Elements keep using plain title attributes. When first pointed at or
-// focused, the title moves to data-tooltip, so the browser does not show its
-// own tooltip as well. The pane is a popover, so it is drawn above dialogs.
+/**
+ * @fileoverview Tooltips: one styled pane for the whole app, in place of the
+ * browser's own title tooltips. Shown when the mouse rests on an element (at
+ * once when it moves on from another tooltip) and on keyboard focus; hidden on
+ * leaving, clicking, Escape and scrolling. Touch shows none: a tap triggers the
+ * element, and a long press has its own meaning on the board.
+ *
+ * Elements keep using plain title attributes. When first pointed at or focused,
+ * the title moves to data-tooltip, so the browser does not show its own tooltip
+ * as well. The pane is a popover, so it is drawn above dialogs.
+ */
 
 /** Rest time before the first tooltip appears, in ms. */
 const DELAY = 450;

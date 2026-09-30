@@ -1,6 +1,8 @@
-// The current calendar year as the statistics views show it: the label of
-// the range counted and the year grid of the heatmaps with its tooltips. Used
-// by the habit, category and day statistics views.
+/**
+ * @fileoverview The current calendar year as the statistics views show it: the
+ * label of the range counted and the year grid of the heatmaps with its
+ * tooltips. Used by the habit, category and day statistics views.
+ */
 
 import {addDays, dayOfMonth, daysBetween, formatDayMonth, formatFull, MONTH_SHORT, monthIndex, startOfWeek} from './dates.js';
 import {t} from './i18n.js';

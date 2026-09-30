@@ -1,5 +1,7 @@
-// Inline SVG icons. They use currentColor. The markup is constant, so it is
-// safe to assign with innerHTML.
+/**
+ * @fileoverview Inline SVG icons. They use currentColor. The markup is
+ * constant, so it is safe to assign with innerHTML.
+ */
 
 import {t} from './i18n.js';
 import {computed, h} from './vue.js';

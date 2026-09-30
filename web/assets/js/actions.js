@@ -1,6 +1,8 @@
-// All data changes. The server keeps an undo step for each change that can be
-// undone; its answer carries the step's ID (changeId), which the toast offers
-// to undo (see undo.js).
+/**
+ * @fileoverview All data changes. The server keeps an undo step for each change
+ * that can be undone; its answer carries the step's ID (changeId), which the
+ * toast offers to undo (see undo.js).
+ */
 
 import {api} from './api.js';
 import {formatRelative} from './dates.js';

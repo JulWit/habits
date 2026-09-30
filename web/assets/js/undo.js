@@ -1,6 +1,9 @@
-// Undo, redo and the toast. The server keeps the undo steps: every change
-// that can be undone answers with the ID of its step (changeId, see api.js),
-// and undo and redo ask the server to turn a step, or the latest one.
+/**
+ * @fileoverview Undo, redo and the toast. The server keeps the undo steps:
+ * every change that can be undone answers with the ID of its step (changeId,
+ * see api.js), and undo and redo ask the server to turn a step, or the latest
+ * one.
+ */
 
 import {api} from './api.js';
 import {formatRelative} from './dates.js';

@@ -1,4 +1,7 @@
-// Habit detail view: statistics, activity chart and calendar heatmap.
+/**
+ * @fileoverview Habit detail view: statistics, activity chart and calendar
+ * heatmap.
+ */
 
 import * as actions from './actions.js';
 import {api} from './api.js';

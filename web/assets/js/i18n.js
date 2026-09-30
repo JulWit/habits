@@ -1,7 +1,9 @@
-// Translation of the UI. The English text is the key; untranslated texts are
-// shown in English. Placeholders are written {name}.
-//
-// The language is taken from <html lang> and changes only on reload.
+/**
+ * @fileoverview Translation of the UI. The English text is the key;
+ * untranslated texts are shown in English. Placeholders are written {name}.
+ *
+ * The language is taken from <html lang> and changes only on reload.
+ */
 
 import {state} from './state.js';
 

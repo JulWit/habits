@@ -1,8 +1,10 @@
-// Background patterns drawn as SVG tiles: the habit icons and halftone dots.
-// base.css picks them up as --pattern-icons and --pattern-halftone. An SVG
-// image cannot use the page's colours, so both are drawn in mid grey at low
-// opacity, which gives dark grey on the dark theme and light grey on the light
-// one.
+/**
+ * @fileoverview Background patterns drawn as SVG tiles: the habit icons and
+ * halftone dots. base.css picks them up as --pattern-icons and
+ * --pattern-halftone. An SVG image cannot use the page's colours, so both are
+ * drawn in mid grey at low opacity, which gives dark grey on the dark theme and
+ * light grey on the light one.
+ */
 
 import {habitIcons} from './icons.js';
 

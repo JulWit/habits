@@ -1,8 +1,10 @@
-// Offline support. Entry writes that cannot reach the server wait in an outbox
-// in localStorage and are sent once the connection is back; the last loaded
-// state is kept as well, so the app starts without a connection. Both are per
-// user. Writing an entry sets an absolute value, so sending a queued write
-// later is safe: for each day the last value wins.
+/**
+ * @fileoverview Offline support. Entry writes that cannot reach the server wait
+ * in an outbox in localStorage and are sent once the connection is back; the
+ * last loaded state is kept as well, so the app starts without a connection.
+ * Both are per user. Writing an entry sets an absolute value, so sending a
+ * queued write later is safe: for each day the last value wins.
+ */
 
 import {t} from './i18n.js';
 

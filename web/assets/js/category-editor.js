@@ -1,5 +1,7 @@
-// Category edit page. It passes the input to its caller and stays open with
-// the error message if saving fails.
+/**
+ * @fileoverview Category edit page. It passes the input to its caller and stays
+ * open with the error message if saving fails.
+ */
 
 import {AppColorSwatches, AppIconChoices, colorValue} from './icons.js';
 import {closePage, guardPage, openPage} from './page-stack.js';

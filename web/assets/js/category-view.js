@@ -1,5 +1,7 @@
-// Category detail view: its habits and its perfect days, i.e. days on which
-// every scheduled habit of the category was completed.
+/**
+ * @fileoverview Category detail view: its habits and its perfect days, i.e.
+ * days on which every scheduled habit of the category was completed.
+ */
 
 import * as actions from './actions.js';
 import {api} from './api.js';

@@ -1,5 +1,8 @@
-// Service worker for offline start. /api requests are never cached; all other
-// requests are served from the network, falling back to the cache.
+/**
+ * @fileoverview Service worker for offline start. /api requests are never
+ * cached; all other requests are served from the network, falling back to the
+ * cache.
+ */
 
 const CACHE = 'habits-v9';
 

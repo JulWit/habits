@@ -1,5 +1,8 @@
-// Day summary above the board: the active day's date, how many habits are
-// done, and a progress ring that the orbs of newly completed habits fly into.
+/**
+ * @fileoverview Day summary above the board: the active day's date, how many
+ * habits are done, and a progress ring that the orbs of newly completed habits
+ * fly into.
+ */
 
 import {daysBetween, formatFull, yearOf} from './dates.js';
 import * as habitHelpers from './habit-helpers.js';

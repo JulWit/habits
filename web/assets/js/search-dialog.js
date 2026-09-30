@@ -1,5 +1,7 @@
-// Search dialog for habits and categories, opened from the title bar or with
-// "/". Selecting a result opens it.
+/**
+ * @fileoverview Search dialog for habits and categories, opened from the title
+ * bar or with "/". Selecting a result opens it.
+ */
 
 import * as habitHelpers from './habit-helpers.js';
 import {t} from './i18n.js';

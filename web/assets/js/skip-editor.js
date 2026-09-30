@@ -1,6 +1,8 @@
-// Page for skipping a range of days, e.g. a holiday: of one habit or of all
-// that are not archived. It passes the input to its caller and stays open with
-// the error message if skipping fails.
+/**
+ * @fileoverview Page for skipping a range of days, e.g. a holiday: of one habit
+ * or of all that are not archived. It passes the input to its caller and stays
+ * open with the error message if skipping fails.
+ */
 
 import {addDays} from './dates.js';
 import {closePage, openPage} from './page-stack.js';

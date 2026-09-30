@@ -1,6 +1,8 @@
-// Building blocks shared by the statistics views: a row of stat tiles, the
-// label of the completion rate, a panel listing labelled facts, and the facts
-// of when something was created and changed.
+/**
+ * @fileoverview Building blocks shared by the statistics views: a row of stat
+ * tiles, the label of the completion rate, a panel listing labelled facts, and
+ * the facts of when something was created and changed.
+ */
 
 import {daysBetween, formatLong, localISO} from './dates.js';
 import {locale, t, userTimeZone} from './i18n.js';

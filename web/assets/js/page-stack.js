@@ -1,15 +1,17 @@
-// Full-screen pages, stacked like the screens of an Android app. Each page is
-// a modal <dialog class="page">. Opening one adds a history entry, so the
-// system back button or gesture closes the top page, as does its back button.
-// Smaller modal dialogs (search, exact value) are opened the same way: Firefox
-// on Android has no close watcher, so without the entry the system back would
-// leave the view behind the dialog instead of closing it.
-//
-// A page with a guard (guardPage) asks before it closes with unsaved changes,
-// however it is closed: its close button, Escape, the system back gesture or
-// the browser's back button.
-//
-// The pages are rendered by Vue; this module only opens and closes them.
+/**
+ * @fileoverview Full-screen pages, stacked like the screens of an Android app.
+ * Each page is a modal <dialog class="page">. Opening one adds a history entry,
+ * so the system back button or gesture closes the top page, as does its back
+ * button. Smaller modal dialogs (search, exact value) are opened the same way:
+ * Firefox on Android has no close watcher, so without the entry the system back
+ * would leave the view behind the dialog instead of closing it.
+ *
+ * A page with a guard (guardPage) asks before it closes with unsaved changes,
+ * however it is closed: its close button, Escape, the system back gesture or
+ * the browser's back button.
+ *
+ * The pages are rendered by Vue; this module only opens and closes them.
+ */
 
 /**
  * Open pages, bottom first.

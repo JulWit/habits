@@ -1,6 +1,8 @@
-// Loading the state from the server: at start, when the day ends, when the
-// page becomes visible again and while offline or writes are waiting. Writes
-// still waiting in the outbox are laid over every loaded state and sent.
+/**
+ * @fileoverview Loading the state from the server: at start, when the day ends,
+ * when the page becomes visible again and while offline or writes are waiting.
+ * Writes still waiting in the outbox are laid over every loaded state and sent.
+ */
 
 import {syncOutbox} from './actions.js';
 import {api} from './api.js';

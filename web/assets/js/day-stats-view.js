@@ -1,7 +1,10 @@
-// Day statistics, opened from the day summary: perfect days, streaks of them,
-// a year heatmap shaded by each day's share of completed habits, and the
-// average share per weekday and per month. The server counts the days and
-// computes the statistics (GET /api/days); this view only shows them.
+/**
+ * @fileoverview Day statistics, opened from the day summary: perfect days,
+ * streaks of them, a year heatmap shaded by each day's share of completed
+ * habits, and the average share per weekday and per month. The server counts
+ * the days and computes the statistics (GET /api/days); this view only shows
+ * them.
+ */
 
 import {api} from './api.js';
 import {AppBar} from './app-bar.js';

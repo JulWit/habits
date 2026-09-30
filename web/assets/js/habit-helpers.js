@@ -1,7 +1,9 @@
-// Presentation helpers shared by the overview and the detail view. How a day
-// stands (due, done, over a limit, skipped) comes from the server as one
-// status per day (`days` from `daysFrom`, see domain.DayStatus); nothing here
-// judges a day.
+/**
+ * @fileoverview Presentation helpers shared by the overview and the detail
+ * view. How a day stands (due, done, over a limit, skipped) comes from the
+ * server as one status per day (`days` from `daysFrom`, see domain.DayStatus);
+ * nothing here judges a day.
+ */
 
 import {daysBetween, WEEKDAY_SHORT} from './dates.js';
 import {locale, t} from './i18n.js';

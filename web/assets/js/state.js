@@ -1,6 +1,8 @@
-// Client-side copy of the server state. Every change goes to the server first;
-// its response replaces the local state. The state is reactive, so the Vue
-// components render again whenever it changes.
+/**
+ * @fileoverview Client-side copy of the server state. Every change goes to the
+ * server first; its response replaces the local state. The state is reactive,
+ * so the Vue components render again whenever it changes.
+ */
 
 import {reactive, ref} from './vue.js';
 

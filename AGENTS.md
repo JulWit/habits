@@ -142,9 +142,10 @@ extend it along with the frontend.
   `uvx clang-format -i web/sw.js web/assets/js/*.js` (`.clang-format`; a
   developer tool, not a build step). Long UI texts in `t('…')` and `i18n.js`
   stay on one line, so they can be searched for.
-- Every function, `setup()` included, has a JSDoc comment with Closure types
-  (`@param {string}`, `@return {?Habit}`); the shared data types are typedefs
-  in `state.js`. Prefer a typedef or record type to a bare `Object`.
+- Every module starts with a `@fileoverview` JSDoc comment. Every function,
+  `setup()` included, has a JSDoc comment with Closure types (`@param
+  {string}`, `@return {?Habit}`); the shared data types are typedefs in
+  `state.js`. Prefer a typedef or record type to a bare `Object`.
 - Element IDs in the templates follow the same names: a view or dialog has
   the name of its module (`habit-view`, `day-editor`), and the elements inside
   it are prefixed with that name, without a trailing `-dialog`

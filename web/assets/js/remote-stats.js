@@ -1,7 +1,9 @@
-// Statistics a view loads from the server when it is shown: the day
-// statistics, a category's statistics and a habit's totals. They are kept per
-// key and loaded again once the state has changed, e.g. by a write; until the
-// new answer arrives, the view shows the previous one.
+/**
+ * @fileoverview Statistics a view loads from the server when it is shown: the
+ * day statistics, a category's statistics and a habit's totals. They are kept
+ * per key and loaded again once the state has changed, e.g. by a write; until
+ * the new answer arrives, the view shows the previous one.
+ */
 
 import {isConnectionError} from './outbox.js';
 import {stateRevision} from './state.js';

@@ -1,6 +1,8 @@
-// Overview: one block per category with a row per habit and a column per day.
-// All blocks share the same grid, so a single day header aligns with all of
-// them.
+/**
+ * @fileoverview Overview: one block per category with a row per habit and a
+ * column per day. All blocks share the same grid, so a single day header aligns
+ * with all of them.
+ */
 
 import * as actions from './actions.js';
 import {BoardDayCell, BoardHabitLabel, BoardHeadDay} from './board-cells.js';

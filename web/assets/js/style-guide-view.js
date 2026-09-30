@@ -1,5 +1,8 @@
-// Style guide at #/styleguide: all UI building blocks in both themes. It uses
-// the same components as the overview. Its texts are not translated.
+/**
+ * @fileoverview Style guide at #/styleguide: all UI building blocks in both
+ * themes. It uses the same components as the overview. Its texts are not
+ * translated.
+ */
 
 import {BoardDayCell, BoardHabitLabel, BoardHeadDay} from './board-cells.js';
 import {addDays, daysBetween, weekdayIndex} from './dates.js';

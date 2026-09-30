@@ -1,6 +1,8 @@
-// Settings pages: a list of sections, each opening its own page. Every change
-// is saved immediately: the state is updated first and restored if the server
-// rejects the change.
+/**
+ * @fileoverview Settings pages: a list of sections, each opening its own page.
+ * Every change is saved immediately: the state is updated first and restored if
+ * the server rejects the change.
+ */
 
 import * as actions from './actions.js';
 import {api} from './api.js';

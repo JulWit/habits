@@ -1,7 +1,9 @@
-// Title bar of the habit, category and day statistics views, as Material's top
-// app bar: back, title, edit, and an overflow menu (⋮) for rare and
-// destructive actions. The app's own title bar is hidden on these views (see
-// components.css).
+/**
+ * @fileoverview Title bar of the habit, category and day statistics views, as
+ * Material's top app bar: back, title, edit, and an overflow menu (⋮) for rare
+ * and destructive actions. The app's own title bar is hidden on these views
+ * (see components.css).
+ */
 
 /**
  * An item of the overflow menu; `icon` names one of `icons`.

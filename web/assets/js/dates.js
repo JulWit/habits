@@ -1,5 +1,7 @@
-// Date helpers. Dates are ISO strings ("2026-09-13"); arithmetic is done in
-// UTC.
+/**
+ * @fileoverview Date helpers. Dates are ISO strings ("2026-09-13"); arithmetic
+ * is done in UTC.
+ */
 
 import {lang, t, userTimeZone} from './i18n.js';
 

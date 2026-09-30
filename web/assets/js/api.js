@@ -1,4 +1,6 @@
-// Client for the JSON API. Errors are thrown as ApiError.
+/**
+ * @fileoverview Client for the JSON API. Errors are thrown as ApiError.
+ */
 
 /** An error answer of the API, or a failed request. */
 export class ApiError extends Error {

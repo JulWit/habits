@@ -1,6 +1,8 @@
-// Routing: the view the URL names, as reactive state, and the navigation
-// between the views. The hash names the view (#/habit/{id}, #/category/{id},
-// #/days, #/styleguide); without one, the overview is shown.
+/**
+ * @fileoverview Routing: the view the URL names, as reactive state, and the
+ * navigation between the views. The hash names the view (#/habit/{id},
+ * #/category/{id}, #/days, #/styleguide); without one, the overview is shown.
+ */
 
 import {ensureFullHistory} from './loader.js';
 import {habitById, state} from './state.js';

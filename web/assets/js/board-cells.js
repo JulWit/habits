@@ -1,5 +1,8 @@
-// The building blocks of a habit row: a day in the header, the label of a
-// habit and the cell of a day. The board and the style guide use them.
+/**
+ * @fileoverview The building blocks of a habit row: a day in the header, the
+ * label of a habit and the cell of a day. The board and the style guide use
+ * them.
+ */
 
 import {dayOfMonth, formatLong, formatRelative, WEEKDAY_SHORT, weekdayIndex} from './dates.js';
 import * as habitHelpers from './habit-helpers.js';

@@ -1,9 +1,11 @@
-// Drag-and-drop reordering of a vertical list, based on pointer events (mouse,
-// pen and touch). The dragged element is moved in the DOM while dragging;
-// settle() compensates the resulting layout jump. When the drag ends, the
-// element goes back to where it was and the new order is reported: the list
-// is rendered by Vue, which moves the elements itself and must find them
-// where it left them. Its user keeps the list from changing during a drag.
+/**
+ * @fileoverview Drag-and-drop reordering of a vertical list, based on pointer
+ * events (mouse, pen and touch). The dragged element is moved in the DOM while
+ * dragging; settle() compensates the resulting layout jump. When the drag ends,
+ * the element goes back to where it was and the new order is reported: the list
+ * is rendered by Vue, which moves the elements itself and must find them where
+ * it left them. Its user keeps the list from changing during a drag.
+ */
 
 /** Minimum pointer movement in pixels before a press starts a drag. */
 const THRESHOLD = 4;

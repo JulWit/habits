@@ -1,5 +1,8 @@
-// Habit page for creating and editing. It builds the request body and passes
-// it to its caller, and stays open with the error message if saving fails.
+/**
+ * @fileoverview Habit page for creating and editing. It builds the request body
+ * and passes it to its caller, and stays open with the error message if saving
+ * fails.
+ */
 
 import {openCategoryPicker} from './category-picker.js';
 import {WEEKDAY_LONG, WEEKDAY_SHORT} from './dates.js';

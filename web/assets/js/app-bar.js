@@ -57,7 +57,7 @@ export const AppBar = {
       if (event.newState === 'closed' &&
           event.target.contains(document.activeElement)) {
         document.querySelector(`[popovertarget="${menuId}"]`)?.focus({
-          preventScroll: true
+          preventScroll: true,
         });
       }
     };

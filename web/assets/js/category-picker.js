@@ -120,7 +120,7 @@ export const TheCategoryPicker = {
       options,
       choose,
       create,
-      finish
+      finish,
     };
   },
   // Leaving the page by its back button, Escape or the system back cancels.

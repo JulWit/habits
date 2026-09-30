@@ -8,3 +8,7 @@ ColumnLimit: 80
 JavaScriptQuotes: Single
 JavaScriptWrapImports: false
 MaxEmptyLinesToKeep: 1
+# A trailing comma in wrapped array and object literals, as the guide asks.
+# clang-format only adds it without bin-packing the arguments.
+InsertTrailingCommas: Wrapped
+BinPackArguments: false

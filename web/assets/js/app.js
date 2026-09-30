@@ -408,7 +408,9 @@ function initShortcuts() {
       event.preventDefault();
       openSearch();
     } else if (event.key === 'Escape' && !inDialog && [
-                 'habit', 'category', 'days'
+                 'habit',
+                 'category',
+                 'days',
                ].includes(route.view)) {
       goHome();
     }

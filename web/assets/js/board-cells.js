@@ -72,7 +72,8 @@ export const BoardHabitLabel = {
     // Tooltip with the full text, including the streak in words.
     const title = computed(() => {
       const meta = [
-        habitHelpers.describeStreak(props.habit), described.value
+        habitHelpers.describeStreak(props.habit),
+        described.value,
       ].filter(Boolean).join(' · ');
       return `${props.habit.name}\n${meta}`;
     });

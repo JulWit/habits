@@ -137,7 +137,8 @@ function activity(habit) {
   return [
     createdItem(habit.createdAt),
     factItem(
-        t('Last done'), done ? formatLong(done) : t('Not yet'),
+        t('Last done'),
+        done ? formatLong(done) : t('Not yet'),
         done ? daysAgo(done) : ''),
     changedItem(habit.updatedAt),
   ];
@@ -511,7 +512,7 @@ export const TheHabitView = {
                archived.value ? {
                  action: 'archive',
                  label: t('Reactivate'),
-                 icon: 'unarchive'
+                 icon: 'unarchive',
                } :
                                 {
                                   action: 'archive',
@@ -522,7 +523,7 @@ export const TheHabitView = {
                  action: 'delete',
                  label: t('Delete'),
                  icon: 'trash',
-                 danger: true
+                 danger: true,
                },
     ]),
       back: goHome,

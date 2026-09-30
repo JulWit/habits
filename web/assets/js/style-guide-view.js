@@ -234,7 +234,7 @@ const StyleGuidePanel = {
     StyleGuideSection,
     StyleGuideSpecimen,
     BoardHabitLabel,
-    BoardHeadDay
+    BoardHeadDay,
   },
   props: {
     theme: {type: String, required: true},

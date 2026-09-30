@@ -62,13 +62,15 @@ function highlights(stats) {
   if (stats.bestWeekday >= 0) {
     const rate = stats.weekdays[stats.bestWeekday].rate;
     items.push(factItem(
-        t('Best weekday'), WEEKDAY_LONG[stats.bestWeekday],
+        t('Best weekday'),
+        WEEKDAY_LONG[stats.bestWeekday],
         `Ø ${percent(rate)}`));
   }
   if (stats.bestMonth > 0) {
     const rate = stats.months[stats.bestMonth - stats.firstMonth].rate;
     items.push(factItem(
-        t('Best month'), MONTH_LONG[stats.bestMonth - 1],
+        t('Best month'),
+        MONTH_LONG[stats.bestMonth - 1],
         `Ø ${percent(rate)}`));
   }
   return items;

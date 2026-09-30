@@ -1013,7 +1013,8 @@ export const TheBoardView = {
           editing,
           onlyOpen,
         ],
-        measureBoard, {flush: 'post'});
+        measureBoard,
+        {flush: 'post'});
 
     // An update may move or replace the focused control, e.g. a row moved by
     // its arrow button: focus it again.

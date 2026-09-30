@@ -6,17 +6,17 @@
  * them.
  */
 
-import {api} from './api.js';
-import {AppBar} from './app-bar.js';
-import {formatDayMonth, formatFull, MONTH_LONG, MONTH_SHORT, WEEKDAY_LONG, WEEKDAY_SHORT} from './dates.js';
-import {t} from './i18n.js';
-import {remote} from './remote-stats.js';
-import {goHome, route} from './route.js';
-import {AppFactsPanel, AppStatRow, factItem} from './stat-panels.js';
-import {state} from './state.js';
-import {hideTooltip} from './tooltip.js';
-import {computed, nextTick, onMounted, ref, watch} from './vue.js';
-import {AppYearGrid, centreToday, currentYear, initChartTooltips, sinceLabel} from './year-grid.js';
+import {api} from '../data/api.js';
+import {remote} from '../data/remote-stats.js';
+import {goHome, route} from '../data/route.js';
+import {state} from '../data/state.js';
+import {AppBar} from '../ui/app-bar.js';
+import {AppFactsPanel, AppStatRow, factItem} from '../ui/stat-panels.js';
+import {hideTooltip} from '../ui/tooltip.js';
+import {AppYearGrid, centreToday, currentYear, initChartTooltips, sinceLabel} from '../ui/year-grid.js';
+import {formatDayMonth, formatFull, MONTH_LONG, MONTH_SHORT, WEEKDAY_LONG, WEEKDAY_SHORT} from '../util/dates.js';
+import {t} from '../util/i18n.js';
+import {computed, nextTick, onMounted, ref, watch} from '../vue.js';
 
 /**
  * Formats a rate as a percentage, or a dash for none.

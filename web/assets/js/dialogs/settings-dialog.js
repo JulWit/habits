@@ -4,18 +4,18 @@
  * the server rejects the change.
  */
 
-import * as actions from './actions.js';
-import {api} from './api.js';
-import {currentDays, editing} from './board-view.js';
-import {locale, t, userTimeZone} from './i18n.js';
-import {AppColorSwatches, NEUTRAL} from './icons.js';
-import {refresh} from './loader.js';
-import {forget} from './outbox.js';
-import {openPage, topPage} from './page-stack.js';
-import {factItem} from './stat-panels.js';
-import {archivedCount, replaceState, state} from './state.js';
-import {errorText, toast} from './toast.js';
-import {computed, reactive, ref} from './vue.js';
+import * as actions from '../data/actions.js';
+import {api} from '../data/api.js';
+import {refresh} from '../data/loader.js';
+import {forget} from '../data/outbox.js';
+import {archivedCount, replaceState, state} from '../data/state.js';
+import {AppColorSwatches, NEUTRAL} from '../ui/icons.js';
+import {openPage, topPage} from '../ui/page-stack.js';
+import {factItem} from '../ui/stat-panels.js';
+import {errorText, toast} from '../ui/toast.js';
+import {locale, t, userTimeZone} from '../util/i18n.js';
+import {currentDays, editing} from '../views/board-view.js';
+import {computed, reactive, ref} from '../vue.js';
 
 /**
  * The last error and the page it belongs to; shown in the open settings page,

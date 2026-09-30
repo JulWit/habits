@@ -4,34 +4,34 @@
  * in loader.js and data changes in actions.js.
  */
 
-import * as actions from './actions.js';
-import {onlyOpen, TheBoardView, toggleFilter} from './board-view.js';
-import {TheCategoryEditor} from './category-editor.js';
-import {TheCategoryPicker} from './category-picker.js';
-import {TheCategoryView} from './category-view.js';
-import {TheDayEditor} from './day-editor.js';
-import {TheDayStatsView} from './day-stats-view.js';
-import {TheHabitEditor} from './habit-editor.js';
-import {TheHabitView} from './habit-view.js';
-import {t} from './i18n.js';
-import {AppIcon, AppIconBadge} from './icons.js';
-import {initSync, refresh, syncStatus} from './loader.js';
-import {definePatterns} from './patterns.js';
-import {goHome, route, syncRoute} from './route.js';
-import {openSearch, TheSearchDialog} from './search-dialog.js';
-import {openSettings, TheSettingsDialog} from './settings-dialog.js';
-import {TheSkipEditor} from './skip-editor.js';
-import {state, stateRevision} from './state.js';
-import {errorText, TheToastList, toast} from './toast.js';
-import {initTooltips} from './tooltip.js';
-import {redoLast, undoLast} from './undo.js';
+import * as actions from './data/actions.js';
+import {initSync, refresh, syncStatus} from './data/loader.js';
+import {goHome, route, syncRoute} from './data/route.js';
+import {state, stateRevision} from './data/state.js';
+import {redoLast, undoLast} from './data/undo.js';
+import {TheCategoryEditor} from './dialogs/category-editor.js';
+import {TheCategoryPicker} from './dialogs/category-picker.js';
+import {TheDayEditor} from './dialogs/day-editor.js';
+import {TheHabitEditor} from './dialogs/habit-editor.js';
+import {openSearch, TheSearchDialog} from './dialogs/search-dialog.js';
+import {openSettings, TheSettingsDialog} from './dialogs/settings-dialog.js';
+import {TheSkipEditor} from './dialogs/skip-editor.js';
+import {AppIcon, AppIconBadge} from './ui/icons.js';
+import {definePatterns} from './ui/patterns.js';
+import {errorText, TheToastList, toast} from './ui/toast.js';
+import {initTooltips} from './ui/tooltip.js';
+import {t} from './util/i18n.js';
+import {onlyOpen, TheBoardView, toggleFilter} from './views/board-view.js';
+import {TheCategoryView} from './views/category-view.js';
+import {TheDayStatsView} from './views/day-stats-view.js';
+import {TheHabitView} from './views/habit-view.js';
 import {createApp, defineAsyncComponent, ref, watch, watchEffect} from './vue.js';
 
 /**
  * The style guide, loaded on first use: it is only reachable at #/styleguide.
  */
 const TheStyleGuideView = defineAsyncComponent({
-  loader: () => import('./style-guide-view.js')
+  loader: () => import('./views/style-guide-view.js')
                     .then((module) => module.TheStyleGuideView),
   onError: (err, retry, fail) => {
     toast(errorText(err), {error: true});

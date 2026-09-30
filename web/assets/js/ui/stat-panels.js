@@ -4,9 +4,9 @@
  * the facts of when something was created and changed.
  */
 
-import {daysBetween, formatLong, localISO} from './dates.js';
-import {locale, t, userTimeZone} from './i18n.js';
-import {state} from './state.js';
+import {state} from '../data/state.js';
+import {daysBetween, formatLong, localISO} from '../util/dates.js';
+import {locale, t, userTimeZone} from '../util/i18n.js';
 
 /**
  * Labels the completion rate with the window it covers, which the server

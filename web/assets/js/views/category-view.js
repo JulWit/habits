@@ -3,19 +3,19 @@
  * days on which every scheduled habit of the category was completed.
  */
 
-import * as actions from './actions.js';
-import {api} from './api.js';
-import {AppBar} from './app-bar.js';
-import {openCategoryEditor} from './category-editor.js';
-import * as habitHelpers from './habit-helpers.js';
-import {t} from './i18n.js';
-import {colorValue, hasHabitIcon} from './icons.js';
-import {remote} from './remote-stats.js';
-import {goHome, openHabit, route} from './route.js';
-import {AppFactsPanel, AppStatRow, changedItem, createdItem, factItem, rateLabel} from './stat-panels.js';
-import {categoryById, state} from './state.js';
-import {computed} from './vue.js';
-import {currentYear, sinceLabel} from './year-grid.js';
+import * as actions from '../data/actions.js';
+import {api} from '../data/api.js';
+import {remote} from '../data/remote-stats.js';
+import {goHome, openHabit, route} from '../data/route.js';
+import {categoryById, state} from '../data/state.js';
+import {openCategoryEditor} from '../dialogs/category-editor.js';
+import {AppBar} from '../ui/app-bar.js';
+import {colorValue, hasHabitIcon} from '../ui/icons.js';
+import {AppFactsPanel, AppStatRow, changedItem, createdItem, factItem, rateLabel} from '../ui/stat-panels.js';
+import {currentYear, sinceLabel} from '../ui/year-grid.js';
+import * as habitHelpers from '../util/habit-helpers.js';
+import {t} from '../util/i18n.js';
+import {computed} from '../vue.js';
 
 /**
  * Returns the stat tiles from the server's day statistics of the category's

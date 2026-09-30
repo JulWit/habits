@@ -59,7 +59,7 @@ Besides the habits, categories and settings, the state contains:
   [DATAMODEL.md](DATAMODEL.md#colours)
 - `kinds`: `scale`, `step`, `max` and `unit` per kind
 - `icons`: valid icon names (`domain.HabitIcons()`); `""` means no icon. The
-  drawings are in `web/assets/js/icons.js`.
+  drawings are in `web/assets/js/ui/icons.js`.
 - `options`: the choices of the enumerated settings, keyed by the setting's
   JSON name, in the order the settings pages offer them:
   `[{value, label, icon?, lang?}]` (`settings.Options()`). The label is

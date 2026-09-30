@@ -2,11 +2,11 @@
  * @fileoverview Category picker, a page opened on top of the habit editor.
  */
 
-import {t} from './i18n.js';
-import {closePage, openPage} from './page-stack.js';
-import {state} from './state.js';
-import {errorText} from './toast.js';
-import {computed, onMounted, ref} from './vue.js';
+import {state} from '../data/state.js';
+import {closePage, openPage} from '../ui/page-stack.js';
+import {errorText} from '../ui/toast.js';
+import {t} from '../util/i18n.js';
+import {computed, onMounted, ref} from '../vue.js';
 
 /**
  * The value of "no category".

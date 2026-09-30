@@ -4,13 +4,13 @@
  * is skipped. It passes only what changed to its caller.
  */
 
-import {formatRelative} from './dates.js';
-import * as habitHelpers from './habit-helpers.js';
-import {locale, t} from './i18n.js';
-import {closePage, openPage} from './page-stack.js';
-import {state} from './state.js';
-import {errorText, toast} from './toast.js';
-import {computed, nextTick, onMounted, reactive, ref} from './vue.js';
+import {state} from '../data/state.js';
+import {closePage, openPage} from '../ui/page-stack.js';
+import {errorText, toast} from '../ui/toast.js';
+import {formatRelative} from '../util/dates.js';
+import * as habitHelpers from '../util/habit-helpers.js';
+import {locale, t} from '../util/i18n.js';
+import {computed, nextTick, onMounted, reactive, ref} from '../vue.js';
 
 /**
  * A change of a day's entry: the parts that differ.

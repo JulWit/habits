@@ -35,8 +35,8 @@ guide](https://google.github.io/styleguide/htmlcssguide.html); see the style
 rules in `AGENTS.md`. The formatters are developer tools, not build steps:
 
 ```bash
-uvx clang-format -i web/sw.js web/assets/js/*.js
-uv run scripts/format_templates.py web/assets/js/*.js
+uvx clang-format -i web/sw.js web/assets/js/*.js web/assets/js/*/*.js
+uv run scripts/format_templates.py web/assets/js/*.js web/assets/js/*/*.js
 uv run scripts/format_css.py web/assets/css/*.css
 ```
 

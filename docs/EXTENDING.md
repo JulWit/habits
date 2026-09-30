@@ -17,7 +17,7 @@ migrated database ends up with the schema of a new one.
 3. Read and write in `internal/store/habits.go`
 4. Pointer field with a JSON tag in `domain.HabitEdit` (the request body of
    creating and editing) and its `applyFields`
-5. Input in `web/assets/js/habit-editor.js`
+5. Input in `web/assets/js/dialogs/habit-editor.js`
 
 Undo restores it without further work, as undo steps keep whole rows (see
 [DATAFLOW.md](DATAFLOW.md#undo)).
@@ -74,14 +74,14 @@ English label (translated by the client like any text). The store keeps the
 rows the write changed as the undo step, as long as every write method
 registers its rows with `watch` before changing them (`internal/store/changes.go`).
 Answer with `writeChange(w, changeID)`, so the client can offer to undo it with
-`offerUndo(changeId, text)` in `web/assets/js/actions.js`. A new table that
+`offerUndo(changeId, text)` in `web/assets/js/data/actions.js`. A new table that
 undo should cover needs its primary key in `primaryKeys`.
 
 ## New statistic
 
 Compute it in `internal/domain` and send it from the server, in the habit view
 or an endpoint of its own (see `handlers_stats.go`); a view loads the latter
-with `remote()` (`web/assets/js/remote-stats.js`). The client shows
+with `remote()` (`web/assets/js/data/remote-stats.js`). The client shows
 statistics, it does not compute them.
 
 ## New view or dialog

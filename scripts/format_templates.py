@@ -17,8 +17,9 @@ condenses whitespace) gives the same result, so the rendered page does not
 change. A line may stay longer than 80 columns when nothing in it may be
 broken, e.g. a long expression; move that into setup().
 
-    uv run scripts/format_templates.py web/assets/js/*.js
-    uv run scripts/format_templates.py --check web/assets/js/*.js
+    uv run scripts/format_templates.py web/assets/js/*.js web/assets/js/*/*.js
+    uv run scripts/format_templates.py --check web/assets/js/*.js \
+        web/assets/js/*/*.js
 
 With --check, nothing is written; the files that would change are listed
 and the exit status is 1 if there are any.

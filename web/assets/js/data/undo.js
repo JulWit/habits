@@ -5,12 +5,13 @@
  * toasts offer them (see toast.js).
  */
 
+import {errorText, toast} from '../ui/toast.js';
+import {formatRelative} from '../util/dates.js';
+import {locale, t} from '../util/i18n.js';
+
 import {api} from './api.js';
-import {formatRelative} from './dates.js';
-import {locale, t} from './i18n.js';
 import {refresh} from './loader.js';
 import {state} from './state.js';
-import {errorText, toast} from './toast.js';
 
 /**
  * Shows `text` in a toast with a button that undoes the step `changeId`. A

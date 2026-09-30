@@ -4,12 +4,13 @@
  * translated.
  */
 
+import {state} from '../data/state.js';
+import {colorValue} from '../ui/icons.js';
+import {addDays, daysBetween, weekdayIndex} from '../util/dates.js';
+import {STREAK_LEVELS} from '../util/habit-helpers.js';
+import {computed, onMounted, ref} from '../vue.js';
+
 import {BoardDayCell, BoardHabitLabel, BoardHeadDay} from './board-cells.js';
-import {addDays, daysBetween, weekdayIndex} from './dates.js';
-import {STREAK_LEVELS} from './habit-helpers.js';
-import {colorValue} from './icons.js';
-import {state} from './state.js';
-import {computed, onMounted, ref} from './vue.js';
 
 /**
  * Returns the date `back` days before today.

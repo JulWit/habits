@@ -4,11 +4,11 @@
  * open with the error message if skipping fails.
  */
 
-import {addDays} from './dates.js';
-import {closePage, openPage} from './page-stack.js';
-import {state} from './state.js';
-import {errorText} from './toast.js';
-import {nextTick, onMounted, reactive, ref, watch} from './vue.js';
+import {state} from '../data/state.js';
+import {closePage, openPage} from '../ui/page-stack.js';
+import {errorText} from '../ui/toast.js';
+import {addDays} from '../util/dates.js';
+import {nextTick, onMounted, reactive, ref, watch} from '../vue.js';
 
 /**
  * The range of days to skip and the habits; no habitIds means all habits.

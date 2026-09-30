@@ -4,7 +4,7 @@
  * so the Vue components render again whenever it changes.
  */
 
-import {reactive, ref} from './vue.js';
+import {reactive, ref} from '../vue.js';
 
 /**
  * A day's entry as the client handles it.

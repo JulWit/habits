@@ -12,7 +12,7 @@ var ErrValidation = errors.New("validation error")
 // Problem is a validation error with a user-facing message.
 //
 // Code identifies the problem and stays stable when the wording changes; the
-// client translates by it (see web/assets/js/i18n.js). Template is the English
+// client translates by it (see web/assets/js/util/i18n.js). Template is the English
 // message with {name} placeholders and Params holds their values, which the
 // client fills into its translation.
 type Problem struct {

@@ -3,20 +3,20 @@
  * heatmap.
  */
 
-import * as actions from './actions.js';
-import {api} from './api.js';
-import {AppBar} from './app-bar.js';
-import {addDays, dayOfMonth, formatDayMonth, formatFull, formatLong, MONTH_LONG, MONTH_SHORT, monthIndex} from './dates.js';
-import * as habitHelpers from './habit-helpers.js';
-import {t} from './i18n.js';
-import {colorValue, hasHabitIcon} from './icons.js';
-import {remote} from './remote-stats.js';
-import {goHome, route} from './route.js';
-import {AppFactsPanel, AppStatRow, changedItem, createdItem, daysAgo, factItem, rateLabel} from './stat-panels.js';
-import {habitById, state} from './state.js';
-import {hideTooltip} from './tooltip.js';
-import {computed, nextTick, onMounted, ref, watch} from './vue.js';
-import {AppYearGrid, centreToday, currentYear, initChartTooltips} from './year-grid.js';
+import * as actions from '../data/actions.js';
+import {api} from '../data/api.js';
+import {remote} from '../data/remote-stats.js';
+import {goHome, route} from '../data/route.js';
+import {habitById, state} from '../data/state.js';
+import {AppBar} from '../ui/app-bar.js';
+import {colorValue, hasHabitIcon} from '../ui/icons.js';
+import {AppFactsPanel, AppStatRow, changedItem, createdItem, daysAgo, factItem, rateLabel} from '../ui/stat-panels.js';
+import {hideTooltip} from '../ui/tooltip.js';
+import {AppYearGrid, centreToday, currentYear, initChartTooltips} from '../ui/year-grid.js';
+import {addDays, dayOfMonth, formatDayMonth, formatFull, formatLong, MONTH_LONG, MONTH_SHORT, monthIndex} from '../util/dates.js';
+import * as habitHelpers from '../util/habit-helpers.js';
+import {t} from '../util/i18n.js';
+import {computed, nextTick, onMounted, ref, watch} from '../vue.js';
 
 /**
  * The year the heatmap and the cumulative chart show, e.g. "2025", and the

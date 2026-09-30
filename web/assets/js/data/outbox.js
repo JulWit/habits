@@ -6,7 +6,7 @@
  * queued write later is safe: for each day the last value wins.
  */
 
-import {t} from './i18n.js';
+import {t} from '../util/i18n.js';
 
 const OUTBOX = 'habits.outbox';
 const STATE = 'habits.state';

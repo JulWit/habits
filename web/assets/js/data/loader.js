@@ -4,12 +4,13 @@
  * Writes still waiting in the outbox are laid over every loaded state and sent.
  */
 
+import {errorText, toast} from '../ui/toast.js';
+import {t} from '../util/i18n.js';
+import {reactive} from '../vue.js';
+
 import {api} from './api.js';
-import {t} from './i18n.js';
 import {isConnectionError, isOffline, overlay, pending, rememberedState, rememberState, setOffline, setStatusHandler, statusText} from './outbox.js';
 import {replaceState, state, upsertHabit} from './state.js';
-import {errorText, toast} from './toast.js';
-import {reactive} from './vue.js';
 
 /**
  * The sync status for the title bar: the number of waiting writes or

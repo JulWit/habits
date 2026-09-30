@@ -3,8 +3,8 @@
  * constant, so it is safe to assign with innerHTML.
  */
 
-import {t} from './i18n.js';
-import {computed, h} from './vue.js';
+import {t} from '../util/i18n.js';
+import {computed, h} from '../vue.js';
 
 /**
  * Wraps the shapes of an icon in its SVG element.

@@ -4,17 +4,18 @@
  * with all of them.
  */
 
-import * as actions from './actions.js';
+import * as actions from '../data/actions.js';
+import {extendHistory} from '../data/loader.js';
+import {openCategory, openDays, openHabit, route} from '../data/route.js';
+import {groupedHabits, state} from '../data/state.js';
+import {enableDragReorder} from '../ui/drag-reorder.js';
+import {addDays, dayOfMonth, daysBetween, formatLong, MONTH_LONG, MONTH_SHORT, monthIndex, weekdayIndex, yearOf} from '../util/dates.js';
+import * as habitHelpers from '../util/habit-helpers.js';
+import {t} from '../util/i18n.js';
+import {computed, nextTick, onBeforeUpdate, onMounted, onUpdated, ref, watch} from '../vue.js';
+
 import {BoardDayCell, BoardHabitLabel, BoardHeadDay} from './board-cells.js';
-import {addDays, dayOfMonth, daysBetween, formatLong, MONTH_LONG, MONTH_SHORT, monthIndex, weekdayIndex, yearOf} from './dates.js';
 import {BoardDaySummary, dayProgress, initSummary, launchOrbs, newlyDone} from './day-summary.js';
-import {enableDragReorder} from './drag-reorder.js';
-import * as habitHelpers from './habit-helpers.js';
-import {t} from './i18n.js';
-import {extendHistory} from './loader.js';
-import {openCategory, openDays, openHabit, route} from './route.js';
-import {groupedHabits, state} from './state.js';
-import {computed, nextTick, onBeforeUpdate, onMounted, onUpdated, ref, watch} from './vue.js';
 
 const LONG_PRESS_MS = 450;
 

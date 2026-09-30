@@ -5,10 +5,11 @@
  * the new answer arrives, the view shows the previous one.
  */
 
+import {errorText, toast} from '../ui/toast.js';
+import {shallowRef} from '../vue.js';
+
 import {isConnectionError} from './outbox.js';
 import {stateRevision} from './state.js';
-import {errorText, toast} from './toast.js';
-import {shallowRef} from './vue.js';
 
 /**
  * The loaded answers by key. Only `value` is reactive: a view that shows it

@@ -3,13 +3,13 @@
  * bar or with "/". Selecting a result opens it.
  */
 
-import * as habitHelpers from './habit-helpers.js';
-import {t} from './i18n.js';
-import {colorValue, hasHabitIcon} from './icons.js';
-import {closePage, openPage} from './page-stack.js';
-import {openCategory, openHabit} from './route.js';
-import {groupedHabits} from './state.js';
-import {computed, nextTick, onMounted, ref, watch} from './vue.js';
+import {openCategory, openHabit} from '../data/route.js';
+import {groupedHabits} from '../data/state.js';
+import {colorValue, hasHabitIcon} from '../ui/icons.js';
+import {closePage, openPage} from '../ui/page-stack.js';
+import * as habitHelpers from '../util/habit-helpers.js';
+import {t} from '../util/i18n.js';
+import {computed, nextTick, onMounted, ref, watch} from '../vue.js';
 
 /**
  * A search result: a habit with its category, or a category with its habits.

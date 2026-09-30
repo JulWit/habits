@@ -4,12 +4,12 @@
  * fly into.
  */
 
-import {daysBetween, formatFull, yearOf} from './dates.js';
-import * as habitHelpers from './habit-helpers.js';
-import {t} from './i18n.js';
-import {colorValue} from './icons.js';
-import {state} from './state.js';
-import {computed, reactive, watch} from './vue.js';
+import {state} from '../data/state.js';
+import {colorValue} from '../ui/icons.js';
+import {daysBetween, formatFull, yearOf} from '../util/dates.js';
+import * as habitHelpers from '../util/habit-helpers.js';
+import {t} from '../util/i18n.js';
+import {computed, reactive, watch} from '../vue.js';
 
 /**
  * The board element, which holds the summary. Set by initSummary.

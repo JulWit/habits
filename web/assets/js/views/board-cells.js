@@ -4,12 +4,12 @@
  * them.
  */
 
-import {dayOfMonth, formatLong, formatRelative, WEEKDAY_SHORT, weekdayIndex} from './dates.js';
-import * as habitHelpers from './habit-helpers.js';
-import {t} from './i18n.js';
-import {colorValue} from './icons.js';
-import {state} from './state.js';
-import {computed} from './vue.js';
+import {state} from '../data/state.js';
+import {colorValue} from '../ui/icons.js';
+import {dayOfMonth, formatLong, formatRelative, WEEKDAY_SHORT, weekdayIndex} from '../util/dates.js';
+import * as habitHelpers from '../util/habit-helpers.js';
+import {t} from '../util/i18n.js';
+import {computed} from '../vue.js';
 
 const CHECK_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path
     d="M5 12.5 10 17.5 19 7" fill="none" stroke="currentColor" stroke-width="3"

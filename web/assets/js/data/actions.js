@@ -4,20 +4,21 @@
  * toast offers to undo (see undo.js).
  */
 
+import {openDayDialog} from '../dialogs/day-editor.js';
+import {openEditor} from '../dialogs/habit-editor.js';
+import {openSkipDialog} from '../dialogs/skip-editor.js';
+import {errorText, toast} from '../ui/toast.js';
+import {formatRelative} from '../util/dates.js';
+import * as habitHelpers from '../util/habit-helpers.js';
+import {t} from '../util/i18n.js';
+import {ref} from '../vue.js';
+
 import {api} from './api.js';
-import {formatRelative} from './dates.js';
-import {openDayDialog} from './day-editor.js';
-import {openEditor} from './habit-editor.js';
-import * as habitHelpers from './habit-helpers.js';
-import {t} from './i18n.js';
 import {refresh} from './loader.js';
 import {discard, enqueue, flush, isConnectionError, isOffline, isSessionExpired, pending, setOffline} from './outbox.js';
 import {currentHabitId, goHome} from './route.js';
-import {openSkipDialog} from './skip-editor.js';
 import {applyEntryAnswer, categoryById, dropPending, groupedHabits, habitById, removeCategory, removeHabit, reorderCategoriesLocal, reorderHabitsLocal, showPending, state, upsertCategory, upsertHabit} from './state.js';
-import {errorText, toast} from './toast.js';
 import {offerUndo} from './undo.js';
-import {ref} from './vue.js';
 
 /**
  * The text of the live region that announces the result of a tap on the

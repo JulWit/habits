@@ -5,9 +5,10 @@
  * nothing here judges a day.
  */
 
+import {state} from '../data/state.js';
+
 import {daysBetween, WEEKDAY_SHORT} from './dates.js';
 import {locale, t} from './i18n.js';
-import {state} from './state.js';
 
 /**
  * The statuses of domain.DayStatus.

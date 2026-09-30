@@ -12,7 +12,7 @@ import (
 // Every problem code the server can send has a German message in i18n.js,
 // which the client looks up by code.
 func TestEveryProblemCodeIsTranslated(t *testing.T) {
-	i18n, err := os.ReadFile(filepath.Join("..", "..", "web", "assets", "js", "i18n.js"))
+	i18n, err := os.ReadFile(filepath.Join("..", "..", "web", "assets", "js", "util", "i18n.js"))
 	if err != nil {
 		t.Fatalf("os.ReadFile(i18n.js): %v", err)
 	}

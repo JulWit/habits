@@ -4,15 +4,16 @@
  * fails.
  */
 
+import {categoryById, state} from '../data/state.js';
+import {AppColorSwatches, AppIconChoices, colorValue} from '../ui/icons.js';
+import {closePage, guardPage, openPage} from '../ui/page-stack.js';
+import {errorText} from '../ui/toast.js';
+import {WEEKDAY_LONG, WEEKDAY_SHORT} from '../util/dates.js';
+import * as habitHelpers from '../util/habit-helpers.js';
+import {t} from '../util/i18n.js';
+import {computed, nextTick, onMounted, reactive, ref, watch} from '../vue.js';
+
 import {openCategoryPicker} from './category-picker.js';
-import {WEEKDAY_LONG, WEEKDAY_SHORT} from './dates.js';
-import * as habitHelpers from './habit-helpers.js';
-import {t} from './i18n.js';
-import {AppColorSwatches, AppIconChoices, colorValue} from './icons.js';
-import {closePage, guardPage, openPage} from './page-stack.js';
-import {categoryById, state} from './state.js';
-import {errorText} from './toast.js';
-import {computed, nextTick, onMounted, reactive, ref, watch} from './vue.js';
 
 /**
  * Each measured kind has its own target and step field, so switching the kind

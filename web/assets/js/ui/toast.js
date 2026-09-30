@@ -4,8 +4,8 @@
  * may report through it.
  */
 
-import {errorTemplate, locale, t} from './i18n.js';
-import {onBeforeUnmount, onMounted, reactive} from './vue.js';
+import {errorTemplate, locale, t} from '../util/i18n.js';
+import {onBeforeUnmount, onMounted, reactive} from '../vue.js';
 
 /**
  * Returns the message of an error in the UI language. Problems from the server

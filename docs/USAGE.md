@@ -88,7 +88,7 @@ upper limit; the dialog shows how many are actually displayed. At least seven
 days are shown: if they do not fit, the board is compacted (`data-tight`, set
 in `board-view.js`). A fixed number below seven is respected.
 
-**Language**: The server sets `<html lang>`; `web/assets/js/i18n.js`
+**Language**: The server sets `<html lang>`; `web/assets/js/util/i18n.js`
 translates using the English text as key (`t('New habit')`). Untranslated
 texts are shown in English. Changing the language reloads the page.
 

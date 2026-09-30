@@ -4,11 +4,12 @@
  * tooltips. Used by the habit, category and day statistics views.
  */
 
-import {addDays, dayOfMonth, daysBetween, formatDayMonth, formatFull, MONTH_SHORT, monthIndex, startOfWeek} from './dates.js';
-import {t} from './i18n.js';
-import {state} from './state.js';
+import {state} from '../data/state.js';
+import {addDays, dayOfMonth, daysBetween, formatDayMonth, formatFull, MONTH_SHORT, monthIndex, startOfWeek} from '../util/dates.js';
+import {t} from '../util/i18n.js';
+import {computed} from '../vue.js';
+
 import {hideTooltip, showTooltip} from './tooltip.js';
-import {computed} from './vue.js';
 
 /**
  * Returns the current year, e.g. "2026".

@@ -4,9 +4,10 @@
  * #/category/{id}, #/days, #/styleguide); without one, the overview is shown.
  */
 
+import {reactive} from '../vue.js';
+
 import {ensureFullHistory} from './loader.js';
 import {habitById, state} from './state.js';
-import {reactive} from './vue.js';
 
 /**
  * The shown view: "board", "habit", "category", "days" or "styleguide", and

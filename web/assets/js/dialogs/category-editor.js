@@ -3,11 +3,11 @@
  * open with the error message if saving fails.
  */
 
-import {AppColorSwatches, AppIconChoices, colorValue} from './icons.js';
-import {closePage, guardPage, openPage} from './page-stack.js';
-import {categoryById, state} from './state.js';
-import {errorText} from './toast.js';
-import {computed, nextTick, onMounted, reactive, ref, watch} from './vue.js';
+import {categoryById, state} from '../data/state.js';
+import {AppColorSwatches, AppIconChoices, colorValue} from '../ui/icons.js';
+import {closePage, guardPage, openPage} from '../ui/page-stack.js';
+import {errorText} from '../ui/toast.js';
+import {computed, nextTick, onMounted, reactive, ref, watch} from '../vue.js';
 
 /**
  * The input of the form.

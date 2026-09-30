@@ -86,11 +86,12 @@ extend it along with the frontend.
   `tx.Record(label, params...)` in its `store.Update` and answers with
   `writeChange`; every store write method registers its rows with `watch`
   before changing them (`internal/store/changes.go`). In the frontend, every
-  data change goes through `web/assets/js/actions.js`, which offers the undo
-  with `offerUndo(changeId, text)`.
+  data change goes through `web/assets/js/data/actions.js`, which offers the
+  undo with `offerUndo(changeId, text)`.
 - **Errors** are created with `domain.Invalid(code, template, params...)`. Each
-  new `code` needs a German entry in `DE_ERRORS` in `web/assets/js/i18n.js`;
-  `TestEveryProblemCodeIsTranslated` enforces this.
+  new `code` needs a German entry in `DE_ERRORS` in
+  `web/assets/js/util/i18n.js`; `TestEveryProblemCodeIsTranslated` enforces
+  this.
 - **UI text** is written in English and wrapped in `t('...')`; the English text
   is the key. Add the German translation to `DE` in `i18n.js`.
 - **Writing endpoints** require `Content-Type: application/json` (CSRF
@@ -116,7 +117,11 @@ extend it along with the frontend.
   first, `gofmt`, tests in `_test.go` files next to the code.
 - JS: ES modules, no classes unless the file already uses them. File names in
   kebab-case, with a suffix for views (`-view`) and dialogs (`-editor`,
-  `-picker`, `-dialog`); see `docs/STRUCTURE.md`.
+  `-picker`, `-dialog`). Modules live in a folder by their role: `data/`
+  (state, server, navigation), `views/`, `dialogs/`, `ui/` (building blocks
+  shared by views and dialogs) and `util/` (helpers); `app.js` and `vue.js`
+  stay at the top. A part only one view uses stays with it in `views/`. See
+  `docs/STRUCTURE.md`.
 - Vue components are plain objects (`export const TheHabitView = {…}`) with
   `setup()` (Composition API) and a `template` string in the same file, next
   to the functions they use. Components used by one module stay in it;
@@ -133,7 +138,7 @@ extend it along with the frontend.
   and `:key`, `v-model`, other attributes, `@events`); expressions stay
   simple, anything longer goes into a `computed` or a function in `setup()`.
   Format the templates with `uv run scripts/format_templates.py
-  web/assets/js/*.js`, after clang-format.
+  web/assets/js/*.js web/assets/js/*/*.js`, after clang-format.
 - JS follows the [Google JavaScript style
   guide](https://google.github.io/styleguide/jsguide.html): single quotes,
   80 columns (templates included), braces around every block except a
@@ -142,9 +147,9 @@ extend it along with the frontend.
   (`ICONS`, `STATUS`), and no import cycles between modules: a module that
   must call back into one that imports it gets the function passed in (see
   `initSync` in `loader.js`). Format with
-  `uvx clang-format -i web/sw.js web/assets/js/*.js` (`.clang-format`; a
-  developer tool, not a build step). Long UI texts in `t('…')` and `i18n.js`
-  stay on one line, so they can be searched for.
+  `uvx clang-format -i web/sw.js web/assets/js/*.js web/assets/js/*/*.js`
+  (`.clang-format`; a developer tool, not a build step). Long UI texts in
+  `t('…')` and `i18n.js` stay on one line, so they can be searched for.
 - Every module starts with a `@fileoverview` JSDoc comment. Every function,
   `setup()` included, has a JSDoc comment with Closure types (`@param
   {string}`, `@return {?Habit}`); the shared data types are typedefs in

@@ -5,7 +5,7 @@
  * The language is taken from <html lang> and changes only on reload.
  */
 
-import {state} from './state.js';
+import {state} from '../data/state.js';
 
 /**
  * The UI language, "de" or "en".

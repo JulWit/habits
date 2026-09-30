@@ -543,7 +543,7 @@ const StyleGuidePanel = {
       </style-guide-section>
       <style-guide-section
         title="Heatmap"
-        note='Levels 0–4, then "not scheduled" and the future.'
+        note="Levels 0–4, then &quot;not scheduled&quot; and the future."
       >
         <style-guide-specimen label="data-level 0 … 4 · is-off · is-future">
           <div class="style-guide-panel-heatmap">

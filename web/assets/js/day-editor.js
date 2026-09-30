@@ -241,7 +241,7 @@ export const TheDayEditor = {
           {{ title }}
         </h2>
         <fieldset
-          class="day-value"
+          class="day-editor-value"
           :disabled="day.skipped"
         >
           <legend class="sr-only">{{ t('Value') }}</legend>
@@ -274,7 +274,7 @@ export const TheDayEditor = {
             </div>
             <div
               v-if="quick.length > 0"
-              class="quick-steps"
+              class="day-editor-quick-steps"
             >
               <button
                 v-for="offset in quick"
@@ -306,7 +306,7 @@ export const TheDayEditor = {
             <span>{{ t('Completed') }}</span>
           </label>
         </fieldset>
-        <div class="day-skip">
+        <div class="day-editor-skip">
           <label class="switch">
             <input
               v-model="day.skipped"

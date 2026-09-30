@@ -167,7 +167,7 @@ html:has(.dialog.page[open]) { overflow: hidden; }
 /* ---------- settings menu ---------- */
 
 /* The settings menu has a card per section instead of one for the page. */
-.page-body:has(> .menu) {
+.page-body:has(> .settings-menu) {
   display: flex;
   flex-direction: column;
   gap: var(--card-gap);
@@ -176,7 +176,7 @@ html:has(.dialog.page[open]) { overflow: hidden; }
 }
 
 /* A section, each row opening its page. The rows reach to the card's edge. */
-.menu {
+.settings-menu {
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -186,7 +186,7 @@ html:has(.dialog.page[open]) { overflow: hidden; }
 }
 
 /* The signed-in user, a card above the sections. */
-.account {
+.settings-account {
   display: flex;
   align-items: center;
   gap: var(--space);
@@ -196,7 +196,7 @@ html:has(.dialog.page[open]) { overflow: hidden; }
 }
 
 /* Initials on the accent colour. */
-.account-avatar {
+.settings-account-avatar {
   display: grid;
   place-items: center;
   flex: none;
@@ -210,20 +210,20 @@ html:has(.dialog.page[open]) { overflow: hidden; }
   letter-spacing: .02em;
 }
 
-.account-text { min-width: 0; }
+.settings-account-text { min-width: 0; }
 
-.account-text p {
+.settings-account-text p {
   margin: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.account-name { font-size: var(--text-lg); font-weight: var(--weight-bold); }
-.account-detail { color: var(--text-muted); font-size: var(--text-md); }
-.account-text .account-groups { color: var(--text-faint); font-size: var(--text-sm); margin-top: 2px; }
+.settings-account-name { font-size: var(--text-lg); font-weight: var(--weight-bold); }
+.settings-account-detail { color: var(--text-muted); font-size: var(--text-md); }
+.settings-account-text .settings-account-groups { color: var(--text-faint); font-size: var(--text-sm); margin-top: 2px; }
 
-.menu-item {
+.settings-menu-item {
   display: flex;
   align-items: center;
   gap: var(--space);
@@ -238,26 +238,26 @@ html:has(.dialog.page[open]) { overflow: hidden; }
 }
 
 @media (hover: hover) {
-  .menu-item:hover { background: var(--surface-2); }
+  .settings-menu-item:hover { background: var(--surface-2); }
 }
 
-.menu-icon,
-.menu-caret { display: flex; flex: none; }
-.menu-icon { color: var(--text-muted); }
-.menu-icon svg { width: 1.3rem; height: 1.3rem; }
-.menu-caret { color: var(--text-faint); }
-.menu-caret svg { width: 1rem; height: 1rem; }
+.settings-menu-item-icon,
+.settings-menu-item-caret { display: flex; flex: none; }
+.settings-menu-item-icon { color: var(--text-muted); }
+.settings-menu-item-icon svg { width: 1.3rem; height: 1.3rem; }
+.settings-menu-item-caret { color: var(--text-faint); }
+.settings-menu-item-caret svg { width: 1rem; height: 1rem; }
 
-.menu-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.menu-title { font-weight: var(--weight-emphasis); }
-.menu-hint { font-size: var(--text-sm); color: var(--text-muted); }
+.settings-menu-item-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.settings-menu-item-title { font-weight: var(--weight-emphasis); }
+.settings-menu-item-hint { font-size: var(--text-sm); color: var(--text-muted); }
 
 /* ---------- facts ---------- */
 
 /* Label and value rows, e.g. on the version page. */
-.facts { margin: 0 0 calc(1.1 * var(--space)); }
+.settings-facts { margin: 0 0 calc(1.1 * var(--space)); }
 
-.facts > div {
+.settings-facts > div {
   display: flex;
   justify-content: space-between;
   gap: var(--space);
@@ -265,14 +265,14 @@ html:has(.dialog.page[open]) { overflow: hidden; }
 }
 
 /* Dotted separators, like below the board's category headings. */
-.facts > div + div {
+.settings-facts > div + div {
   background: radial-gradient(circle, var(--border) 1px, transparent 1.3px)
     left top / 10px 3px repeat-x;
 }
 
-.facts dt { color: var(--text-muted); }
+.settings-facts dt { color: var(--text-muted); }
 
-.facts dd {
+.settings-facts dd {
   margin: 0;
   min-width: 0;
   text-align: right;
@@ -319,7 +319,7 @@ html:has(.dialog.page[open]) { overflow: hidden; }
 
 .field input:focus,
 .field textarea:focus,
-.picker-create input:focus,
+.category-picker-create input:focus,
 .select:focus-visible {
   border-color: var(--primary);
   outline: none;
@@ -384,9 +384,9 @@ html:has(.dialog.page[open]) { overflow: hidden; }
 
 /* ---------- colour swatches ---------- */
 
-.swatches { display: flex; flex-wrap: wrap; gap: calc(.4 * var(--space)); }
+.app-color-swatches { display: flex; flex-wrap: wrap; gap: calc(.4 * var(--space)); }
 
-.swatch {
+.app-color-swatches-item {
   width: 1.75rem;
   height: 1.75rem;
   border-radius: 50%;
@@ -400,7 +400,7 @@ html:has(.dialog.page[open]) { overflow: hidden; }
 
 /* "No colour": a struck-through empty ring, drawn in the content box, so it
    has the size of the colour discs. */
-.swatch.is-none {
+.app-color-swatches-item.is-none {
   background:
     linear-gradient(to top right, transparent 46%, var(--text-muted) 46% 54%, transparent 54%)
     content-box,
@@ -408,7 +408,7 @@ html:has(.dialog.page[open]) { overflow: hidden; }
     content-box;
 }
 
-.swatch[aria-checked="true"] {
+.app-color-swatches-item[aria-checked="true"] {
   border-color: var(--text);
   transform: scale(1.06);
 }
@@ -417,13 +417,13 @@ html:has(.dialog.page[open]) { overflow: hidden; }
 
 /* Icons on the same tiles as on the board, in the colour set by habit-editor.js
    (--habit-color). */
-.icon-choices {
+.app-icon-choices {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(2.25rem, 1fr));
   gap: calc(.35 * var(--space));
 }
 
-.icon-choice {
+.app-icon-choices-item {
   display: grid;
   place-items: center;
   aspect-ratio: 1;
@@ -435,20 +435,20 @@ html:has(.dialog.page[open]) { overflow: hidden; }
   cursor: pointer;
 }
 
-.icon-choice svg { width: 1.15rem; height: 1.15rem; }
+.app-icon-choices-item svg { width: 1.15rem; height: 1.15rem; }
 
 @media (hover: hover) {
-  .icon-choice:hover { background-color: color-mix(in srgb, var(--habit-color) 26%, transparent); }
+  .app-icon-choices-item:hover { background-color: color-mix(in srgb, var(--habit-color) 26%, transparent); }
 }
 
-.icon-choice.is-none {
+.app-icon-choices-item.is-none {
   background: transparent;
   border: 2px dashed var(--border-strong);
 }
 
-.icon-choice[aria-checked="true"] { border: 2px solid var(--text); }
+.app-icon-choices-item[aria-checked="true"] { border: 2px solid var(--text); }
 
-.icon-choice:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
+.app-icon-choices-item:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
 
 /* ---------- weekday picker ---------- */
 
@@ -598,14 +598,14 @@ html:has(.dialog.page[open]) { overflow: hidden; }
 }
 
 /* Quick value buttons below the stepper, in equal columns. */
-.quick-steps {
+.day-editor-quick-steps {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: calc(.4 * var(--space));
   padding: calc(.7 * var(--space)) calc(1.15 * var(--space)) 0;
 }
 
-.quick-steps .button {
+.day-editor-quick-steps .button {
   padding-inline: calc(.2 * var(--space));
   font-variant-numeric: tabular-nums;
 }
@@ -615,11 +615,11 @@ html:has(.dialog.page[open]) { overflow: hidden; }
 /* ---------- day dialog ---------- */
 
 /* The value controls, dimmed while the day is skipped, which clears the value. */
-.day-value { border: none; margin: 0; padding: 0; min-width: 0; }
-.day-value:disabled { opacity: .45; }
-.day-value > .switch { padding: calc(.9 * var(--space)) calc(1.15 * var(--space)) 0; }
+.day-editor-value { border: none; margin: 0; padding: 0; min-width: 0; }
+.day-editor-value:disabled { opacity: .45; }
+.day-editor-value > .switch { padding: calc(.9 * var(--space)) calc(1.15 * var(--space)) 0; }
 
-.day-skip { padding: calc(.9 * var(--space)) calc(1.15 * var(--space)) 0; }
+.day-editor-skip { padding: calc(.9 * var(--space)) calc(1.15 * var(--space)) 0; }
 
 /* ---------- narrow screens ---------- */
 
@@ -650,7 +650,7 @@ html:has(.dialog.page[open]) { overflow: hidden; }
      smaller corner radius on the board keeps the today band clear of the
      rounded corners at 8px padding. */
   :root { --gutter: 8px; --block-pad-x: 8px; }
-  .board { --radius: 10px; }
+  .board-view-grid { --radius: 10px; }
 
   .brand { font-size: 1.05rem; }
   .field.row,
@@ -684,14 +684,14 @@ html:has(.dialog.page[open]) { overflow: hidden; }
 .picker-caret svg { width: 1rem; height: 1rem; }
 
 /* Category list of the picker. */
-.picker-list {
+.category-picker-list {
   display: flex;
   flex-direction: column;
   gap: 2px;
   margin-bottom: calc(.85 * var(--space));
 }
 
-.picker-option {
+.category-picker-option {
   display: flex;
   align-items: center;
   gap: var(--row-gap);
@@ -705,14 +705,14 @@ html:has(.dialog.page[open]) { overflow: hidden; }
 }
 
 @media (hover: hover) {
-  .picker-option:hover { background: var(--surface-2); }
+  .category-picker-option:hover { background: var(--surface-2); }
 }
-.picker-option.is-stale { color: var(--text-faint); font-style: italic; }
+.category-picker-option.is-stale { color: var(--text-faint); font-style: italic; }
 
 /* The chosen category in the accent colour, as the chosen option of a
    dropdown. Hover and pressed states follow the primary button (see the
    pressed state below). */
-.picker-option[aria-selected="true"] {
+.category-picker-option[aria-selected="true"] {
   background: var(--primary);
   color: var(--primary-text);
   font-weight: var(--weight-semibold);
@@ -720,15 +720,15 @@ html:has(.dialog.page[open]) { overflow: hidden; }
 
 /* The icon tile takes the text colour, as a habit colour may clash with the
    accent. Not via --habit-color, which is set inline. */
-.picker-option[aria-selected="true"] .habit-icon {
+.category-picker-option[aria-selected="true"] .habit-icon {
   color: inherit;
   background: color-mix(in srgb, currentColor 16%, transparent);
 }
 
-.picker-option-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.category-picker-option-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* Creating a category in the picker. */
-.picker-create {
+.category-picker-create {
   display: flex;
   gap: calc(.5 * var(--space));
   padding-top: calc(.85 * var(--space));
@@ -736,9 +736,9 @@ html:has(.dialog.page[open]) { overflow: hidden; }
 
 /* The create row has no margin of its own, unlike form fields, so the card
    gets the same padding below as above. */
-.page-body:has(> .picker-create) { padding-bottom: calc(1.25 * var(--space)); }
+.page-body:has(> .category-picker-create) { padding-bottom: calc(1.25 * var(--space)); }
 
-.picker-create input {
+.category-picker-create input {
   flex: 1;
   min-width: 0;
   background: var(--field);
@@ -795,27 +795,27 @@ html:has(.dialog.page[open]) { overflow: hidden; }
 
    Touch has no hover, so rows and fields darken one step beyond their hover
    fill while pressed. Here, after the hover rules of all three files. */
-.menu-item:active,
+.settings-menu-item:active,
 .picker:active,
-.picker-option:active,
+.category-picker-option:active,
 .search-option:active,
-.cat-habit:active,
-.block-link:active,
-.habit-cell .habit-main:active,
-.cell:active:not(:disabled) { background: var(--border); }
+.category-view-habit:active,
+.board-block-link:active,
+.board-habit-row-label .board-habit-label:active,
+.board-day-cell:active:not(:disabled) { background: var(--border); }
 
 /* The today column keeps its band colour, a step darker than on hover. */
-.cell.is-today:active:not(:disabled) {
+.board-day-cell.is-today:active:not(:disabled) {
   background: color-mix(in srgb, var(--band-shown) 76%, var(--text));
 }
 
-html[data-today-band="off"] .cell.is-today:active:not(:disabled) { background: var(--border); }
+html[data-today-band="off"] .board-day-cell.is-today:active:not(:disabled) { background: var(--border); }
 
 /* The chosen category keeps its accent fill, like a primary button. */
-.picker-option[aria-selected="true"]:active { background: var(--primary-hover); }
+.category-picker-option[aria-selected="true"]:active { background: var(--primary-hover); }
 
 @media (hover: hover) {
-  .picker-option[aria-selected="true"]:hover { background: var(--primary-hover); }
+  .category-picker-option[aria-selected="true"]:hover { background: var(--primary-hover); }
 }
 
 /* ---------- touch screens ----------
@@ -832,7 +832,7 @@ html[data-today-band="off"] .cell.is-today:active:not(:disabled) { background: v
     --topbar-row: calc(var(--hit) + .85 * var(--space));
   }
 
-  .icon-button:not(.habit-tools *, .block-tools *),
+  .icon-button:not(.board-habit-row-tools *, .board-block-tools *),
   .button {
     min-width: var(--hit);
     min-height: var(--hit);
@@ -840,22 +840,22 @@ html[data-today-band="off"] .cell.is-today:active:not(:disabled) { background: v
 
   /* The buttons bring their own room. */
   .topbar-actions { gap: calc(.15 * var(--space)); }
-  html[data-tight] .day-nav,
-  .day-nav { gap: 0; }
+  html[data-tight] .board-view-day-nav,
+  .board-view-day-nav { gap: 0; }
   /* The usual arrow size, also on a tight board. */
-  html[data-tight] .day-nav .icon-button svg { width: var(--icon); height: var(--icon); }
+  html[data-tight] .board-view-day-nav .icon-button svg { width: var(--icon); height: var(--icon); }
 
-  .menu-item,
+  .settings-menu-item,
   .picker,
-  .picker-option,
+  .category-picker-option,
   .search-option,
-  .cat-habit,
-  .block-link,
+  .category-view-habit,
+  .board-block-link,
   .select,
   .switch,
-  .overflow-item,
+  .app-bar-menu-item,
   .field input,
-  .picker-create input { min-height: var(--hit); }
+  .category-picker-create input { min-height: var(--hit); }
 
   /* The segment fills the control's inset too, so the whole height counts. */
   .segmented label { position: relative; }
@@ -869,10 +869,10 @@ html[data-today-band="off"] .cell.is-today:active:not(:disabled) { background: v
   .segmented span { min-height: calc(var(--hit) - 2 * var(--segment-inset)); }
 
   /* A ring of room around each colour; the selection ring lies on it. */
-  .swatches { gap: 0; }
-  .swatch { --swatch-pad: 5px; width: var(--hit); height: var(--hit); }
+  .app-color-swatches { gap: 0; }
+  .app-color-swatches-item { --swatch-pad: 5px; width: var(--hit); height: var(--hit); }
 
-  .icon-choices { grid-template-columns: repeat(auto-fill, minmax(var(--hit), 1fr)); }
+  .app-icon-choices { grid-template-columns: repeat(auto-fill, minmax(var(--hit), 1fr)); }
 
   /* Seven equal columns, shrinking slightly on very narrow cards instead of
      wrapping a day into a second row. */
@@ -888,6 +888,6 @@ html[data-today-band="off"] .cell.is-today:active:not(:disabled) { background: v
   .field input,
   .field textarea,
   .select,
-  .picker-create input,
+  .category-picker-create input,
   #search-input { font-size: max(16px, 1rem); }
 }

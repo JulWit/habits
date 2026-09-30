@@ -234,20 +234,21 @@ const SettingsMenuItem = {
   template: `
     <button
       type="button"
-      class="menu-item"
+      class="settings-menu-item"
       :data-open-page="page"
     >
       <span
-        class="menu-icon"
+        class="settings-menu-item-icon"
         aria-hidden="true"
       >
         <app-icon :name="icon"/>
       </span>
-      <span class="menu-text"><span class="menu-title">{{ title }}</span>
-        <span class="menu-hint">{{ hint }}</span>
+      <span class="settings-menu-item-text">
+        <span class="settings-menu-item-title">{{ title }}</span>
+        <span class="settings-menu-item-hint">{{ hint }}</span>
       </span>
       <span
-        class="menu-caret"
+        class="settings-menu-item-caret"
         aria-hidden="true"
       >
         <app-icon name="chevronRight"/>
@@ -522,33 +523,33 @@ export const TheSettingsDialog = {
     >
       <!-- The signed-in user. -->
       <section
-        class="account"
+        class="settings-account"
         :aria-label="t('Current user')"
       >
         <span
-          class="account-avatar"
+          class="settings-account-avatar"
           aria-hidden="true"
         >
           {{ account.initials }}
         </span>
-        <div class="account-text">
-          <p class="account-name">{{ account.name }}</p>
+        <div class="settings-account-text">
+          <p class="settings-account-name">{{ account.name }}</p>
           <p
             v-if="account.detail"
-            class="account-detail"
+            class="settings-account-detail"
           >
             {{ account.detail }}
           </p>
           <p
             v-if="account.groups.length > 0"
-            class="account-groups"
+            class="settings-account-groups"
           >
             {{ t('Groups: {list}', {list: account.groups.join(', ')}) }}
           </p>
         </div>
       </section>
       <nav
-        class="menu"
+        class="settings-menu"
         :aria-label="t('Settings sections')"
       >
         <settings-menu-item
@@ -591,7 +592,7 @@ export const TheSettingsDialog = {
         />
       </nav>
       <nav
-        class="menu"
+        class="settings-menu"
         :aria-label="t('About the app')"
       >
         <settings-menu-item
@@ -606,7 +607,7 @@ export const TheSettingsDialog = {
       id="settings-version"
       :title="t('Version')"
     >
-      <dl class="facts">
+      <dl class="settings-facts">
         <div
           v-for="item in versionFacts"
           :key="item.label"

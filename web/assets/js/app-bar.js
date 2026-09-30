@@ -33,7 +33,7 @@ export const AppBar = {
   },
   emits: ['back', 'edit', 'action'],
   setup(props, {emit}) {
-    const menuId = `overflow-menu-${++count}`;
+    const menuId = `app-bar-menu-${++count}`;
 
     /**
      * Places the menu when it opens and focuses its first item.
@@ -86,14 +86,15 @@ export const AppBar = {
         <app-icon name="arrowLeft"/>
       </button>
       <div class="app-bar-title">
-        <h2><slot name="badge"/><span class="name">{{ title }}</span></h2>
+        <h2><slot name="badge"/><span class="app-bar-name">{{ title }}</span>
+        </h2>
         <!-- In a span of its own, as the stylesheet draws the dot before
              it. -->
         <span
           v-if="sub"
-          class="sub"
+          class="app-bar-sub"
         >
-          <span class="sub-part">{{ sub }}</span>
+          <span class="app-bar-sub-part">{{ sub }}</span>
         </span>
       </div>
       <div class="app-bar-actions">
@@ -121,7 +122,7 @@ export const AppBar = {
           </button>
           <div
             :id="menuId"
-            class="overflow-menu"
+            class="app-bar-menu"
             popover="auto"
             role="menu"
             @toggle="onToggle"
@@ -132,7 +133,7 @@ export const AppBar = {
               v-for="item in menu"
               :key="item.action"
               type="button"
-              class="overflow-item"
+              class="app-bar-menu-item"
               :class="{'is-danger': item.danger}"
               role="menuitem"
               @click="choose(item, $event)"
@@ -191,7 +192,7 @@ function onMenuKey(event) {
 
 // A menu placed for the old layout would float in the wrong place.
 window.addEventListener('resize', () => {
-  for (const menu of document.querySelectorAll('.overflow-menu:popover-open')) {
+  for (const menu of document.querySelectorAll('.app-bar-menu:popover-open')) {
     menu.hidePopover();
   }
 });

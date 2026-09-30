@@ -164,7 +164,7 @@ function heatSquare(habit, iso) {
 
   return {
     class: [
-      'heat',
+      'heatmap-day',
       // Used by centreToday().
       iso === state.today && 'is-today',
       ahead && 'is-future',
@@ -345,11 +345,11 @@ const HabitCumulativeChart = {
   // the year's total, outside the scrolling area; bars and labels scroll
   // together.
   template: `
-    <section class="panel cum-panel">
-      <div class="cum-head">
+    <section class="panel habit-cumulative-chart">
+      <div class="habit-cumulative-chart-head">
         <h3>{{ t('Cumulative') }}</h3>
         <div
-          class="segmented cum-grain"
+          class="segmented habit-cumulative-chart-grain"
           role="radiogroup"
           :aria-label="t('Period')"
         >
@@ -360,7 +360,7 @@ const HabitCumulativeChart = {
             <input
               v-model="grain"
               type="radio"
-              name="cum-grain"
+              name="habit-cumulative-chart-grain"
               :value="key"
             >
             <span>{{ info.label }}</span>
@@ -369,55 +369,56 @@ const HabitCumulativeChart = {
       </div>
       <div
         v-if="!summary"
-        class="cum-loading"
+        class="habit-cumulative-chart-loading"
       ></div>
       <div v-else-if="summary.total === 0">
-        <p class="cum-empty">
+        <p class="habit-cumulative-chart-empty">
           {{ emptyText }}
         </p>
       </div>
       <div v-else>
-        <p class="cum-summary">
+        <p class="habit-cumulative-chart-summary">
           <strong>{{ format(summary.total) }}</strong>{{ scopeText }}
           <strong>{{ format(average) }}</strong>{{ daysText }}
           <strong>{{ format(summary.best) }}</strong>
         </p>
         <div
-          class="cum-chart"
+          class="habit-cumulative-chart-plot"
           :class="{'is-fine': grain !== 'month'}"
           :style="chartStyle"
         >
-          <div class="cum-scale">{{ format(summary.total) }}</div>
+          <div class="habit-cumulative-chart-scale">{{ format(summary.total) }}
+          </div>
           <div
             ref="scroller"
-            class="cum-scroll"
+            class="habit-cumulative-chart-scroll"
           >
-            <div class="cum-track">
-              <div class="cum-bars">
+            <div class="habit-cumulative-chart-track">
+              <div class="habit-cumulative-chart-bars">
                 <!-- An accessible name, as the tooltip requires a pointer. -->
                 <div
                   v-for="col in columns"
                   :key="col.start"
-                  class="cum-col"
+                  class="habit-cumulative-chart-column"
                   :data-tip="col.tip"
                   :data-status="col.status"
                   role="img"
                   :aria-label="col.tip + ': ' + col.status"
                 >
                   <div
-                    class="cum-bar"
+                    class="habit-cumulative-chart-bar"
                     :class="{'is-zero': col.zero}"
                     :style="{height: col.height}"
                   >
                     <div
                       v-if="col.gain"
-                      class="cum-gain"
+                      class="habit-cumulative-chart-gain"
                       :style="{height: col.gain}"
                     ></div>
                   </div>
                 </div>
               </div>
-              <div class="cum-months">
+              <div class="habit-cumulative-chart-months">
                 <span
                   v-for="col in columns"
                   :key="col.start"
@@ -463,7 +464,9 @@ export const TheHabitView = {
       if (root.value) centreToday(root.value);
     });
     onMounted(() => {
-      initChartTooltips(root.value, '.heat[data-date], .cum-col[data-tip]');
+      initChartTooltips(
+          root.value,
+          '.heatmap-day[data-date], .habit-cumulative-chart-column[data-tip]');
     });
 
     const range = computed(() => yearRange(habit.value));
@@ -482,7 +485,8 @@ export const TheHabitView = {
       await nextTick();
       // At the first or last year, the other arrow takes the focus.
       if (button.disabled) {
-        root.value.querySelector('.year-nav button:not(:disabled)')?.focus();
+        root.value.querySelector('.habit-view-year-nav button:not(:disabled)')
+            ?.focus();
       }
     };
 
@@ -568,7 +572,7 @@ export const TheHabitView = {
             />
             <span
               v-else
-              class="dot"
+              class="color-dot"
             ></span>
           </template>
         </app-bar>
@@ -584,9 +588,9 @@ export const TheHabitView = {
           :year="shownYear"
         />
         <section class="panel">
-          <div class="year-head">
+          <div class="habit-view-year-head">
             <h3>{{ t('Year {year}', {year: shownYear}) }}</h3>
-            <div class="year-nav">
+            <div class="habit-view-year-nav">
               <button
                 type="button"
                 class="icon-button"
@@ -622,7 +626,7 @@ export const TheHabitView = {
             <span
               v-for="level in [0, 1, 2, 3, 4]"
               :key="level"
-              class="heat"
+              class="heatmap-day"
               :data-level="level"
             ></span>
             <span>{{ t('more') }}</span>

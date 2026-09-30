@@ -252,14 +252,14 @@ const ToastListItem = {
   },
   template: `
     <div
-      class="toast"
+      class="toast-list-item"
       :class="{'is-error': toast.error}"
       @pointerenter="onEnter"
       @pointerleave="onLeave"
       @focusin="onFocusIn"
       @focusout="onFocusOut"
     >
-      <span class="text">{{ toast.text }}</span>
+      <span class="toast-list-item-text">{{ toast.text }}</span>
       <button
         v-if="toast.actionLabel"
         type="button"
@@ -287,7 +287,7 @@ export const TheToastList = {
   template: `
     <div
       id="toasts"
-      class="toasts"
+      class="toast-list"
       role="status"
       aria-live="polite"
     >

@@ -63,12 +63,12 @@ export const AppYearGrid = {
     return {grid};
   },
   template: `
-    <div class="heatmap-scroll">
+    <div class="app-year-grid">
       <div
-        class="heatmap-body"
+        class="app-year-grid-body"
         :style="{'--weeks': String(grid.weeks)}"
       >
-        <div class="heatmap-months">
+        <div class="app-year-grid-months">
           <span
             v-for="month in grid.months"
             :key="month.name"
@@ -77,7 +77,7 @@ export const AppYearGrid = {
             {{ month.name }}
           </span>
         </div>
-        <div class="heatmap">
+        <div class="app-year-grid-days">
           <template
             v-for="day in grid.days"
             :key="day.iso"
@@ -88,7 +88,7 @@ export const AppYearGrid = {
             ></div>
             <div
               v-else
-              class="heat is-outside"
+              class="heatmap-day is-outside"
             ></div>
           </template>
         </div>
@@ -102,8 +102,8 @@ export const AppYearGrid = {
  * @param {!Element} root
  */
 export function centreToday(root) {
-  const scroller = root.querySelector('.heatmap-scroll');
-  const cell = scroller?.querySelector('.heat.is-today');
+  const scroller = root.querySelector('.app-year-grid');
+  const cell = scroller?.querySelector('.heatmap-day.is-today');
   if (!cell) return;
   const box = scroller.getBoundingClientRect();
   const at = cell.getBoundingClientRect();
@@ -136,8 +136,9 @@ export function initChartTooltips(container, selector) {
     if (!target) return;
     showTooltip(target, [
       tipLine(
-          'tip-date', target.dataset.tip ?? formatFull(target.dataset.date)),
-      tipLine('tip-status', target.dataset.status),
+          'tooltip-date',
+          target.dataset.tip ?? formatFull(target.dataset.date)),
+      tipLine('tooltip-status', target.dataset.status),
     ]);
   });
   container.addEventListener('mouseout', (event) => {

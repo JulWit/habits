@@ -187,12 +187,12 @@ class Fixture:
         run.api("PATCH", "/api/settings", self.settings)
 
     def cell(self, habit, date=None):
-        return (f'.habit-row[data-habit="{habit}"] '
-                f'.cell[data-date="{date or self.today}"]')
+        return (f'.board-habit-row[data-habit="{habit}"] '
+                f'.board-day-cell[data-date="{date or self.today}"]')
 
     def done(self, habit, date=None):
         return self.run.js(
-            "return !!document.querySelector(arguments[0] + ' .mark.is-complete');",
+            "return !!document.querySelector(arguments[0] + ' .board-day-cell-mark.is-complete');",
             self.cell(habit, date))
 
     def value(self, habit, date=None):
@@ -214,12 +214,12 @@ def board_input(run, f):
     """Mouse and keyboard on the board."""
     run.click(f.cell(f.check_habit))
     time.sleep(0.3)
-    orbs = run.js("return document.querySelectorAll('.orb').length;")
+    orbs = run.js("return document.querySelectorAll('.board-day-summary-orb').length;")
     time.sleep(1.8)
     run.check("click ticks off a habit", f.done(f.check_habit))
     run.check("orbs fly into the ring", orbs > 0, f"{orbs} orbs")
     progress = run.js(f"""return document.querySelector(
-        '.block[data-category="{f.category}"] .block-progress-count')?.textContent;""")
+        '.board-block[data-category="{f.category}"] .board-block-progress-count')?.textContent;""")
     run.check("category progress counts it", progress == "1/2", str(progress))
 
     run.click(f.cell(f.count_habit))
@@ -261,7 +261,7 @@ def board_input(run, f):
     run.click(f.cell(f.check_habit))
     time.sleep(1.2)
     run.check("clearing offers undo in a toast",
-              run.js("return !!document.querySelector('#toasts .toast:last-child .button');"))
+              run.js("return !!document.querySelector('#toasts .toast-list-item:last-child .button');"))
     run.actions().key_down(Keys.CONTROL).send_keys("z").key_up(Keys.CONTROL).perform()
     time.sleep(1.5)
     run.check("Ctrl+Z undoes it", f.done(f.check_habit))
@@ -292,22 +292,22 @@ def search_and_views(run, f):
     run.check("Escape returns to the board",
               run.shown("board-view") and run.js("return location.hash;") == "")
 
-    run.click(f'.habit-main[data-habit="{f.check_habit}"]')
+    run.click(f'.board-habit-label[data-habit="{f.check_habit}"]')
     time.sleep(1.2)
     run.check("clicking a name opens the habit view", run.shown("habit-view"))
     run.screenshot("habit-view")
 
-    menu = "#habit-view .overflow-menu"
+    menu = "#habit-view .app-bar-menu"
     run.click("#habit-view [popovertarget]")
     time.sleep(0.4)
     run.check("the menu opens with its first item focused", run.js(f"""
         const menu = document.querySelector('{menu}');
         return menu.matches(':popover-open')
-            && document.activeElement === menu.querySelector('.overflow-item');"""))
+            && document.activeElement === menu.querySelector('.app-bar-menu-item');"""))
     run.keys(Keys.ARROW_DOWN)
     run.check("arrow keys move in the menu", run.js(f"""
         return document.activeElement ===
-            document.querySelector('{menu} .overflow-item:nth-child(2)');"""))
+            document.querySelector('{menu} .app-bar-menu-item:nth-child(2)');"""))
     errors = len(run.errors)
     run.keys(Keys.ESCAPE)
     time.sleep(0.4)
@@ -323,20 +323,20 @@ def search_and_views(run, f):
     # The second item archives; the toast undoes it.
     run.click("#habit-view [popovertarget]")
     time.sleep(0.3)
-    run.click(f"{menu} .overflow-item:nth-child(2)")
+    run.click(f"{menu} .app-bar-menu-item:nth-child(2)")
     time.sleep(1.2)
     archived = lambda: run.api("GET", f"/api/habits/{f.check_habit}")["archivedAt"]
     run.check("archiving from the menu returns to the board",
               run.shown("board-view") and archived())
-    run.click("#toasts .toast:last-child .button")
+    run.click("#toasts .toast-list-item:last-child .button")
     time.sleep(1.5)
     run.check("undo in the toast reactivates the habit",
               not archived()
-              and run.js(f"return !!document.querySelector('.habit-row[data-habit=\"{f.check_habit}\"]');"))
+              and run.js(f"return !!document.querySelector('.board-habit-row[data-habit=\"{f.check_habit}\"]');"))
 
-    run.click(f'.habit-main[data-habit="{f.check_habit}"]')
+    run.click(f'.board-habit-label[data-habit="{f.check_habit}"]')
     time.sleep(1.2)
-    square = run.find("#habit-view .heat.is-today")
+    square = run.find("#habit-view .heatmap-day.is-today")
     run.actions().move_to_element(square).perform()
     time.sleep(0.3)
     status = square.get_attribute("data-status")
@@ -417,10 +417,10 @@ def arranging(run, f):
               not run.is_open("settings-dialog") and not run.is_open("settings-board"))
 
     names = f"""return [...document.querySelectorAll(
-        '.block[data-category="{f.category}"] .habit-name')].map((n) => n.textContent);"""
+        '.board-block[data-category="{f.category}"] .habit-name')].map((n) => n.textContent);"""
     before = run.js(names)
-    handle = run.find(f'.block[data-category="{f.category}"] .habit-row:first-child [data-role="drag-habit"]')
-    height = run.js("return arguments[0].closest('.habit-row').offsetHeight;", handle)
+    handle = run.find(f'.board-block[data-category="{f.category}"] .board-habit-row:first-child [data-role="drag-habit"]')
+    height = run.js("return arguments[0].closest('.board-habit-row').offsetHeight;", handle)
     (run.actions().move_to_element(handle).click_and_hold()
         .move_by_offset(0, 5).move_by_offset(0, int(height * 1.2))
         .pause(0.2).release().perform())
@@ -500,7 +500,7 @@ def phone(run, f):
     time.sleep(0.6)
     run.check("back closes the dialog", not run.is_open("day-editor"))
 
-    run.touch(f'.habit-main[data-habit="{f.count_habit}"]')
+    run.touch(f'.board-habit-label[data-habit="{f.count_habit}"]')
     time.sleep(1.2)
     layout = run.js("""return {view: document.documentElement.clientWidth,
                                page: document.documentElement.scrollWidth};""")

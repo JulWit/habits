@@ -197,16 +197,16 @@ const StyleGuideSection = {
   name: 'StyleGuideSection',
   props: {title: String, note: String, block: Boolean},
   template: `
-    <section class="sg-section">
-      <h3 class="sg-title">{{ title }}</h3>
+    <section class="style-guide-section">
+      <h3 class="style-guide-section-title">{{ title }}</h3>
       <p
         v-if="note"
-        class="sg-note"
+        class="style-guide-section-note"
       >
         {{ note }}
       </p>
       <div
-        class="sg-row"
+        class="style-guide-section-row"
         :class="{'is-block': block}"
       >
         <slot/>
@@ -219,7 +219,8 @@ const StyleGuideSpecimen = {
   name: 'StyleGuideSpecimen',
   props: {label: String},
   template: `
-    <div class="sg-specimen"><slot/><span class="sg-label">{{ label }}</span>
+    <div class="style-guide-specimen"><slot/>
+      <span class="style-guide-specimen-label">{{ label }}</span>
     </div>`,
 };
 
@@ -276,28 +277,30 @@ const StyleGuidePanel = {
   template: `
     <div
       ref="root"
-      class="sg-theme"
+      class="style-guide-panel"
       :data-theme="theme"
     >
-      <h2 class="sg-theme-title">{{ theme === 'dark' ? 'Dark' : 'Light' }}</h2>
+      <h2 class="style-guide-panel-title">
+        {{ theme === 'dark' ? 'Dark' : 'Light' }}
+      </h2>
       <style-guide-section
         title="Tokens"
         note="Read straight from the stylesheet, not maintained here."
         block
       >
-        <div class="sg-tokens">
+        <div class="style-guide-panel-tokens">
           <div
             v-for="(name, i) in names"
             :key="name"
-            class="sg-token"
+            class="style-guide-panel-token"
           >
             <span
-              class="sg-chip"
+              class="style-guide-panel-chip"
               :class="{'is-empty': values.length && !isColor(values[i])}"
               :style="{background: 'var(' + name + ')'}"
             ></span>
-            <code class="sg-token-name">{{ name }}</code>
-            <span class="sg-token-value">{{ values[i] }}</span>
+            <code class="style-guide-panel-token-name">{{ name }}</code>
+            <span class="style-guide-panel-token-value">{{ values[i] }}</span>
           </div>
         </div>
       </style-guide-section>
@@ -439,16 +442,16 @@ const StyleGuidePanel = {
             </button>
           </div>
         </style-guide-specimen>
-        <style-guide-specimen label=".swatches">
+        <style-guide-specimen label=".app-color-swatches">
           <div
-            class="swatches"
+            class="app-color-swatches"
             role="radiogroup"
           >
             <button
               v-for="color in state.colors"
               :key="color"
               type="button"
-              class="swatch"
+              class="app-color-swatches-item"
               :style="{'--swatch': colorValue(color)}"
               role="radio"
               :aria-checked="String(color === state.colors[0])"
@@ -498,7 +501,7 @@ const StyleGuidePanel = {
         note="Built with the same components as the overview — BoardHeadDay, BoardHabitLabel, BoardDayCell."
       >
         <style-guide-specimen label="BoardHeadDay: today / normal">
-          <div class="sg-cells"><board-head-day :iso="today"/>
+          <div class="style-guide-panel-cells"><board-head-day :iso="today"/>
             <board-head-day :iso="yesterday"/>
           </div>
         </style-guide-specimen>
@@ -513,7 +516,7 @@ const StyleGuidePanel = {
           :key="label"
           :label="label"
         >
-          <div class="sg-cells">
+          <div class="style-guide-panel-cells">
             <board-day-cell
               v-for="iso in dates"
               :key="iso"
@@ -523,7 +526,7 @@ const StyleGuidePanel = {
           </div>
         </style-guide-specimen>
         <style-guide-specimen label="streak levels: none, 1 week … 1 year">
-          <div class="sg-cells">
+          <div class="style-guide-panel-cells">
             <board-day-cell
               v-for="sample in streaks"
               :key="sample.iso"
@@ -532,8 +535,8 @@ const StyleGuidePanel = {
             />
           </div>
         </style-guide-specimen>
-        <style-guide-specimen label=".month-label">
-          <div class="month-label">September</div>
+        <style-guide-specimen label=".board-view-month-label">
+          <div class="board-view-month-label">September</div>
         </style-guide-specimen>
       </style-guide-section>
       <style-guide-section
@@ -541,15 +544,15 @@ const StyleGuidePanel = {
         note='Levels 0–4, then "not scheduled" and the future.'
       >
         <style-guide-specimen label="data-level 0 … 4 · is-off · is-future">
-          <div class="heatmap-sample">
+          <div class="style-guide-panel-heatmap">
             <div
               v-for="level in [0, 1, 2, 3, 4]"
               :key="level"
-              class="heat"
+              class="heatmap-day"
               :data-level="level"
             ></div>
-            <div class="heat is-off"></div>
-            <div class="heat is-future"></div>
+            <div class="heatmap-day is-off"></div>
+            <div class="heatmap-day is-future"></div>
           </div>
         </style-guide-specimen>
       </style-guide-section>
@@ -557,8 +560,9 @@ const StyleGuidePanel = {
         title="Messages"
         note="In the running app toasts sit at the bottom right; here they stand in the flow."
       >
-        <style-guide-specimen label=".toast">
-          <div class="toast"><span class="text">Habit deleted.</span>
+        <style-guide-specimen label=".toast-list-item">
+          <div class="toast-list-item">
+            <span class="toast-list-item-text">Habit deleted.</span>
             <button
               type="button"
               class="button"
@@ -570,9 +574,10 @@ const StyleGuidePanel = {
             >&times;</button>
           </div>
         </style-guide-specimen>
-        <style-guide-specimen label=".toast.is-error">
-          <div class="toast is-error">
-            <span class="text">No connection to the server.</span>
+        <style-guide-specimen label=".toast-list-item.is-error">
+          <div class="toast-list-item is-error">
+            <span class="toast-list-item-text">No connection to the
+              server.</span>
             <button
               type="button"
               class="icon-button"
@@ -586,8 +591,8 @@ const StyleGuidePanel = {
         note="The type sizes that appear outside the building blocks."
       >
         <style-guide-specimen label="h2"><h2>Heading</h2></style-guide-specimen>
-        <style-guide-specimen label=".block-title">
-          <h2 class="block-title">Category</h2>
+        <style-guide-specimen label=".board-block-title">
+          <h2 class="board-block-title">Category</h2>
         </style-guide-specimen>
         <style-guide-specimen label="p">
           <p>Body text, as it appears in empty states.</p>
@@ -614,14 +619,15 @@ export const TheStyleGuideView = {
     };
   },
   template: `
-    <header class="sg-head">
+    <header class="style-guide-view-head">
       <h1>Building blocks</h1>
-      <p class="sg-note">Every building block of the application, in both themes
+      <p class="style-guide-view-note">Every building block of the application,
+        in both themes
         side by side. Not linked — reachable at #/styleguide.</p>
     </header>
     <div
       v-if="ready"
-      class="sg-themes"
+      class="style-guide-view-themes"
     >
       <style-guide-panel
         theme="light"

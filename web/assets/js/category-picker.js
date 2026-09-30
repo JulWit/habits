@@ -147,7 +147,7 @@ export const TheCategoryPicker = {
       </header>
       <div class="page-body">
         <div
-          class="picker-list"
+          class="category-picker-list"
           role="listbox"
           :aria-label="t('Choose category')"
         >
@@ -155,7 +155,7 @@ export const TheCategoryPicker = {
             v-for="option in options"
             :key="option.id"
             type="button"
-            class="picker-option"
+            class="category-picker-option"
             :class="{'is-stale': option.stale}"
             role="option"
             :aria-selected="String(option.id === current)"
@@ -166,11 +166,11 @@ export const TheCategoryPicker = {
               :icon="option.icon"
               :color="option.color || null"
             />
-            <span class="picker-option-name">{{ option.name }}</span>
+            <span class="category-picker-option-name">{{ option.name }}</span>
           </button>
         </div>
         <form
-          class="picker-create"
+          class="category-picker-create"
           @submit.prevent="create"
         >
           <input

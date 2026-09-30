@@ -143,19 +143,19 @@ export const TheCategoryView = {
           <h3>{{ t('Habits') }}</h3>
           <p
             v-if="habits.length === 0"
-            class="block-empty"
+            class="category-view-empty"
           >
             {{ t('No habit in this category yet.') }}
           </p>
           <div
             v-else
-            class="cat-habits"
+            class="category-view-habits"
           >
             <button
               v-for="habit in habits"
               :key="habit.id"
               type="button"
-              class="cat-habit"
+              class="category-view-habit"
               :style="{'--habit-color': colorValue(habit.color)}"
               @click="openHabit(habit.id)"
             >
@@ -167,13 +167,14 @@ export const TheCategoryView = {
               />
               <span
                 v-else
-                class="dot"
+                class="color-dot"
               ></span>
-              <span class="cat-habit-text">
+              <span class="category-view-habit-text">
                 <span class="habit-name">{{ habit.name }}</span>
                 <span class="habit-meta">{{ describeHabit(habit) }}</span>
               </span>
-              <span class="cat-habit-streak">{{ shortStreak(habit.stats) }}
+              <span class="category-view-habit-streak">
+                {{ shortStreak(habit.stats) }}
               </span>
             </button>
           </div>

@@ -148,6 +148,15 @@ extend it along with the frontend.
   the name of its module (`habit-view`, `day-editor`), and the elements inside
   it are prefixed with that name, without a trailing `-dialog`
   (`habit-editor-title`, `settings-look-title`).
+- CSS classes stand in for the scoped styles of the Vue style guide, which
+  need single-file components: a class used by one component starts with its
+  name in kebab-case, without `The` (`board-block-head`, `app-stat-row-tile`);
+  views and dialogs use the prefix of their element IDs (`habit-view-year-nav`,
+  `settings-menu`). Classes without such a prefix are shared: the app shell
+  (`topbar`, `view`), base styles and form controls in `base.css` and
+  `forms.css` (`button`, `panel`, `dialog`, `field`, `segmented`), what
+  several views show (`habit-icon`, `color-dot`, `heatmap-day`), and the
+  states `is-…` and `has-…`.
 - Prose in docs and comments uses British spelling ("colour"); identifiers use
   American spelling (`color`).
 

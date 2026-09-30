@@ -41,22 +41,24 @@ export const BoardHeadDay = {
     <button
       v-if="selectable"
       type="button"
-      class="grid-head is-selectable"
+      class="board-head-day is-selectable"
       :class="{'is-today': isActive, 'is-current': iso === state.today}"
       :title="title"
       data-role="select-day"
       :data-date="iso"
       :aria-pressed="String(isActive)"
     >
-      <span class="dow">{{ weekday }}</span><span class="dom">{{ day }}</span>
+      <span class="board-head-day-weekday">{{ weekday }}</span>
+      <span class="board-head-day-date">{{ day }}</span>
     </button>
     <div
       v-else
-      class="grid-head"
+      class="board-head-day"
       :class="{'is-today': isActive, 'is-current': iso === state.today}"
       :title="title"
     >
-      <span class="dow">{{ weekday }}</span><span class="dom">{{ day }}</span>
+      <span class="board-head-day-weekday">{{ weekday }}</span>
+      <span class="board-head-day-date">{{ day }}</span>
     </div>`,
 };
 
@@ -83,7 +85,7 @@ export const BoardHabitLabel = {
   template: `
     <button
       type="button"
-      class="habit-main"
+      class="board-habit-label"
       :class="{'is-archived': habit.archivedAt}"
       data-role="open"
       :data-habit="habit.id"
@@ -94,10 +96,10 @@ export const BoardHabitLabel = {
         :icon="habit.icon"
         :color="habit.color"
       />
-      <span class="habit-text">
+      <span class="board-habit-label-text">
         <span class="habit-name">{{ habit.name }}</span>
         <span class="habit-meta">
-          <span class="habit-streak">
+          <span class="board-habit-label-streak">
             <app-icon name="streak"/>{{ habit.stats?.currentStreak ?? 0 }}
           </span>
           <template v-if="described"> · {{ described }}</template>
@@ -131,7 +133,7 @@ export const BoardDayCell = {
   template: `
     <button
       type="button"
-      class="cell"
+      class="board-day-cell"
       :class="{'is-today': isActive}"
       data-role="cell"
       :data-habit="habit.id"
@@ -142,7 +144,7 @@ export const BoardDayCell = {
       :disabled="cell.disabled"
     >
       <span
-        class="mark"
+        class="board-day-cell-mark"
         :class="cell.mark"
         :data-streak="cell.streak || undefined"
         :style="{'--habit-color': color, '--p': String(cell.progress)}"
@@ -157,7 +159,7 @@ export const BoardDayCell = {
         />
         <span
           v-else-if="cell.number"
-          class="mark-value"
+          class="board-day-cell-value"
           :class="{'is-long': cell.number.length >= 4}"
         >
           {{ cell.number }}

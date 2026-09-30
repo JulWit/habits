@@ -286,7 +286,7 @@ html[data-pattern="grain"] {
 /* Every layer that paints the pattern (see body::before, the sticky bars and
    the page backdrop) blends it with the background colour. */
 html[data-pattern="grain"] body::before,
-html[data-pattern="grain"] :is(.topbar, .app-bar, .page-head, .day-header, .day-header-backdrop),
+html[data-pattern="grain"] :is(.topbar, .app-bar, .page-head, .board-view-day-header, .board-view-day-header-backdrop),
 html[data-pattern="grain"] .dialog.page::backdrop {
   background-color: var(--bg);
   background-blend-mode: overlay;
@@ -401,8 +401,8 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .topbar,
 .app-bar,
 .page-head,
-.day-header,
-html[data-scrolled="on"] .day-header-backdrop {
+.board-view-day-header,
+html[data-scrolled="on"] .board-view-day-header-backdrop {
   background-color: var(--bg);
   background-image: var(--pattern-image);
   background-size: var(--pattern-size);
@@ -592,7 +592,7 @@ html[data-scrolled="on"] .day-header-backdrop {
 
 /* Pressed, one step beyond hover, so a tap shows (touch has no hover). Not on
    pressed toggles, and not on the reorder handles, which have their own. */
-.icon-button:active:not(:disabled):not([aria-pressed="true"], .habit-tools *, .block-tools *) {
+.icon-button:active:not(:disabled):not([aria-pressed="true"], .board-habit-row-tools *, .board-block-tools *) {
   background: var(--border);
 }
 

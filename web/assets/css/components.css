@@ -74,7 +74,7 @@
 
 /* A dot in the habit's colour, where a habit has no icon (search, category
    view, app bar). */
-.dot {
+.color-dot {
   width: .7rem;
   height: .7rem;
   flex: none;
@@ -83,7 +83,7 @@
 }
 
 /* Categories are marked by a hollow ring. */
-.search-option .dot.is-category {
+.search-option .color-dot.is-category {
   background: transparent;
   box-shadow: inset 0 0 0 2px var(--text-faint);
 }
@@ -122,7 +122,7 @@
 
 /* The board is exactly as wide as its columns and centred. The name column has
    a fixed width, so extra space does not go between names and days. */
-.board {
+.board-view-grid {
   display: flex;
   flex-direction: column;
   gap: var(--board-gap);
@@ -150,8 +150,8 @@ html:not(.route-detail):not(.route-styleguide) .topbar-inner {
 
 /* Header and every habit row are separate grids with the same fixed tracks,
    so they align and rows can be dragged individually. */
-.day-header,
-.habit-row {
+.board-view-day-header,
+.board-habit-row {
   display: grid;
   /* Name column, day columns and the reorder column on the right. */
   grid-template-columns: var(--label-col) repeat(var(--days, 7), var(--cell)) var(--tools-track);
@@ -160,7 +160,7 @@ html:not(.route-detail):not(.route-styleguide) .topbar-inner {
 }
 
 /* The rows of a card. */
-.block-rows {
+.board-block-rows {
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -171,7 +171,7 @@ html:not(.route-detail):not(.route-styleguide) .topbar-inner {
 /* The today band: one column through the rows of each card, from below the
    heading (or the top edge) to the bottom edge. Behind the rows, above the
    card surface. */
-.board.has-today .block-rows::before {
+.board-view-grid.has-today .board-block-rows::before {
   content: "";
   position: absolute;
   /* Extend through the card padding to the card's edges. */
@@ -186,18 +186,18 @@ html:not(.route-detail):not(.route-styleguide) .topbar-inner {
 }
 
 /* Below a heading, the band starts after the heading's gap. */
-.board.has-today .block-head ~ .block-rows::before {
+.board-view-grid.has-today .board-block-head ~ .board-block-rows::before {
   top: calc(-1 * var(--head-gap));
 }
 
 /* Today band switched off. */
-html[data-today-band="off"] .board.has-today .block-rows::before { display: none; }
+html[data-today-band="off"] .board-view-grid.has-today .board-block-rows::before { display: none; }
 @media (hover: hover) {
-  html[data-today-band="off"] .cell.is-today:hover:not(:disabled) { background: var(--surface-2); }
+  html[data-today-band="off"] .board-day-cell.is-today:hover:not(:disabled) { background: var(--surface-2); }
 }
-html[data-today-band="off"] .cell.is-today .mark::after { background: var(--surface); }
+html[data-today-band="off"] .board-day-cell.is-today .board-day-cell-mark::after { background: var(--surface); }
 
-.day-header {
+.board-view-day-header {
   /* No row gap, so the month divider is continuous. */
   row-gap: 0;
   border: 1px solid transparent;
@@ -222,12 +222,12 @@ html[data-today-band="off"] .cell.is-today .mark::after { background: var(--surf
 /* When scrolled, the header is drawn as a card with rounded corners. It extends
    across the board gap (compensated by a negative margin), and its backdrop
    covers the rows scrolling between it and the title bar. */
-html[data-scrolled="on"] .day-header {
+html[data-scrolled="on"] .board-view-day-header {
   padding-bottom: calc(var(--header-pad-y) + var(--board-gap));
   margin-bottom: calc(-1 * var(--board-gap));
 }
 
-html[data-scrolled="on"] .day-header::before {
+html[data-scrolled="on"] .board-view-day-header::before {
   content: "";
   position: absolute;
   inset: 0 var(--tools-outset) var(--board-gap) 0;
@@ -239,7 +239,7 @@ html[data-scrolled="on"] .day-header::before {
 
 /* Dotted separator in the gap below the scrolled header, like the one below a
    category heading, across the same width. */
-html[data-scrolled="on"] .day-header::after {
+html[data-scrolled="on"] .board-view-day-header::after {
   content: "";
   position: absolute;
   left: var(--block-pad-x);
@@ -254,9 +254,9 @@ html[data-scrolled="on"] .day-header::after {
 /* Backdrop behind the scrolled header. It extends one corner radius further
    down, where it only covers the two outer corners, so rows disappear behind a
    rounded edge. Hidden at rest. */
-.day-header-backdrop { display: none; }
+.board-view-day-header-backdrop { display: none; }
 
-html[data-scrolled="on"] .day-header-backdrop {
+html[data-scrolled="on"] .board-view-day-header-backdrop {
   display: block;
   position: absolute;
   --corner: var(--radius);
@@ -293,7 +293,7 @@ html[data-scrolled="on"] .day-header-backdrop {
 
 /* A category card. Its surface is drawn by ::after, so it can end before the
    reorder column (which is zero wide outside reorder mode). */
-.block {
+.board-block {
   padding: var(--block-pad) var(--block-pad-x);
   border: 1px solid transparent;
   /* Stacking context: the surface stays behind the rows. */
@@ -301,7 +301,7 @@ html[data-scrolled="on"] .day-header-backdrop {
   z-index: 1;
 }
 
-.block::after {
+.board-block::after {
   content: "";
   position: absolute;
   /* All but the reorder column and its gap. */
@@ -312,7 +312,7 @@ html[data-scrolled="on"] .day-header-backdrop {
   pointer-events: none;
 }
 
-.block-head {
+.board-block-head {
   display: flex;
   align-items: center;
   gap: calc(.6 * var(--space));
@@ -327,7 +327,7 @@ html[data-scrolled="on"] .day-header-backdrop {
     left bottom / 10px 3px repeat-x;
 }
 
-.block-title {
+.board-block-title {
   font-size: var(--text-section);
   font-weight: var(--weight-bold);
   letter-spacing: .01em;
@@ -339,7 +339,7 @@ html[data-scrolled="on"] .day-header-backdrop {
 
 /* Category reorder controls, in the reorder column. The negative block margin
    keeps them from increasing the heading's height. */
-.block-tools {
+.board-block-tools {
   display: flex;
   align-items: center;
   gap: calc(.1 * var(--space));
@@ -347,13 +347,13 @@ html[data-scrolled="on"] .day-header-backdrop {
   margin-block: -2px;
 }
 
-.block:hover .block-tools,
-.block:focus-within .block-tools { opacity: 1; }
+.board-block:hover .board-block-tools,
+.board-block:focus-within .board-block-tools { opacity: 1; }
 
 
 /* Category name as a link to the category view, with the same hover fill as a
    habit name. Negative margins compensate the padding. */
-.block-link {
+.board-block-link {
   font: inherit;
   color: inherit;
   background: none;
@@ -375,14 +375,14 @@ html[data-scrolled="on"] .day-header-backdrop {
   vertical-align: middle;
 }
 
-.block-link-name {
+.board-block-link-name {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 /* Same icon size as in the habit rows (rem, as the heading font is smaller). */
-.block-link .habit-icon {
+.board-block-link .habit-icon {
   --tile: calc(.82 * (var(--leading) * (1rem + .75rem) + .1 * var(--space)));
   width: var(--tile);
   height: var(--tile);
@@ -390,17 +390,17 @@ html[data-scrolled="on"] .day-header-backdrop {
   margin-left: calc(-.15 * var(--space));
 }
 
-.block-link .habit-icon svg { width: 56%; height: 56%; }
+.board-block-link .habit-icon svg { width: 56%; height: 56%; }
 
 @media (hover: hover) {
-  .block-link:hover { background: var(--surface-2); }
+  .board-block-link:hover { background: var(--surface-2); }
 }
 
 /* ---------- category screen ---------- */
 
-.cat-habits { display: flex; flex-direction: column; gap: 2px; }
+.category-view-habits { display: flex; flex-direction: column; gap: 2px; }
 
-.cat-habit {
+.category-view-habit {
   display: flex;
   align-items: center;
   gap: var(--row-gap);
@@ -416,10 +416,10 @@ html[data-scrolled="on"] .day-header-backdrop {
 }
 
 @media (hover: hover) {
-  .cat-habit:hover { background: var(--surface-2); }
+  .category-view-habit:hover { background: var(--surface-2); }
 }
 
-.cat-habit-text {
+.category-view-habit-text {
   display: flex;
   flex-direction: column;
   gap: calc(.1 * var(--space));
@@ -427,7 +427,7 @@ html[data-scrolled="on"] .day-header-backdrop {
   min-width: 0;
 }
 
-.cat-habit-streak {
+.category-view-habit-streak {
   color: var(--text-muted);
   font-size: var(--text-sm);
   font-variant-numeric: tabular-nums;
@@ -435,7 +435,7 @@ html[data-scrolled="on"] .day-header-backdrop {
 }
 
 /* Today's progress of a category: bar and count. */
-.block-progress {
+.board-block-progress {
   display: flex;
   align-items: center;
   gap: calc(.45 * var(--space));
@@ -447,10 +447,10 @@ html[data-scrolled="on"] .day-header-backdrop {
   font-variant-numeric: tabular-nums;
 }
 
-.block-progress-count { white-space: nowrap; }
+.board-block-progress-count { white-space: nowrap; }
 
 /* One segment per habit; the width is capped, beyond that the segments shrink. */
-.block-progress-track {
+.board-block-progress-track {
   display: flex;
   gap: calc(.15 * var(--space));
   flex: none;
@@ -458,7 +458,7 @@ html[data-scrolled="on"] .day-header-backdrop {
   max-width: 6rem;
 }
 
-.block-progress-seg {
+.board-block-progress-seg {
   flex: 1 1 0;
   min-width: 0;
   height: .3rem;
@@ -466,15 +466,15 @@ html[data-scrolled="on"] .day-header-backdrop {
   background: var(--surface-2);
 }
 
-.block-progress-seg.is-done { background: var(--text-faint); }
+.board-block-progress-seg.is-done { background: var(--text-faint); }
 
 /* All habits due today are done. */
-.block-progress.is-complete { color: var(--text); }
-.block-progress.is-complete .block-progress-seg.is-done { background: var(--done); }
+.board-block-progress.is-complete { color: var(--text); }
+.board-block-progress.is-complete .board-block-progress-seg.is-done { background: var(--done); }
 
 /* Today's summary between the day header and the first card, as wide as a card
    surface. */
-.day-summary {
+.board-day-summary {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -486,31 +486,31 @@ html[data-scrolled="on"] .day-header-backdrop {
 }
 
 /* Opens the day statistics. */
-.day-summary {
+.board-day-summary {
   cursor: pointer;
   transition: var(--fill-fade);
 }
 @media (hover: hover) {
-  .day-summary:hover { background: color-mix(in srgb, var(--surface) 80%, var(--surface-2)); }
+  .board-day-summary:hover { background: color-mix(in srgb, var(--surface) 80%, var(--surface-2)); }
 }
 /* Pressed, one step beyond hover, so a tap shows. */
-.day-summary:active { background: color-mix(in srgb, var(--surface) 55%, var(--surface-2)); }
+.board-day-summary:active { background: color-mix(in srgb, var(--surface) 55%, var(--surface-2)); }
 
-.day-summary-text {
+.board-day-summary-text {
   display: flex;
   flex-direction: column;
   gap: calc(.15 * var(--space));
   min-width: 0;
 }
 
-.day-summary-date {
+.board-day-summary-date {
   font-size: var(--text-lg);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.day-summary-count {
+.board-day-summary-count {
   margin: 0;
   color: var(--text-muted);
   font-size: var(--text-md);
@@ -518,7 +518,7 @@ html[data-scrolled="on"] .day-header-backdrop {
 }
 
 /* All habits due today are done. */
-.day-summary.is-complete .day-summary-count {
+.board-day-summary.is-complete .board-day-summary-count {
   display: flex;
   align-items: center;
   gap: calc(.35 * var(--space));
@@ -526,21 +526,21 @@ html[data-scrolled="on"] .day-header-backdrop {
   font-weight: var(--weight-semibold);
 }
 
-.day-summary.is-complete .day-summary-count svg {
+.board-day-summary.is-complete .board-day-summary-count svg {
   flex: none;
   width: 1rem;
   height: 1rem;
   stroke-width: 2.6;
 }
 
-.day-summary-ring {
+.board-day-summary-ring {
   position: relative;
   flex: none;
   width: 3rem;
   height: 3rem;
 }
 
-.day-summary-ring svg {
+.board-day-summary-ring svg {
   display: block;
   width: 100%;
   height: 100%;
@@ -548,17 +548,17 @@ html[data-scrolled="on"] .day-header-backdrop {
   overflow: visible;
 }
 
-.day-summary-ring svg > * { fill: none; }
+.board-day-summary-ring svg > * { fill: none; }
 
 /* Thin circle behind the wave. */
-.day-summary-ring-track {
+.board-day-summary-ring-track {
   stroke: var(--surface-2);
   stroke-width: 1.6;
 }
 
 /* The wave in the today colour, at full opacity. The path starts at twelve
    o'clock. */
-.day-summary-ring-fill {
+.board-day-summary-ring-fill {
   stroke: var(--today);
   stroke-width: 2.6;
   stroke-linecap: round;
@@ -569,7 +569,7 @@ html[data-scrolled="on"] .day-header-backdrop {
   animation: ring-wind .7s cubic-bezier(.3, .7, .2, 1);
 }
 
-.day-summary-ring-fill.is-empty { opacity: 0; }
+.board-day-summary-ring-fill.is-empty { opacity: 0; }
 
 @keyframes ring-wind {
   from {
@@ -580,17 +580,17 @@ html[data-scrolled="on"] .day-header-backdrop {
 
 /* While orbs are in flight, the fill follows their landings
    (board-view.js) with a short transition. */
-.day-summary-ring-fill.is-filling {
+.board-day-summary-ring-fill.is-filling {
   animation: none;
   transition: stroke-dasharray .28s cubic-bezier(.3, .7, .2, 1), opacity .2s;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .day-summary-ring-fill { animation: none; }
+  .board-day-summary-ring-fill { animation: none; }
 }
 
 /* Layer for the orbs, moved by board-view.js. Ignores the pointer. */
-.orb-layer {
+.board-day-summary-orbs {
   position: fixed;
   inset: 0;
   z-index: 30;
@@ -598,7 +598,7 @@ html[data-scrolled="on"] .day-header-backdrop {
   overflow: hidden;
 }
 
-.orb {
+.board-day-summary-orb {
   position: absolute;
   top: 0;
   left: 0;
@@ -609,11 +609,11 @@ html[data-scrolled="on"] .day-header-backdrop {
 }
 
 /* Flash where an orb leaves the visible area. */
-.orb-flash {
+.board-day-summary-orb-flash {
   box-shadow: 0 0 10px 3px color-mix(in srgb, var(--habit-color) 70%, transparent);
 }
 
-.day-summary-percent {
+.board-day-summary-percent {
   position: absolute;
   inset: 0;
   display: grid;
@@ -623,7 +623,8 @@ html[data-scrolled="on"] .day-header-backdrop {
   font-variant-numeric: tabular-nums;
 }
 
-.block-empty {
+.board-block-empty,
+.category-view-empty {
   margin: 0;
   padding: calc(.35 * var(--space)) calc(.55 * var(--space)) calc(.8 * var(--space));
   color: var(--text-faint);
@@ -631,7 +632,7 @@ html[data-scrolled="on"] .day-header-backdrop {
 }
 
 /* Month label above the dates, spanning the month's columns. */
-.month-label {
+.board-view-month-label {
   align-self: end;
   padding: 0 calc(.3 * var(--space)) calc(.15 * var(--space));
   font-size: var(--text-xs);
@@ -645,7 +646,7 @@ html[data-scrolled="on"] .day-header-backdrop {
 }
 
 /* Month divider on both header rows; not on the first label. */
-.month-label.has-divider {
+.board-view-month-label.has-divider {
   border-left: 1px solid var(--border);
   /* More padding next to the divider. */
   padding-left: calc(.55 * var(--space));
@@ -653,9 +654,9 @@ html[data-scrolled="on"] .day-header-backdrop {
 
 /* The divider in the date row is a pseudo-element, as a border would follow the
    cell's rounded corners. */
-.grid-head.is-month-start { position: relative; }
+.board-head-day.is-month-start { position: relative; }
 
-.grid-head.is-month-start::before {
+.board-head-day.is-month-start::before {
   content: "";
   position: absolute;
   left: 0;
@@ -666,7 +667,7 @@ html[data-scrolled="on"] .day-header-backdrop {
 }
 
 /* Paging controls above the habit names, smaller than regular icon buttons. */
-.day-nav {
+.board-view-day-nav {
   display: flex;
   /* Aligned with the date row. */
   align-items: center;
@@ -677,7 +678,7 @@ html[data-scrolled="on"] .day-header-backdrop {
      cards' inner edge, where the habit names begin. */
 }
 
-.day-nav .icon-button {
+.board-view-day-nav .icon-button {
   width: 1.8rem;
   height: 1.8rem;
   /* No padding, which would squeeze the arrow in the small button. */
@@ -687,33 +688,33 @@ html[data-scrolled="on"] .day-header-backdrop {
 }
 
 /* The same arrow size as on touch screens, in a compact button. */
-.day-nav .icon-button svg { width: var(--icon); height: var(--icon); }
+.board-view-day-nav .icon-button svg { width: var(--icon); height: var(--icon); }
 
 /* ---------- a tight board ----------
 
    Set by board-view.js (see base.css). Hides the habit icons, reduces the font
    sizes and shrinks the paging buttons. */
-html[data-tight] .habit-main .habit-icon { display: none; }
+html[data-tight] .board-habit-label .habit-icon { display: none; }
 html[data-tight] .habit-name { font-size: var(--text-md); }
 html[data-tight] .habit-meta { font-size: var(--text-xs); }
-html[data-tight] .habit-main { padding-inline: calc(.25 * var(--space)); }
-html[data-tight] .grid-head { font-size: var(--text-xs); }
-html[data-tight] .grid-head .dom { font-size: var(--text-sm); }
-html[data-tight] .day-nav { gap: 0; padding-left: 0; }
-html[data-tight] .day-nav .icon-button { width: 1.5rem; height: 1.5rem; }
-html[data-tight] .day-nav .icon-button svg { width: .95rem; height: .95rem; }
-html[data-tight] .habit-tools .icon-button { width: 1.5rem; height: 1.5rem; }
-html[data-tight] .habit-tools .icon-button svg { width: .95rem; height: .95rem; }
+html[data-tight] .board-habit-label { padding-inline: calc(.25 * var(--space)); }
+html[data-tight] .board-head-day { font-size: var(--text-xs); }
+html[data-tight] .board-head-day .board-head-day-date { font-size: var(--text-sm); }
+html[data-tight] .board-view-day-nav { gap: 0; padding-left: 0; }
+html[data-tight] .board-view-day-nav .icon-button { width: 1.5rem; height: 1.5rem; }
+html[data-tight] .board-view-day-nav .icon-button svg { width: .95rem; height: .95rem; }
+html[data-tight] .board-habit-row-tools .icon-button { width: 1.5rem; height: 1.5rem; }
+html[data-tight] .board-habit-row-tools .icon-button svg { width: .95rem; height: .95rem; }
 
 /* Disabled buttons are dimmed. */
-.day-nav .icon-button:disabled,
-.year-nav .icon-button:disabled {
+.board-view-day-nav .icon-button:disabled,
+.habit-view-year-nav .icon-button:disabled {
   opacity: var(--disabled-opacity);
   cursor: default;
   background: transparent;
 }
 
-.grid-head {
+.board-head-day {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -730,7 +731,7 @@ html[data-tight] .habit-tools .icon-button svg { width: .95rem; height: .95rem; 
 
 /* Today is marked by a disc behind weekday and day. isolation keeps the disc
    (negative z-index) above the header background. */
-.grid-head.is-today {
+.board-head-day.is-today {
   position: relative;
   isolation: isolate;
   font-weight: var(--weight-bold);
@@ -743,8 +744,8 @@ html[data-tight] .habit-tools .icon-button svg { width: .95rem; height: .95rem; 
 
 /* The disc, and the hover and focus shape of a selectable day (::after, as
    ::before may hold the month divider), share one shape. */
-.grid-head.is-today::before,
-.grid-head.is-selectable::after {
+.board-head-day.is-today::before,
+.board-head-day.is-selectable::after {
   content: "";
   position: absolute;
   /* Slightly narrower than the column, centred on the text. */
@@ -758,14 +759,14 @@ html[data-tight] .habit-tools .icon-button svg { width: .95rem; height: .95rem; 
   pointer-events: none;
 }
 
-.grid-head.is-today::before { background: var(--today-shown); }
+.board-head-day.is-today::before { background: var(--today-shown); }
 
 /* In narrow columns a square is lower than the two lines of text. The disc
    then spans the column and the header's height, leaving room around the
    text. */
 @media (max-width: 40rem) {
-  .grid-head.is-today::before,
-  .grid-head.is-selectable::after {
+  .board-head-day.is-today::before,
+  .board-head-day.is-selectable::after {
     width: var(--cell);
     height: calc(100% - .5 * var(--space));
     aspect-ratio: auto;
@@ -775,7 +776,7 @@ html[data-tight] .habit-tools .icon-button svg { width: .95rem; height: .95rem; 
 /* In the overview, a day in the header is a button that makes it the active
    day (marker, band and day summary). Hover and focus are drawn in the shape
    of the disc, not on the whole button. */
-.grid-head.is-selectable {
+.board-head-day.is-selectable {
   position: relative;
   isolation: isolate;
   min-width: 0;
@@ -789,39 +790,39 @@ html[data-tight] .habit-tools .icon-button svg { width: .95rem; height: .95rem; 
 }
 
 @media (hover: hover) {
-  .grid-head.is-selectable:not(.is-today):hover::after {
+  .board-head-day.is-selectable:not(.is-today):hover::after {
     background: color-mix(in srgb, var(--today-shown) 45%, transparent);
   }
 }
 
-.grid-head.is-selectable:focus-visible { outline: none; }
+.board-head-day.is-selectable:focus-visible { outline: none; }
 
-.grid-head.is-selectable:focus-visible::after {
+.board-head-day.is-selectable:focus-visible::after {
   outline: 2px solid var(--primary);
   outline-offset: 1px;
 }
 
 /* The actual today, while another day is active: its date is underlined. */
-.grid-head.is-current:not(.is-today) .dom {
+.board-head-day.is-current:not(.is-today) .board-head-day-date {
   text-decoration: underline;
   text-decoration-thickness: 2px;
   text-underline-offset: 2px;
 }
 
-.grid-head .dow { text-transform: uppercase; letter-spacing: var(--caps-spacing); }
-.grid-head .dom { font-size: var(--text-md); }
+.board-head-day .board-head-day-weekday { text-transform: uppercase; letter-spacing: var(--caps-spacing); }
+.board-head-day .board-head-day-date { font-size: var(--text-md); }
 
 /* Name cell of a row; the move arrows are positioned absolutely over the right
    end of the label, so they do not affect the layout. */
-.habit-cell {
+.board-habit-row-label {
   position: relative;
   display: flex;
   min-width: 0;
 }
 
-.habit-cell .habit-main { flex: 1; min-width: 0; }
+.board-habit-row-label .board-habit-label { flex: 1; min-width: 0; }
 
-.habit-tools {
+.board-habit-row-tools {
   display: flex;
   align-items: center;
   justify-content: flex-end;
@@ -829,10 +830,10 @@ html[data-tight] .habit-tools .icon-button svg { width: .95rem; height: .95rem; 
 }
 
 /* Outside reorder mode the handles are hidden and their column has no width. */
-html:not([data-edit="on"]) .habit-tools,
-html:not([data-edit="on"]) .block-tools,
-html[data-filtering="on"] .habit-tools,
-html[data-filtering="on"] .block-tools { display: none; }
+html:not([data-edit="on"]) .board-habit-row-tools,
+html:not([data-edit="on"]) .board-block-tools,
+html[data-filtering="on"] .board-habit-row-tools,
+html[data-filtering="on"] .board-block-tools { display: none; }
 
 html:not([data-edit="on"]),
 html[data-filtering="on"] {
@@ -843,28 +844,28 @@ html[data-filtering="on"] {
 }
 
 /* The handles of rows and categories. */
-:is(.habit-tools, .block-tools) .icon-button {
+:is(.board-habit-row-tools, .board-block-tools) .icon-button {
   width: 2rem;
   height: 2rem;
   color: var(--text-muted);
 }
 
-:is(.habit-tools, .block-tools) .icon-button svg { width: var(--icon); height: var(--icon); }
+:is(.board-habit-row-tools, .board-block-tools) .icon-button svg { width: var(--icon); height: var(--icon); }
 
 /* Hover one step darker (light) or lighter (dark) than the hovered row. */
 @media (hover: hover) {
-  .habit-tools .icon-button:hover:not(:disabled) {
+  .board-habit-row-tools .icon-button:hover:not(:disabled) {
     background: var(--border);
     color: var(--text);
   }
 }
 
 /* Pressed: another step further. */
-.habit-tools .icon-button:active:not(:disabled) {
+.board-habit-row-tools .icon-button:active:not(:disabled) {
   background: var(--border-strong);
 }
 
-.habit-tools .icon-button:disabled {
+.board-habit-row-tools .icon-button:disabled {
   color: var(--text-faint);
   opacity: var(--disabled-opacity);
   cursor: default;
@@ -872,7 +873,7 @@ html[data-filtering="on"] {
 }
 
 /* Optional icon tile and the two lines of text. */
-.habit-main {
+.board-habit-label {
   display: flex;
   align-items: center;
   gap: calc(.5 * var(--space) + 2px);
@@ -888,10 +889,10 @@ html[data-filtering="on"] {
 }
 
 @media (hover: hover) {
-  .habit-cell:hover .habit-main { background: var(--surface-2); }
+  .board-habit-row-label:hover .board-habit-label { background: var(--surface-2); }
 }
 
-.habit-text {
+.board-habit-label-text {
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -919,15 +920,15 @@ html[data-filtering="on"] {
 
 /* Icon tile on the board, sized from the height of the two text lines, so it
    follows the density. */
-.habit-main .habit-icon {
+.board-habit-label .habit-icon {
   --tile: calc(.82 * (var(--leading) * (1em + .75rem) + .1 * var(--space)));
   width: var(--tile);
   height: var(--tile);
 }
 
-.habit-main .habit-icon svg { width: 56%; height: 56%; }
+.board-habit-label .habit-icon svg { width: 56%; height: 56%; }
 
-.habit-main.is-archived .habit-icon { opacity: .55; }
+.board-habit-label.is-archived .habit-icon { opacity: .55; }
 
 /* Neutral icons (categories without colour) in the muted text colour. */
 .is-neutral { --habit-color: var(--text-muted); }
@@ -952,7 +953,7 @@ html[data-filtering="on"] {
 .habit-meta:empty { display: none; }
 
 /* Current streak at the start of the second line: flame and count. */
-.habit-streak {
+.board-habit-label-streak {
   display: inline-flex;
   align-items: center;
   gap: .15em;
@@ -961,7 +962,7 @@ html[data-filtering="on"] {
   vertical-align: bottom;
 }
 
-.habit-streak svg {
+.board-habit-label-streak svg {
   width: 1.05em;
   height: 1.05em;
   flex: none;
@@ -969,13 +970,13 @@ html[data-filtering="on"] {
   margin-top: -.1em;
 }
 
-.habit-main .habit-text { min-height: calc(var(--leading) * (1em + .75rem) + .1 * var(--space)); }
+.board-habit-label .board-habit-label-text { min-height: calc(var(--leading) * (1em + .75rem) + .1 * var(--space)); }
 
-.habit-main.is-archived .habit-name { color: var(--text-faint); font-style: italic; }
+.board-habit-label.is-archived .habit-name { color: var(--text-faint); font-style: italic; }
 
 /* ---------- day cells ---------- */
 
-.cell {
+.board-day-cell {
   display: grid;
   place-items: center;
   /* min-height, so the cell stretches to the row height. */
@@ -991,20 +992,20 @@ html[data-filtering="on"] {
 }
 
 @media (hover: hover) {
-  .cell:hover:not(:disabled) { background: var(--surface-2); }
+  .board-day-cell:hover:not(:disabled) { background: var(--surface-2); }
 
   /* Day cells in the today column stay transparent; only hover is shown. */
-  .cell.is-today:hover:not(:disabled) {
+  .board-day-cell.is-today:hover:not(:disabled) {
     background: color-mix(in srgb, var(--band-shown) 88%, var(--text));
   }
 }
-.cell:disabled { cursor: default; }
+.board-day-cell:disabled { cursor: default; }
 
 /* Day mark: a ring whose fill (conic gradient) shows the progress towards the
    target; the rest of the ring is the muted track. Both are one gradient, so
    the track never covers the progress. The inks below are fallbacks for
    browsers without relative colours (see the @supports rule after this one). */
-.mark {
+.board-day-cell-mark {
   --p: 0;
   /* Text on a filled mark and the halo that lifts it off light gradients. */
   --mark-ink: #fff;
@@ -1035,12 +1036,12 @@ html[data-filtering="on"] {
    tone. On light, light colours (yellow, lime, orange) are darkened for the
    ring and the value, so every colour reads about as well as on dark. */
 @supports (color: oklch(from red l c h)) {
-  .mark {
+  .board-day-cell-mark {
     --mark-ink: oklch(from var(--habit-color) clamp(.2, calc((var(--ink-flip) - l) * 1000), 1) 0 0);
     --mark-halo: oklch(from var(--habit-color) clamp(0, calc((l - var(--ink-flip)) * 1000), 1) 0 0 / .45);
     /* The ring of an open day at one lightness for every colour. Muted, so
        the progress arc in full colour stands out; the track fades it further
-       (see .mark). */
+       (see .board-day-cell-mark). */
     --ring-ink: light-dark(
       oklch(from var(--habit-color) .62 calc(c * .4) h),
       oklch(from var(--habit-color) .55 calc(c * .4) h));
@@ -1048,7 +1049,7 @@ html[data-filtering="on"] {
   }
 }
 
-.mark::after {
+.board-day-cell-mark::after {
   content: "";
   position: absolute;
   /* This inset determines the ring width. */
@@ -1060,39 +1061,39 @@ html[data-filtering="on"] {
 
 /* In the today column the ring's inner cutout has the band colour, mixed over
    the card (not transparent, which would reveal the filled disc). */
-.cell.is-today .mark::after {
+.board-day-cell.is-today .board-day-cell-mark::after {
   background: color-mix(in srgb, var(--today) var(--band-opacity), var(--surface));
 }
 
-.mark > * { position: relative; z-index: 1; }
+.board-day-cell-mark > * { position: relative; z-index: 1; }
 
 /* text-box trims the line box to cap height and baseline, so the digits are
    centred exactly, independent of the font. Firefox lacks it; there a line
    height of 1 splits the font's ascent and descent evenly, which centres the
    digits within about half a pixel for the embedded fonts. */
-.mark-value {
+.board-day-cell-value {
   color: var(--value-ink);
   font-variant-numeric: tabular-nums;
   line-height: 1;
   text-box: trim-both cap alphabetic;
 }
-.mark-value.is-long { letter-spacing: -.03em; }
-.mark.is-complete .mark-value { color: var(--mark-ink); }
+.board-day-cell-value.is-long { letter-spacing: -.03em; }
+.board-day-cell-mark.is-complete .board-day-cell-value { color: var(--mark-ink); }
 
-.mark.is-complete {
+.board-day-cell-mark.is-complete {
   background: var(--habit-color);
   color: var(--mark-ink);
 }
 
-.mark.is-complete::after { display: none; }
+.board-day-cell-mark.is-complete::after { display: none; }
 
-.mark.is-complete svg { width: .95rem; height: .95rem; }
+.board-day-cell-mark.is-complete svg { width: .95rem; height: .95rem; }
 
 /* Days within a streak: the habit colour is layered over a gradient around the
    same colour (lighter and hue-shifted top left, darker bottom right). The
    longer the run, the more transparent the flat colour layer; at level 6 it is
    gone. The first background is a fallback without relative colour syntax. */
-.mark.is-complete[data-streak] {
+.board-day-cell-mark.is-complete[data-streak] {
   --veil: 70%;
   --streak-veil: linear-gradient(
     color-mix(in srgb, var(--habit-color) var(--veil), transparent) 0 100%);
@@ -1114,35 +1115,35 @@ html[data-filtering="on"] {
   text-shadow: 0 0 2px var(--mark-halo);
 }
 
-.mark.is-complete[data-streak="2"] { --veil: 52%; }
-.mark.is-complete[data-streak="3"] { --veil: 36%; }
-.mark.is-complete[data-streak="4"] { --veil: 22%; }
-.mark.is-complete[data-streak="5"] { --veil: 10%; }
-.mark.is-complete[data-streak="6"] { --veil: 0%; }
+.board-day-cell-mark.is-complete[data-streak="2"] { --veil: 52%; }
+.board-day-cell-mark.is-complete[data-streak="3"] { --veil: 36%; }
+.board-day-cell-mark.is-complete[data-streak="4"] { --veil: 22%; }
+.board-day-cell-mark.is-complete[data-streak="5"] { --veil: 10%; }
+.board-day-cell-mark.is-complete[data-streak="6"] { --veil: 0%; }
 
-.mark.is-complete[data-streak] svg { filter: drop-shadow(0 0 1.5px var(--mark-halo)); }
+.board-day-cell-mark.is-complete[data-streak] svg { filter: drop-shadow(0 0 1.5px var(--mark-halo)); }
 
 /* Unscheduled days are dimmed. */
-.mark.is-off {
+.board-day-cell-mark.is-off {
   background: var(--border-strong);
   width: .35rem;
   height: .35rem;
 }
 
 /* Future days are dimmed. */
-.mark.is-future { opacity: .6; }
+.board-day-cell-mark.is-future { opacity: .6; }
 
 /* A write waiting for the server: its value is shown, but whether it
    completes the day is only known from the answer. Offline it can wait long,
    so the mark is outlined instead of animated. */
-.mark.is-pending {
+.board-day-cell-mark.is-pending {
   outline: 1.5px dashed var(--habit-color);
   outline-offset: 2px;
 }
 
 /* Future days that reach the target are hatched. Fine stripes, so the value
    on top stays readable; the shadow lifts it off the stripes. */
-.mark.is-future.is-complete {
+.board-day-cell-mark.is-future.is-complete {
   background-image: repeating-linear-gradient(
     -45deg,
     color-mix(in srgb, var(--surface) 45%, transparent) 0 1.5px,
@@ -1150,21 +1151,21 @@ html[data-filtering="on"] {
   );
 }
 
-.mark.is-future.is-complete .mark-value { text-shadow: 0 0 2px var(--mark-halo); }
+.board-day-cell-mark.is-future.is-complete .board-day-cell-value { text-shadow: 0 0 2px var(--mark-halo); }
 
 /* Skipped days show the skip sign instead of a ring: they are not due. */
-.mark.is-skipped {
+.board-day-cell-mark.is-skipped {
   background: none;
   color: var(--ring-ink);
 }
 
-.mark.is-skipped::after { display: none; }
+.board-day-cell-mark.is-skipped::after { display: none; }
 
 /* The skip sign fills only half of its box, so it takes most of the mark. */
-.mark.is-skipped svg { width: 90%; height: 90%; }
+.board-day-cell-mark.is-skipped svg { width: 90%; height: 90%; }
 
 /* A value over the limit: the full ring, with the value in the danger colour. */
-.mark.is-over .mark-value { color: var(--danger-text); }
+.board-day-cell-mark.is-over .board-day-cell-value { color: var(--danger-text); }
 
 /* ---------- detail view ---------- */
 
@@ -1196,7 +1197,7 @@ html.route-detail .view { padding-top: 0; }
 .app-bar-title {
   display: flex;
   align-items: center;
-  /* No gap: the details bring their own spacing (see .sub::before). */
+  /* No gap: the details bring their own spacing (see .app-bar-sub::before). */
   gap: 0;
   flex: 1;
   min-width: 0;
@@ -1211,31 +1212,31 @@ html.route-detail .view { padding-top: 0; }
   font-size: var(--text-lg);
 }
 
-.app-bar-title .sub { flex: 1 1 0; min-width: 0; }
+.app-bar-title .app-bar-sub { flex: 1 1 0; min-width: 0; }
 
 /* A dot before each detail, also between name and details, all with the same
    room: about 20px from word to word at the details' font size. Screen
    readers hear a comma instead. */
-.app-bar-title .sub-part::before {
+.app-bar-title .app-bar-sub-part::before {
   content: "·";
   content: "·" / ", ";
   margin-inline: .75em;
 }
 
-.app-bar-title .name,
-.app-bar-title .sub {
+.app-bar-title .app-bar-name,
+.app-bar-title .app-bar-sub {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.app-bar-title .sub { color: var(--text-muted); font-size: var(--text-sm); }
+.app-bar-title .app-bar-sub { color: var(--text-muted); font-size: var(--text-sm); }
 
 .app-bar-actions { display: flex; align-items: center; flex: none; }
 
 /* The overflow menu: a popover below its button, placed by app-bar.js. Unlike
    the flat surfaces it floats over the view, so it casts a shadow. */
-.overflow-menu {
+.app-bar-menu {
   position: fixed;
   inset: auto;
   margin: 0;
@@ -1249,7 +1250,7 @@ html.route-detail .view { padding-top: 0; }
 }
 
 /* Only while open, as the closed popover is hidden by display. */
-.overflow-menu:popover-open {
+.app-bar-menu:popover-open {
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -1261,10 +1262,10 @@ html.route-detail .view { padding-top: 0; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .overflow-menu:popover-open { animation: none; }
+  .app-bar-menu:popover-open { animation: none; }
 }
 
-.overflow-item {
+.app-bar-menu-item {
   display: flex;
   align-items: center;
   gap: var(--row-gap);
@@ -1278,24 +1279,24 @@ html.route-detail .view { padding-top: 0; }
   transition: var(--fill-fade);
 }
 
-.overflow-item svg { width: var(--icon); height: var(--icon); flex: none; color: var(--text-muted); }
+.app-bar-menu-item svg { width: var(--icon); height: var(--icon); flex: none; color: var(--text-muted); }
 
-.overflow-item:focus-visible { background: var(--border); outline: none; }
+.app-bar-menu-item:focus-visible { background: var(--border); outline: none; }
 
 @media (hover: hover) {
-  .overflow-item:hover { background: var(--border); }
+  .app-bar-menu-item:hover { background: var(--border); }
 }
 
-.overflow-item:active { background: var(--border-strong); }
+.app-bar-menu-item:active { background: var(--border-strong); }
 
-.overflow-item.is-danger,
-.overflow-item.is-danger svg { color: var(--danger-text); }
+.app-bar-menu-item.is-danger,
+.app-bar-menu-item.is-danger svg { color: var(--danger-text); }
 
 /* The four stat tiles sit in one row while each gets at least 8rem, and two
    by two otherwise, never three and one. The smallest column is a quarter of
    the row while four fit (the product is negative, so clamp gives the
    quarter) and a half otherwise (the product is huge, clamp gives the half). */
-.stat-row {
+.app-stat-row {
   --four-fit: calc(4 * 8rem + 3 * var(--card-gap));
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(clamp(
@@ -1307,7 +1308,7 @@ html.route-detail .view { padding-top: 0; }
 }
 
 /* Value and label on the left, the icon in the top right corner. */
-.stat {
+.app-stat-row-tile {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   column-gap: calc(.5 * var(--space));
@@ -1316,19 +1317,19 @@ html.route-detail .view { padding-top: 0; }
   padding: calc(.8 * var(--space)) calc(.9 * var(--space));
 }
 
-.stat .value { font-size: var(--text-xl); font-weight: var(--weight-bold); letter-spacing: -.02em; }
+.app-stat-row-tile .app-stat-row-value { font-size: var(--text-xl); font-weight: var(--weight-bold); letter-spacing: -.02em; }
 
-.stat .label { grid-column: 1 / -1; }
+.app-stat-row-tile .app-stat-row-label { grid-column: 1 / -1; }
 
-.stat-icon {
+.app-stat-row-icon {
   color: var(--text-muted);
   display: flex;
 }
 
-.stat-icon svg { width: 1.15rem; height: 1.15rem; }
+.app-stat-row-icon svg { width: 1.15rem; height: 1.15rem; }
 
-.stat .label,
-.activity-list dt { color: var(--text-faint); font-size: var(--text-xs); text-transform: uppercase; letter-spacing: var(--caps-spacing); }
+.app-stat-row-tile .app-stat-row-label,
+.app-facts-panel-list dt { color: var(--text-faint); font-size: var(--text-xs); text-transform: uppercase; letter-spacing: var(--caps-spacing); }
 
 .panel {
   background: var(--surface);
@@ -1340,7 +1341,7 @@ html.route-detail .view { padding-top: 0; }
 .panel h3 { font-size: var(--text-section); color: var(--text-muted); margin-bottom: calc(.85 * var(--space)); }
 
 /* The heading of the year heatmap with the arrows to other years. */
-.year-head {
+.habit-view-year-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1348,30 +1349,30 @@ html.route-detail .view { padding-top: 0; }
   margin-bottom: calc(.5 * var(--space));
 }
 
-.year-head h3 { margin-bottom: 0; }
+.habit-view-year-head h3 { margin-bottom: 0; }
 
-.year-nav { display: flex; gap: calc(.25 * var(--space)); }
+.habit-view-year-nav { display: flex; gap: calc(.25 * var(--space)); }
 
 /* ---------- activity ---------- */
 
-.activity-list {
+.app-facts-panel-list {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
   gap: calc(.75 * var(--space));
   margin: 0;
 }
 
-.activity-list dd { margin: 0; font-weight: var(--weight-medium); }
-.activity-list .note { display: block; color: var(--text-muted); font-size: var(--text-md); font-weight: normal; }
+.app-facts-panel-list dd { margin: 0; font-weight: var(--weight-medium); }
+.app-facts-panel-list .app-facts-panel-note { display: block; color: var(--text-muted); font-size: var(--text-md); font-weight: normal; }
 
 /* ---------- heatmap ---------- */
 
-.heatmap-scroll { overflow-x: auto; padding-bottom: calc(.35 * var(--space)); }
+.app-year-grid { overflow-x: auto; padding-bottom: calc(.35 * var(--space)); }
 
 /* Sized to content, so months and grid scroll together. */
-.heatmap-body { width: max-content; }
+.app-year-grid-body { width: max-content; }
 
-.heatmap-months {
+.app-year-grid-months {
   display: grid;
   grid-template-columns: repeat(var(--weeks), var(--heat-cell));
   gap: var(--heat-gap);
@@ -1383,9 +1384,9 @@ html.route-detail .view { padding-top: 0; }
 }
 
 /* Month labels may overflow to the right. */
-.heatmap-months span { white-space: nowrap; }
+.app-year-grid-months span { white-space: nowrap; }
 
-.heatmap {
+.app-year-grid-days {
   display: grid;
   grid-auto-flow: column;
   grid-template-rows: repeat(7, var(--heat-cell));
@@ -1393,38 +1394,38 @@ html.route-detail .view { padding-top: 0; }
   width: max-content;
 }
 
-.heat {
+.heatmap-day {
   width: var(--heat-cell);
   height: var(--heat-cell);
   border-radius: var(--radius-2xs);
   background: var(--surface-2);
 }
 
-.heat[data-level="1"] { background: color-mix(in srgb, var(--habit-color) 28%, var(--surface-2)); }
-.heat[data-level="2"] { background: color-mix(in srgb, var(--habit-color) 55%, var(--surface-2)); }
-.heat[data-level="3"] { background: color-mix(in srgb, var(--habit-color) 78%, var(--surface-2)); }
-.heat[data-level="4"] { background: var(--habit-color); }
-.heat.is-off { background: transparent; box-shadow: inset 0 0 0 1px var(--border); }
+.heatmap-day[data-level="1"] { background: color-mix(in srgb, var(--habit-color) 28%, var(--surface-2)); }
+.heatmap-day[data-level="2"] { background: color-mix(in srgb, var(--habit-color) 55%, var(--surface-2)); }
+.heatmap-day[data-level="3"] { background: color-mix(in srgb, var(--habit-color) 78%, var(--surface-2)); }
+.heatmap-day[data-level="4"] { background: var(--habit-color); }
+.heatmap-day.is-off { background: transparent; box-shadow: inset 0 0 0 1px var(--border); }
 /* Skipped days are hatched: they are not due, and not missed either. */
-.heat.is-skipped {
+.heatmap-day.is-skipped {
   background: repeating-linear-gradient(-45deg, var(--border-strong) 0 1px, transparent 1px 3.5px);
   box-shadow: inset 0 0 0 1px var(--border);
 }
 /* Future days of the year, strongly dimmed. */
-.heat.is-future { background: var(--surface-2); opacity: .4; }
+.heatmap-day.is-future { background: var(--surface-2); opacity: .4; }
 /* Unscheduled future days keep their outline, dimmed about as much as the
    other future days. Less than their .4, as a thin line would vanish. */
-.heat.is-future.is-off { background: transparent; opacity: .6; }
+.heatmap-day.is-future.is-off { background: transparent; opacity: .6; }
 /* Days of the neighbouring years: keep their space, but hidden. */
-.heat.is-outside { visibility: hidden; }
+.heatmap-day.is-outside { visibility: hidden; }
 
 /* Day statistics: each day is shaded by its share of completed habits
    (--rate, 0…1); nothing done stays at the empty square. Perfect days get the
    full colour and a ring. */
-.days-heatmap .heat:not(.is-off, .is-future, .is-outside) {
+.day-stats-view-heatmap .heatmap-day:not(.is-off, .is-future, .is-outside) {
   background: color-mix(in srgb, var(--done) calc(var(--rate, 0) * 100%), var(--surface-2));
 }
-.days-heatmap .heat.is-perfect {
+.day-stats-view-heatmap .heatmap-day.is-perfect {
   background: var(--done);
   box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--done) 60%, var(--text));
 }
@@ -1475,18 +1476,18 @@ html.route-detail .view { padding-top: 0; }
 }
 
 /* Chart tooltips: the date, then the value. */
-.tooltip .tip-date { font-weight: var(--weight-semibold); }
-.tooltip .tip-status { opacity: .78; }
+.tooltip .tooltip-date { font-weight: var(--weight-semibold); }
+.tooltip .tooltip-status { opacity: .78; }
 
 /* Tooltip targets. */
-.heat[data-date],
-.cum-col[data-tip] { cursor: default; }
+.heatmap-day[data-date],
+.habit-cumulative-chart-column[data-tip] { cursor: default; }
 
 /* ---------- back to today ----------
 
    Floating button at the bottom centre of the screen, shown while the board
    is paged away from today or another day is active. */
-.today-pill {
+.board-view-today-pill {
   position: fixed;
   left: 50%;
   bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px));
@@ -1499,19 +1500,19 @@ html.route-detail .view { padding-top: 0; }
   box-shadow: var(--shadow-float);
 }
 
-.today-pill svg { width: var(--icon); height: var(--icon); }
-.today-pill:active { transform: translateX(-50%) translateY(1px); }
+.board-view-today-pill svg { width: var(--icon); height: var(--icon); }
+.board-view-today-pill:active { transform: translateX(-50%) translateY(1px); }
 
 /* Room below the last row, so it can be scrolled clear of the button. */
-#board-view:has(.today-pill:not([hidden])) { padding-bottom: 5rem; }
+#board-view:has(.board-view-today-pill:not([hidden])) { padding-bottom: 5rem; }
 /* Toasts appear above the floating button. */
-#board-view:not([hidden]):has(.today-pill:not([hidden])) ~ .toasts {
+#board-view:not([hidden]):has(.board-view-today-pill:not([hidden])) ~ .toast-list {
   bottom: calc(4.75rem + env(safe-area-inset-bottom, 0px));
 }
 
 /* ---------- toasts ---------- */
 
-.toasts {
+.toast-list {
   position: fixed;
   left: 50%;
   bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px));
@@ -1523,7 +1524,7 @@ html.route-detail .view { padding-top: 0; }
   width: min(28rem, calc(100vw - 2rem));
 }
 
-.toast {
+.toast-list-item {
   display: flex;
   align-items: center;
   gap: calc(.75 * var(--space));
@@ -1534,8 +1535,8 @@ html.route-detail .view { padding-top: 0; }
   animation: toast-in .16s ease-out;
 }
 
-.toast .text { flex: 1; min-width: 0; font-size: var(--text-md); }
-.toast.is-error { background: color-mix(in srgb, var(--danger) 16%, var(--float)); }
+.toast-list-item .toast-list-item-text { flex: 1; min-width: 0; font-size: var(--text-md); }
+.toast-list-item.is-error { background: color-mix(in srgb, var(--danger) 16%, var(--float)); }
 
 @keyframes toast-in {
   from { opacity: 0; transform: translateY(.5rem); }
@@ -1543,17 +1544,18 @@ html.route-detail .view { padding-top: 0; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .toast { animation: none; }
+  .toast-list-item { animation: none; }
   .button:active { transform: none; }
 }
 
 /* ---------- styleguide ----------
    Only used on #/styleguide. */
 
-.sg-head { padding: calc(.5 * var(--space)) 0 calc(1.5 * var(--space)); }
-.sg-head h1 { font-size: var(--text-xl); }
+.style-guide-view-head { padding: calc(.5 * var(--space)) 0 calc(1.5 * var(--space)); }
+.style-guide-view-head h1 { font-size: var(--text-xl); }
 
-.sg-note {
+.style-guide-view-note,
+.style-guide-section-note {
   margin: calc(.35 * var(--space)) 0 0;
   color: var(--text-muted);
   font-size: var(--text-md);
@@ -1562,21 +1564,21 @@ html.route-detail .view { padding-top: 0; }
 
 /* Light and dark panel side by side (stacked on narrow screens). Each panel has
    its own background. */
-.sg-themes {
+.style-guide-view-themes {
   display: grid;
   gap: calc(1.25 * var(--space));
   grid-template-columns: repeat(auto-fit, minmax(28rem, 1fr));
   align-items: start;
 }
 
-.sg-theme {
+.style-guide-panel {
   background: var(--bg);
   color: var(--text);
   border-radius: var(--radius);
   padding: var(--space) calc(1.15 * var(--space)) calc(1.5 * var(--space));
 }
 
-.sg-theme-title {
+.style-guide-panel-title {
   font-size: var(--text-sm);
   text-transform: uppercase;
   letter-spacing: .08em;
@@ -1584,11 +1586,11 @@ html.route-detail .view { padding-top: 0; }
   padding-bottom: calc(.75 * var(--space));
 }
 
-.sg-section { padding-top: calc(1.5 * var(--space)); }
-.sg-title { font-size: var(--text-base); }
+.style-guide-section { padding-top: calc(1.5 * var(--space)); }
+.style-guide-section-title { font-size: var(--text-base); }
 
 /* Row of specimens, aligned on the baseline. */
-.sg-row {
+.style-guide-section-row {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
@@ -1596,9 +1598,9 @@ html.route-detail .view { padding-top: 0; }
   margin-top: calc(.9 * var(--space));
 }
 
-.sg-row.is-block { display: block; }
+.style-guide-section-row.is-block { display: block; }
 
-.sg-specimen {
+.style-guide-specimen {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -1606,22 +1608,22 @@ html.route-detail .view { padding-top: 0; }
   min-width: 0;
 }
 
-.sg-label {
+.style-guide-specimen-label {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: .68rem;
   color: var(--text-faint);
 }
 
 /* Day cells in a plain row. */
-.sg-cells { display: flex; gap: 2px; }
-.sg-cells .cell { width: var(--cell); }
+.style-guide-panel-cells { display: flex; gap: 2px; }
+.style-guide-panel-cells .board-day-cell { width: var(--cell); }
 
-.heatmap-sample { display: flex; gap: var(--heat-gap); }
+.style-guide-panel-heatmap { display: flex; gap: var(--heat-gap); }
 
 /* Limit the width of form fields. */
-.sg-row .field { min-width: 14rem; max-width: 20rem; padding: 0; }
+.style-guide-section-row .field { min-width: 14rem; max-width: 20rem; padding: 0; }
 
-.sg-tokens {
+.style-guide-panel-tokens {
   display: grid;
   grid-template-columns: auto 1fr auto;
   align-items: center;
@@ -1629,41 +1631,41 @@ html.route-detail .view { padding-top: 0; }
   font-size: .78rem;
 }
 
-.sg-token { display: contents; }
+.style-guide-panel-token { display: contents; }
 
-.sg-chip {
+.style-guide-panel-chip {
   width: 1.4rem;
   height: 1.4rem;
   border-radius: var(--radius-2xs);
   border: 1px solid var(--border-strong);
 }
 
-.sg-chip.is-empty { visibility: hidden; }
+.style-guide-panel-chip.is-empty { visibility: hidden; }
 
-.sg-token-name { color: var(--text); font-size: .74rem; }
-.sg-token-value { color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.style-guide-panel-token-name { color: var(--text); font-size: .74rem; }
+.style-guide-panel-token-value { color: var(--text-muted); font-variant-numeric: tabular-nums; }
 
 /* ---------- cumulative chart ----------
    One bar per period, as tall as the running total. Built from HTML elements,
    so labels keep the page's font sizes. */
 
-.cum-summary {
+.habit-cumulative-chart-summary {
   margin: calc(-.35 * var(--space)) 0 var(--space);
   color: var(--text-muted);
   font-size: var(--text-md);
 }
 
-.cum-summary strong { color: var(--text); font-weight: var(--weight-bold); }
+.habit-cumulative-chart-summary strong { color: var(--text); font-weight: var(--weight-bold); }
 
-.cum-empty { margin: 0; color: var(--text-faint); font-size: var(--text-md); }
+.habit-cumulative-chart-empty { margin: 0; color: var(--text-faint); font-size: var(--text-md); }
 
 /* Holds the place of the chart until its totals have arrived. */
-.cum-loading { min-height: 8rem; }
+.habit-cumulative-chart-loading { min-height: 8rem; }
 
-.cum-chart { --cols: 12; }
+.habit-cumulative-chart-plot { --cols: 12; }
 
 /* Scale line at the year's total (the tallest bar). */
-.cum-scale {
+.habit-cumulative-chart-scale {
   text-align: right;
   font-size: var(--text-xs);
   color: var(--text-faint);
@@ -1672,7 +1674,7 @@ html.route-detail .view { padding-top: 0; }
 }
 
 /* The bars determine the track width. */
-.cum-bars {
+.habit-cumulative-chart-bars {
   display: grid;
   grid-template-columns: repeat(var(--cols), minmax(var(--bar-min, 24px), 1fr));
   gap: calc(.3 * var(--space));
@@ -1680,9 +1682,9 @@ html.route-detail .view { padding-top: 0; }
   height: 9rem;
 }
 
-.cum-col { height: 100%; display: flex; align-items: flex-end; }
+.habit-cumulative-chart-column { height: 100%; display: flex; align-items: flex-end; }
 
-.cum-bar {
+.habit-cumulative-chart-bar {
   width: 100%;
   /* The total of previous periods, faded. */
   background: color-mix(in srgb, var(--habit-color) 28%, transparent);
@@ -1695,9 +1697,9 @@ html.route-detail .view { padding-top: 0; }
 }
 
 /* No sliver for zero. */
-.cum-bar.is-zero { min-height: 0; }
+.habit-cumulative-chart-bar.is-zero { min-height: 0; }
 
-.cum-gain {
+.habit-cumulative-chart-gain {
   background: var(--habit-color);
   border-radius: var(--radius-2xs) var(--radius-2xs) 0 0;
   min-height: 2px;
@@ -1705,7 +1707,7 @@ html.route-detail .view { padding-top: 0; }
 
 /* Labels use the same columns. They are positioned absolutely, so they do not
    widen the columns. */
-.cum-months {
+.habit-cumulative-chart-months {
   display: grid;
   grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
   gap: calc(.3 * var(--space));
@@ -1716,7 +1718,7 @@ html.route-detail .view { padding-top: 0; }
 }
 
 /* Title and granularity switch on one line. */
-.cum-head {
+.habit-cumulative-chart-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1725,23 +1727,23 @@ html.route-detail .view { padding-top: 0; }
   flex-wrap: wrap;
 }
 
-.cum-head h3 { margin-bottom: 0; }
+.habit-cumulative-chart-head h3 { margin-bottom: 0; }
 
-.segmented.cum-grain { width: auto; flex: none; }
-.segmented.cum-grain span { padding: calc(.25 * var(--space)) calc(.7 * var(--space)); font-size: var(--text-xs); }
+.segmented.habit-cumulative-chart-grain { width: auto; flex: none; }
+.segmented.habit-cumulative-chart-grain span { padding: calc(.25 * var(--space)) calc(.7 * var(--space)); font-size: var(--text-xs); }
 
 /* Smaller gaps for many bars. */
-.cum-chart.is-fine :is(.cum-bars, .cum-months) { column-gap: 2px; }
+.habit-cumulative-chart-plot.is-fine :is(.habit-cumulative-chart-bars, .habit-cumulative-chart-months) { column-gap: 2px; }
 
 /* Bars and labels scroll horizontally together; with few bars they fill the
    width. */
-.cum-scroll { overflow-x: auto; padding-bottom: calc(.35 * var(--space)); }
+.habit-cumulative-chart-scroll { overflow-x: auto; padding-bottom: calc(.35 * var(--space)); }
 
-.cum-track { min-width: 100%; width: max-content; }
+.habit-cumulative-chart-track { min-width: 100%; width: max-content; }
 
-.cum-months span { position: relative; height: 1em; }
+.habit-cumulative-chart-months span { position: relative; height: 1em; }
 
-.cum-months i {
+.habit-cumulative-chart-months i {
   position: absolute;
   left: 50%;
   transform: translateX(-50%);
@@ -1752,21 +1754,21 @@ html.route-detail .view { padding-top: 0; }
 /* ---------- drag to reorder ---------- */
 
 /* Drag handle. touch-action: none prevents scrolling while dragging. */
-.drag-handle {
+.drag-reorder-handle {
   cursor: grab;
   touch-action: none;
 }
 
-.drag-handle:active { cursor: grabbing; }
+.drag-reorder-handle:active { cursor: grabbing; }
 
 /* The dragged block is raised above the others. */
-.block.is-dragging {
+.board-block.is-dragging {
   position: relative;
   z-index: 15;
   cursor: grabbing;
 }
 
-.block.is-dragging::after { box-shadow: var(--shadow-drag); }
+.board-block.is-dragging::after { box-shadow: var(--shadow-drag); }
 
 /* .is-reordering is set on the list being reordered (board or card rows). */
 .is-reordering > :not(.is-dragging) {
@@ -1774,15 +1776,15 @@ html.route-detail .view { padding-top: 0; }
 }
 
 /* No hover effects while dragging. */
-.is-reordering .habit-main:hover,
-.is-reordering .cell:hover:not(:disabled) { background: transparent; }
+.is-reordering .board-habit-label:hover,
+.is-reordering .board-day-cell:hover:not(:disabled) { background: transparent; }
 
 /* Hide the controls, except on the dragged element. */
-.is-reordering .block-tools,
-.is-reordering .habit-tools { opacity: 0; }
+.is-reordering .board-block-tools,
+.is-reordering .board-habit-row-tools { opacity: 0; }
 
-.is-dragging .block-tools,
-.is-dragging .habit-tools { opacity: 1; }
+.is-dragging .board-block-tools,
+.is-dragging .board-habit-row-tools { opacity: 1; }
 
 /* No text selection while dragging. */
 .is-reordering { user-select: none; }
@@ -1793,7 +1795,7 @@ html.route-detail .view { padding-top: 0; }
 
 
 /* The dragged row needs an opaque background. */
-.habit-row.is-dragging {
+.board-habit-row.is-dragging {
   position: relative;
   z-index: 5;
   background: var(--surface);
@@ -1803,9 +1805,9 @@ html.route-detail .view { padding-top: 0; }
 
 /* ---------- day statistics: bars per weekday and month ---------- */
 
-.day-bars { display: flex; flex-direction: column; gap: calc(.45 * var(--space)); }
+.day-stats-bar-panel-bars { display: flex; flex-direction: column; gap: calc(.45 * var(--space)); }
 
-.day-bar {
+.day-stats-bar-panel-bar {
   display: grid;
   grid-template-columns: 3rem 1fr 3.5rem;
   align-items: center;
@@ -1814,21 +1816,21 @@ html.route-detail .view { padding-top: 0; }
   font-variant-numeric: tabular-nums;
 }
 
-.day-bar-label { color: var(--text-muted); }
+.day-stats-bar-panel-label { color: var(--text-muted); }
 
-.day-bar-track {
+.day-stats-bar-panel-track {
   height: .6rem;
   border-radius: 999px;
   background: var(--surface-2);
   overflow: hidden;
 }
 
-.day-bar-fill {
+.day-stats-bar-panel-fill {
   display: block;
   height: 100%;
   border-radius: inherit;
   background: var(--done);
 }
 
-.day-bar-value { text-align: right; }
-.day-bar.is-empty .day-bar-value { color: var(--text-faint); }
+.day-stats-bar-panel-value { text-align: right; }
+.day-stats-bar-panel-bar.is-empty .day-stats-bar-panel-value { color: var(--text-faint); }

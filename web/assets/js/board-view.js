@@ -495,8 +495,8 @@ function rowCells(row) {
  * @return {!Promise<void>}
  */
 async function moveFromCell(cell, {dx = 0, dy = 0, edge = 0}, ctrl) {
-  const row = cell.closest('.habit-row');
-  const rows = [...board.querySelectorAll('.habit-row')];
+  const row = cell.closest('.board-habit-row');
+  const rows = [...board.querySelectorAll('.board-habit-row')];
 
   if (dy) {
     const date = cell.dataset.date;
@@ -531,7 +531,7 @@ async function moveFromCell(cell, {dx = 0, dy = 0, edge = 0}, ctrl) {
   if (!pager || pager.disabled) return;
   const habit = cell.dataset.habit;
   await page(dx < 0 ? 1 : -1);
-  const paged = board.querySelector(`.habit-row[data-habit="${habit}"]`);
+  const paged = board.querySelector(`.board-habit-row[data-habit="${habit}"]`);
   if (!paged) return;
   // The nearest enabled day beyond the one left.
   const beyond = rowCells(paged).filter(
@@ -552,7 +552,7 @@ function focusedControl() {
   }
   return {
     role: focused.dataset.role,
-    category: focused.closest('.block')?.dataset.category ?? '',
+    category: focused.closest('.board-block')?.dataset.category ?? '',
     habit: focused.dataset.habit ?? '',
     date: focused.dataset.date ?? '',
   };
@@ -566,7 +566,7 @@ function focusedControl() {
 function restoreFocus(target) {
   if (!target) return;
   const scope = target.category ?
-      board.querySelector(`.block[data-category="${target.category}"]`) :
+      board.querySelector(`.board-block[data-category="${target.category}"]`) :
       board;
   if (!scope) return;
   let selector = `[data-role="${target.role}"]`;
@@ -695,7 +695,7 @@ const BoardToolButton = {
     <button
       type="button"
       class="icon-button"
-      :class="{'drag-handle': handle}"
+      :class="{'drag-reorder-handle': handle}"
       :data-role="role"
       :data-habit="habit"
       :title="label"
@@ -726,12 +726,12 @@ const BoardBlockProgress = {
   template: `
     <div
       v-if="progress.due > 0"
-      class="block-progress"
+      class="board-block-progress"
       :class="{'is-complete': progress.done === progress.due}"
       :title="title"
     >
       <span
-        class="block-progress-track"
+        class="board-block-progress-track"
         :style="{'--segments': String(progress.due)}"
         role="progressbar"
         aria-valuemin="0"
@@ -742,11 +742,12 @@ const BoardBlockProgress = {
         <span
           v-for="i in progress.due"
           :key="i"
-          class="block-progress-seg"
+          class="board-block-progress-seg"
           :class="{'is-done': i <= progress.done}"
         ></span>
       </span>
-      <span class="block-progress-count">{{ progress.done }}/{{ progress.due }}
+      <span class="board-block-progress-count">
+        {{ progress.done }}/{{ progress.due }}
       </span>
     </div>`,
 };
@@ -778,10 +779,10 @@ const BoardHabitRow = {
   // with a single habit.
   template: `
     <div
-      class="habit-row"
+      class="board-habit-row"
       :data-habit="habit.id"
     >
-      <div class="habit-cell">
+      <div class="board-habit-row-label">
         <board-habit-label
           :habit="habit"
           @click="open(habit.id)"
@@ -796,7 +797,7 @@ const BoardHabitRow = {
         @click="tapCell(habit.id, iso)"
         @contextmenu="onCellContextMenu($event, habit.id, iso)"
       />
-      <div class="habit-tools">
+      <div class="board-habit-row-tools">
         <template v-if="siblings >= 2">
           <board-tool-button
             v-if="byDragging()"
@@ -878,18 +879,18 @@ const BoardBlock = {
   // changes.
   template: `
     <section
-      class="block"
+      class="board-block"
       :data-category="category?.id"
     >
       <header
         v-if="labelled"
-        class="block-head"
+        class="board-block-head"
       >
-        <h2 class="block-title">
+        <h2 class="board-block-title">
           <button
             v-if="category"
             type="button"
-            class="block-link"
+            class="board-block-link"
             data-role="open-category"
             @click="openCategory"
           >
@@ -898,7 +899,7 @@ const BoardBlock = {
               :icon="category.icon"
               :color="category.color || null"
             />
-            <span class="block-link-name">{{ category.name }}</span>
+            <span class="board-block-link-name">{{ category.name }}</span>
           </button>
           <template v-else>{{ t('No category') }}</template>
         </h2>
@@ -909,7 +910,7 @@ const BoardBlock = {
         />
         <div
           v-if="category && state.categories.length >= 2"
-          class="block-tools"
+          class="board-block-tools"
         >
           <board-tool-button
             v-if="byDragging()"
@@ -938,13 +939,13 @@ const BoardBlock = {
       </header>
       <p
         v-if="block.visible.length === 0"
-        class="block-empty"
+        class="board-block-empty"
       >
         {{ t('No habit in this category yet.') }}
       </p>
       <div
         v-else
-        class="block-rows"
+        class="board-block-rows"
       >
         <board-habit-row
           v-for="habit in block.visible"
@@ -1079,7 +1080,7 @@ export const TheBoardView = {
     <div
       id="board-grid"
       ref="boardEl"
-      class="board"
+      class="board-view-grid"
       :class="{'has-today': activeColumn >= 0}"
       :style="activeColumn >= 0 ? {'--today-col': String(activeColumn)} : null"
       :hidden="all.length === 0"
@@ -1087,17 +1088,17 @@ export const TheBoardView = {
       @focusin="onBoardFocus"
     >
       <template v-if="dates.length > 0">
-        <div class="day-header">
+        <div class="board-view-day-header">
           <!-- Backdrop behind the sticky header. An element, as it needs a
                clipped layer of its own over a background image. -->
           <div
-            class="day-header-backdrop"
+            class="board-view-day-header-backdrop"
             aria-hidden="true"
           ></div>
           <!-- Paging, in the date row above the habit names. Back to today is
                the floating button. -->
           <div
-            class="day-nav"
+            class="board-view-day-nav"
             style="grid-column: 1; grid-row: 2"
           >
             <board-tool-button
@@ -1118,7 +1119,7 @@ export const TheBoardView = {
           <div
             v-for="month in monthLabels"
             :key="month.start"
-            class="month-label"
+            class="board-view-month-label"
             :class="{'has-divider': month.start > 0}"
             :title="month.title"
             :style="{'grid-column': month.column, 'grid-row': '1'}"
@@ -1179,7 +1180,7 @@ export const TheBoardView = {
     </div>
     <button
       type="button"
-      class="button today-pill"
+      class="button board-view-today-pill"
       :hidden="offset === 0 && selectedDay === null"
       @click="backToToday"
     >
@@ -1255,14 +1256,14 @@ function initDragging(root, freeze) {
   });
   enableDragReorder({
     container: root,
-    item: '.block[data-category]',
+    item: '.board-block[data-category]',
     handle: '[data-role="drag-category"]',
     key: 'category',
     ...callbacks(actions.setCategoryOrder),
   });
   enableDragReorder({
     container: root,
-    item: '.habit-row',
+    item: '.board-habit-row',
     handle: '[data-role="drag-habit"]',
     key: 'habit',
     ...callbacks(actions.setHabitOrder),

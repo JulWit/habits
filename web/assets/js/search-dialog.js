@@ -281,7 +281,7 @@ export const TheSearchDialog = {
             />
             <span
               v-else
-              class="dot"
+              class="color-dot"
               :style="{'--habit-color': colorValue(entry.item.color)}"
             ></span>
           </template>
@@ -294,7 +294,7 @@ export const TheSearchDialog = {
             />
             <span
               v-else
-              class="dot is-category"
+              class="color-dot is-category"
             ></span>
           </template>
           <span class="search-option-name">{{ entry.item.name }}</span>

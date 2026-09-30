@@ -92,7 +92,7 @@ function heatSquare(iso, {due, done}) {
       formatFull(iso);
   return {
     class: [
-      'heat',
+      'heatmap-day',
       iso === state.today && 'is-today',
       ahead && 'is-future',
       !ahead && due === 0 && 'is-off',
@@ -152,23 +152,23 @@ const DayStatsBarPanel = {
   template: `
     <section class="panel">
       <h3>{{ title }}</h3>
-      <div class="day-bars">
+      <div class="day-stats-bar-panel-bars">
         <div
           v-for="b in bars"
           :key="b.name"
-          class="day-bar"
+          class="day-stats-bar-panel-bar"
           :class="{'is-empty': b.empty}"
           :data-tip="b.name"
           :data-status="b.status"
         >
-          <span class="day-bar-label">{{ b.label }}</span>
-          <span class="day-bar-track">
+          <span class="day-stats-bar-panel-label">{{ b.label }}</span>
+          <span class="day-stats-bar-panel-track">
             <span
-              class="day-bar-fill"
+              class="day-stats-bar-panel-fill"
               :style="{width: b.width}"
             ></span>
           </span>
-          <span class="day-bar-value">{{ b.value }}</span>
+          <span class="day-stats-bar-panel-value">{{ b.value }}</span>
         </div>
       </div>
     </section>`,
@@ -200,7 +200,9 @@ export const TheDayStatsView = {
       centreToday(root.value);
     });
     onMounted(() => {
-      initChartTooltips(root.value, '.heat[data-date], .day-bar[data-tip]');
+      initChartTooltips(
+          root.value,
+          '.heatmap-day[data-date], .day-stats-bar-panel-bar[data-tip]');
     });
 
     return {
@@ -256,7 +258,7 @@ export const TheDayStatsView = {
           :title="t('By month')"
           :bars="months"
         />
-        <section class="panel days-heatmap">
+        <section class="panel day-stats-view-heatmap">
           <h3>{{ t('Year {year}', {year}) }}</h3>
           <app-year-grid
             :year="year"
@@ -269,11 +271,11 @@ export const TheDayStatsView = {
             <span
               v-for="rate in [0, 0.25, 0.5, 0.75]"
               :key="rate"
-              class="heat"
+              class="heatmap-day"
               :style="{'--rate': String(rate)}"
             ></span>
             <span
-              class="heat is-perfect"
+              class="heatmap-day is-perfect"
               style="--rate: 1"
             ></span>
             <span>100 %</span>

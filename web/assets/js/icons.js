@@ -549,7 +549,7 @@ export const AppColorSwatches = {
   },
   template: `
     <div
-      class="swatches"
+      class="app-color-swatches"
       role="radiogroup"
       :aria-label="t('Colour')"
     >
@@ -557,7 +557,7 @@ export const AppColorSwatches = {
         v-for="color in colors"
         :key="color"
         type="button"
-        class="swatch"
+        class="app-color-swatches-item"
         :class="{'is-none': !color}"
         :style="{'--swatch': swatch(color)}"
         role="radio"
@@ -604,7 +604,7 @@ export const AppIconChoices = {
   // "No icon" is an empty tile.
   template: `
     <div
-      class="icon-choices"
+      class="app-icon-choices"
       role="radiogroup"
       :aria-label="t('Icon')"
     >
@@ -612,7 +612,7 @@ export const AppIconChoices = {
         v-for="name in offered"
         :key="name"
         type="button"
-        class="icon-choice"
+        class="app-icon-choices-item"
         :class="{'is-none': !name}"
         role="radio"
         :aria-checked="String(name === modelValue)"

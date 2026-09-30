@@ -169,7 +169,7 @@ export const BoardDaySummary = {
   },
   template: `
     <section
-      class="day-summary"
+      class="board-day-summary"
       :class="{'is-complete': isComplete}"
       data-role="open-days"
       role="button"
@@ -179,9 +179,9 @@ export const BoardDaySummary = {
       @click="$emit('open')"
       @keydown.enter.space.prevent="$emit('open')"
     >
-      <div class="day-summary-text">
-        <h2 class="day-summary-date">{{ date }}</h2>
-        <p class="day-summary-count">
+      <div class="board-day-summary-text">
+        <h2 class="board-day-summary-date">{{ date }}</h2>
+        <p class="board-day-summary-count">
           <template v-if="progress.due === 0">{{ t('Nothing due on this day') }}
           </template>
           <template v-else-if="progress.done < progress.due">
@@ -194,7 +194,7 @@ export const BoardDaySummary = {
       </div>
       <div
         v-if="progress.due > 0"
-        class="day-summary-ring"
+        class="board-day-summary-ring"
         role="progressbar"
         aria-valuemin="0"
         aria-valuemax="100"
@@ -206,7 +206,7 @@ export const BoardDaySummary = {
           aria-hidden="true"
         >
           <circle
-            class="day-summary-ring-track"
+            class="board-day-summary-ring-track"
             cx="20"
             cy="20"
             :r="RING_R"
@@ -214,14 +214,15 @@ export const BoardDaySummary = {
           <!-- pathLength="100" allows dash lengths in percent. -->
           <path
             :key="ring.key"
-            class="day-summary-ring-fill"
+            class="board-day-summary-ring-fill"
             :class="{'is-filling': ring.filling, 'is-empty': ring.to === 0}"
             :d="WAVY_RING_PATH"
             pathLength="100"
             :style="ringStyle"
           />
         </svg>
-        <span class="day-summary-percent">{{ Math.round(ring.to) }}%</span>
+        <span class="board-day-summary-percent">
+          {{ Math.round(ring.to) }}%</span>
       </div>
     </section>`,
 };
@@ -282,14 +283,14 @@ export function newlyDone(habits, day) {
 
   const fresh = due.filter((h) => done.has(h.id) && !before.has(h.id));
   // No ring, no orbs.
-  if (fresh.length === 0 || !board.querySelector('.day-summary-ring')) {
+  if (fresh.length === 0 || !board.querySelector('.board-day-summary-ring')) {
     return [];
   }
 
   const flights = [];
   for (const habit of fresh) {
-    const cell = board.querySelector(
-        `.cell[data-habit="${habit.id}"][data-date="${day}"] .mark`);
+    const cell = board.querySelector(`.board-day-cell[data-habit="${
+        habit.id}"][data-date="${day}"] .board-day-cell-mark`);
     const rect = cell?.getBoundingClientRect();
     // Cell not visible.
     if (!rect || rect.width === 0) continue;
@@ -321,7 +322,7 @@ function prefersReducedMotion() {
  * @return {?Element}
  */
 function ringElement() {
-  return board?.querySelector('.day-summary-ring') ?? null;
+  return board?.querySelector('.board-day-summary-ring') ?? null;
 }
 
 /**
@@ -349,7 +350,7 @@ function visibleTop() {
   let top = 0;
   for (const bar
            of [document.querySelector('.topbar'),
-               board?.querySelector('.day-header')]) {
+               board?.querySelector('.board-view-day-header')]) {
     if (bar) top = Math.max(top, bar.getBoundingClientRect().bottom);
   }
   return top;
@@ -365,7 +366,7 @@ function visibleTop() {
  */
 function flash(x, y, size, color) {
   const spark = document.createElement('span');
-  spark.className = 'orb orb-flash';
+  spark.className = 'board-day-summary-orb board-day-summary-orb-flash';
   spark.style.setProperty('--habit-color', color);
   spark.style.width = spark.style.height = `${size}px`;
   spark.style.left = `${x - size / 2}px`;
@@ -388,11 +389,11 @@ function flash(x, y, size, color) {
  * @return {!HTMLElement}
  */
 function orbLayer() {
-  let layer = document.getElementById('orb-layer');
+  let layer = document.getElementById('board-day-summary-orbs');
   if (!layer) {
     layer = document.createElement('div');
-    layer.id = 'orb-layer';
-    layer.className = 'orb-layer';
+    layer.id = 'board-day-summary-orbs';
+    layer.className = 'board-day-summary-orbs';
     layer.setAttribute('aria-hidden', 'true');
     document.body.append(layer);
   }
@@ -415,7 +416,7 @@ export function launchOrbs({color, x, y}) {
   const layer = orbLayer();
   for (let i = 0; i < ORBS_PER_HABIT; i++) {
     const orb = document.createElement('span');
-    orb.className = 'orb';
+    orb.className = 'board-day-summary-orb';
     orb.style.setProperty('--habit-color', colorValue(color));
     const size = 7 + Math.random() * 5;
     orb.style.width = orb.style.height = `${size}px`;

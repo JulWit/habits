@@ -1024,8 +1024,10 @@ html[data-filtering="on"] {
   font-size: max(11px, .75rem);
   font-weight: var(--weight-bold);
   color: var(--text-muted);
+  /* The track is faded, so open days recede behind the days already done. */
   background: conic-gradient(
-    var(--habit-color) calc(var(--p) * 360deg), var(--ring-ink) 0);
+    var(--habit-color) calc(var(--p) * 360deg),
+    color-mix(in srgb, var(--ring-ink) 50%, transparent) 0);
 }
 
 /* Text on a filled mark follows the habit colour as the accent's does: white
@@ -1036,9 +1038,9 @@ html[data-filtering="on"] {
   .mark {
     --mark-ink: oklch(from var(--habit-color) clamp(.2, calc((var(--ink-flip) - l) * 1000), 1) 0 0);
     --mark-halo: oklch(from var(--habit-color) clamp(0, calc((l - var(--ink-flip)) * 1000), 1) 0 0 / .45);
-    /* The ring of an open day at one lightness for every colour, which gives
-       each at least 3.4:1 against the card (WCAG 1.4.11 asks 3:1 for
-       graphics). Muted, so the progress arc in full colour stands out. */
+    /* The ring of an open day at one lightness for every colour. Muted, so
+       the progress arc in full colour stands out; the track fades it further
+       (see .mark). */
     --ring-ink: light-dark(
       oklch(from var(--habit-color) .62 calc(c * .4) h),
       oklch(from var(--habit-color) .55 calc(c * .4) h));

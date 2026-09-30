@@ -103,7 +103,7 @@ export function enableDragReorder(
    * Moves the dragged element past every neighbour whose middle it crossed.
    * @param {number} dy the pointer's distance from where the drag started
    */
-  function crossNeighbours(dy) {
+  const crossNeighbours = (dy) => {
     const element = drag.element;
     const middle = centre(element);
     for (const other of items()) {
@@ -115,7 +115,7 @@ export function enableDragReorder(
         return settle(other, 'before', dy);
       }
     }
-  }
+  };
 
   /**
    * Moves the dragged element before or after `other`, keeping it under the
@@ -124,7 +124,7 @@ export function enableDragReorder(
    * @param {string} where before or after
    * @param {number} dy
    */
-  function settle(other, where, dy) {
+  const settle = (other, where, dy) => {
     const element = drag.element;
     const before = element.getBoundingClientRect().top;
     if (where === 'after') {
@@ -136,14 +136,14 @@ export function enableDragReorder(
     // Compensate the layout jump caused by the DOM move.
     drag.startY += jump;
     element.style.transform = `translateY(${dy - jump}px)`;
-  }
+  };
 
   /**
    * Ends the drag; puts the element back and reports the new order if
    * `committed` and it changed.
    * @param {boolean} committed
    */
-  function finish(committed) {
+  const finish = (committed) => {
     const {element, grip, pointerId, active, order, list, anchor} = drag;
     if (grip.hasPointerCapture?.(pointerId)) {
       grip.releasePointerCapture(pointerId);
@@ -167,7 +167,7 @@ export function enableDragReorder(
     } else {
       onCancel?.();
     }
-  }
+  };
 }
 
 /**

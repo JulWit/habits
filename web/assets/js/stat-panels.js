@@ -1,11 +1,9 @@
-// Building blocks shared by the habit and category views: a row of stat tiles,
-// the label of the completion rate, a panel listing labelled facts, and the
-// facts of when something was created and changed.
+// Building blocks shared by the statistics views: a row of stat tiles, the
+// label of the completion rate, a panel listing labelled facts, and the facts
+// of when something was created and changed.
 
 import {daysBetween, formatLong, localISO} from './dates.js';
-import {el, markup} from './dom.js';
 import {locale, t, userTimeZone} from './i18n.js';
-import {icons} from './icons.js';
 import {state} from './state.js';
 
 /**
@@ -20,62 +18,62 @@ export function rateLabel() {
 }
 
 /**
- * Builds a row of stat tiles from [label, value, icon] triples; icon names
- * one of `icons`, shown in the tile's corner.
- * @param {!Array<!Array<string>>} stats
- * @return {!HTMLElement}
+ * A row of stat tiles from [label, value, icon] triples; icon names one of
+ * `icons`, shown in the tile's corner.
  */
-export function statRow(stats) {
-  return el(
-      'div', {class: 'stat-row'},
-      ...stats.map(
-          ([label, value, icon]) => el(
-              'div',
-              {class: 'stat'},
-              el('div', {class: 'value'}, value),
-              el('span', {class: 'stat-icon', 'aria-hidden': 'true'},
-                 markup(icons[icon])),
-              el('div', {class: 'label'}, label),
-              )));
-}
+export const StatRow = {
+  name: 'StatRow',
+  props: {stats: {type: Array, required: true}},
+  template: `
+    <div class="stat-row">
+      <div v-for="[label, value, icon] in stats" :key="label" class="stat">
+        <div class="value">{{ value }}</div>
+        <span class="stat-icon" aria-hidden="true"><app-icon :name="icon"/></span>
+        <div class="label">{{ label }}</div>
+      </div>
+    </div>`,
+};
 
 /**
- * Builds a panel with a heading and a list of facts, each built by
- * factItem.
- * @param {string} title
- * @param {!Array<!HTMLElement>} items
- * @param {string=} className
- * @return {!HTMLElement}
+ * A labelled fact, with an optional note after the value.
+ * @typedef {{label: string, value: string, note: string}}
  */
-export function factsPanel(title, items, className = 'details') {
-  return el(
-      'section',
-      {class: ['panel', className]},
-      el('h3', {}, title),
-      el('dl', {class: 'activity-list'}, ...items),
-  );
-}
+let Fact;
 
 /**
- * Builds a labelled fact, with an optional note after the value.
+ * Returns a fact for FactsPanel.
  * @param {string} label
- * @param {string|!Node} value
+ * @param {string} value
  * @param {string=} note
- * @return {!HTMLElement}
+ * @return {!Fact}
  */
 export function factItem(label, value, note = '') {
-  return el(
-      'div',
-      {},
-      el('dt', {}, label),
-      el('dd', {}, value, note && el('span', {class: 'note'}, note)),
-  );
+  return {label, value, note};
 }
 
+/** A panel with a heading and a list of facts (factItem). */
+export const FactsPanel = {
+  name: 'FactsPanel',
+  props: {
+    title: {type: String, required: true},
+    items: {type: Array, required: true},
+  },
+  template: `
+    <section class="panel">
+      <h3>{{ title }}</h3>
+      <dl class="activity-list">
+        <div v-for="item in items" :key="item.label">
+          <dt>{{ item.label }}</dt>
+          <dd>{{ item.value }}<span v-if="item.note" class="note">{{ item.note }}</span></dd>
+        </div>
+      </dl>
+    </section>`,
+};
+
 /**
- * Builds the fact of when a habit or category was created (its createdAt).
+ * Returns the fact of when a habit or category was created (its createdAt).
  * @param {string} stamp
- * @return {!HTMLElement}
+ * @return {!Fact}
  */
 export function createdItem(stamp) {
   const day = localISO(stamp);
@@ -83,10 +81,10 @@ export function createdItem(stamp) {
 }
 
 /**
- * Builds the fact of when a habit or category was last changed (its
+ * Returns the fact of when a habit or category was last changed (its
  * updatedAt).
  * @param {string} stamp
- * @return {!HTMLElement}
+ * @return {!Fact}
  */
 export function changedItem(stamp) {
   return factItem(t('Last changed'), formatStamp(stamp), timeAgo(stamp));

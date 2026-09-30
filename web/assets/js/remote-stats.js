@@ -6,28 +6,29 @@
 import {isConnectionError} from './outbox.js';
 import {stateRevision} from './state.js';
 import {errorText, toast} from './undo.js';
+import {shallowRef} from './vue.js';
 
 /**
- * The loaded answers by key.
- * @type {!Map<string, {value: *, revision: number, loading: boolean}>}
+ * The loaded answers by key. Only `value` is reactive: a view that shows it
+ * renders again when a new answer arrives.
+ * @type {!Map<string, {value: !Object, revision: number, loading: boolean}>}
  */
 const loaded = new Map();
 
 /**
  * Returns the answer loaded for `key`, or undefined before the first one has
  * arrived. Loads it with `fetch` if there is none yet or the state has changed
- * since, and calls `onLoad` once a new answer has arrived, for the view to
- * render again.
+ * since. Called while a view renders, which then renders again once a new
+ * answer has arrived or the state has changed.
  * @param {string} key
  * @param {function(): !Promise<T>} fetch
- * @param {function(): void} onLoad
  * @return {T|undefined}
  * @template T
  */
-export function remote(key, fetch, onLoad) {
+export function remote(key, fetch) {
   let entry = loaded.get(key);
   if (!entry) {
-    entry = {value: undefined, revision: -1, loading: false};
+    entry = {value: shallowRef(undefined), revision: -1, loading: false};
     loaded.set(key, entry);
   }
   const revision = stateRevision();
@@ -35,9 +36,8 @@ export function remote(key, fetch, onLoad) {
     entry.loading = true;
     fetch()
         .then((value) => {
-          entry.value = value;
           entry.revision = revision;
-          onLoad();
+          entry.value.value = value;
         })
         .catch((err) => {
           // Offline, the view shows what it has, the header says why, and the
@@ -50,5 +50,5 @@ export function remote(key, fetch, onLoad) {
           entry.loading = false;
         });
   }
-  return entry.value;
+  return entry.value.value;
 }

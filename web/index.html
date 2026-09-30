@@ -57,11 +57,11 @@
 <!-- The overview, rendered by board-view.js. -->
 <main id="board-view" class="view"></main>
 
-<main id="habit-view" class="view" hidden></main>
-
-<main id="category-view" class="view" hidden></main>
-
-<main id="day-stats-view" class="view" hidden></main>
+<!-- The detail views render their own <main> (habit-view.js,
+     category-view.js, day-stats-view.js). -->
+<div id="habit-view-host"></div>
+<div id="category-view-host"></div>
+<div id="day-stats-view-host"></div>
 
 <!-- Style guide, only reachable at #/styleguide. -->
 <main id="style-guide-view" class="view" hidden></main>

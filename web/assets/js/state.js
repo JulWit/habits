@@ -2,7 +2,7 @@
 // its response replaces the local state. The state is reactive, so the Vue
 // components render again whenever it changes.
 
-import {reactive} from './vue.js';
+import {reactive, ref} from './vue.js';
 
 /**
  * A day's entry as the client handles it.
@@ -85,16 +85,17 @@ const listeners = new Set();
 
 /**
  * Counts the changes of the state, so that data loaded for a view (see
- * remote-stats.js) can tell whether it may be outdated.
+ * remote-stats.js) can tell whether it may be outdated. Reactive, so a view
+ * that reads it renders again after every change.
  */
-let revision = 0;
+const revision = ref(0);
 
 /**
  * Returns the number of changes of the state so far.
  * @return {number}
  */
 export function stateRevision() {
-  return revision;
+  return revision.value;
 }
 
 /**
@@ -107,7 +108,7 @@ export function subscribe(fn) {
 
 /** Counts a change of the state and tells the listeners. */
 function notify() {
-  revision++;
+  revision.value++;
   for (const fn of listeners) {
     fn(state);
   }

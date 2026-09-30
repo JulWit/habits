@@ -1,139 +1,113 @@
-// Title bar of the habit and category views, as Material's top app bar: back,
-// title, edit, and an overflow menu (⋮) for rare and destructive actions. The
-// app's own title bar is hidden on these views (see base.css).
-//
-// The buttons carry data-action ("back", "edit" and the menu's actions); the
-// view handles their clicks.
-
-import {el, markup} from './dom.js';
-import {t} from './i18n.js';
-import {icons} from './icons.js';
+// Title bar of the habit, category and day statistics views, as Material's top
+// app bar: back, title, edit, and an overflow menu (⋮) for rare and
+// destructive actions. The app's own title bar is hidden on these views (see
+// components.css).
 
 /**
- * An item of the overflow menu.
- * @typedef {{action: string, label: string, icon: string, danger: boolean}}
+ * An item of the overflow menu; `icon` names one of `icons`.
+ * @typedef {{action: string, label: string, icon: string, danger:
+ *     (boolean|undefined)}}
  */
 let MenuItem;
-
-/**
- * Builds the title bar: `title` is the name of the habit or category, `sub` a
- * detail shown after it, set off by a dot, and `badge` is shown before it.
- * `edit` adds an edit button, and `menu` holds the overflow menu's items; an
- * empty list omits the menu.
- * @param {{
- *   title: string,
- *   sub: (string|undefined),
- *   badge: (?Node|undefined),
- *   edit: (boolean|undefined),
- *   menu: !Array<!MenuItem>,
- * }} bar
- * @return {!HTMLElement}
- */
-export function appBar({title, sub = '', badge = null, edit = true, menu}) {
-  return el(
-      'header',
-      {class: 'app-bar'},
-      iconButton('back', icons.arrowLeft, t('Back')),
-      el(
-          'div',
-          {class: 'app-bar-title'},
-          el('h2', {}, badge, el('span', {class: 'name'}, title)),
-          // In a span of its own, as the stylesheet draws the dot before it.
-          sub &&
-              el('span', {class: 'sub'}, el('span', {class: 'sub-part'}, sub)),
-          ),
-      el(
-          'div',
-          {class: 'app-bar-actions'},
-          edit && iconButton('edit', icons.edit, t('Edit')),
-          ...(menu.length > 0 ? overflowMenu(menu) : []),
-          ),
-  );
-}
-
-/**
- * Builds an icon button with its label.
- * @param {string} action
- * @param {string} icon SVG markup
- * @param {string} label
- * @return {!HTMLElement}
- */
-function iconButton(action, icon, label) {
-  return el(
-      'button', {
-        class: 'icon-button',
-        type: 'button',
-        data: {action},
-        title: label,
-        'aria-label': label,
-      },
-      markup(icon));
-}
 
 /** The number of menus built, for their IDs. */
 let count = 0;
 
 /**
- * Returns the ⋮ button and its menu, to be inserted side by side. A chosen item
- * closes the menu; its click then bubbles with its data-action like any other
- * button of the view.
+ * The title bar: `title` is the name of the habit or category, `sub` a detail
+ * shown after it, set off by a dot, and the slot `badge` is shown before it.
+ * `edit` adds an edit button, and `menu` holds the overflow menu's items; an
+ * empty list omits the menu. Emits `back`, `edit` and `action` with the
+ * chosen item's action.
  *
  * The menu is a popover: it closes on a click outside, on Escape and on the
  * system back gesture, and returns the focus to its button.
- * @param {!Array<!MenuItem>} items
- * @return {!Array<!HTMLElement>}
  */
-function overflowMenu(items) {
-  const id = `overflow-menu-${++count}`;
+export const AppBar = {
+  name: 'AppBar',
+  props: {
+    title: {type: String, required: true},
+    sub: {type: String, default: ''},
+    edit: {type: Boolean, default: true},
+    menu: {type: Array, default: () => []},
+  },
+  emits: ['back', 'edit', 'action'],
+  setup(props, {emit}) {
+    const menuId = `overflow-menu-${++count}`;
 
-  const button =
-      el('button', {
-        type: 'button',
-        class: 'icon-button',
-        title: t('More options'),
-        'aria-label': t('More options'),
-        'aria-haspopup': 'menu',
-        'aria-expanded': 'false',
-        popovertarget: id,
-      },
-         markup(icons.moreVertical));
+    /**
+     * Places the menu when it opens and focuses its first item.
+     * @param {!ToggleEvent} event
+     */
+    const onToggle = (event) => {
+      const menu = event.target;
+      const button = document.querySelector(`[popovertarget="${menuId}"]`);
+      button.setAttribute('aria-expanded', String(event.newState === 'open'));
+      if (event.newState !== 'open') return;
+      place(menu, button);
+      menu.querySelector('[role="menuitem"]')?.focus();
+    };
 
-  const menu = el(
-      'div',
-      {id, class: 'overflow-menu', popover: 'auto', role: 'menu'},
-      ...items.map(
-          (item) =>
-              el('button', {
-                type: 'button',
-                class: ['overflow-item', item.danger && 'is-danger'],
-                data: {action: item.action},
-                role: 'menuitem',
-              },
-                 icons[item.icon] && markup(icons[item.icon]),
-                 el('span', {}, item.label))),
-  );
+    /**
+     * Returns the focus to the button when the menu closes. The browser does
+     * so only if the button had it before, which a tap does not guarantee.
+     * @param {!ToggleEvent} event
+     */
+    const onBeforeToggle = (event) => {
+      if (event.newState === 'closed' &&
+          event.target.contains(document.activeElement)) {
+        document.querySelector(`[popovertarget="${menuId}"]`)
+            ?.focus({preventScroll: true});
+      }
+    };
 
-  menu.addEventListener('toggle', (event) => {
-    const open = event.newState === 'open';
-    button.setAttribute('aria-expanded', String(open));
-    if (!open) return;
-    place(menu, button);
-    menu.querySelector('[role="menuitem"]')?.focus();
-  });
-  // Escape returns the focus to the button. The browser does so only if the
-  // button had it before, which a tap does not guarantee.
-  menu.addEventListener('beforetoggle', (event) => {
-    if (event.newState === 'closed' && menu.contains(document.activeElement)) {
-      button.focus({preventScroll: true});
-    }
-  });
-  menu.addEventListener('click', (event) => {
-    if (event.target.closest('[role="menuitem"]')) menu.hidePopover();
-  });
-  menu.addEventListener('keydown', onKey);
+    /**
+     * Closes the menu and passes on the chosen action.
+     * @param {!MenuItem} item
+     * @param {!Event} event
+     */
+    const choose = (item, event) => {
+      event.currentTarget.closest('[popover]').hidePopover();
+      emit('action', item.action);
+    };
 
-  return [button, menu];
-}
+    return {menuId, onToggle, onBeforeToggle, choose, onMenuKey};
+  },
+  template: `
+    <header class="app-bar">
+      <button class="icon-button" type="button" :title="t('Back')"
+              :aria-label="t('Back')" @click="$emit('back')">
+        <app-icon name="arrowLeft"/>
+      </button>
+      <div class="app-bar-title">
+        <h2><slot name="badge"/><span class="name">{{ title }}</span></h2>
+        <!-- In a span of its own, as the stylesheet draws the dot before it. -->
+        <span v-if="sub" class="sub"><span class="sub-part">{{ sub }}</span></span>
+      </div>
+      <div class="app-bar-actions">
+        <button v-if="edit" class="icon-button" type="button" :title="t('Edit')"
+                :aria-label="t('Edit')" @click="$emit('edit')">
+          <app-icon name="edit"/>
+        </button>
+        <template v-if="menu.length > 0">
+          <button type="button" class="icon-button" :title="t('More options')"
+                  :aria-label="t('More options')" aria-haspopup="menu"
+                  aria-expanded="false" :popovertarget="menuId">
+            <app-icon name="moreVertical"/>
+          </button>
+          <div :id="menuId" class="overflow-menu" popover="auto" role="menu"
+               @toggle="onToggle" @beforetoggle="onBeforeToggle"
+               @keydown="onMenuKey">
+            <button v-for="item in menu" :key="item.action" type="button"
+                    class="overflow-item" :class="{'is-danger': item.danger}"
+                    role="menuitem" @click="choose(item, $event)">
+              <app-icon :name="item.icon"/><span>{{ item.label }}</span>
+            </button>
+          </div>
+        </template>
+      </div>
+    </header>`,
+};
 
 /**
  * Aligns the menu's right edge with the button, just below it.
@@ -151,7 +125,7 @@ function place(menu, button) {
  * Arrow keys move between the items; Escape stays with the menu.
  * @param {!KeyboardEvent} event
  */
-function onKey(event) {
+function onMenuKey(event) {
   const items = [...event.currentTarget.querySelectorAll('[role="menuitem"]')];
   const at = items.indexOf(document.activeElement);
   let next = -1;

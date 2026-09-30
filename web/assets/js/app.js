@@ -6,11 +6,11 @@ import {api} from './api.js';
 import {currentDays, editing, initOverview, measureBoard} from './board-view.js';
 import {initCategoryEditor} from './category-editor.js';
 import {initCategoryPicker} from './category-picker.js';
-import {initCategory, renderCategory} from './category-view.js';
+import {initCategory} from './category-view.js';
 import {initValueDialog} from './day-editor.js';
-import {initDays, renderDays} from './day-stats-view.js';
+import {initDays} from './day-stats-view.js';
 import {initEditor} from './habit-editor.js';
-import {initDetail, renderDetail} from './habit-view.js';
+import {initDetail} from './habit-view.js';
 import {t, translateDocument} from './i18n.js';
 import {paintIcons} from './icons.js';
 import {isConnectionError, isOffline, overlay, pending, rememberedState, rememberState, setOffline, setStatusHandler, statusText} from './outbox.js';
@@ -19,15 +19,13 @@ import {initSearch, openSearch} from './search-dialog.js';
 import {initSettings} from './settings-dialog.js';
 import {initSkipDialog, openSkipDialog} from './skip-editor.js';
 import {habitById, replaceState, state, subscribe, upsertHabit} from './state.js';
+import {route} from './route.js';
 import {initTooltips} from './tooltip.js';
 import {errorText, redoLast, setChangeHandler, toast, undoLast} from './undo.js';
 import {createVueApp} from './vue-app.js';
 import {watchEffect} from './vue.js';
 
 const boardView = document.getElementById('board-view');
-const habitView = document.getElementById('habit-view');
-const categoryView = document.getElementById('category-view');
-const dayStatsView = document.getElementById('day-stats-view');
 const styleGuideView = document.getElementById('style-guide-view');
 
 /**
@@ -115,9 +113,9 @@ async function main() {
   initSkipDialog();
   initOverview(handlers);
   initSearch(handlers);
-  initDetail(handlers);
-  initCategory(handlers);
-  initDays(handlers);
+  initDetail(handlers, document.getElementById('habit-view-host'));
+  initCategory(handlers, document.getElementById('category-view-host'));
+  initDays(handlers, document.getElementById('day-stats-view-host'));
   initEditMode();
   initScrollState();
   initServiceWorker();
@@ -377,21 +375,22 @@ function goHome() {
 }
 
 /**
- * Shows `view` and hides the others. The route classes on <html> hide the
- * app's title bar on the views that have their own (see components.css).
- * @param {!HTMLElement} view
+ * Shows the view `name` (see route.js); the habit, category and day statistics
+ * views show themselves. The route classes on <html> hide the app's title bar
+ * on the views that have their own (see components.css).
+ * @param {string} name
+ * @param {?string=} id the habit or category shown
  */
-function showView(view) {
-  for (const other
-           of [boardView, habitView, categoryView, dayStatsView,
-               styleGuideView]) {
-    other.hidden = other !== view;
-  }
+function showView(name, id = null) {
+  route.view = name;
+  route.id = id;
+  boardView.hidden = name !== 'board';
+  styleGuideView.hidden = name !== 'styleguide';
   const root = document.documentElement;
-  root.classList.toggle('route-styleguide', view === styleGuideView);
+  root.classList.toggle('route-styleguide', name === 'styleguide');
   root.classList.toggle(
       'route-detail',
-      view === habitView || view === categoryView || view === dayStatsView);
+      name === 'habit' || name === 'category' || name === 'days');
 }
 
 /**
@@ -407,23 +406,20 @@ function replaceWithOverview() {
 function syncRoute() {
   // The style guide needs no data.
   if (location.hash === '#/styleguide') {
-    showView(styleGuideView);
+    showView('styleguide');
     showStyleguide();
     return;
   }
 
   if (location.hash === '#/days') {
-    showView(dayStatsView);
-    renderDays();
+    showView('days');
     return;
   }
 
   const categoryId = currentCategoryId();
   if (categoryId) {
-    const category = state.categories.find((c) => c.id === categoryId);
-    if (category) {
-      showView(categoryView);
-      renderCategory(category);
+    if (state.categories.some((c) => c.id === categoryId)) {
+      showView('category', categoryId);
       return;
     }
     // The category no longer exists.
@@ -432,20 +428,18 @@ function syncRoute() {
 
   const habitId = currentHabitId();
   if (habitId) {
-    const habit = habitById(habitId);
-    if (habit) {
-      showView(habitView);
-      renderDetail(habit);
-      // Render from the loaded entries, then again once the full history
+    if (habitById(habitId)) {
+      showView('habit', habitId);
+      // Shown from the loaded entries, then again once the full history
       // arrives.
-      ensureFullHistory(habit.id);
+      ensureFullHistory(habitId);
       return;
     }
     // The habit no longer exists; before the state is loaded, it may yet.
     if (state.habits.length > 0) replaceWithOverview();
   }
 
-  showView(boardView);
+  showView('board');
   // Measure again, as the board could not be measured while hidden.
   measureBoard();
 }

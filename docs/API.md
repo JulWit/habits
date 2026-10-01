@@ -79,8 +79,9 @@ Every habit carries `schedules` (`[{from, targetValue, targetType,
 frequency}]`, oldest first); the last one is the current schedule.
 `targetType` is `at_least` or, for a limit, `at_most` (see
 [DATAMODEL.md](DATAMODEL.md#targets-and-limits)). In `frequency`,
-`timesAtMost` makes `timesPerWeek` or `timesPerMonth` a maximum instead of a
-minimum (see [DATAMODEL.md](DATAMODEL.md#frequencies)). The client describes
+`timesAtMost` makes `timesPerWeek` or `timesPerMonth` an exact number
+("Exactly" in the editor) instead of a minimum (see
+[DATAMODEL.md](DATAMODEL.md#frequencies)). The client describes
 the target of a day from them. `PATCH /api/habits/{id}` accepts `targetValue`,
 `targetType` and `frequency` to change the current schedule.
 

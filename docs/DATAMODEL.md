@@ -195,13 +195,14 @@ and are 0 or empty when unused:
   month
 - `custom_interval`: every n days from an anchor date
 
-The times per week or month are a minimum (`timesAtMost` false) or a maximum
-(`timesAtMost` true). Every day of such a period is due until it has as many
-completed days as it needs, skipped days lowering that number (see
+The times per week or month are a minimum (`timesAtMost` false) or an exact
+number (`timesAtMost` true, "Exactly" in the editor): a period needs that many
+completed days and allows no more. Every day of such a period is due until it
+has as many completed days as it needs, skipped days lowering that number (see
 [Entries](#entries)); then its other days are no longer due
 (`domain.Habit.Status`). With a minimum they stay open for a bonus: further
 completed days are done on top, not due, and take the day's progress beyond
-100%. With a maximum they are closed, and the server refuses to complete
+100%. With an exact number they are closed, and the server refuses to complete
 another day of the period (`times_maximum_reached`). The days count in the
 order of the calendar: the earliest completed days are the ones the period
 needs.

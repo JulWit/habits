@@ -728,7 +728,7 @@ export const TheHabitEditor = {
             </div>
           </fieldset>
           <!-- The number of days per week or month as a minimum, with further
-               days as a bonus, or a maximum. -->
+               days as a bonus, or exactly that many. -->
           <fieldset
             v-if="countsDays(form.freq)"
             class="field"
@@ -755,7 +755,7 @@ export const TheHabitEditor = {
                   name="timesAtMost"
                   :value="true"
                 >
-                <span>{{ t('At most') }}</span>
+                <span>{{ t('Exactly') }}</span>
               </label>
             </div>
           </fieldset>

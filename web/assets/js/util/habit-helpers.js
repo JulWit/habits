@@ -390,12 +390,12 @@ export function describeFrequency(frequency) {
       return t('daily');
     case 'times_per_week': {
       const n = frequency.timesPerWeek;
-      return frequency.timesAtMost ? t('at most {n}× per week', {n}) :
+      return frequency.timesAtMost ? t('exactly {n}× per week', {n}) :
                                      t('{n}× per week', {n});
     }
     case 'times_per_month': {
       const n = frequency.timesPerMonth;
-      return frequency.timesAtMost ? t('at most {n}× per month', {n}) :
+      return frequency.timesAtMost ? t('exactly {n}× per month', {n}) :
                                      t('{n}× per month', {n});
     }
     case 'weekdays': {

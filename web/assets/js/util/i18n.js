@@ -354,6 +354,8 @@ const DE = {
   'Daily limit: {target}': 'Tageslimit: {target}',
   'Completed': 'Erledigt',
   'Skip this day': 'Tag überspringen',
+  'The habit is not due on this day, so its value can only be cleared.':
+      'An diesem Tag ist die Gewohnheit nicht fällig, der Wert kann daher nur gelöscht werden.',
   '{goal} · step: {step}': '{goal} · Schritt: {step}',
 
   // ---------- board ----------

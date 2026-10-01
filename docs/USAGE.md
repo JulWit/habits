@@ -5,7 +5,7 @@
 | Tick off | Tap the day; tap again to undo |
 | Increase count/time/distance | Tap: adds one step (default: count 1, time 5 min, distance 500 m; configurable per habit), also beyond the target |
 | Set an exact value or skip a day | Long press or right-click opens the day dialog |
-| Clear a day | Day dialog, then "Clear": removes the value and the skip |
+| Clear a day | Day dialog, then "Clear": removes the value and the skip. On a day the habit is not due on, the dialog only offers this |
 | Undo / redo | `Ctrl+Z` / `Ctrl+Shift+Z` or `Ctrl+Y`, or "Undo" in the toast. The undo history is kept on the server, so it survives a reload and is shared by all devices |
 | Move between days and habits | Arrow keys; `Home`/`End` for the first and last day, with `Ctrl` for the first and last habit. The days are a single tab stop, and the arrows page to earlier or later days at the end of a row |
 | Select a day | Click the day in the day header; click today to go back |

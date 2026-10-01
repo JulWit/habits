@@ -33,11 +33,13 @@ const QUICK_JUMPS = {
  * The dialog's content: the habit and day as it opened, and the input.
  * `value` is in input units, as typed; `scale` is the number of stored units
  * per input unit (see scale in habit-helpers.js), `step` the habit's step and
- * `max` the kind's maximum, in input units.
+ * `max` the kind's maximum, in input units. `closed` marks a day the habit is
+ * not due on, whose value the server only lets clear.
  */
 const day = reactive({
   habit: null,
   iso: '',
+  closed: false,
   before: {value: 0, skipped: false},
   value: '',
   done: false,
@@ -73,6 +75,7 @@ export async function openDayDialog(habit, iso, handler) {
   Object.assign(day, {
     habit,
     iso,
+    closed: !habitHelpers.isScheduled(habit, iso),
     before,
     scale,
     step: habitHelpers.step(habit) / scale,
@@ -85,7 +88,9 @@ export async function openDayDialog(habit, iso, handler) {
 
   openPage(dialog);
   // The first control that can be used.
-  if (before.skipped) {
+  if (day.closed) {
+    dialog.querySelector('[data-role="clear"]').focus();
+  } else if (before.skipped) {
     dialog.querySelector('input[name="skipped"]').focus();
   } else if (habit.kind === 'check') {
     dialog.querySelector('input[name="done"]').focus();
@@ -224,7 +229,8 @@ export const TheDayEditor = {
     };
   },
   // A skipped day has no value, so the value controls are off while
-  // skipping. Any value is allowed, not only multiples of the step.
+  // skipping. Any value is allowed, not only multiples of the step. A day the
+  // habit is not due on only offers to clear its value.
   template: `
     <dialog
       id="day-editor"
@@ -243,7 +249,14 @@ export const TheDayEditor = {
         >
           {{ title }}
         </h2>
+        <p
+          v-if="day.closed"
+          class="field-hint"
+        >
+          {{ t('The habit is not due on this day, so its value can only be cleared.') }}
+        </p>
         <fieldset
+          v-if="!day.closed"
           class="day-editor-value"
           :disabled="day.skipped"
         >
@@ -309,7 +322,10 @@ export const TheDayEditor = {
             <span>{{ t('Completed') }}</span>
           </label>
         </fieldset>
-        <div class="day-editor-skip">
+        <div
+          v-if="!day.closed"
+          class="day-editor-skip"
+        >
           <label class="switch">
             <input
               v-model="day.skipped"
@@ -324,11 +340,13 @@ export const TheDayEditor = {
           <button
             type="button"
             class="button ghost"
+            data-role="clear"
             @click="clear"
           >
             {{ t('Clear') }}
           </button>
           <button
+            v-if="!day.closed"
             type="submit"
             class="button primary"
           >

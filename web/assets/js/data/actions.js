@@ -412,22 +412,17 @@ export async function toggleArchive(id) {
 // ---------- categories ----------
 
 /**
- * Creates an empty category.
+ * Creates an empty category. Errors are thrown for the category picker to
+ * display, as its page covers the toasts.
  * @param {string} name
  * @return {!Promise<(!Category|undefined)>} the new category, or undefined
- *     if there is none
+ *     for an empty name
  */
 async function createCategory(name) {
   const wanted = (name ?? '').trim();
   if (!wanted) return;
 
-  let created;
-  try {
-    created = withoutChange(await api.createCategory({name: wanted}));
-  } catch (err) {
-    toast(errorText(err), {error: true});
-    return;
-  }
+  const created = withoutChange(await api.createCategory({name: wanted}));
   upsertCategory(created);
   toast(t('Category "{name}" created', {name: created.name}));
   // Returned so the picker can select it.

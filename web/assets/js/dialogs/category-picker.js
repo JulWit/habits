@@ -45,7 +45,7 @@ let dialog = null;
  * Opens the category picker.
  * @param {string} selected the current category ID, "" for none
  * @param {function(string): !Promise<(!Category|undefined)>} create creates a
- *     category from its name, undefined if that failed
+ *     category from its name; rejects if that fails, and the picker shows why
  * @return {!Promise<?string>} the chosen ID, or null if cancelled
  */
 export function openCategoryPicker(selected, create) {

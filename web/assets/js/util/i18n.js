@@ -565,7 +565,6 @@ const DE_ERRORS = {
   schedule_start_out_of_range:
       'Zeitpläne dürfen nicht vor dem Jahr {year} oder mehr als ein Jahr in der Zukunft beginnen',
   not_scheduled: 'Die Gewohnheit ist an diesem Tag nicht geplant',
-  date_missing: 'Das Datum fehlt.',
   value_negative: 'Der Wert darf nicht negativ sein.',
   skipped_with_value: 'Ein übersprungener Tag kann keinen Wert haben.',
   skip_range_reversed: 'Der letzte Tag liegt vor dem ersten.',
@@ -612,10 +611,7 @@ const DE_ERRORS = {
   interval_range: 'Der Abstand muss zwischen 1 und 365 Tagen liegen.',
   schedules_unordered:
       'Die Zeitpläne müssen an verschiedenen Tagen beginnen, der älteste zuerst.',
-  schedules_with_target:
-      'Zeitpläne können nicht zusammen mit Ziel oder Häufigkeit gesetzt werden.',
   schedules_empty: 'Mindestens ein Zeitplan ist nötig.',
-  schedules_on_create: 'Eine neue Gewohnheit hat noch keine Zeitpläne.',
   schedule_start_missing: 'Ein Zeitplan braucht einen ersten Tag.',
   order_duplicate: 'Die neue Reihenfolge nennt einen Eintrag doppelt.',
 

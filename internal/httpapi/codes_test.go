@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -12,6 +13,32 @@ import (
 // Every problem code the server can send has a German message in i18n.js,
 // which the client looks up by code.
 func TestEveryProblemCodeIsTranslated(t *testing.T) {
+	translated := translatedCodes(t)
+	for code := range serverCodes(t) {
+		if !translated[code] {
+			t.Errorf("code %q has no German message in i18n.js", code)
+		}
+	}
+}
+
+// clientCodes are the problem codes the client gives errors itself (api.js).
+var clientCodes = []string{"offline", "session_expired"}
+
+// Every German message in i18n.js belongs to a code the server or the client
+// still sends, so a removed code does not leave its message behind.
+func TestEveryTranslatedCodeIsSent(t *testing.T) {
+	sent := serverCodes(t)
+	for code := range translatedCodes(t) {
+		if !sent[code] && !slices.Contains(clientCodes, code) {
+			t.Errorf("i18n.js translates %q, which neither the server nor the client sends", code)
+		}
+	}
+}
+
+// translatedCodes returns the problem codes with a German message in DE_ERRORS
+// of i18n.js.
+func translatedCodes(t *testing.T) map[string]bool {
+	t.Helper()
 	i18n, err := os.ReadFile(filepath.Join("..", "..", "web", "assets", "js", "util", "i18n.js"))
 	if err != nil {
 		t.Fatalf("os.ReadFile(i18n.js): %v", err)
@@ -25,8 +52,13 @@ func TestEveryProblemCodeIsTranslated(t *testing.T) {
 	for _, m := range regexp.MustCompile(`(?m)^\s+(\w+):`).FindAllStringSubmatch(block, -1) {
 		translated[m[1]] = true
 	}
+	return translated
+}
 
-	// Codes written as literals: domain.Invalid, writeError and auth.
+// serverCodes returns the problem codes the server can send, as written in
+// its sources: by domain.Invalid, writeError and auth.
+func serverCodes(t *testing.T) map[string]bool {
+	t.Helper()
 	literal := regexp.MustCompile(`Invalid\("(\w+)"|writeError\(w, [^,]+, "(\w+)"|Code:\s+"(\w+)"`)
 	codes := map[string]bool{}
 	for _, src := range serverSources(t) {
@@ -39,11 +71,7 @@ func TestEveryProblemCodeIsTranslated(t *testing.T) {
 	}
 	// A generic fallback for errors that are not problems.
 	delete(codes, "error")
-	for code := range codes {
-		if !translated[code] {
-			t.Errorf("code %q has no German message in i18n.js", code)
-		}
-	}
+	return codes
 }
 
 // Every template of domain.Invalid is an error string: it starts in lower

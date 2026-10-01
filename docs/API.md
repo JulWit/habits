@@ -49,7 +49,8 @@ The client translates by `code` (`DE_ERRORS` in `i18n.js`) and fills in
 upper case. A new validation error uses `domain.Invalid(code, template,
 params...)` with a template in lower case and without a trailing full stop, as
 it is an error string, and needs an entry in `DE_ERRORS`;
-`TestEveryProblemCodeIsTranslated` checks that every code has one.
+`TestEveryProblemCodeIsTranslated` checks that every code has one, and
+`TestEveryTranslatedCodeIsSent` that no message outlives its code.
 
 ## `/api/state`
 

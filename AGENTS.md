@@ -111,8 +111,9 @@ asked.
   the import accepts only its own version.
 - **Errors** are created with `domain.Invalid(code, template, params...)`. Each
   new `code` needs a German entry in `DE_ERRORS` in
-  `web/assets/js/util/i18n.js`; `TestEveryProblemCodeIsTranslated` enforces
-  this.
+  `web/assets/js/util/i18n.js`, and a removed one takes its entry along;
+  `TestEveryProblemCodeIsTranslated` and `TestEveryTranslatedCodeIsSent`
+  enforce this.
 - **UI text** is written in English and wrapped in `t('...')`; the English text
   is the key. Add the German translation to `DE` in `i18n.js`.
 - **Writing endpoints** require `Content-Type: application/json` (CSRF

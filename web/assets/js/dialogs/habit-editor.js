@@ -16,17 +16,28 @@ import {computed, nextTick, onMounted, reactive, ref, watch} from '../vue.js';
 import {openCategoryPicker} from './category-picker.js';
 
 /**
- * Each measured kind has its own target and step field, so switching the kind
- * keeps what was typed for the others. Targets are prefilled with a default;
- * an empty step field means the kind's default step. `min` is the smallest
- * target, except for a limit, which may be 0 ("none at all").
- * @const {!Object<string, {defaultTarget: number, min: string, max: string}>}
+ * The default targets of the measured kinds, in input units. Each measured
+ * kind has its own target and step field, so switching the kind keeps what
+ * was typed for the others; an empty step field means the kind's default step.
+ * @const {!Object<string, number>}
  */
-const KIND_FIELDS = {
-  count: {defaultTarget: 8, min: '0.1', max: '1000'},
-  time: {defaultTarget: 20, min: '0.1', max: '1440'},
-  distance: {defaultTarget: 5, min: '0.001', max: '200'},
+const DEFAULT_TARGETS = {
+  count: 8,
+  time: 20,
+  distance: 5,
 };
+
+/**
+ * Returns the range of a target or step of `kind` in input units, from the
+ * server's description of the kind (state.kinds): one stored unit up to the
+ * kind's maximum. A limit may also be 0 ("none at all").
+ * @param {string} kind
+ * @return {{min: string, max: string}}
+ */
+function bounds(kind) {
+  const {scale, max} = state.kinds[kind];
+  return {min: String(1 / scale), max: String(max / scale)};
+}
 
 /**
  * Labels of the target fields, as a target and as a limit.
@@ -198,7 +209,7 @@ function collect() {
 
   // Typed values are converted to stored units. An empty step field sends 0,
   // i.e. the kind's default step.
-  if (KIND_FIELDS[kind]) {
+  if (kind in DEFAULT_TARGETS) {
     const scale = habitHelpers.scale(kind);
     input.targetValue = Math.round(Number(form.targets[kind]) * scale);
     input.stepValue = Math.round(Number(form.steps[kind]) * scale);
@@ -307,11 +318,10 @@ export async function openEditor(habit, handler, createCategory) {
   form.categoryId = habit?.categoryId ?? '';
   form.kind = habit?.kind ?? 'check';
   form.targetType = schedule?.targetType === 'at_most' ? 'at_most' : 'at_least';
-  for (const [kind, fields] of Object.entries(KIND_FIELDS)) {
+  for (const [kind, defaultTarget] of Object.entries(DEFAULT_TARGETS)) {
     const scale = habitHelpers.scale(kind);
     const own = habit?.kind === kind;
-    form.targets[kind] =
-        own ? schedule.targetValue / scale : fields.defaultTarget;
+    form.targets[kind] = own ? schedule.targetValue / scale : defaultTarget;
     form.steps[kind] = own && habit.stepValue ? habit.stepValue / scale : '';
   }
   form.unit = habit?.kind === 'count' ? habit.unit : '';
@@ -445,7 +455,7 @@ export const TheHabitEditor = {
       countsDays,
       KINDS,
       FREQUENCIES,
-      KIND_FIELDS,
+      bounds,
       WEEKDAY_SHORT,
       WEEKDAY_LONG,
       colorValue,
@@ -619,8 +629,8 @@ export const TheHabitEditor = {
                 v-model="form.targets.count"
                 name="targetCount"
                 type="number"
-                :min="limit ? '0' : KIND_FIELDS.count.min"
-                max="1000"
+                :min="limit ? '0' : bounds('count').min"
+                :max="bounds('count').max"
                 step="any"
                 inputmode="decimal"
               >
@@ -647,8 +657,8 @@ export const TheHabitEditor = {
                 v-model="form.steps.count"
                 name="stepCount"
                 type="number"
-                min="0.1"
-                max="1000"
+                :min="bounds('count').min"
+                :max="bounds('count').max"
                 step="any"
                 :placeholder="t('e.g. 1')"
                 inputmode="decimal"
@@ -666,8 +676,8 @@ export const TheHabitEditor = {
                   v-model="form.targets.time"
                   name="targetTime"
                   type="number"
-                  :min="limit ? '0' : KIND_FIELDS.time.min"
-                  max="1440"
+                  :min="limit ? '0' : bounds('time').min"
+                  :max="bounds('time').max"
                   step="any"
                   inputmode="decimal"
                 >
@@ -678,8 +688,8 @@ export const TheHabitEditor = {
                   v-model="form.steps.time"
                   name="stepTime"
                   type="number"
-                  min="0.1"
-                  max="1440"
+                  :min="bounds('time').min"
+                  :max="bounds('time').max"
                   step="any"
                   :placeholder="t('e.g. 5')"
                   inputmode="decimal"
@@ -699,8 +709,8 @@ export const TheHabitEditor = {
                   v-model="form.targets.distance"
                   name="targetDistance"
                   type="number"
-                  :min="limit ? '0' : KIND_FIELDS.distance.min"
-                  max="200"
+                  :min="limit ? '0' : bounds('distance').min"
+                  :max="bounds('distance').max"
                   step="any"
                   inputmode="decimal"
                 >
@@ -711,8 +721,8 @@ export const TheHabitEditor = {
                   v-model="form.steps.distance"
                   name="stepDistance"
                   type="number"
-                  min="0.001"
-                  max="200"
+                  :min="bounds('distance').min"
+                  :max="bounds('distance').max"
                   step="any"
                   :placeholder="t('e.g. 0.5')"
                   inputmode="decimal"

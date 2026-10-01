@@ -16,7 +16,7 @@
 | Edit a habit | Pencil in the title bar of its detail view |
 | Archive, reactivate or delete a habit | Menu (⋮) of its detail view |
 | Day statistics | Click the day summary above the board |
-| Search habits and categories | Magnifier in the header, `/` or `Ctrl+K` |
+| Search habits and categories | Magnifier in the header, `/` or `Ctrl+K`; finds archived habits too |
 | Settings | Gear in the header |
 | Assign or create a category | "Category" field in the habit editor |
 | Edit or delete a category | Click the category heading, then "Edit" or "Delete" |

@@ -423,17 +423,18 @@ export function archivedCount() {
 /**
  * Returns the habits shown on the overview grouped by category in display
  * order, followed by the uncategorised habits. Habits of deleted categories
- * count as uncategorised. Archived habits are left out unless the
- * showArchived setting is on.
+ * count as uncategorised. Archived habits are included if `archived` is set,
+ * by default if the showArchived setting is on.
+ * @param {{archived: (boolean|undefined)}=} options
  * @return {!Array<!Block>}
  */
-export function groupedHabits() {
+export function groupedHabits({archived = state.settings.showArchived} = {}) {
   const blocks = state.categories.map((category) => ({category, habits: []}));
   const byId = new Map(blocks.map((b) => [b.category.id, b]));
   const loose = {category: null, habits: []};
 
   for (const habit of state.habits) {
-    if (habit.archivedAt && !state.settings.showArchived) continue;
+    if (habit.archivedAt && !archived) continue;
     (byId.get(habit.categoryId) ?? loose).habits.push(habit);
   }
   if (loose.habits.length > 0) blocks.push(loose);

@@ -50,12 +50,13 @@ export function openSearch() {
 }
 
 /**
- * Returns all searchable entries in board order.
+ * Returns all searchable entries in board order. Archived habits are included
+ * even while the board hides them, as the search is a way to find them.
  * @return {!Array<!SearchEntry>}
  */
 function candidates() {
   const out = [];
-  for (const {category, habits} of groupedHabits()) {
+  for (const {category, habits} of groupedHabits({archived: true})) {
     if (category) out.push({kind: 'category', item: category, habits});
     for (const habit of habits) {
       out.push({kind: 'habit', item: habit, category});

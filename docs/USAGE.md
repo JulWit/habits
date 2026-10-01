@@ -11,7 +11,11 @@
 | Select a day | Click the day in the day header; click today to go back |
 | Back to today | Floating button at the bottom of the screen |
 | Show only open habits | Filter in the header |
-| New habit | `N` |
+| New habit | `+` in the header or `N` |
+| Open a habit's detail view | Click its name on the board |
+| Edit a habit | Pencil in the title bar of its detail view |
+| Archive, reactivate or delete a habit | Menu (⋮) of its detail view |
+| Day statistics | Click the day summary above the board |
 | Search habits and categories | Magnifier in the header, `/` or `Ctrl+K` |
 | Settings | Gear in the header |
 | Assign or create a category | "Category" field in the habit editor |
@@ -21,6 +25,46 @@
 | Skip several days (holiday, illness) | Settings → "Skip days" for all habits; "Skip days…" in the menu of a habit's detail view for one or all |
 | Show an earlier year in the detail view | Arrows beside the heatmap's year |
 | Import, export or delete all data | Settings → "Data" |
+
+**Habit editor**: A habit has a name, an icon, a colour and optionally a
+category. "Kind" chooses what a day records: "Check" (done or not), "Count"
+with a unit of your own (e.g. glasses), "Time" in minutes or "Distance" in
+kilometres. For the measured kinds, "Step" is what one tap adds and "Goal"
+chooses a target or a limit (see "Limits" below). "Frequency" is
+"Daily", "Times per week", "Times per month", "Weekdays" (every week, every
+few weeks, or one occurrence in the month such as the first Monday) or
+"Custom interval" (every few days from a starting day). A changed target or
+frequency applies from today on; "Apply to past days as well" applies it to
+the whole history. Changing the kind converts the recorded days. See
+[DATAMODEL.md](DATAMODEL.md#habits).
+
+**Archiving**: An archived habit keeps its history but leaves the board, the
+day statistics and "Skip days" for all habits. Settings → "Archive" shows
+archived habits on the board again; their detail view offers "Reactivate".
+Deleting a habit removes it with its history; undo brings it back.
+
+**Views**: Besides the board there are three views, each with an address of
+its own, so the browser's back button closes them:
+
+- The **detail view** of a habit (`#/habit/{id}`): streaks, completion rate
+  and total, a heatmap of the year, its values summed per day, week or month
+  with a cumulative chart, and the details of its schedule, earlier ones
+  included.
+- The **category view** (`#/category/{id}`), opened from the category
+  heading: the progress, perfect days and current streak of its habits, a
+  heatmap of the year and the list of its habits.
+- The **day statistics** (`#/days`), opened from the day summary: perfect
+  days and streaks over all habits that are not archived, a heatmap of the
+  year and the rates by weekday and month.
+
+`#/styleguide` shows the building blocks of the interface, for development.
+
+**Offline**: The app can be installed from the browser and starts without a
+connection, with the data last loaded. Values recorded offline are shown as
+pending, wait on the device and are sent once the connection is back; the
+header shows how many are waiting. Everything else (skipping days, editing
+habits and categories, settings, undo) needs a connection. See
+[DATAFLOW.md](DATAFLOW.md#offline).
 
 **Active day**: The board has one active day, today by default. The day
 marker in the header, the band in the cards, the day summary, the categories'

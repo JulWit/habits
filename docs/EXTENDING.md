@@ -44,12 +44,43 @@ streaks use.
 A dictionary in `i18n.js`, an entry under `"language"` in `options`
 (`internal/settings/settings.go`) and the day and month names in `dates.js`.
 
+## New icon
+
+Add its name to `habitIcons` in `internal/domain/habit.go`, at the place the
+editor should offer it, and its drawing to `HABIT_ICONS` in
+`web/assets/js/ui/icons.js`. Its English name for screen readers and tooltips
+goes into `ICON_LABELS` there, with the German one in `DE` in `i18n.js`. The
+client receives the list via `icons` in the state.
+
+## New colour
+
+Add its name to `colors` in `internal/domain/habit.go`, its shade as
+`--c-<name>` in `web/assets/css/base.css`, and its English name to
+`COLOR_LABELS` in `icons.js`, with the German one in `DE` in `i18n.js`. The
+client receives the palette via `colors` in the state. No migration is
+needed, as habits and categories store the name (see
+[DATAMODEL.md](DATAMODEL.md#colours)).
+
 ## New validation error
 
 Use `domain.Invalid(code, template, params...)` and add an entry to
 `DE_ERRORS` in `i18n.js`; `TestEveryProblemCodeIsTranslated` checks that every
 code has one. The template is an error string: lower case and without a
 trailing full stop. The client capitalises it when it shows it.
+
+## New endpoint
+
+1. Route in `New` in `internal/httpapi/server.go`, wrapped in `withUser`
+2. Handler in the `handlers_*.go` file of the data it serves (see
+   [STRUCTURE.md](STRUCTURE.md)): decode the body with `decodeJSON`, which
+   also enforces `Content-Type: application/json`, and work in one
+   `store.View` or `store.Update`
+3. Errors as `domain.Invalid` (see below) or through `writeStoreError`
+4. A change that can be undone: see [Undo for a new action](#undo-for-a-new-action)
+5. A method in the `api` object of `web/assets/js/data/api.js`; data changes
+   go through `actions.js`
+6. A row in the table of [API.md](API.md#endpoints), and in
+   [STRUCTURE.md](STRUCTURE.md) if it gets a file of its own
 
 ## New setting
 

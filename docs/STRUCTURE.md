@@ -1,12 +1,37 @@
 # Structure
 
 ```
-main.go                     Startup, signal handling, embedded frontend
+main.go                     Startup, signal handling, embedded frontend; the
+                            subcommands healthcheck and move-user
 internal/config             Configuration from environment variables
 internal/auth               User identification (single-user or trusted headers)
-internal/domain             Habits, schedules, day statuses, streaks, statistics (no I/O)
+internal/domain             The rules of the tracker (no I/O)
+  habit.go                    Habit, kinds, frequencies, colours and icons; validation
+  edit.go                     HabitEdit: creating and editing a habit, archiving
+  schedule.go                 Schedule versions and which days they make due
+  entry.go                    A day's entry: value or skip
+  period.go                   Weeks and months of times-per-week/-month habits
+  status.go                   The status of each day (DayStatus)
+  streak.go                   Streak runs
+  stats.go                    A habit's statistics: streaks, completion rate, total
+  daystats.go                 Day statistics over many habits
+  totals.go                   A habit's values summed per day, week or month
+  convert.go                  Converting the history to another kind
+  category.go                 Category and CategoryEdit
+  date.go                     Date without time of day
+  problem.go                  Validation errors with a code (Problem)
 internal/settings           User settings: defaults, options and rules
 internal/store              SQLite: transactions, schema, migrations, undo steps
+  store.go                    Opening the database, transactions per user (View,
+                              Update), users, IDs
+  schema.go                   Schema of new databases and the migrations
+  habits.go                   Habits
+  schedules.go                Schedule versions of the habits
+  entries.go                  Entries
+  categories.go               Categories
+  reorder.go                  Saving the order of habits and categories
+  settings.go                 Settings
+  changes.go                  Undo steps: watching the rows a change writes, undo, redo
 internal/httpapi            Routing, JSON API, frontend delivery
   server.go                   Routes of all endpoints, middleware, GET /, the
                               assets and GET /healthz
@@ -28,11 +53,23 @@ scripts/firefox_test.py     Tests the frontend in Firefox with mouse, keyboard a
 scripts/format_templates.py Formats the Vue templates (Vue style guide)
 scripts/format_css.py       Formats the stylesheets (Google HTML/CSS style guide)
 .clang-format               Formatting of the frontend JS (Google style)
+Dockerfile                  Container image: cross-compiled binary on scratch
+.github/workflows/image.yml Tests, then builds and publishes the image (see DEPLOYMENT.md)
+.github/dependabot.yml      Weekly updates of Go modules and GitHub Actions
+docs/                       This documentation
 web/                        Frontend (Vue, ES modules, no build step)
   index.html                  App shell, rendered as a Go template: the appearance
                               settings on <html> and the element Vue mounts into
+  manifest.webmanifest        Web app manifest; served with the colours of the
+                              user's theme (manifest.go)
   sw.js                       Service worker for offline start
-  assets/css/                 Design tokens, components, forms, fonts
+  assets/css/
+    base.css                    Design tokens (colours, palette, density), layout,
+                                buttons, background patterns
+    forms.css                   Dialogs, pages, settings and form controls
+    components.css              Board, detail views, heatmap, charts, toasts,
+                                tooltips, search, reordering
+    fonts.css                   @font-face rules of the embedded fonts
   assets/fonts/               Embedded woff2 fonts and their licences
   assets/images/              App icon (SVG and PNG), the chevron of dropdowns and
                               the grain pattern

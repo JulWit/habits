@@ -83,6 +83,31 @@ minimum (see [DATAMODEL.md](DATAMODEL.md#frequencies)). The client describes
 the target of a day from them. `PATCH /api/habits/{id}` accepts `targetValue`,
 `targetType` and `frequency` to change the current schedule.
 
+`POST /api/habits` and `PATCH /api/habits/{id}` take the same body
+(`domain.HabitEdit`); a field left out stays as it is. Creating needs `name`,
+`kind` and `frequency`; the target defaults to 1, and the first schedule
+starts today. Values are in stored units (see
+[DATAMODEL.md](DATAMODEL.md#kinds)):
+
+```json
+{"name": "Drink water", "color": "sky", "icon": "droplet", "kind": "count",
+ "categoryId": "", "stepValue": 10, "unit": "glasses",
+ "targetValue": 80, "targetType": "at_least",
+ "frequency": {"kind": "weekdays", "weekdays": 31, "weekInterval": 1,
+               "weekOfMonth": 0, "anchorDate": "", "timesPerWeek": 0,
+               "timesPerMonth": 0, "timesAtMost": false, "intervalDays": 0}}
+```
+
+`categoryId: ""` and `icon: ""` remove the category and the icon.
+`weekdays` is a bitmask (bit 0 = Monday), `weekOfMonth` 1 to 4, -1 for the
+last, or 0 for every occurrence. `retroactive` only matters when editing;
+`archived` archives or reactivates. Creating answers 201, editing 200, both
+with the habit as
+`GET /api/habits/{id}` sends it.
+
+`POST /api/habits/reorder` and `POST /api/categories/reorder` take
+`{"ids": ["…"]}` and answer 204.
+
 Each habit also carries the status of each day as `days`, one character per
 day from `daysFrom` up to one year ahead (see
 [DATAFLOW.md](DATAFLOW.md#day-statuses)), the values of its days as `entries`
@@ -108,6 +133,52 @@ the `rateWindow` setting, the total and `lastDone`, the latest complete day.
 The answer is the habit with its full history, as `GET /api/habits/{id}`
 sends it: an entry before the history's start moves it, which can change the
 status of other days too.
+
+## Categories
+
+`POST /api/categories` and `PATCH /api/categories/{id}` take
+`domain.CategoryEdit`; a field left out stays as it is, and creating needs a
+`name`:
+
+```json
+{"name": "Health", "icon": "heart", "color": "red", "showProgress": true}
+```
+
+`icon: ""` removes the icon, `color: ""` resets it to the default colour.
+Creating answers 201, editing 200, both with the category.
+
+## Settings
+
+`GET /api/settings` answers with all settings (see
+[USAGE.md](USAGE.md#settings)). `PATCH /api/settings` takes the settings to
+change, e.g. `{"theme": "dark"}`, and answers with all of them. An unknown
+setting or a value of the wrong type is 400 `invalid_body`, an invalid value
+422.
+
+## Export and import
+
+`GET /api/export` sends a file named `habits-YYYY-MM-DD.json`, and
+`POST /api/import` takes the same document:
+
+```json
+{"format": "habits", "version": 2, "exportedAt": "2026-10-01T08:00:00Z",
+ "categories": [{"key": "…", "name": "Health", "icon": "heart",
+                 "color": "red", "showProgress": true}],
+ "habits": [{"name": "Drink water", "color": "sky", "icon": "droplet",
+             "kind": "count", "category": "…", "stepValue": 10,
+             "unit": "glasses", "archived": false,
+             "createdAt": "2026-01-01T07:00:00Z",
+             "schedules": [{"from": "2026-01-01", "targetValue": 80,
+                            "targetType": "at_least", "frequency": {…}}],
+             "entries": {"2026-01-01": 80}, "skipped": ["2026-01-02"]}]}
+```
+
+`key` identifies a category within the file, and a habit's `category` refers
+to it (`""` for none). `entries` holds the value of each day with one,
+`skipped` the skipped days; values are in stored units. A file of another
+`format` or `version` is 422 `import_format`. The import answers with the
+numbers of `habits` and `categories` added and of the habits `skipped`, as
+one of that name exists.
 
 ## Skipping days
 

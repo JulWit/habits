@@ -107,6 +107,26 @@ The state replaces a habit object on every change instead of changing it in
 place, so the board, which memoises its rows by their habit (`v-memo`), only
 renders the rows of the habits that changed.
 
+## Other changes
+
+Every other change also goes through `actions.js`, but nothing is shown
+before the server has answered, and nothing waits in the outbox:
+
+- **Habits and categories**: the editor sends its input and stays open until
+  the answer arrives; an error is shown in the dialog. The answer is the
+  saved habit (with its full history) or category, which replaces the one in
+  the state (`upsertHabit`, `upsertCategory`). Deleting removes it from the
+  state once the server has confirmed it.
+- **Skipping days, undo and import**: they can change many habits at once,
+  so the client reloads the state afterwards.
+- **Order and settings**: the new order or setting is shown at once and put
+  back if the server rejects it. A change of the time zone or of the
+  completion rate's window reloads the state, as it changes the statuses and
+  statistics.
+
+A change that can be undone is offered for undo in a toast (see
+[Undo](#undo)).
+
 ## Undo
 
 The server keeps the undo steps (`internal/store/changes.go`). An `Update`

@@ -9,7 +9,7 @@ the relevant file before changing an area:
 - `docs/DATAFLOW.md`: how client and server exchange data, undo, offline
 - `docs/DATAMODEL.md`: the tables, kinds, frequencies, schedules, streaks
 - `docs/API.md`: endpoints and error format
-- `docs/EXTENDING.md`: checklists for new fields, kinds, settings, migrations
+- `docs/EXTENDING.md`: checklists for new fields, kinds, endpoints, settings, migrations
 
 ## Principles
 

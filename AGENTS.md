@@ -7,7 +7,7 @@ the relevant file before changing an area:
 
 - `docs/STRUCTURE.md`: where things live
 - `docs/DATAFLOW.md`: how client and server exchange data, undo, offline
-- `docs/DATAMODEL.md`: kinds, frequencies, schedules, streaks, schema
+- `docs/DATAMODEL.md`: the tables, kinds, frequencies, schedules, streaks
 - `docs/API.md`: endpoints and error format
 - `docs/EXTENDING.md`: checklists for new fields, kinds, settings, migrations
 

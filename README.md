@@ -34,7 +34,7 @@ see [Deployment](docs/DEPLOYMENT.md).
 | [BUILDING.md](docs/BUILDING.md) | Building, tests, cross-compiling, version stamping |
 | [DEPLOYMENT.md](docs/DEPLOYMENT.md) | Environment variables, container image, authentication through a reverse proxy |
 | [USAGE.md](docs/USAGE.md) | Controls, shortcuts, active day, settings |
-| [DATAMODEL.md](docs/DATAMODEL.md) | Categories, kinds, frequencies, schedules, streaks, database schema |
+| [DATAMODEL.md](docs/DATAMODEL.md) | Tables with a schema diagram, kinds, frequencies, schedules, streaks |
 | [API.md](docs/API.md) | HTTP endpoints, error format, state contents |
 | [DATAFLOW.md](docs/DATAFLOW.md) | How data moves between client and server, undo, offline outbox |
 | [STRUCTURE.md](docs/STRUCTURE.md) | Code layout of the Go packages and the frontend |

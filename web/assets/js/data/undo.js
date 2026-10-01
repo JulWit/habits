@@ -44,6 +44,21 @@ export function redoLast() {
 }
 
 /**
+ * Undoes the step `id` for a page, which covers the toasts and shows the
+ * outcome itself: without a toast, throwing the error. The state is reloaded
+ * either way, as a step whose data was changed since is dropped.
+ * @param {number} id
+ * @return {!Promise<void>}
+ */
+export async function undoOnPage(id) {
+  try {
+    await api.undo(id);
+  } finally {
+    await refresh();
+  }
+}
+
+/**
  * Undoes the step `id` (0 for the latest) and offers to redo it.
  * @param {number} id
  * @return {!Promise<void>}

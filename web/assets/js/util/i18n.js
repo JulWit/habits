@@ -279,6 +279,8 @@ const DE = {
   'Adds the habits of an exported file with their history. Habits whose name already exists are skipped; categories of the same name are shared.':
       'Fügt die Gewohnheiten einer exportierten Datei mit ihrem Verlauf hinzu. Gewohnheiten, deren Name schon existiert, werden übersprungen; gleichnamige Kategorien werden gemeinsam genutzt.',
   'Import habits': 'Gewohnheiten importieren',
+  'Undo import': 'Import rückgängig machen',
+  'The import was undone.': 'Der Import wurde rückgängig gemacht.',
   'The file is not an export of the habits.':
       'Die Datei ist kein Export der Gewohnheiten.',
   '1 habit imported.': '1 Gewohnheit importiert.',

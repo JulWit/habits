@@ -110,7 +110,8 @@ undo history.
 
 **Export and import**: The export holds the habits with their schedules and
 recorded days, and the categories; importing it restores them, on this server
-or another. It is a backup of everything except the settings.
+or another. It is a backup of everything except the settings. After an
+import, "Undo import" next to its result takes it back.
 
 ## Settings
 

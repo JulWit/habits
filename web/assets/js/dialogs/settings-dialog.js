@@ -9,6 +9,7 @@ import {api} from '../data/api.js';
 import {refresh} from '../data/loader.js';
 import {forget} from '../data/outbox.js';
 import {archivedCount, replaceState, state} from '../data/state.js';
+import {undoOnPage} from '../data/undo.js';
 import {AppColorSwatches, NEUTRAL} from '../ui/icons.js';
 import {openPage, topPage} from '../ui/page-stack.js';
 import {factItem} from '../ui/stat-panels.js';
@@ -271,6 +272,8 @@ export const TheSettingsDialog = {
     const importing = ref(false);
     const deleting = ref(false);
     const importResult = ref('');
+    // The undo step of the last import, 0 if there is none to offer.
+    const importChange = ref(0);
     // The sliders' values while they move, before they are saved.
     const preview = reactive({bandOpacity: null, bandFillOpacity: null});
 
@@ -393,6 +396,7 @@ export const TheSettingsDialog = {
       importInput.value.value = '';
       if (!file) return;
       importResult.value = '';
+      importChange.value = 0;
 
       let data;
       try {
@@ -406,6 +410,8 @@ export const TheSettingsDialog = {
         const counts = await api.importHabits(data);
         error.message = '';
         importResult.value = importSummary(counts);
+        // No step if every habit was skipped.
+        importChange.value = counts.changeId ?? 0;
         await refresh();
       } catch (err) {
         const message = errorText(err);
@@ -414,6 +420,21 @@ export const TheSettingsDialog = {
         report(name ? t('"{name}": {message}', {name, message}) : message);
       } finally {
         importing.value = false;
+      }
+    };
+
+    /**
+     * Undoes the last import. The page covers the toasts, so it says itself
+     * how the undo went.
+     */
+    const undoImport = async () => {
+      const id = importChange.value;
+      importChange.value = 0;
+      try {
+        await undoOnPage(id);
+        importResult.value = t('The import was undone.');
+      } catch (err) {
+        report(errorText(err));
       }
     };
 
@@ -459,11 +480,13 @@ export const TheSettingsDialog = {
       importing,
       deleting,
       importResult,
+      importChange,
       NEUTRAL,
       save: saveSetting,
       saveTimeZone,
       exportHabits,
       importFile,
+      undoImport,
       askToDeleteAll,
       deleteAll,
       timeZoneText,
@@ -999,6 +1022,14 @@ export const TheSettingsDialog = {
         >
           {{ importResult }}
         </p>
+        <button
+          v-if="importChange"
+          type="button"
+          class="button"
+          @click="undoImport"
+        >
+          {{ t('Undo import') }}
+        </button>
       </div>
       <div class="field">
         <span class="field-label">{{ t('Delete') }}</span>

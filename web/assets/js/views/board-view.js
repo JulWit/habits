@@ -1154,7 +1154,7 @@ export const TheBoardView = {
             class="board-view-month-label"
             :class="{'has-divider': month.start > 0}"
             :title="month.title"
-            :style="{'grid-column': month.column, 'grid-row': '1'}"
+            :style="{'grid-column': month.column}"
           >
             {{ month.name }}
           </div>
@@ -1167,7 +1167,7 @@ export const TheBoardView = {
             :active="active"
             selectable
             :class="{'is-month-start': i > 0 && dayOfMonth(iso) === 1}"
-            :style="{'grid-column': String(i + 2), 'grid-row': '2'}"
+            :style="{'grid-column': String(i + 2)}"
             @click="selectDay(iso)"
           />
         </div>

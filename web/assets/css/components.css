@@ -30,8 +30,8 @@
   border: 1px solid transparent;
   border-radius: var(--radius-sm);
   font-size: var(--text-base);
-  /* Left padding leaves room for the magnifier. */
-  padding: calc(0.6 * var(--space)) calc(0.7 * var(--space)) calc(0.6 * var(--space)) calc(0.7 * var(--space) + 1.6rem);
+  /* Room for the magnifier on the left and for .search-clear on the right. */
+  padding: calc(0.6 * var(--space)) 2.6rem calc(0.6 * var(--space)) calc(0.7 * var(--space) + 1.6rem);
   width: 100%;
 }
 
@@ -44,14 +44,10 @@
 }
 
 /* The browser's clear button is replaced by .search-clear, as Firefox has
-   none. Room on the right for it. */
+   none. */
 .search-input::-webkit-search-cancel-button {
   -webkit-appearance: none;
   appearance: none;
-}
-
-.search-input {
-  padding-right: 2.6rem;
 }
 
 .search-clear {
@@ -527,21 +523,17 @@ html[data-scrolled='on'] .board-view-day-header-backdrop {
 }
 
 /* Today's summary between the day header and the first card, as wide as a card
-   surface. */
+   surface. It opens the day statistics. */
 .board-day-summary {
   align-items: center;
   background: var(--surface);
   border-radius: var(--radius);
+  cursor: pointer;
   display: flex;
   gap: var(--space);
   justify-content: space-between;
   margin: 0 calc(var(--tools-outset) + 1px) 0 1px;
   padding: calc(0.7 * var(--space)) calc(var(--block-pad-x) + 0.55 * var(--space));
-}
-
-/* Opens the day statistics. */
-.board-day-summary {
-  cursor: pointer;
   transition: var(--fill-fade);
 }
 
@@ -708,6 +700,16 @@ html[data-scrolled='on'] .board-view-day-header-backdrop {
   font-size: var(--text-sm);
   margin: 0;
   padding: calc(0.35 * var(--space)) calc(0.55 * var(--space)) calc(0.8 * var(--space));
+}
+
+/* The two rows of the day header: the month labels above the dates. Their
+   columns are set in the template, as they depend on the days shown. */
+.board-view-day-header > .board-view-month-label {
+  grid-row: 1;
+}
+
+.board-view-day-header > .board-head-day {
+  grid-row: 2;
 }
 
 /* Month label above the dates, spanning the month's columns. */
@@ -1439,7 +1441,9 @@ html[data-filtering='on'] {
 }
 
 .app-bar-title .app-bar-sub {
+  color: var(--text-muted);
   flex: 1 1 0;
+  font-size: var(--text-sm);
   min-width: 0;
 }
 
@@ -1457,11 +1461,6 @@ html[data-filtering='on'] {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.app-bar-title .app-bar-sub {
-  color: var(--text-muted);
-  font-size: var(--text-sm);
 }
 
 .app-bar-actions {

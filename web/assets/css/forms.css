@@ -788,23 +788,20 @@ html:has(.dialog.page[open]) {
 }
 
 @media (max-width: 40rem) {
-  /* Narrower columns. The name column keeps at least 120px even on a tight
-     board; the day columns shrink first (see board-view.js). */
   :root {
+    /* Narrower columns. The name column keeps at least 120px even on a tight
+       board; the day columns shrink first (see board-view.js). */
     --cell: 34px;
     --label-min: 120px;
     --label-tight-min: 120px;
     --topbar-row: calc(2.25rem + 0.85 * var(--space));
-  }
-
-  /* Narrow page gutter and card padding, so the room goes to the names. The
-     smaller corner radius on the board keeps the today band clear of the
-     rounded corners at 8px padding. */
-  :root {
+    /* Narrow page gutter and card padding, so the room goes to the names. */
     --gutter: 8px;
     --block-pad-x: 8px;
   }
 
+  /* The smaller corner radius on the board keeps the today band clear of the
+     rounded corners at 8px card padding. */
   .board-view-grid {
     --radius: 10px;
   }

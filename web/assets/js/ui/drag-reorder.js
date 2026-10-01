@@ -4,11 +4,19 @@
  * dragging; settle() compensates the resulting layout jump. When the drag ends,
  * the element goes back to where it was and the new order is reported: the list
  * is rendered by Vue, which moves the elements itself and must find them where
- * it left them. Its user keeps the list from changing during a drag.
+ * it left them. Its user keeps the list from changing during a drag. Near the
+ * top or bottom of the window, the page scrolls along, so an entry can be
+ * moved past the visible part of a long list.
  */
 
 /** Minimum pointer movement in pixels before a press starts a drag. */
 const THRESHOLD = 4;
+
+/** Distance from the window's top or bottom edge, in px, that scrolls. */
+const EDGE = 56;
+
+/** Scroll per frame at the very edge, in px; less further in. */
+const MAX_SCROLL = 14;
 
 /**
  * Enables drag-and-drop reordering of the entries of `container` that match
@@ -29,17 +37,21 @@ const THRESHOLD = 4;
 export function enableDragReorder(
     {container, item, handle, key, onStart, onDrop, onCancel}) {
   /**
-   * The drag in progress, from the press on a handle on. `order`, `list` and
-   * `anchor` are set once the pointer has moved far enough to start it.
+   * The drag in progress, from the press on a handle on. `startY` is where it
+   * started on the page, `pointerY` where the pointer is in the window.
+   * `order`, `list` and `anchor` are set once the pointer has moved far enough
+   * to start it; `frame` is the request of the scrolling near the edges.
    * @type {?{
    *   element: !HTMLElement,
    *   grip: !Element,
    *   pointerId: number,
    *   startY: number,
+   *   pointerY: number,
    *   active: boolean,
    *   order: (!Array<!HTMLElement>|undefined),
    *   list: (!HTMLElement|undefined),
    *   anchor: (?Node|undefined),
+   *   frame: (number|undefined),
    * }}
    */
   let drag = null;
@@ -64,7 +76,8 @@ export function enableDragReorder(
       element,
       grip,
       pointerId: event.pointerId,
-      startY: event.clientY,
+      startY: event.clientY + window.scrollY,
+      pointerY: event.clientY,
       active: false,
     };
     // Capture the pointer on the handle. Failing to capture is not fatal, as
@@ -78,11 +91,11 @@ export function enableDragReorder(
 
   container.addEventListener('pointermove', (event) => {
     if (!drag || event.pointerId !== drag.pointerId) return;
-    const dy = event.clientY - drag.startY;
+    drag.pointerY = event.clientY;
 
     if (!drag.active) {
       // Below the threshold, this is a click.
-      if (Math.abs(dy) < THRESHOLD) return;
+      if (Math.abs(offset()) < THRESHOLD) return;
       drag.active = true;
       drag.order = items();
       // The list being reordered, and where the element goes back to.
@@ -90,12 +103,46 @@ export function enableDragReorder(
       drag.anchor = drag.element.nextSibling;
       drag.element.classList.add('is-dragging');
       drag.list.classList.add('is-reordering');
+      drag.frame = requestAnimationFrame(scrollAtEdges);
       onStart?.();
     }
     event.preventDefault();
+    follow();
+  });
+
+  /**
+   * Returns how far the pointer has moved on the page since the drag started,
+   * including what the page has scrolled meanwhile.
+   * @return {number}
+   */
+  const offset = () => drag.pointerY + window.scrollY - drag.startY;
+
+  /** Moves the dragged element with the pointer, past the neighbours. */
+  const follow = () => {
+    const dy = offset();
     drag.element.style.transform = `translateY(${dy}px)`;
     crossNeighbours(dy);
-  });
+  };
+
+  /**
+   * Scrolls the page while the pointer is near the window's top or bottom
+   * edge, the faster the closer, once per frame for as long as the drag lasts.
+   */
+  const scrollAtEdges = () => {
+    if (!drag?.active) return;
+    const y = drag.pointerY;
+    const bottom = window.innerHeight - y;
+    let speed = 0;
+    if (y < EDGE) {
+      speed = -MAX_SCROLL * (1 - Math.max(0, y) / EDGE);
+    } else if (bottom < EDGE) {
+      speed = MAX_SCROLL * (1 - Math.max(0, bottom) / EDGE);
+    }
+    const before = window.scrollY;
+    if (speed !== 0) window.scrollBy(0, speed);
+    if (window.scrollY !== before) follow();
+    drag.frame = requestAnimationFrame(scrollAtEdges);
+  };
 
   for (const type of ['pointerup', 'pointercancel']) {
     container.addEventListener(type, (event) => {
@@ -156,7 +203,8 @@ export function enableDragReorder(
    * @param {boolean} committed
    */
   const finish = (committed) => {
-    const {element, grip, pointerId, active, order, list, anchor} = drag;
+    const {element, grip, pointerId, active, order, list, anchor, frame} = drag;
+    cancelAnimationFrame(frame);
     if (grip.hasPointerCapture?.(pointerId)) {
       grip.releasePointerCapture(pointerId);
     }

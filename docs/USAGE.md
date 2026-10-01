@@ -20,7 +20,7 @@
 | Settings | Gear in the header |
 | Assign or create a category | "Category" field in the habit editor |
 | Edit or delete a category | Click the category heading, then "Edit" or "Delete" |
-| Reorder habits and categories | Settings → "Arrange"; then by drag and drop or with arrow buttons (`reorderMode`). "Finish arranging" at the bottom of the screen ends it |
+| Reorder habits and categories | Settings → "Arrange"; then by drag and drop or with arrow buttons (`reorderMode`). Dragging near the top or bottom edge scrolls the page along. "Finish arranging" at the bottom of the screen ends it |
 | Close the detail view | `Esc` |
 | Skip several days (holiday, illness) | Settings → "Skip days" for all habits; "Skip days…" in the menu of a habit's detail view for one or all |
 | Show an earlier year in a statistics view | Arrows beside the heatmap's year |

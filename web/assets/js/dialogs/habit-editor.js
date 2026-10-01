@@ -608,12 +608,6 @@ export const TheHabitEditor = {
                 <span>{{ t('At most') }}</span>
               </label>
             </div>
-            <p
-              v-if="limit"
-              class="field-hint"
-            >
-              {{ t('A limit is kept on every due day that stays within it, days without an entry included. It needs fixed days, not a number per week or month.') }}
-            </p>
           </fieldset>
           <div
             v-if="form.kind === 'count'"
@@ -660,9 +654,6 @@ export const TheHabitEditor = {
                 inputmode="decimal"
               >
             </label>
-            <p class="field-hint">
-              {{ t('A click on a day changes the entry by this much.') }}
-            </p>
           </div>
           <div
             v-if="form.kind === 'time'"
@@ -695,9 +686,6 @@ export const TheHabitEditor = {
                 >
               </label>
             </div>
-            <p class="field-hint">
-              {{ t('A click on a day changes the entry by this much.') }}
-            </p>
           </div>
           <div
             v-if="form.kind === 'distance'"
@@ -731,9 +719,6 @@ export const TheHabitEditor = {
                 >
               </label>
             </div>
-            <p class="field-hint">
-              {{ t('A click on a day changes the entry by this much.') }}
-            </p>
           </div>
           <fieldset class="field">
             <legend class="field-label">{{ t('Frequency') }}</legend>
@@ -806,9 +791,6 @@ export const TheHabitEditor = {
                 inputmode="numeric"
               >
             </label>
-            <p class="field-hint">
-              {{ t('The week starts on Monday. Which days you pick is up to you.') }}
-            </p>
           </div>
           <div
             v-if="form.freq === 'times_per_month'"
@@ -827,9 +809,6 @@ export const TheHabitEditor = {
                 inputmode="numeric"
               >
             </label>
-            <p class="field-hint">
-              {{ t('Counted per calendar month. Which days you pick is up to you.') }}
-            </p>
           </div>
           <template v-if="form.freq === 'weekdays'">
             <div class="field">
@@ -960,9 +939,6 @@ export const TheHabitEditor = {
               >
               <span>{{ t('Apply to past days as well') }}</span>
             </label>
-            <p class="field-hint">
-              {{ t('Off, the new target and frequency apply from today on. Past days keep the ones they had.') }}
-            </p>
           </div>
           <p
             v-if="error"

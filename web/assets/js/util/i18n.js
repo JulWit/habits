@@ -111,8 +111,6 @@ const DE = {
   'e.g. 1': 'z. B. 1',
   'e.g. 5': 'z. B. 5',
   'e.g. 0.5': 'z. B. 0,5',
-  'A click on a day changes the entry by this much.':
-      'Ein Klick auf einen Tag ändert den Eintrag um so viel.',
   'Daily target in minutes': 'Tagesziel in Minuten',
   'Step in minutes': 'Schritt in Minuten',
   'Daily target in km': 'Tagesziel in km',
@@ -130,19 +128,13 @@ const DE = {
   'Times per month': 'Mal pro Monat',
   'How many times per week': 'Wie oft pro Woche',
   'How many times per month': 'Wie oft pro Monat',
-  'Counted per calendar month. Which days you pick is up to you.':
-      'Gezählt wird je Kalendermonat. Welche Tage du wählst, bleibt dir überlassen.',
   'Number of days': 'Anzahl der Tage',
   'Goal': 'Ziel',
   'At least': 'Mindestens',
   'At most': 'Höchstens',
-  'A limit is kept on every due day that stays within it, days without an entry included. It needs fixed days, not a number per week or month.':
-      'Ein Limit ist an jedem fälligen Tag eingehalten, der darunter bleibt, auch an Tagen ohne Eintrag. Es braucht feste Tage, keine Anzahl pro Woche oder Monat.',
   'Daily limit': 'Tageslimit',
   'Daily limit in minutes': 'Tageslimit in Minuten',
   'Daily limit in km': 'Tageslimit in km',
-  'The week starts on Monday. Which days you pick is up to you.':
-      'Die Woche beginnt am Montag. Welche Tage du wählst, bleibt dir überlassen.',
   'On these days': 'An diesen Tagen',
   'Repeat': 'Wiederholen',
   'Every week': 'Jede Woche',
@@ -183,8 +175,6 @@ const DE = {
   'minutes': 'Minuten',
   'km': 'km',
   'times': 'Mal',
-  'Off, the new target and frequency apply from today on. Past days keep the ones they had.':
-      'Aus: Ziel und Häufigkeit gelten ab heute. Vergangene Tage behalten die bisherigen.',
   'Cancel': 'Abbrechen',
   'Create': 'Anlegen',
   'Save': 'Speichern',

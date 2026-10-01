@@ -40,18 +40,31 @@ let timer = 0;
  */
 let warmUntil = 0;
 
+/**
+ * Follows the title of the element whose title tooltip is shown: a view sets
+ * it again when what the element shows changes, e.g. a day's value, and the
+ * tooltip takes the new text instead of showing the old one.
+ * @type {!MutationObserver}
+ */
+const retitled = new MutationObserver((records) => {
+  for (const {target} of records) {
+    if (target === owner && target.hasAttribute('title')) {
+      showTitle(target);
+    }
+  }
+});
+
 /** Registers the listeners for title tooltips. */
 export function initTooltips() {
   document.addEventListener('pointerover', (event) => {
     if (event.pointerType !== 'mouse') return;
     const el = event.target.closest?.('[title], [data-tooltip]');
     if (!el || el === owner) return;
-    const text = takeTitle(el);
-    if (!text) return;
+    if (!takeTitle(el)) return;
     hideTooltip();
     owner = el;
     /** Shows the tooltip of the element under the pointer. */
-    const show = () => showTooltip(el, text);
+    const show = () => showTitle(el);
     if (performance.now() < warmUntil) {
       show();
     } else {
@@ -75,7 +88,7 @@ export function initTooltips() {
     // In the next task: the focus may come from a closing popover, which
     // returns it to its button, and no popover can open until that is done.
     setTimeout(() => {
-      if (document.activeElement === el) showTooltip(el, text);
+      if (document.activeElement === el) showTitle(el);
     });
   });
 
@@ -122,9 +135,23 @@ export function showTooltip(anchor, content) {
   tip.style.top = `${Math.round(top)}px`;
 }
 
+/**
+ * Shows the title of `el` as its tooltip, with the text it has now, and
+ * follows later changes of it.
+ * @param {!Element} el
+ */
+function showTitle(el) {
+  const text = takeTitle(el);
+  if (!text) return;
+  showTooltip(el, text);
+  retitled.disconnect();
+  retitled.observe(el, {attributes: true, attributeFilter: ['title']});
+}
+
 /** Hides the tooltip, and cancels one that is about to appear. */
 export function hideTooltip() {
   clearTimeout(timer);
+  retitled.disconnect();
   owner = null;
   if (pane?.matches(':popover-open')) {
     pane.hidePopover();

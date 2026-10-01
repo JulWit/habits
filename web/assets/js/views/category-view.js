@@ -1,6 +1,7 @@
 /**
  * @fileoverview Category detail view: its habits and its perfect days, i.e.
- * days on which every scheduled habit of the category was completed.
+ * days on which every scheduled habit of the category was completed, of the
+ * current year or an earlier one.
  */
 
 import * as actions from '../data/actions.js';
@@ -12,24 +13,33 @@ import {openCategoryEditor} from '../dialogs/category-editor.js';
 import {AppBar} from '../ui/app-bar.js';
 import {colorValue, hasHabitIcon} from '../ui/icons.js';
 import {AppFactsPanel, AppStatRow, changedItem, createdItem, factItem, rateLabel} from '../ui/stat-panels.js';
-import {currentYear, sinceLabel} from '../ui/year-grid.js';
+import {hideTooltip} from '../ui/tooltip.js';
+import {AppDayHeatmap, AppYearNav, centreToday, currentYear, initChartTooltips, sinceLabel, streakLabel, yearRange} from '../ui/year-grid.js';
 import * as habitHelpers from '../util/habit-helpers.js';
 import {t} from '../util/i18n.js';
-import {computed} from '../vue.js';
+import {computed, nextTick, onMounted, ref, watch} from '../vue.js';
+
+/**
+ * The year shown, e.g. "2025", and the category it was chosen for. Another
+ * category opens with the current year; the choice is not kept beyond the
+ * session.
+ */
+const shownYear = ref('');
+/** @type {?string} */
+let shownFor = null;
 
 /**
  * Returns the stat tiles from the server's day statistics of the category's
- * habits this year (GET /api/days?category=); dashes until they have arrived.
- * @param {!Category} category
+ * habits in a year (GET /api/days?category=), or dashes until they have
+ * arrived. The rate and the number of habits are those of today.
+ * @param {?Days} s
+ * @param {string} year
  * @return {!Array<!Array<string>>}
  */
-function statTiles(category) {
-  const year = currentYear();
-  const s = remote(
-      `category|${category.id}|${year}`, () => api.days(year, category.id));
+function statTiles(s, year) {
   if (!s) {
     return [
-      [t('Current streak'), '–', 'streak'],
+      [streakLabel(year), '–', 'streak'],
       [
         t('Perfect days {since}', {since: sinceLabel(`${year}-01-01`)}),
         '–',
@@ -43,7 +53,7 @@ function statTiles(category) {
   const {currentStreak, perfect, counted} = s.stats;
   return [
     [
-      t('Current streak'),
+      streakLabel(year),
       currentStreak === 1 ? t('1 day') : t('{n} days', {n: currentStreak}),
       'streak',
     ],
@@ -76,22 +86,63 @@ function shortStreak({currentStreak, streakUnit}) {
  */
 export const TheCategoryView = {
   name: 'TheCategoryView',
-  components: {AppBar, AppFactsPanel, AppStatRow},
+  components: {AppBar, AppDayHeatmap, AppFactsPanel, AppStatRow, AppYearNav},
   /** @return {!Object<string, *>} the bindings of the template */
   setup() {
+    const root = ref(null);
     // Nothing is shown, or loaded, while the view is hidden.
     const category = computed(
         () => route.view === 'category' ? categoryById(route.id) : null);
+    const habits = computed(
+        () => state.habits.filter(
+            (h) => h.categoryId === category.value?.id && !h.archivedAt));
+
+    // Another category opens with the current year.
+    watch(() => category.value?.id, (id) => {
+      if (id && id !== shownFor) {
+        shownFor = id;
+        shownYear.value = currentYear();
+      }
+    }, {immediate: true, flush: 'sync'});
+    // The day statistics of the shown year; while another year of the same
+    // category loads, the last one stays.
+    /** @type {?{id: string, days: !Days}} */
+    let previous = null;
+    const days = computed(() => {
+      if (!category.value) return undefined;
+      const {id} = category.value;
+      const year = shownYear.value;
+      const loaded = remote(`category|${id}|${year}`, () => api.days(year, id));
+      if (loaded) previous = {id, days: loaded};
+      return previous?.id === id ? previous.days : undefined;
+    });
+
+    // The tooltip's target is replaced; the heatmap is scrolled to today once
+    // it shows another year.
+    watch(() => days.value?.year, async () => {
+      hideTooltip();
+      await nextTick();
+      if (root.value) centreToday(root.value);
+    });
+    onMounted(() => {
+      initChartTooltips(root.value, '.heatmap-day[data-date]');
+    });
+
     return {
+      root,
       category,
       colorValue,
       hasHabitIcon,
       describeHabit: habitHelpers.describeHabit,
       shortStreak,
-      habits: computed(
-          () => state.habits.filter(
-              (h) => h.categoryId === category.value.id && !h.archivedAt)),
-      stats: computed(() => statTiles(category.value)),
+      habits,
+      shownYear,
+      range: computed(() => yearRange(habits.value)),
+      days,
+      stats: computed(
+          () => statTiles(
+              days.value,
+              days.value ? String(days.value.year) : shownYear.value)),
       details: computed(
           () => [factItem(
               t('Progress'),
@@ -114,10 +165,12 @@ export const TheCategoryView = {
     };
   },
   // The habit count is a stat tile. A habit without an icon gets a dot in its
-  // colour.
+  // colour. The year panel shows the perfect days of the habits that are not
+  // archived, as the day statistics do for all.
   template: `
     <main
       id="category-view"
+      ref="root"
       class="view stats-view"
       :hidden="!category"
     >
@@ -181,6 +234,21 @@ export const TheCategoryView = {
               </span>
             </button>
           </div>
+        </section>
+        <section
+          v-if="habits.length > 0"
+          class="panel"
+        >
+          <app-year-nav
+            v-model:year="shownYear"
+            :first="range[0]"
+            :last="range[1]"
+          />
+          <app-day-heatmap
+            v-if="days"
+            :year="String(days.year)"
+            :totals="days.totals"
+          />
         </section>
         <app-facts-panel
           :title="t('Activity')"

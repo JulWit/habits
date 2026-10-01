@@ -833,7 +833,7 @@ html[data-tight] .board-habit-row-tools .icon-button svg {
 
 /* Disabled buttons are dimmed. */
 .board-view-day-nav .icon-button:disabled,
-.habit-view-year-nav .icon-button:disabled {
+.app-year-nav-buttons .icon-button:disabled {
   background: transparent;
   cursor: default;
   opacity: var(--disabled-opacity);
@@ -1613,7 +1613,7 @@ html[data-filtering='on'] {
 }
 
 /* The heading of the year heatmap with the arrows to other years. */
-.habit-view-year-head {
+.app-year-nav {
   align-items: center;
   display: flex;
   gap: var(--space);
@@ -1621,11 +1621,11 @@ html[data-filtering='on'] {
   margin-bottom: calc(0.5 * var(--space));
 }
 
-.habit-view-year-head h3 {
+.app-year-nav h3 {
   margin-bottom: 0;
 }
 
-.habit-view-year-nav {
+.app-year-nav-buttons {
   display: flex;
   gap: calc(0.25 * var(--space));
 }
@@ -1742,11 +1742,11 @@ html[data-filtering='on'] {
 /* Day statistics: each day is shaded by its share of completed habits
    (--rate, 0…1); nothing done stays at the empty square. Perfect days get the
    full colour and a ring. */
-.day-stats-view-heatmap .heatmap-day:not(.is-off, .is-future, .is-outside) {
+.app-day-heatmap .heatmap-day:not(.is-off, .is-future, .is-outside) {
   background: color-mix(in srgb, var(--done) calc(var(--rate, 0) * 100%), var(--surface-2));
 }
 
-.day-stats-view-heatmap .heatmap-day.is-perfect {
+.app-day-heatmap .heatmap-day.is-perfect {
   background: var(--done);
   box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--done) 60%, var(--text));
 }

@@ -20,6 +20,15 @@ export function rateLabel() {
 }
 
 /**
+ * Formats a share as a percentage, or a dash for none.
+ * @param {?number} rate 0…1, or null
+ * @return {string}
+ */
+export function percent(rate) {
+  return rate === null ? '–' : `${Math.round(rate * 100)} %`;
+}
+
+/**
  * A row of stat tiles from [label, value, icon] triples; icon names one of
  * `ICONS`, shown in the tile's corner.
  */

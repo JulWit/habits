@@ -23,7 +23,7 @@
 | Reorder habits and categories | Settings → "Arrange"; then by drag and drop or with arrow buttons (`reorderMode`). "Finish arranging" at the bottom of the screen ends it |
 | Close the detail view | `Esc` |
 | Skip several days (holiday, illness) | Settings → "Skip days" for all habits; "Skip days…" in the menu of a habit's detail view for one or all |
-| Show an earlier year in the detail view | Arrows beside the heatmap's year |
+| Show an earlier year in a statistics view | Arrows beside the heatmap's year |
 | Import, export or delete all data | Settings → "Data" |
 
 **Habit editor**: A habit has a name, an icon, a colour and optionally a
@@ -85,9 +85,14 @@ days) and one habit or all that are not archived. It skips the due days
 without an entry; days with an entry keep it. Undo takes all of them back
 at once.
 
-**Years in the detail view**: The heatmap and the cumulative chart show one
-calendar year, the current one when the view opens. The arrows beside the
-year go back to the first year of the habit's history.
+**Years in the statistics views**: The detail view, the category view and
+the day statistics show one calendar year, the current one when the view
+opens. The arrows beside the heatmap's year go back to the first year of the
+history: of the habit, or of the habits counted that are not archived. In the
+detail view, the year changes the heatmap and the cumulative chart; in the
+category view, the heatmap, the perfect days and the streak, which for an
+earlier year is the one at its end; in the day statistics, everything. The
+completion rate always covers its window up to today.
 
 **Limits**: For count, time and distance, "Goal" in the habit editor chooses
 "At least" (a target to reach) or "At most" (a limit to stay within, e.g. at

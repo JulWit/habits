@@ -454,6 +454,7 @@ const DE = {
   '1 month': '1 Monat',
   '{n} months': '{n} Monate',
   'Current streak': 'Aktuelle Serie',
+  'Streak at the end of {year}': 'Serie am Ende von {year}',
   'Best streak': 'Beste Serie',
   'Rate ({n} days)': 'Quote ({n} Tage)',
   'Rate (all time)': 'Quote (gesamt)',

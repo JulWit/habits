@@ -12,7 +12,7 @@ import {AppBar} from '../ui/app-bar.js';
 import {colorValue, hasHabitIcon} from '../ui/icons.js';
 import {AppFactsPanel, AppStatRow, changedItem, createdItem, daysAgo, factItem, rateLabel} from '../ui/stat-panels.js';
 import {hideTooltip} from '../ui/tooltip.js';
-import {AppYearGrid, centreToday, currentYear, dayLabel, initChartTooltips} from '../ui/year-grid.js';
+import {AppYearGrid, AppYearNav, centreToday, currentYear, dayLabel, initChartTooltips, yearRange} from '../ui/year-grid.js';
 import {addDays, dayOfMonth, formatDayMonth, formatFull, formatLong, MONTH_LONG, MONTH_SHORT, monthIndex} from '../util/dates.js';
 import * as habitHelpers from '../util/habit-helpers.js';
 import {t} from '../util/i18n.js';
@@ -55,17 +55,6 @@ function streakText(count, unit) {
     return count === 1 ? t('1 week') : t('{n} weeks', {n: count});
   }
   return count === 1 ? t('1 day') : t('{n} days', {n: count});
-}
-
-/**
- * Returns the first and the last year of the habit's history, as numbers.
- * @param {!Habit} habit
- * @return {!Array<number>}
- */
-function yearRange(habit) {
-  const last = Number(currentYear());
-  const first = Number(habit.historyStart?.slice(0, 4)) || last;
-  return [Math.min(first, last), last];
 }
 
 /**
@@ -439,8 +428,14 @@ const HabitCumulativeChart = {
  */
 export const TheHabitView = {
   name: 'TheHabitView',
-  components:
-      {AppBar, HabitCumulativeChart, AppFactsPanel, AppStatRow, AppYearGrid},
+  components: {
+    AppBar,
+    HabitCumulativeChart,
+    AppFactsPanel,
+    AppStatRow,
+    AppYearGrid,
+    AppYearNav,
+  },
   /** @return {!Object<string, *>} the bindings of the template */
   setup() {
     const root = ref(null);
@@ -469,26 +464,7 @@ export const TheHabitView = {
           '.heatmap-day[data-date], .habit-cumulative-chart-column[data-tip]');
     });
 
-    const range = computed(() => yearRange(habit.value));
-
-    /**
-     * Shows the year before (-1) or after (+1) the one shown, keeping the
-     * focus on the arrows.
-     * @param {number} delta
-     * @param {!Event} event
-     */
-    const showYear = async (delta, event) => {
-      const button = event.currentTarget;
-      const [first, last] = range.value;
-      shownYear.value = String(
-          Math.min(last, Math.max(first, Number(shownYear.value) + delta)));
-      await nextTick();
-      // At the first or last year, the other arrow takes the focus.
-      if (button.disabled) {
-        root.value.querySelector('.habit-view-year-nav button:not(:disabled)')
-            ?.focus();
-      }
-    };
+    const range = computed(() => yearRange([habit.value]));
 
     const archived = computed(() => habit.value?.archivedAt != null);
     return {
@@ -496,7 +472,6 @@ export const TheHabitView = {
       habit,
       shownYear,
       range,
-      showYear,
       // The habit's colour for the view.
       colorStyle: computed(
           () => habit.value ? {'--habit-color': colorValue(habit.value.color)} :
@@ -591,33 +566,11 @@ export const TheHabitView = {
           :year="shownYear"
         />
         <section class="panel">
-          <div class="habit-view-year-head">
-            <h3>{{ t('Year {year}', {year: shownYear}) }}</h3>
-            <div class="habit-view-year-nav">
-              <button
-                type="button"
-                class="icon-button"
-                data-action="year-earlier"
-                :title="t('Previous year')"
-                :aria-label="t('Previous year')"
-                :disabled="Number(shownYear) <= range[0]"
-                @click="showYear(-1, $event)"
-              >
-                <app-icon name="chevronLeft"/>
-              </button>
-              <button
-                type="button"
-                class="icon-button"
-                data-action="year-later"
-                :title="t('Next year')"
-                :aria-label="t('Next year')"
-                :disabled="Number(shownYear) >= range[1]"
-                @click="showYear(1, $event)"
-              >
-                <app-icon name="chevronRight"/>
-              </button>
-            </div>
-          </div>
+          <app-year-nav
+            v-model:year="shownYear"
+            :first="range[0]"
+            :last="range[1]"
+          />
           <app-year-grid
             :year="shownYear"
             :square="square"

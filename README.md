@@ -68,4 +68,3 @@ see [Deployment](docs/DEPLOYMENT.md).
   issue, add a separate read-only pool.
 - Changing the kind to check keeps only whether each day was completed; the
   recorded values come back only by undoing the change.
-- The category and day statistics only show the current calendar year.

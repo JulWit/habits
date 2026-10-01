@@ -1,9 +1,9 @@
 /**
  * @fileoverview Day statistics, opened from the day summary: perfect days,
  * streaks of them, a year heatmap shaded by each day's share of completed
- * habits, and the average share per weekday and per month. The server counts
- * the days and computes the statistics (GET /api/days); this view only shows
- * them.
+ * habits, and the average share per weekday and per month, of the current
+ * year or an earlier one. The server counts the days and computes the
+ * statistics (GET /api/days); this view only shows them.
  */
 
 import {api} from '../data/api.js';
@@ -11,19 +11,18 @@ import {remote} from '../data/remote-stats.js';
 import {goHome, route} from '../data/route.js';
 import {state} from '../data/state.js';
 import {AppBar} from '../ui/app-bar.js';
-import {AppFactsPanel, AppStatRow, factItem} from '../ui/stat-panels.js';
+import {AppFactsPanel, AppStatRow, factItem, percent} from '../ui/stat-panels.js';
 import {hideTooltip} from '../ui/tooltip.js';
-import {AppYearGrid, centreToday, currentYear, dayLabel, initChartTooltips, sinceLabel} from '../ui/year-grid.js';
-import {formatDayMonth, MONTH_LONG, MONTH_SHORT, WEEKDAY_LONG, WEEKDAY_SHORT} from '../util/dates.js';
+import {AppDayHeatmap, AppYearNav, centreToday, currentYear, initChartTooltips, sinceLabel, streakLabel, yearRange} from '../ui/year-grid.js';
+import {MONTH_LONG, MONTH_SHORT, WEEKDAY_LONG, WEEKDAY_SHORT} from '../util/dates.js';
 import {t} from '../util/i18n.js';
 import {computed, nextTick, onMounted, ref, watch} from '../vue.js';
 
 /**
- * Formats a rate as a percentage, or a dash for none.
- * @param {?number} rate
- * @return {string}
+ * The year shown, e.g. "2025", or "" for the current one. Kept for the
+ * session only.
  */
-const percent = (rate) => (rate === null ? '–' : `${Math.round(rate * 100)} %`);
+const chosenYear = ref('');
 
 /**
  * Formats a number of days.
@@ -33,19 +32,19 @@ const percent = (rate) => (rate === null ? '–' : `${Math.round(rate * 100)} %`
 const dayCount = (n) => (n === 1 ? t('1 day') : t('{n} days', {n}));
 
 /**
- * Returns the stat tiles of the year.
+ * Returns the stat tiles of a year.
  * @param {!DayStats} stats
- * @param {string} from the first day counted
+ * @param {string} year
  * @return {!Array<!Array<string>>}
  */
-function statTiles(stats, from) {
+function statTiles(stats, year) {
   return [
     [
-      t('Perfect days {since}', {since: sinceLabel(from)}),
+      t('Perfect days {since}', {since: sinceLabel(`${year}-01-01`)}),
       t('{n} of {total}', {n: stats.perfect, total: stats.counted}),
       'calendarCheck',
     ],
-    [t('Current streak'), dayCount(stats.currentStreak), 'streak'],
+    [streakLabel(year), dayCount(stats.currentStreak), 'streak'],
     [t('Best streak'), dayCount(stats.bestStreak), 'trophy'],
     [t('Average per day'), percent(stats.average), 'percent'],
   ];
@@ -77,50 +76,6 @@ function highlights(stats) {
         `Ø ${percent(rate)}`));
   }
   return items;
-}
-
-/**
- * Returns the attributes of the square of a day from its total ({due, done,
- * bonus}): the shade grows with the share of completed habits.
- * @param {string} iso
- * @param {{due: number, done: number, bonus: number}} total
- * @return {!Object<string, *>} the attributes
- */
-function heatSquare(iso, {due, done, bonus}) {
-  const ahead = iso > state.today;
-  const counted = !ahead && due > 0;
-  const bonusText = bonus > 0 ? ` · ${t('+{n} bonus', {n: bonus})}` : '';
-  const status = heatStatus(due, done, ahead) + bonusText;
-  const when = dayLabel(iso);
-  return {
-    'class': [
-      'heatmap-day',
-      iso === state.today && 'is-today',
-      ahead && 'is-future',
-      !ahead && due === 0 && 'is-off',
-      counted && done === due && 'is-perfect',
-    ],
-    'style': counted ? {'--rate': (done / due).toFixed(3)} : null,
-    'data-date': iso,
-    'data-status': status,
-    'role': 'img',
-    'aria-label': `${when} — ${status}`,
-  };
-}
-
-/**
- * Describes a day of the heatmap.
- * @param {number} due
- * @param {number} done
- * @param {boolean} ahead whether the day is in the future
- * @return {string}
- */
-function heatStatus(due, done, ahead) {
-  if (due === 0) return t('Nothing due on this day');
-  if (ahead) {
-    return due === 1 ? t('1 habit due') : t('{n} habits due', {n: due});
-  }
-  return `${t('{done} of {due} done', {done, due})} · ${percent(done / due)}`;
 }
 
 /**
@@ -177,27 +132,45 @@ const DayStatsBarPanel = {
     </section>`,
 };
 
-/** The day statistics of the current year. */
+/** The day statistics of a year, by default the current one. */
 export const TheDayStatsView = {
   name: 'TheDayStatsView',
-  components:
-      {AppBar, DayStatsBarPanel, AppFactsPanel, AppStatRow, AppYearGrid},
+  components: {
+    AppBar,
+    AppDayHeatmap,
+    AppFactsPanel,
+    AppStatRow,
+    AppYearNav,
+    DayStatsBarPanel,
+  },
   /** @return {!Object<string, *>} the bindings of the template */
   setup() {
     const root = ref(null);
     const shown = computed(() => route.view === 'days');
-    const year = computed(() => currentYear());
+    const year = computed({
+      get: () => chosenYear.value || currentYear(),
+      set: (value) => {
+        chosenYear.value = value === currentYear() ? '' : value;
+      },
+    });
+    // The years of the habits counted, those that are not archived.
+    const range =
+        computed(() => yearRange(state.habits.filter((h) => !h.archivedAt)));
     // Nothing is loaded while the view is hidden, nor before the state is.
-    const data = computed(
-        () => shown.value && state.today ?
-            remote(`days|${year.value}`, () => api.days(year.value)) :
-            undefined);
-    const byDate = computed(
-        () => new Map((data.value?.totals ?? []).map((d) => [d.date, d])));
+    // While another year loads, the last one stays; everything is labelled
+    // with the year of the answer shown.
+    let previous;
+    const data = computed(() => {
+      if (!shown.value || !state.today) return undefined;
+      const loaded = remote(`days|${year.value}`, () => api.days(year.value));
+      previous = loaded ?? previous;
+      return previous;
+    });
+    const shownYear = computed(() => String(data.value?.year ?? ''));
 
     // The tooltip's target is replaced; the heatmap is scrolled to today once
-    // the statistics are shown.
-    watch(() => Boolean(data.value), async (loaded) => {
+    // the statistics of a year are shown.
+    watch(shownYear, async (loaded) => {
       hideTooltip();
       if (!loaded) return;
       await nextTick();
@@ -213,8 +186,10 @@ export const TheDayStatsView = {
       root,
       shown,
       year,
+      range,
       data,
-      tiles: computed(() => statTiles(data.value.stats, `${year.value}-01-01`)),
+      shownYear,
+      tiles: computed(() => statTiles(data.value.stats, shownYear.value)),
       highlights: computed(() => highlights(data.value.stats)),
       weekdays: computed(
           () => data.value.stats.weekdays.map(
@@ -227,11 +202,6 @@ export const TheDayStatsView = {
         return bar(
             {label: MONTH_SHORT[month], name: MONTH_LONG[month], ...group});
       })),
-      square: (iso) =>
-          heatSquare(iso, byDate.value.get(iso) ?? {due: 0, done: 0, bonus: 0}),
-      legendRange: computed(
-          () => `${formatDayMonth(`${year.value}-01-01`)} – ` +
-              `${formatDayMonth(`${year.value}-12-31`)} ${year.value}`),
       back: goHome,
     };
   },
@@ -244,7 +214,7 @@ export const TheDayStatsView = {
     >
       <app-bar
         :title="t('Day statistics')"
-        :sub="year"
+        :sub="shownYear || year"
         :edit="false"
         @back="back"
       />
@@ -262,27 +232,16 @@ export const TheDayStatsView = {
           :title="t('By month')"
           :bars="months"
         />
-        <section class="panel day-stats-view-heatmap">
-          <h3>{{ t('Year {year}', {year}) }}</h3>
-          <app-year-grid
-            :year="year"
-            :square="square"
+        <section class="panel">
+          <app-year-nav
+            v-model:year="year"
+            :first="range[0]"
+            :last="range[1]"
           />
-          <div class="heatmap-legend">
-            <span class="heatmap-legend-range">{{ legendRange }}</span>
-            <span>0 %</span>
-            <span
-              v-for="rate in [0, 0.25, 0.5, 0.75]"
-              :key="rate"
-              class="heatmap-day"
-              :style="{'--rate': String(rate)}"
-            ></span>
-            <span
-              class="heatmap-day is-perfect"
-              :style="{'--rate': '1'}"
-            ></span>
-            <span>100 %</span>
-          </div>
+          <app-day-heatmap
+            :year="shownYear"
+            :totals="data.totals"
+          />
         </section>
       </template>
     </main>`,

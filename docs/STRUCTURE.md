@@ -106,7 +106,8 @@ web/                        Frontend (Vue, ES modules, no build step)
     ui/                         Building blocks shared by views and dialogs
       app-bar.js                  Title bar of the habit, category and day statistics views
       stat-panels.js              Stat tiles and fact panels of the statistics views
-      year-grid.js                Year label and heatmap grid of the statistics views
+      year-grid.js                Year label and navigation, heatmap grid and day heatmap
+                                  of the statistics views
       icons.js                    Inline SVG icons; icon, colour and icon choice components
       patterns.js                 Background patterns drawn as SVG tiles
       toast.js                    Toasts and the messages of errors

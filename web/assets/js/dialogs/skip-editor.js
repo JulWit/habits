@@ -83,6 +83,7 @@ export const TheSkipEditor = {
   setup() {
     const el = ref(null);
     const formEl = ref(null);
+    const errorEl = ref(null);
     onMounted(() => {
       dialog = el.value;
     });
@@ -108,12 +109,15 @@ export const TheSkipEditor = {
         closePage(dialog, {force: true});
       } catch (err) {
         error.value = errorText(err);
+        // The error message may be outside the visible area.
+        await nextTick();
+        errorEl.value?.scrollIntoView({block: 'nearest'});
       } finally {
         busy.value = false;
       }
     };
 
-    return {el, formEl, form, habit, error, busy, submit};
+    return {el, formEl, errorEl, form, habit, error, busy, submit};
   },
   template: `
     <dialog
@@ -203,6 +207,7 @@ export const TheSkipEditor = {
           </p>
           <p
             v-if="error"
+            ref="errorEl"
             class="error"
             role="alert"
           >

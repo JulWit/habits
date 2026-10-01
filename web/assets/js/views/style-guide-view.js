@@ -6,6 +6,7 @@
 
 import {state} from '../data/state.js';
 import {colorValue} from '../ui/icons.js';
+import {AppYearNav, currentYear} from '../ui/year-grid.js';
 import {addDays, daysBetween, weekdayIndex} from '../util/dates.js';
 import {STREAK_LEVELS} from '../util/habit-helpers.js';
 import {computed, onMounted, ref} from '../vue.js';
@@ -78,7 +79,7 @@ function samples() {
       currentStreak: 0,
       streakUnit: 'days',
       completionRate: 0,
-      longestStreak: 0,
+      bestStreak: 0,
       total: 0,
     },
   };
@@ -238,6 +239,7 @@ const StyleGuideSpecimen = {
 const StyleGuidePanel = {
   name: 'StyleGuidePanel',
   components: {
+    AppYearNav,
     BoardDayCell,
     StyleGuideSection,
     StyleGuideSpecimen,
@@ -262,11 +264,15 @@ const StyleGuidePanel = {
           (name) => styles.getPropertyValue(name).trim().replace(/\s+/g, ' '));
     });
     const s = samples();
+    // Two years of history before the current one.
+    const last = Number(currentYear());
     return {
       root,
       values,
       s,
       state,
+      year: ref(String(last)),
+      years: [last - 2, last],
       colorValue,
       dates: [day(2), day(1), day(0), addDays(state.today, 1)],
       today: day(0),
@@ -554,7 +560,7 @@ const StyleGuidePanel = {
       </style-guide-section>
       <style-guide-section
         title="Heatmap"
-        note="Levels 0–4, then &quot;not scheduled&quot; and the future."
+        note="Levels 0–4, then &quot;not scheduled&quot; and the future; the day statistics shade a day by its share of completed habits. The arrows lead to the other years of the history."
       >
         <style-guide-specimen label="data-level 0 … 4 · is-off · is-future">
           <div class="style-guide-panel-heatmap">
@@ -567,6 +573,29 @@ const StyleGuidePanel = {
             <div class="heatmap-day is-off"></div>
             <div class="heatmap-day is-future"></div>
           </div>
+        </style-guide-specimen>
+        <style-guide-specimen
+          label=".app-day-heatmap: --rate 0 … 1 · is-perfect"
+        >
+          <div class="style-guide-panel-heatmap app-day-heatmap">
+            <div
+              v-for="rate in [0, 0.25, 0.5, 0.75]"
+              :key="rate"
+              class="heatmap-day"
+              :style="{'--rate': String(rate)}"
+            ></div>
+            <div
+              class="heatmap-day is-perfect"
+              :style="{'--rate': '1'}"
+            ></div>
+          </div>
+        </style-guide-specimen>
+        <style-guide-specimen label="AppYearNav">
+          <app-year-nav
+            v-model:year="year"
+            :first="years[0]"
+            :last="years[1]"
+          />
         </style-guide-specimen>
       </style-guide-section>
       <style-guide-section

@@ -175,7 +175,7 @@ export let Days;
  * The state as GET /api/state sends it; `settings` are keyed by their JSON
  * name, `options` lists the choices of the enumerated settings.
  * @typedef {{
- *   user: {id: string, name: string, email: string, groups: !Array<string>},
+ *   user: {id: string, name: string, email: string},
  *   settings: !Object<string, *>,
  *   today: string,
  *   nextDayIn: number,

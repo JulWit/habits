@@ -195,7 +195,6 @@ const DE = {
   'Language and time zone': 'Sprache und Zeitzone',
   'Archived habits': 'Archivierte Gewohnheiten',
   'Current user': 'Aktueller Benutzer',
-  'Groups: {list}': 'Gruppen: {list}',
   'About the app': 'Über die App',
   'Version': 'Version',
   'Development build': 'Entwicklungsstand',

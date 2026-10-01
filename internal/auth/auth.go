@@ -15,10 +15,9 @@ import (
 
 // User is the user of a request. All data is scoped by ID.
 type User struct {
-	ID     string   `json:"id"`
-	Name   string   `json:"name"`
-	Email  string   `json:"email"`
-	Groups []string `json:"groups"`
+	ID    string `json:"id"`
+	Name  string `json:"name"`
+	Email string `json:"email"`
 }
 
 type ctxKey struct{}
@@ -81,13 +80,6 @@ func Resolve(cfg config.Config, r *http.Request) (User, error) {
 	}
 	if u.Name == "" {
 		u.Name = id
-	}
-	if g := strings.TrimSpace(r.Header.Get(cfg.GroupsHeader)); g != "" {
-		for part := range strings.SplitSeq(g, ",") {
-			if part = strings.TrimSpace(part); part != "" {
-				u.Groups = append(u.Groups, part)
-			}
-		}
 	}
 	return u, nil
 }

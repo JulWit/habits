@@ -26,7 +26,6 @@ func trustedHeaderConfig(t *testing.T, trusted ...string) config.Config {
 		UserHeader:    "Remote-User",
 		DisplayHeader: "Remote-Name",
 		EmailHeader:   "Remote-Email",
-		GroupsHeader:  "Remote-Groups",
 	}
 	for _, s := range trusted {
 		cfg.TrustedProxies = append(cfg.TrustedProxies, mustPrefix(t, s))
@@ -142,16 +141,12 @@ func TestOptionalHeadersAreCarriedThrough(t *testing.T) {
 		r.Header.Set("Remote-User", "alice")
 		r.Header.Set("Remote-Name", "Alice Example")
 		r.Header.Set("Remote-Email", "alice@example.com")
-		r.Header.Set("Remote-Groups", " admins , users ,, ")
 	})
 	if !reached {
 		t.Fatal("Resolve rejected a trusted peer with an identity, want it accepted")
 	}
 	if user.Name != "Alice Example" || user.Email != "alice@example.com" {
 		t.Errorf(`Name, Email = %q, %q; want "Alice Example", "alice@example.com"`, user.Name, user.Email)
-	}
-	if len(user.Groups) != 2 || user.Groups[0] != "admins" || user.Groups[1] != "users" {
-		t.Errorf("Groups = %#v, want [admins users] — empty entries are dropped", user.Groups)
 	}
 }
 

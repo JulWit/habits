@@ -15,7 +15,6 @@ All configuration is done through environment variables.
 | `HABITS_USER_HEADER` | `Remote-User` | Header with the user ID |
 | `HABITS_NAME_HEADER` | `Remote-Name` | Display name (optional) |
 | `HABITS_EMAIL_HEADER` | `Remote-Email` | Email (optional) |
-| `HABITS_GROUPS_HEADER` | `Remote-Groups` | Groups (optional) |
 
 In the default `single-user` mode there is no authentication and all data
 belongs to the user `local`.
@@ -97,7 +96,7 @@ Caddy:
 habits.example.com {
     forward_auth authelia:9091 {
         uri /api/verify?rd=https://auth.example.com
-        copy_headers Remote-User Remote-Groups Remote-Name Remote-Email
+        copy_headers Remote-User Remote-Name Remote-Email
     }
     reverse_proxy habits:8080
 }

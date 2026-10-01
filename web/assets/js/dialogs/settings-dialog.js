@@ -300,7 +300,6 @@ export const TheSettingsDialog = {
         initials: initials(name),
         // The ID is only worth a line if the name does not show it already.
         detail: user.email || (user.id !== name ? user.id : ''),
-        groups: user.groups ?? [],
       };
     });
 
@@ -550,12 +549,6 @@ export const TheSettingsDialog = {
             class="settings-account-detail"
           >
             {{ account.detail }}
-          </p>
-          <p
-            v-if="account.groups.length > 0"
-            class="settings-account-groups"
-          >
-            {{ t('Groups: {list}', {list: account.groups.join(', ')}) }}
           </p>
         </div>
       </section>

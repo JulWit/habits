@@ -32,10 +32,9 @@ type Config struct {
 	AuthMode AuthMode
 	// UserHeader holds the user ID (Authelia and Authentik: Remote-User).
 	UserHeader string
-	// DisplayHeader, EmailHeader and GroupsHeader are optional.
+	// DisplayHeader and EmailHeader are optional.
 	DisplayHeader string
 	EmailHeader   string
-	GroupsHeader  string
 	// TrustedProxies are the peers whose identity headers are accepted.
 	// Required in trusted-header mode.
 	TrustedProxies []netip.Prefix
@@ -64,7 +63,6 @@ func Load() (Config, error) {
 		UserHeader:    env("HABITS_USER_HEADER", "Remote-User"),
 		DisplayHeader: env("HABITS_NAME_HEADER", "Remote-Name"),
 		EmailHeader:   env("HABITS_EMAIL_HEADER", "Remote-Email"),
-		GroupsHeader:  env("HABITS_GROUPS_HEADER", "Remote-Groups"),
 		DefaultUser:   env("HABITS_DEFAULT_USER", "local"),
 		UndoRetention: 30 * 24 * time.Hour,
 	}

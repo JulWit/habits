@@ -261,12 +261,6 @@ html:has(.dialog.page[open]) {
   font-size: var(--text-md);
 }
 
-.settings-account-text .settings-account-groups {
-  color: var(--text-faint);
-  font-size: var(--text-sm);
-  margin-top: 2px;
-}
-
 .settings-menu-item {
   align-items: center;
   background: transparent;

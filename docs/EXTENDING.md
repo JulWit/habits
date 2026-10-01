@@ -18,6 +18,11 @@ migrated database ends up with the schema of a new one.
 4. Pointer field with a JSON tag in `domain.HabitEdit` (the request body of
    creating and editing) and its `applyFields`
 5. Input in `web/assets/js/dialogs/habit-editor.js`
+6. Export and import: a field in `exportHabit` (`internal/httpapi/handlers_transfer.go`),
+   filled in `exportHabitOf` and read back on import; a field of
+   `domain.Schedule` is exported with the schedules already
+7. The column in [DATAMODEL.md](DATAMODEL.md#habits) and the body in
+   [API.md](API.md#habits)
 
 Undo restores it without further work, as undo steps keep whole rows (see
 [DATAFLOW.md](DATAFLOW.md#undo)).

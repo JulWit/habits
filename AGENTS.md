@@ -8,8 +8,11 @@ the relevant file before changing an area:
 - `docs/STRUCTURE.md`: where things live
 - `docs/DATAFLOW.md`: how client and server exchange data, undo, offline
 - `docs/DATAMODEL.md`: the tables, kinds, frequencies, schedules, streaks
-- `docs/API.md`: endpoints and error format
+- `docs/API.md`: endpoints, request bodies, error format, export format
 - `docs/EXTENDING.md`: checklists for new fields, kinds, endpoints, settings, migrations
+- `docs/USAGE.md`: how the app is used, the settings
+- `docs/BUILDING.md`: building, formatters, the Firefox test, updating Vue
+- `docs/DEPLOYMENT.md`: environment variables, container, authentication
 
 ## Principles
 
@@ -66,6 +69,15 @@ installed Firefox through the main flows with mouse, keyboard and touch; run
 it against a server with a scratch database (see `docs/BUILDING.md`) and
 extend it along with the frontend.
 
+## CI and release
+
+Every push to `main` runs `gofmt -l`, `go vet` and `go test` in
+`.github/workflows/image.yml`; once they pass, it builds the container image
+and publishes it to ghcr.io as `:latest` and `:main`. A tag `v*` also
+publishes `:1.2.3` and `:1.2`. Pull requests are only tested. So every push
+to `main` ships: run the commands above before pushing, and tag only when
+asked.
+
 ## Rules
 
 - **The server owns the rules.** Frequencies, the status of each day, streaks,
@@ -88,6 +100,12 @@ extend it along with the frontend.
   before changing them (`internal/store/changes.go`). In the frontend, every
   data change goes through `web/assets/js/data/actions.js`, which offers the
   undo with `offerUndo(changeId, text)`.
+- **Export is a full backup.** A new field of a habit or category also goes
+  into `exportHabit` or `exportCategory` in
+  `internal/httpapi/handlers_transfer.go` and back out on import, or exports
+  silently lose it. Older files lack the field, so it needs a sensible zero
+  value. Raise `exportVersion` only when older files can no longer be read;
+  the import accepts only its own version.
 - **Errors** are created with `domain.Invalid(code, template, params...)`. Each
   new `code` needs a German entry in `DE_ERRORS` in
   `web/assets/js/util/i18n.js`; `TestEveryProblemCodeIsTranslated` enforces
@@ -185,12 +203,23 @@ extend it along with the frontend.
 
 ## Documentation
 
-Keep `docs/` in sync with the code. A new endpoint goes into `docs/API.md`, a
-new setting into `docs/USAGE.md`, a new file into `docs/STRUCTURE.md`, and a
-new extension point into `docs/EXTENDING.md`. Keep `README.md` short.
+Keep `docs/` in sync with the code:
+
+- a new endpoint or request body → `docs/API.md`
+- a new table or column → `docs/DATAMODEL.md`
+- a new setting, control or view → `docs/USAGE.md`
+- a change to loading, writing, undo or offline → `docs/DATAFLOW.md`
+- a new file → `docs/STRUCTURE.md`
+- a new environment variable → `docs/DEPLOYMENT.md`
+- a new build, formatting or test step → `docs/BUILDING.md`
+- a new extension point → `docs/EXTENDING.md`
+
+Keep `README.md` short.
 
 ## Commits
 
 One logical change per commit. The subject is a short imperative English
 sentence without a prefix or trailing period, e.g. `Add import and export of
-the habits`.
+the habits`. Dependabot's pull requests are the exception: their subjects
+start with `deps:` (`.github/dependabot.yml`); leave them as they are, but do
+not copy the prefix.

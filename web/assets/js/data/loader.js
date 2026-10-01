@@ -10,7 +10,7 @@ import {reactive} from '../vue.js';
 
 import {api} from './api.js';
 import {isConnectionError, isOffline, overlay, pending, rememberedState, rememberState, setOffline, setStatusHandler, statusText} from './outbox.js';
-import {replaceState, state, upsertHabit} from './state.js';
+import {replaceState, state, stateRevision, upsertHabit} from './state.js';
 
 /**
  * The sync status for the title bar: the number of waiting writes or
@@ -46,33 +46,67 @@ let dayEndsAt = Infinity;
 let dayTimer;
 
 /**
+ * How often refresh loads the state when it changed on the screen while it
+ * loaded; after that, the state shown is kept.
+ */
+const MAX_LOADS = 3;
+
+/**
  * Loads the state from the server. Writes still waiting in the outbox are laid
  * over it and sent. Without a connection, the last loaded state is shown
  * instead (on startup), or the current one is kept.
+ *
+ * A change shown while the state loads, such as a tap answered by the server
+ * meanwhile, may be missing from the loaded state, which would take it back on
+ * the screen. The state is then loaded again.
  * @return {!Promise<void>}
  */
 export async function refresh() {
-  let loaded;
-  try {
-    loaded = await api.loadState(historyFrom);
-  } catch (err) {
-    if (!isConnectionError(err)) {
-      toast(errorText(err), {error: true, timeout: 12000});
+  for (let load = 1; load <= MAX_LOADS; load++) {
+    const shown = stateRevision();
+    let loaded;
+    try {
+      loaded = await api.loadState(historyFrom);
+    } catch (err) {
+      showUnloaded(err);
       return;
     }
-    setOffline(true);
-    const remembered = state.user ? null : rememberedState();
-    if (remembered) {
-      replaceState(overlay(remembered));
-      toast(t('Offline — showing the last loaded state'));
-    } else if (state.user) {
-      // Keep the current state, with writes queued since (e.g. by undo).
-      replaceState(overlay({habits: state.habits}));
-    } else {
-      toast(errorText(err), {error: true, timeout: 12000});
+    if (stateRevision() === shown) {
+      show(loaded);
+      return;
     }
+  }
+}
+
+/**
+ * Handles a state that could not be loaded: without a connection, shows the
+ * last loaded state on startup or keeps the current one.
+ * @param {*} err
+ */
+function showUnloaded(err) {
+  if (!isConnectionError(err)) {
+    toast(errorText(err), {error: true, timeout: 12000});
     return;
   }
+  setOffline(true);
+  const remembered = state.user ? null : rememberedState();
+  if (remembered) {
+    replaceState(overlay(remembered));
+    toast(t('Offline — showing the last loaded state'));
+  } else if (state.user) {
+    // Keep the current state, with writes queued since (e.g. by undo).
+    replaceState(overlay({habits: state.habits}));
+  } else {
+    toast(errorText(err), {error: true, timeout: 12000});
+  }
+}
+
+/**
+ * Shows a loaded state, with the writes still waiting in the outbox laid over
+ * it, and sends them.
+ * @param {!LoadedState} loaded
+ */
+function show(loaded) {
   rememberState(loaded);
   setOffline(false);
   lastLoaded = Date.now();

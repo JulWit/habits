@@ -62,6 +62,12 @@ again, the client reloads the state if the day has changed or it was loaded
 more than 10 seconds before, e.g. to show changes made on another device.
 A device asleep at midnight delays the timer; that reload covers it.
 
+A reload replaces the habits of the state. If the state changes on the screen
+while it loads, e.g. by a tap the server has answered meanwhile, the loaded
+state may lack that change and would take it back; the client then loads it
+again (`refresh` in `loader.js`, at most three times, after which it keeps
+what it shows).
+
 ## Day statuses
 
 Each habit carries the status of every day as `days`, one character per day

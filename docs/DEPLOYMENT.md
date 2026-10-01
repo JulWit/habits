@@ -131,9 +131,20 @@ docker compose up -d habits
 ## Backups and upgrades
 
 The database is a single SQLite file (`HABITS_DB`, with its `-wal` and `-shm`
-files while the server runs). Each user can also export their habits with
-their whole history under Settings → "Data" and import the file into another
-server; see [USAGE.md](USAGE.md).
+files while the server runs). Copying it while the server runs can catch a
+half-written state; `habits backup PATH` writes a consistent copy instead
+(SQLite's `VACUUM INTO`), also while the server runs, and refuses to overwrite
+an existing file. In the container, write it to the volume and copy it out:
+
+```bash
+docker compose exec habits /habits backup /data/backup-2026-10-01.db
+docker compose cp habits:/data/backup-2026-10-01.db .
+```
+
+To restore, stop the server and put the copy in place of the database file,
+without its old `-wal` and `-shm` files. Each user can also export their
+habits with their whole history under Settings → "Data" and import the file
+into another server; see [USAGE.md](USAGE.md).
 
 A new release migrates the database on start. It migrates databases from
 schema version 3 on; an older database has to be opened once with a release

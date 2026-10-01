@@ -127,6 +127,29 @@ func TestReopeningKeepsTheData(t *testing.T) {
 }
 
 // A failing Update writes nothing.
+// A backup holds the data at its time and opens as a database of its own; it
+// does not overwrite an existing file.
+func TestBackup(t *testing.T) {
+	st := openTestStore(t)
+	h := mustCreateHabit(t, st, "alice", countHabit(domain.KindCheck, 1))
+	path := filepath.Join(t.TempDir(), "backup.db")
+	if err := st.Backup(t.Context(), path); err != nil {
+		t.Fatalf("Backup: %v", err)
+	}
+	if err := st.Backup(t.Context(), path); err == nil {
+		t.Error("a second Backup to the same file succeeded, want an error")
+	}
+
+	copied, err := Open(t.Context(), path)
+	if err != nil {
+		t.Fatalf("Open(backup): %v", err)
+	}
+	defer copied.Close()
+	if got := habitOf(t, copied, "alice", h.ID); got.Name != h.Name {
+		t.Errorf("habit in the backup = %+v, want %q", got, h.Name)
+	}
+}
+
 func TestAFailingUpdateWritesNothing(t *testing.T) {
 	st := openTestStore(t)
 	boom := errors.New("boom")

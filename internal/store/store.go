@@ -68,6 +68,15 @@ func Open(ctx context.Context, path string) (*Store, error) {
 // Close closes the database.
 func (s *Store) Close() error { return s.db.Close() }
 
+// Backup writes a consistent copy of the database to path with VACUUM INTO,
+// also while a server writes to it. path must not exist yet.
+func (s *Store) Backup(ctx context.Context, path string) error {
+	if _, err := s.db.ExecContext(ctx, `VACUUM INTO ?`, path); err != nil {
+		return fmt.Errorf("backing up to %s: %w", path, err)
+	}
+	return nil
+}
+
 // Tx is a transaction of one user. Its methods are scoped to that user.
 type Tx struct {
 	tx     *sql.Tx

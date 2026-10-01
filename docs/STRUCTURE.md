@@ -2,7 +2,7 @@
 
 ```
 main.go                     Startup, signal handling, embedded frontend; the
-                            subcommands healthcheck and move-user
+                            subcommands healthcheck, move-user and backup
 internal/config             Configuration from environment variables
 internal/auth               User identification (single-user or trusted headers)
 internal/domain             The rules of the tracker (no I/O)

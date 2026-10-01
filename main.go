@@ -48,6 +48,13 @@ func main() {
 		}
 		return
 	}
+	if len(os.Args) >= 2 && os.Args[1] == "backup" {
+		if err := backup(os.Args[2:]); err != nil {
+			fmt.Fprintln(os.Stderr, "backup:", err)
+			os.Exit(1)
+		}
+		return
+	}
 
 	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo}))
 	// Also routes the log package through logger, e.g. the errors net/http
@@ -211,6 +218,30 @@ func moveUser(args []string) error {
 		return err
 	}
 	fmt.Printf("moved the data of %q to %q in %s\n", from, to, cfg.DatabasePath)
+	return nil
+}
+
+// backup writes a consistent copy of the database to PATH (store.Backup), for
+// "habits backup PATH". Unlike copying the file, it is safe while the server
+// runs, and the image has no sqlite3 to do it otherwise.
+func backup(args []string) error {
+	if len(args) != 1 || strings.TrimSpace(args[0]) == "" {
+		return errors.New("usage: habits backup PATH")
+	}
+	cfg, err := config.Load()
+	if err != nil {
+		return err
+	}
+	ctx := context.Background()
+	st, err := store.Open(ctx, cfg.DatabasePath)
+	if err != nil {
+		return err
+	}
+	defer st.Close()
+	if err := st.Backup(ctx, args[0]); err != nil {
+		return err
+	}
+	fmt.Printf("backed up %s to %s\n", cfg.DatabasePath, args[0])
 	return nil
 }
 

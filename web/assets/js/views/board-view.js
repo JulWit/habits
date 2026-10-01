@@ -728,7 +728,12 @@ const BoardBlockProgress = {
           `${formatLong(props.day)}: ${t('{done} of {due} done', {done, due})}`;
       return bonus > 0 ? `${text} · ${t('+{n} bonus', {n: bonus})}` : text;
     });
-    return {progress, title};
+    // "1/2", and "1/2 +1" with a bonus.
+    const count = computed(() => {
+      const {due, done, bonus} = progress.value;
+      return bonus > 0 ? `${done}/${due} +${bonus}` : `${done}/${due}`;
+    });
+    return {progress, title, count};
   },
   // No bar if nothing is due on the day.
   template: `
@@ -754,10 +759,7 @@ const BoardBlockProgress = {
           :class="{'is-done': i <= progress.done}"
         ></span>
       </span>
-      <span class="board-block-progress-count">
-        {{ progress.done }}/{{ progress.due }}
-        <template v-if="progress.bonus > 0">+{{ progress.bonus }}</template>
-      </span>
+      <span class="board-block-progress-count">{{ count }}</span>
     </div>`,
 };
 

@@ -3,7 +3,7 @@
  */
 
 /** An error answer of the API, or a failed request. */
-export class ApiError extends Error {
+class ApiError extends Error {
   /**
    * @param {string} message the English message
    * @param {number} status the HTTP status, 0 without a connection

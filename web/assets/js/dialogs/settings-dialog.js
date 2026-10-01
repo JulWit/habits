@@ -444,7 +444,6 @@ export const TheSettingsDialog = {
       settings,
       options,
       editing,
-      error,
       sliders,
       account,
       version,

@@ -284,7 +284,7 @@ function tighten(width, count) {
  * Measures how many day columns fit and shows as many. The attributes on
  * <html> it depends on (density, reordering, filter) must be set before.
  */
-export function measureBoard() {
+function measureBoard() {
   const root = document.documentElement;
   // Reordering is disabled while filtering, as the order would be incomplete;
   // without the handles the board has more room.
@@ -1090,7 +1090,6 @@ export const TheBoardView = {
       monthLabels: computed(() => monthLabels(dates.value)),
       offset,
       selectedDay,
-      onlyOpen,
       MAX_AHEAD_DAYS,
       maxBackDays,
       page,

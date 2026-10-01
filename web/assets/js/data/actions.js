@@ -417,7 +417,7 @@ export async function toggleArchive(id) {
  * @return {!Promise<(!Category|undefined)>} the new category, or undefined
  *     if there is none
  */
-export async function createCategory(name) {
+async function createCategory(name) {
   const wanted = (name ?? '').trim();
   if (!wanted) return;
 

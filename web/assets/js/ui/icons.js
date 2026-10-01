@@ -19,7 +19,7 @@ const draw = (body) => `<svg viewBox="0 0 24 24" aria-hidden="true"
  * The interface icons as SVG markup, keyed by name.
  * @const {!Object<string, string>}
  */
-export const ICONS = {
+const ICONS = {
   sun: draw(
       '<circle cx="12" cy="12" r="4.1"/>' +
           '<path d="M12 2.6v2.3M12 19.1v2.3M21.4 12h-2.3M4.9 12H2.6' +
@@ -407,7 +407,7 @@ const COLOR_LABELS = {
  * @param {string} name
  * @return {string}
  */
-export function iconLabel(name) {
+function iconLabel(name) {
   return t(ICON_LABELS[name] ?? name);
 }
 
@@ -416,7 +416,7 @@ export function iconLabel(name) {
  * @param {string} name
  * @return {string}
  */
-export function colorLabel(name) {
+function colorLabel(name) {
   const label = COLOR_LABELS[name];
   return label ? t(label) : name;
 }

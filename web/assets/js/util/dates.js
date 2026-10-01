@@ -12,7 +12,7 @@ const DAY_MS = 86400000;
  * @param {string} iso a date as YYYY-MM-DD
  * @return {number}
  */
-export function toUTC(iso) {
+function toUTC(iso) {
   const [y, m, d] = iso.split('-').map(Number);
   return Date.UTC(y, m - 1, d);
 }
@@ -22,7 +22,7 @@ export function toUTC(iso) {
  * @param {number} ms
  * @return {string}
  */
-export function fromUTC(ms) {
+function fromUTC(ms) {
   const d = new Date(ms);
   /**
    * Returns `n` with at least two digits.

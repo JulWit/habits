@@ -147,7 +147,6 @@ const DE = {
   'Skip': 'Überspringen',
   'From': 'Von',
   'Until': 'Bis',
-  'This habit': 'Diese Gewohnheit',
   'All habits': 'Alle Gewohnheiten',
   'Only due days without an entry are skipped; days with an entry keep it. Skipped days neither break nor extend a streak. Archived habits are left out.':
       'Übersprungen werden nur fällige Tage ohne Eintrag; Tage mit Eintrag behalten ihn. Übersprungene Tage unterbrechen keine Serie und verlängern sie nicht. Archivierte Gewohnheiten bleiben außen vor.',
@@ -257,7 +256,6 @@ const DE = {
   'Show archived habits': 'Archivierte Gewohnheiten zeigen',
   '1 habit is archived.': '1 Gewohnheit ist archiviert.',
   '{n} habits are archived.': '{n} Gewohnheiten sind archiviert.',
-  'Done': 'Fertig',
   'Language': 'Sprache',
   'Browser language': 'Sprache des Browsers',
   'The page reloads to switch the language.':
@@ -347,7 +345,6 @@ const DE = {
   'Category · {n} habits': 'Kategorie · {n} Gewohnheiten',
 
   // ---------- value dialog ----------
-  'Enter value': 'Wert eingeben',
   'Less': 'Weniger',
   'More': 'Mehr',
   'Value': 'Wert',

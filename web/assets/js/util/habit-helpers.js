@@ -32,7 +32,7 @@ const STATUS = {
  * @param {string} iso
  * @return {string}
  */
-export function statusOn(habit, iso) {
+function statusOn(habit, iso) {
   if (!habit.days || !habit.daysFrom) return STATUS.off;
   const i = daysBetween(habit.daysFrom, iso);
   return i >= 0 && i < habit.days.length ? habit.days[i] : STATUS.off;
@@ -46,7 +46,7 @@ export function statusOn(habit, iso) {
  * @param {string} iso
  * @return {!Schedule}
  */
-export function scheduleOn(habit, iso) {
+function scheduleOn(habit, iso) {
   const all = habit.schedules;
   for (let i = all.length - 1; i > 0; i--) {
     // ISO dates compare correctly as strings.
@@ -193,7 +193,7 @@ export function isLimit(habit, iso) {
  * @param {string} kind
  * @return {{scale: number, step: number, max: number, unit: string}}
  */
-export function kindInfo(kind) {
+function kindInfo(kind) {
   return state.kinds[kind];
 }
 
@@ -280,7 +280,7 @@ export function unitLabel(habit) {
  * @param {number} metres
  * @return {string}
  */
-export function formatDistance(metres) {
+function formatDistance(metres) {
   if (metres < 1000) return `${metres} m`;
   return `${(Math.round(metres / 100) / 10).toLocaleString(locale)} km`;
 }

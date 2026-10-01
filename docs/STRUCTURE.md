@@ -8,6 +8,21 @@ internal/domain             Habits, schedules, day statuses, streaks, statistics
 internal/settings           User settings: defaults, options and rules
 internal/store              SQLite: transactions, schema, migrations, undo steps
 internal/httpapi            Routing, JSON API, frontend delivery
+  server.go                   Routes of all endpoints, middleware, GET /, the
+                              assets and GET /healthz
+  json.go                     JSON bodies, error responses, 404 for unknown /api/ paths
+  build.go                    Version and build information of the binary
+  manifest.go                 GET /manifest.webmanifest
+  handlers_habits.go          GET /api/state; GET, POST, PATCH, DELETE /api/habits…;
+                              POST /api/habits/reorder; the habit views they share
+  handlers_entries.go         PUT /api/habits/{id}/entries/{date}
+  handlers_stats.go           GET /api/days, GET /api/habits/{id}/totals
+  handlers_skips.go           POST /api/skips
+  handlers_categories.go      POST, PATCH, DELETE /api/categories…;
+                              POST /api/categories/reorder
+  handlers_undo.go            POST /api/undo, POST /api/redo
+  handlers_settings.go        GET, PATCH /api/settings
+  handlers_transfer.go        GET /api/export, POST /api/import, DELETE /api/data
 scripts/genicons.go         Generates the PNG app icons
 scripts/firefox_test.py     Tests the frontend in Firefox with mouse, keyboard and touch
 scripts/format_templates.py Formats the Vue templates (Vue style guide)
@@ -69,6 +84,12 @@ web/                        Frontend (Vue, ES modules, no build step)
 
 `internal/domain` depends neither on the database nor on HTTP and is tested
 without either.
+
+The handlers in `internal/httpapi` are grouped by the data they serve, not one
+file per route. `GET /api/state` lives in `handlers_habits.go` because its
+response is mostly the list of habit views, built by `viewFor` and
+`computeHistory` like the other habit endpoints; the rest of the response
+(settings, options, build) is only gathered there.
 
 The frontend has no build step (no npm, no bundler); `go build` is all that is
 needed for a release. Vue compiles the templates of the components in the

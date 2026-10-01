@@ -55,46 +55,48 @@ type daysResponse struct {
 // habits of a category.
 func (s *server) handleDays(w http.ResponseWriter, r *http.Request, user auth.User) {
 	ctx := r.Context()
-	var out daysResponse
+	var (
+		b       basis
+		year    int
+		habits  []domain.Habit
+		entries map[string]map[domain.Date]domain.Entry
+	)
 	err := s.store.View(ctx, user.ID, func(tx *store.Tx) error {
-		b, err := s.basis(ctx, tx)
-		if err != nil {
+		var err error
+		if b, err = s.basis(ctx, tx); err != nil {
 			return err
 		}
-		year, err := statsYear(r, b.today)
-		if err != nil {
+		if year, err = statsYear(r, b.today); err != nil {
 			return err
 		}
-		habits, err := habitsOfCategory(ctx, tx, r.URL.Query().Get("category"))
-		if err != nil {
+		if habits, err = habitsOfCategory(ctx, tx, r.URL.Query().Get("category")); err != nil {
 			return err
 		}
-		entries, err := tx.Entries(ctx)
-		if err != nil {
-			return err
-		}
-		first, last := yearRange(year)
-		totals := domain.DayTotals(habits, entries, first, last, b.today)
-		past := totals
-		if !last.Before(b.today) {
-			past = totals[:b.today.DaysSince(first)+1]
-		}
-		out = daysResponse{
-			Year:   year,
-			Totals: totals,
-			Stats:  domain.ComputeDayStats(past, b.today),
-			Habits: len(habits),
-		}
-		for _, h := range habits {
-			st := domain.ComputeStats(h, entries[h.ID], b.today, b.windowDays)
-			out.Expected += st.Expected
-			out.Achieved += st.Achieved
-		}
-		return nil
+		entries, err = tx.Entries(ctx)
+		return err
 	})
 	if err != nil {
 		s.writeStoreError(w, err, "loading day statistics")
 		return
+	}
+
+	// Computed after the transaction, see habitData.
+	first, last := yearRange(year)
+	totals := domain.DayTotals(habits, entries, first, last, b.today)
+	past := totals
+	if !last.Before(b.today) {
+		past = totals[:b.today.DaysSince(first)+1]
+	}
+	out := daysResponse{
+		Year:   year,
+		Totals: totals,
+		Stats:  domain.ComputeDayStats(past, b.today),
+		Habits: len(habits),
+	}
+	for _, h := range habits {
+		st := domain.ComputeStats(h, entries[h.ID], b.today, b.windowDays)
+		out.Expected += st.Expected
+		out.Achieved += st.Achieved
 	}
 	s.writeJSON(w, http.StatusOK, out)
 }
@@ -126,31 +128,23 @@ func (s *server) handleHabitTotals(w http.ResponseWriter, r *http.Request, user 
 		return
 	}
 	ctx := r.Context()
-	var out domain.Totals
+	var (
+		data habitData
+		year int
+	)
 	err := s.store.View(ctx, user.ID, func(tx *store.Tx) error {
-		b, err := s.basis(ctx, tx)
-		if err != nil {
+		var err error
+		if data, err = s.loadHabit(ctx, tx, r.PathValue("id")); err != nil {
 			return err
 		}
-		year, err := statsYear(r, b.today)
-		if err != nil {
-			return err
-		}
-		h, err := tx.Habit(ctx, r.PathValue("id"))
-		if err != nil {
-			return err
-		}
-		entries, err := tx.HabitEntries(ctx, h.ID)
-		if err != nil {
-			return err
-		}
-		first, last := yearRange(year)
-		out = domain.SumValues(entries, first, last.Min(b.today), grain)
-		return nil
+		year, err = statsYear(r, data.basis.today)
+		return err
 	})
 	if err != nil {
 		s.writeStoreError(w, err, "loading totals")
 		return
 	}
-	s.writeJSON(w, http.StatusOK, out)
+	// Computed after the transaction, see habitData.
+	first, last := yearRange(year)
+	s.writeJSON(w, http.StatusOK, domain.SumValues(data.entries, first, last.Min(data.basis.today), grain))
 }

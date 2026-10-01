@@ -27,7 +27,7 @@ func (s *server) handleSetEntry(w http.ResponseWriter, r *http.Request, user aut
 	}
 	ctx := r.Context()
 
-	var view habitView
+	var data habitData
 	changeID, err := s.store.Update(ctx, user.ID, func(tx *store.Tx) error {
 		b, err := s.basis(ctx, tx)
 		if err != nil {
@@ -57,7 +57,7 @@ func (s *server) handleSetEntry(w http.ResponseWriter, r *http.Request, user aut
 			return err
 		}
 		tx.Record("{name} — {date}", "name", h.Name, "date", date.String())
-		view, err = s.fullView(ctx, tx, h.ID)
+		data, err = s.loadHabit(ctx, tx, h.ID)
 		return err
 	})
 	if err != nil {
@@ -65,7 +65,7 @@ func (s *server) handleSetEntry(w http.ResponseWriter, r *http.Request, user aut
 		return
 	}
 	writeChange(w, changeID)
-	s.writeJSON(w, http.StatusOK, view)
+	s.writeJSON(w, http.StatusOK, data.fullView())
 }
 
 // checkEntryDay returns an error unless change may be applied to the entry of

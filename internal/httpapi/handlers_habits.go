@@ -75,60 +75,60 @@ func (s *server) handleState(w http.ResponseWriter, r *http.Request, user auth.U
 		}
 	}
 
-	var out stateResponse
+	var (
+		b          basis
+		habits     []domain.Habit
+		entries    map[string]map[domain.Date]domain.Entry
+		categories []domain.Category
+	)
 	err := s.store.View(ctx, user.ID, func(tx *store.Tx) error {
-		b, err := s.basis(ctx, tx)
-		if err != nil {
+		var err error
+		if b, err = s.basis(ctx, tx); err != nil {
 			return err
 		}
-		habits, err := tx.Habits(ctx)
-		if err != nil {
+		if habits, err = tx.Habits(ctx); err != nil {
 			return err
-		}
-		// from can only extend the window, not shorten it.
-		window := b.today.AddDays(-(entryWindowDays - 1))
-		if from.IsZero() || window.Before(from) {
-			from = window
 		}
 		// The statistics cover the whole history, so all entries are loaded;
 		// only the window's are sent.
-		entries, err := tx.Entries(ctx)
-		if err != nil {
+		if entries, err = tx.Entries(ctx); err != nil {
 			return err
 		}
-		categories, err := tx.Categories(ctx)
-		if err != nil {
-			return err
-		}
-
-		views := make([]habitView, 0, len(habits))
-		for _, h := range habits {
-			own := entries[h.ID]
-			views = append(views, viewFor(h, computeHistory(h, own, b), own, b, from))
-		}
-		out = stateResponse{
-			User:           user,
-			Settings:       b.settings,
-			Today:          b.today,
-			NextDayIn:      domain.UntilTomorrow(time.Now(), b.loc).Milliseconds(),
-			Categories:     categories,
-			Habits:         views,
-			Colors:         domain.Colors(),
-			Icons:          domain.HabitIcons(),
-			Kinds:          domain.KindDescriptors(),
-			EntriesFrom:    from,
-			EarliestEntry:  domain.EarliestEntry,
-			ServerTimeZone: s.cfg.Location.String(),
-			Build:          currentBuild(),
-			Options:        settings.Options(),
-		}
-		return nil
+		categories, err = tx.Categories(ctx)
+		return err
 	})
 	if err != nil {
 		s.writeStoreError(w, err, "loading the state")
 		return
 	}
-	s.writeJSON(w, http.StatusOK, out)
+
+	// The views are computed after the transaction (see habitData). from can
+	// only extend the window, not shorten it.
+	window := b.today.AddDays(-(entryWindowDays - 1))
+	if from.IsZero() || window.Before(from) {
+		from = window
+	}
+	views := make([]habitView, 0, len(habits))
+	for _, h := range habits {
+		own := entries[h.ID]
+		views = append(views, viewFor(h, computeHistory(h, own, b), own, b, from))
+	}
+	s.writeJSON(w, http.StatusOK, stateResponse{
+		User:           user,
+		Settings:       b.settings,
+		Today:          b.today,
+		NextDayIn:      domain.UntilTomorrow(time.Now(), b.loc).Milliseconds(),
+		Categories:     categories,
+		Habits:         views,
+		Colors:         domain.Colors(),
+		Icons:          domain.HabitIcons(),
+		Kinds:          domain.KindDescriptors(),
+		EntriesFrom:    from,
+		EarliestEntry:  domain.EarliestEntry,
+		ServerTimeZone: s.cfg.Location.String(),
+		Build:          currentBuild(),
+		Options:        settings.Options(),
+	})
 }
 
 // history holds what a habit's view computes from its whole history: its
@@ -182,37 +182,53 @@ func viewFor(h domain.Habit, hist history, entries map[domain.Date]domain.Entry,
 	return view
 }
 
-// fullView returns the view of a habit of the user with all its entries.
-func (s *server) fullView(ctx context.Context, tx *store.Tx, id string) (habitView, error) {
+// habitData is what the view of a habit is computed from. Handlers load it in
+// their transaction and compute the view after it: the statistics walk the
+// habit's whole history day by day, and the store has a single connection,
+// which every other request waits for while a transaction holds it.
+type habitData struct {
+	habit   domain.Habit
+	entries map[domain.Date]domain.Entry
+	basis   basis
+}
+
+// loadHabit loads a habit of the user with all its entries, and the basis of
+// its statistics.
+func (s *server) loadHabit(ctx context.Context, tx *store.Tx, id string) (habitData, error) {
 	h, err := tx.Habit(ctx, id)
 	if err != nil {
-		return habitView{}, err
+		return habitData{}, err
 	}
 	entries, err := tx.HabitEntries(ctx, id)
 	if err != nil {
-		return habitView{}, err
+		return habitData{}, err
 	}
 	b, err := s.basis(ctx, tx)
 	if err != nil {
-		return habitView{}, err
+		return habitData{}, err
 	}
-	return viewFor(h, computeHistory(h, entries, b), entries, b, domain.Date{}), nil
+	return habitData{habit: h, entries: entries, basis: b}, nil
+}
+
+// fullView returns the view of the habit with all its entries.
+func (d habitData) fullView() habitView {
+	return viewFor(d.habit, computeHistory(d.habit, d.entries, d.basis), d.entries, d.basis, domain.Date{})
 }
 
 // handleGetHabit returns a habit with its full history.
 func (s *server) handleGetHabit(w http.ResponseWriter, r *http.Request, user auth.User) {
 	ctx := r.Context()
-	var view habitView
+	var data habitData
 	err := s.store.View(ctx, user.ID, func(tx *store.Tx) error {
 		var err error
-		view, err = s.fullView(ctx, tx, r.PathValue("id"))
+		data, err = s.loadHabit(ctx, tx, r.PathValue("id"))
 		return err
 	})
 	if err != nil {
 		s.writeStoreError(w, err, "loading habit")
 		return
 	}
-	s.writeJSON(w, http.StatusOK, view)
+	s.writeJSON(w, http.StatusOK, data.fullView())
 }
 
 // handleCreateHabit creates a habit. Name, kind and frequency are required.
@@ -228,7 +244,7 @@ func (s *server) handleCreateHabit(w http.ResponseWriter, r *http.Request, user 
 	}
 	ctx := r.Context()
 
-	var view habitView
+	var data habitData
 	changeID, err := s.store.Update(ctx, user.ID, func(tx *store.Tx) error {
 		b, err := s.basis(ctx, tx)
 		if err != nil {
@@ -242,7 +258,7 @@ func (s *server) handleCreateHabit(w http.ResponseWriter, r *http.Request, user 
 			return err
 		}
 		tx.Record(`"{name}" created`, "name", h.Name)
-		view = viewFor(h, computeHistory(h, nil, b), nil, b, domain.Date{})
+		data = habitData{habit: h, basis: b}
 		return nil
 	})
 	if err != nil {
@@ -250,7 +266,7 @@ func (s *server) handleCreateHabit(w http.ResponseWriter, r *http.Request, user 
 		return
 	}
 	writeChange(w, changeID)
-	s.writeJSON(w, http.StatusCreated, view)
+	s.writeJSON(w, http.StatusCreated, data.fullView())
 }
 
 // handleUpdateHabit changes the fields of a habit given in the request body,
@@ -266,7 +282,7 @@ func (s *server) handleUpdateHabit(w http.ResponseWriter, r *http.Request, user 
 	ctx := r.Context()
 	id := r.PathValue("id")
 
-	var view habitView
+	var data habitData
 	changeID, err := s.store.Update(ctx, user.ID, func(tx *store.Tx) error {
 		b, err := s.basis(ctx, tx)
 		if err != nil {
@@ -302,7 +318,7 @@ func (s *server) handleUpdateHabit(w http.ResponseWriter, r *http.Request, user 
 			}
 			entries = converted
 		}
-		view = viewFor(h, computeHistory(h, entries, b), entries, b, domain.Date{})
+		data = habitData{habit: h, entries: entries, basis: b}
 		return nil
 	})
 	if err != nil {
@@ -310,7 +326,7 @@ func (s *server) handleUpdateHabit(w http.ResponseWriter, r *http.Request, user 
 		return
 	}
 	writeChange(w, changeID)
-	s.writeJSON(w, http.StatusOK, view)
+	s.writeJSON(w, http.StatusOK, data.fullView())
 }
 
 // handleDeleteHabit deletes a habit with its history. Undo brings it back.

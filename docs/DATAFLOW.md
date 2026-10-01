@@ -35,7 +35,10 @@ A handler works in one transaction of the user: `store.View` for reading,
 once (`basis`: today in their time zone and the completion rate's window),
 reads what it needs, checks the change with `internal/domain` and writes it.
 Nothing another request changes in between can slip through between check and
-write.
+write. The statistics of the answer are computed after the transaction, from
+what it loaded (`habitData`): the store has a single connection, and a
+transaction holding it while the statistics walk years of history would keep
+every other request waiting.
 
 ## Loading the state
 
@@ -47,7 +50,7 @@ The state also carries what the client offers to choose from: the colours,
 icons and kinds, and the choices of the enumerated settings (`options`).
 
 Statistics cover a habit's whole history, so the server loads all entries
-and computes them on every request (`computeHistory` in
+and computes them on every request, after its transaction (`computeHistory` in
 `internal/httpapi/handlers_habits.go`); only the window's entries are sent.
 Nothing is cached, so no write can leave the statistics stale.
 

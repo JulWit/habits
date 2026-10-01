@@ -92,6 +92,9 @@ asked.
   `schema`. Never edit a released migration.
 - **One transaction per request.** Handlers read, check and write in one
   `store.View` or `store.Update`; they never call the store outside of it.
+  The statistics of the answer are computed after it, from what it loaded
+  (`habitData` in `internal/httpapi/handlers_habits.go`), as the store has a
+  single connection that every other request waits for.
 - **Every user-owned query is scoped to the user.** Rows refer to `users` with
   `ON DELETE CASCADE`.
 - **Undo lives on the server.** A change that can be undone calls

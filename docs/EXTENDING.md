@@ -70,8 +70,10 @@ needed, as habits and categories store the name (see
 
 Use `domain.Invalid(code, template, params...)` and add an entry to
 `DE_ERRORS` in `i18n.js`; `TestEveryProblemCodeIsTranslated` checks that every
-code has one. The template is an error string: lower case and without a
-trailing full stop. The client capitalises it when it shows it.
+code has one. Removing a code removes its entry too, which
+`TestEveryTranslatedCodeIsSent` checks. The template is an error string: lower
+case and without a trailing full stop. The client capitalises it when it shows
+it.
 
 ## New endpoint
 

@@ -175,7 +175,9 @@ setting or a value of the wrong type is 400 `invalid_body`, an invalid value
 
 `key` identifies a category within the file, and a habit's `category` refers
 to it (`""` for none). `entries` holds the value of each day with one,
-`skipped` the skipped days; values are in stored units. A file of another
+`skipped` the skipped days; values are in stored units. Their dates are
+bounded like recorded ones (422 `entry_too_early`, `entry_too_far_ahead`), and
+a `createdAt` before 2000 becomes 1 January 2000. A file of another
 `format` or `version` is 422 `import_format`. The import answers with the
 numbers of `habits` and `categories` added and of the habits `skipped`, as
 one of that name exists.

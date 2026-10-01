@@ -187,8 +187,11 @@ func (s *server) handleImport(w http.ResponseWriter, r *http.Request, user auth.
 
 	var result importResult
 	changeID, err := s.store.Update(ctx, user.ID, func(tx *store.Tx) error {
-		var err error
-		if result, err = importFile(ctx, tx, in); err != nil {
+		b, err := s.basis(ctx, tx)
+		if err != nil {
+			return err
+		}
+		if result, err = importFile(ctx, tx, in, b.today); err != nil {
 			return err
 		}
 		if result.Habits == 1 {
@@ -210,8 +213,9 @@ func (s *server) handleImport(w http.ResponseWriter, r *http.Request, user auth.
 	s.writeJSON(w, http.StatusOK, result)
 }
 
-// importFile adds the categories and habits of in (see handleImport).
-func importFile(ctx context.Context, tx *store.Tx, in exportFile) (importResult, error) {
+// importFile adds the categories and habits of in (see handleImport) on the
+// user's today.
+func importFile(ctx context.Context, tx *store.Tx, in exportFile, today domain.Date) (importResult, error) {
 	var result importResult
 	existingCats, err := tx.Categories(ctx)
 	if err != nil {
@@ -251,7 +255,7 @@ func importFile(ctx context.Context, tx *store.Tx, in exportFile) (importResult,
 			result.Skipped++
 			continue
 		}
-		if err := importHabit(ctx, tx, eh, catByKey); err != nil {
+		if err := importHabit(ctx, tx, eh, catByKey, today); err != nil {
 			return importResult{}, importProblem{err: err, param: "habit", name: eh.Name}
 		}
 		taken[nameKey(eh.Name)] = true
@@ -261,8 +265,14 @@ func importFile(ctx context.Context, tx *store.Tx, in exportFile) (importResult,
 }
 
 // importHabit adds the habit eh with its entries; catByKey maps the category
-// keys of the file to category IDs.
-func importHabit(ctx context.Context, tx *store.Tx, eh exportHabit, catByKey map[string]string) error {
+// keys of the file to category IDs. Entries are bounded like recorded ones
+// (checkRecordDate), and a creation day before domain.EarliestEntry moves up
+// to it: the statistics walk the history day by day from the earlier of both,
+// so a file dated centuries back would make every request of the user slow.
+func importHabit(ctx context.Context, tx *store.Tx, eh exportHabit, catByKey map[string]string, today domain.Date) error {
+	if earliest := domain.EarliestEntry.Time(); eh.CreatedAt.Before(earliest) {
+		eh.CreatedAt = earliest
+	}
 	h := domain.Habit{
 		Name:  eh.Name,
 		Color: eh.Color,
@@ -285,9 +295,15 @@ func importHabit(ctx context.Context, tx *store.Tx, eh exportHabit, catByKey map
 		if err != nil {
 			return domain.Invalid("invalid_date", "invalid date, expected YYYY-MM-DD")
 		}
+		if err := checkRecordDate(d, today); err != nil {
+			return err
+		}
 		entries[d] = domain.Entry{Value: value}
 	}
 	for _, d := range eh.Skipped {
+		if err := checkRecordDate(d, today); err != nil {
+			return err
+		}
 		if entries[d].Value > 0 {
 			return domain.Invalid("skipped_with_value", "a skipped day cannot have a value")
 		}

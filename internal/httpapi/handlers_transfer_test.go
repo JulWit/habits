@@ -150,6 +150,38 @@ func TestImportIsAllOrNothing(t *testing.T) {
 	}
 }
 
+// Imported entries are bounded like recorded ones, and a creation day before
+// the earliest entry moves up to it, so the history never reaches centuries
+// back.
+func TestImportBoundsTheHistory(t *testing.T) {
+	h := newTestServer(t)
+	habit := func(entries string) string {
+		return `{"format":"habits","version":2,"categories":[],"habits":[
+			{"name":"Read","kind":"check","color":"red","createdAt":"0001-01-01T00:00:00Z",
+			 "schedules":[{"from":"2026-01-01","targetValue":1,"frequency":{"kind":"daily"}}],
+			 "entries":` + entries + `}]}`
+	}
+	for _, entries := range []string{`{"1500-01-01":1}`, `{"9999-01-01":1}`} {
+		w := do(t, h, "POST", "/api/import", habit(entries), "application/json")
+		if w.Code != http.StatusUnprocessableEntity {
+			t.Errorf("import of entries %s: status %d (%s), want 422", entries, w.Code, w.Body)
+		}
+	}
+
+	mustDo(t, h, "POST", "/api/import", habit(`{}`), http.StatusOK)
+	var state struct {
+		Habits []struct {
+			HistoryStart domain.Date `json:"historyStart"`
+		} `json:"habits"`
+	}
+	if err := json.Unmarshal(mustDo(t, h, "GET", "/api/state", "", http.StatusOK), &state); err != nil {
+		t.Fatalf("json.Unmarshal(GET /api/state): %v", err)
+	}
+	if len(state.Habits) != 1 || state.Habits[0].HistoryStart != domain.EarliestEntry {
+		t.Errorf("habits = %+v, want one starting on %s", state.Habits, domain.EarliestEntry)
+	}
+}
+
 // Files of another format or version are refused.
 func TestImportChecksTheFormat(t *testing.T) {
 	h := newTestServer(t)

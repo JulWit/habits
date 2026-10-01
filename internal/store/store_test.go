@@ -242,3 +242,61 @@ func ownerColumn(table string) string {
 		return "user_id"
 	}
 }
+
+// MoveUser hands habits, entries, categories and settings to the target and
+// drops the undo steps of the source, which hold its rows.
+func TestMoveUserHandsOverTheData(t *testing.T) {
+	st := openTestStore(t)
+	h := mustCreateHabit(t, st, "local", countHabit(domain.KindCount, 80))
+	d := day(2026, time.September, 18)
+	setEntry(t, st, "local", h, d, domain.Entry{Value: 30})
+	update(t, st, "local", func(tx *Tx) error {
+		if err := tx.CreateCategory(t.Context(), &domain.Category{Name: "Health"}); err != nil {
+			return err
+		}
+		return tx.SaveSettings(t.Context(), settings.Default())
+	})
+
+	if err := st.MoveUser(t.Context(), "local", "alice"); err != nil {
+		t.Fatalf("MoveUser: %v", err)
+	}
+	if got := entriesOf(t, st, "alice", h.ID)[d].Value; got != 30 {
+		t.Errorf("entry of alice = %d, want 30", got)
+	}
+	categories := read(t, st, "alice", func(tx *Tx) ([]domain.Category, error) { return tx.Categories(t.Context()) })
+	if len(categories) != 1 {
+		t.Errorf("categories of alice = %+v, want the one of local", categories)
+	}
+	for _, query := range []string{
+		`SELECT COUNT(*) FROM users WHERE id = 'local'`,
+		`SELECT COUNT(*) FROM habits WHERE user_id = 'local'`,
+		`SELECT COUNT(*) FROM changes`,
+	} {
+		if n := queryInt(t, st, query); n != 0 {
+			t.Errorf("%s = %d, want 0", query, n)
+		}
+	}
+	if n := queryInt(t, st, `SELECT COUNT(*) FROM user_settings WHERE user_id = 'alice'`); n != 1 {
+		t.Errorf("settings of alice = %d rows, want 1", n)
+	}
+}
+
+// MoveUser refuses a target with data of their own, an unknown source and
+// the same user twice, and changes nothing then.
+func TestMoveUserRefuses(t *testing.T) {
+	st := openTestStore(t)
+	mustCreateHabit(t, st, "local", countHabit(domain.KindCount, 80))
+	mustCreateHabit(t, st, "alice", countHabit(domain.KindCount, 80))
+	for _, tc := range []struct{ from, to string }{
+		{"local", "alice"},
+		{"nobody", "bob"},
+		{"local", "local"},
+	} {
+		if err := st.MoveUser(t.Context(), tc.from, tc.to); err == nil {
+			t.Errorf("MoveUser(%q, %q) = nil, want an error", tc.from, tc.to)
+		}
+	}
+	if n := queryInt(t, st, `SELECT COUNT(*) FROM habits WHERE user_id = 'local'`); n != 1 {
+		t.Errorf("habits of local = %d, want 1 (nothing moved)", n)
+	}
+}

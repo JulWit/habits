@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -36,6 +37,13 @@ func main() {
 	if len(os.Args) == 2 && os.Args[1] == "healthcheck" {
 		if err := healthcheck(); err != nil {
 			fmt.Fprintln(os.Stderr, "unhealthy:", err)
+			os.Exit(1)
+		}
+		return
+	}
+	if len(os.Args) >= 2 && os.Args[1] == "move-user" {
+		if err := moveUser(os.Args[2:]); err != nil {
+			fmt.Fprintln(os.Stderr, "move-user:", err)
 			os.Exit(1)
 		}
 		return
@@ -172,6 +180,37 @@ func healthcheck() error {
 	if res.StatusCode != http.StatusOK {
 		return fmt.Errorf("%s answered %s", healthURL, res.Status)
 	}
+	return nil
+}
+
+// moveUser hands all data of one user to another (store.MoveUser), for
+// "habits move-user FROM TO", e.g. from the user of single-user mode to the
+// ID a reverse proxy signs in. TO is lower-cased, as trusted-header mode
+// lower-cases the IDs it reads. The server should be stopped meanwhile, so no
+// open page keeps writing as FROM.
+func moveUser(args []string) error {
+	if len(args) != 2 {
+		return errors.New("usage: habits move-user FROM TO")
+	}
+	from := strings.TrimSpace(args[0])
+	to := strings.ToLower(strings.TrimSpace(args[1]))
+	if from == "" || to == "" {
+		return errors.New("FROM and TO must not be empty")
+	}
+	cfg, err := config.Load()
+	if err != nil {
+		return err
+	}
+	ctx := context.Background()
+	st, err := store.Open(ctx, cfg.DatabasePath)
+	if err != nil {
+		return err
+	}
+	defer st.Close()
+	if err := st.MoveUser(ctx, from, to); err != nil {
+		return err
+	}
+	fmt.Printf("moved the data of %q to %q in %s\n", from, to, cfg.DatabasePath)
 	return nil
 }
 

@@ -113,6 +113,21 @@ HABITS_DB=/data/habits.db
 
 `/healthz` requires no authentication.
 
+### Switching from single-user mode
+
+Data belongs to a user ID. After switching to `trusted-header`, the data of
+single-user mode still belongs to `local` and the signed-in user starts empty.
+`habits move-user FROM TO` hands all data of one user (settings, categories,
+habits and their entries) to another, who must not have data of their own.
+`TO` is lower-cased, as the IDs read from the header are. The undo history of
+`FROM` is dropped. Stop the server first and back up the database:
+
+```bash
+docker compose stop habits
+docker compose run --rm habits move-user local julian
+docker compose up -d habits
+```
+
 ## Backups and upgrades
 
 The database is a single SQLite file (`HABITS_DB`, with its `-wal` and `-shm`

@@ -168,6 +168,57 @@ func (t *Tx) DeleteUser(ctx context.Context) error {
 	return nil
 }
 
+// MoveUser hands all data of the user from to the user to: settings,
+// categories and habits with their schedules and entries, e.g. when moving
+// from single-user mode to a reverse proxy that signs users in. to must not
+// have data of their own. The undo steps of from are dropped, as they hold
+// rows of from and would write them back there.
+func (s *Store) MoveUser(ctx context.Context, from, to string) error {
+	if from == to {
+		return fmt.Errorf("moving user %q: source and target are the same", from)
+	}
+	return s.inTx(ctx, "moving user", func(tx *sql.Tx) error {
+		var exists bool
+		if err := tx.QueryRowContext(ctx,
+			`SELECT EXISTS (SELECT 1 FROM users WHERE id = ?)`, from).Scan(&exists); err != nil {
+			return fmt.Errorf("moving user: %w", err)
+		}
+		if !exists {
+			return fmt.Errorf("moving user: user %q has no data", from)
+		}
+		var owned bool
+		if err := tx.QueryRowContext(ctx, `SELECT
+			EXISTS (SELECT 1 FROM habits WHERE user_id = ?1) OR
+			EXISTS (SELECT 1 FROM categories WHERE user_id = ?1) OR
+			EXISTS (SELECT 1 FROM user_settings WHERE user_id = ?1)`, to).Scan(&owned); err != nil {
+			return fmt.Errorf("moving user: %w", err)
+		}
+		if owned {
+			return fmt.Errorf("moving user: user %q already has data of their own", to)
+		}
+
+		// The target is recorded first, as every moved row refers to it.
+		// Its own undo steps go as well: with no data, they undo nothing.
+		for _, stmt := range []struct {
+			query string
+			args  []any
+		}{
+			{`INSERT INTO users (id, created_at) SELECT ?, created_at FROM users WHERE id = ?
+				ON CONFLICT(id) DO NOTHING`, []any{to, from}},
+			{`UPDATE user_settings SET user_id = ? WHERE user_id = ?`, []any{to, from}},
+			{`UPDATE categories SET user_id = ? WHERE user_id = ?`, []any{to, from}},
+			{`UPDATE habits SET user_id = ? WHERE user_id = ?`, []any{to, from}},
+			{`DELETE FROM changes WHERE user_id IN (?, ?)`, []any{from, to}},
+			{`DELETE FROM users WHERE id = ?`, []any{from}},
+		} {
+			if _, err := tx.ExecContext(ctx, stmt.query, stmt.args...); err != nil {
+				return fmt.Errorf("moving user: %w", err)
+			}
+		}
+		return nil
+	})
+}
+
 // NewID returns a random 128-bit ID in hex.
 func NewID() string {
 	var b [16]byte

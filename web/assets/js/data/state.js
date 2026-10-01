@@ -184,11 +184,16 @@ export let Days;
  *   colors: !Array<string>,
  *   icons: !Array<string>,
  *   kinds: !Object<string, !Object<string, *>>,
+ *   entriesFrom: string,
+ *   earliestEntry: string,
+ *   serverTimeZone: string,
+ *   build: !Object<string, *>,
  *   options: !Object<string, !Array<!Object<string, string>>>,
  * }}
  */
 export let LoadedState;
 
+/** The loaded state; empty until the first load. */
 export const state = reactive({
   user: null,
   // Complete once the state is loaded.
@@ -199,6 +204,10 @@ export const state = reactive({
   colors: [],
   icons: [],
   kinds: {},
+  entriesFrom: '',
+  earliestEntry: '',
+  serverTimeZone: '',
+  build: null,
   options: {},
 });
 

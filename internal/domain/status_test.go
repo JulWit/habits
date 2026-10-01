@@ -100,7 +100,7 @@ func TestDayTotalsCountFromTheHistoryStart(t *testing.T) {
 	older.ID = "older"
 	newer := dailyHabit()
 	newer.ID = "newer"
-	newer.CreatedAt = friday.Time()
+	newer.Schedules[0].From = friday
 	entries := map[string]map[Date]Entry{
 		"older": valued(map[Date]int{friday.AddDays(-1): 1, friday: 1}),
 		"newer": {friday: {Skipped: true}},

@@ -558,6 +558,8 @@ const DE_ERRORS = {
   entry_too_far_ahead:
       'Einträge dürfen höchstens ein Jahr in der Zukunft liegen',
   entry_too_early: 'Einträge dürfen nicht vor dem Jahr {year} liegen.',
+  schedule_start_out_of_range:
+      'Zeitpläne dürfen nicht vor dem Jahr {year} oder mehr als ein Jahr in der Zukunft beginnen',
   not_scheduled: 'Die Gewohnheit ist an diesem Tag nicht geplant',
   date_missing: 'Das Datum fehlt.',
   value_negative: 'Der Wert darf nicht negativ sein.',

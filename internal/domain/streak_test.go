@@ -167,7 +167,7 @@ func TestWeeklyRunEndsAtAMissedWeek(t *testing.T) {
 func TestWeeklyRunStartsNoEarlierThanTheHabit(t *testing.T) {
 	created := friday.AddDays(-10) // a Tuesday
 	h := weeklyHabit(2)
-	h.CreatedAt = created.Time()
+	h.Schedules[0].From = created
 	entries := map[Date]int{}
 	for _, back := range []int{10, 9, 3, 2} {
 		entries[friday.AddDays(-back)] = 1

@@ -1,9 +1,6 @@
 package domain
 
-import (
-	"testing"
-	"time"
-)
+import "testing"
 
 // A skipped day neither breaks nor extends a streak, and it is left out of
 // the completion rate.
@@ -72,8 +69,8 @@ func TestLimitCompletesDaysWithinIt(t *testing.T) {
 		}
 	}
 
-	h.CreatedAt = time.Date(2026, time.September, 14, 12, 0, 0, 0, time.UTC) // Monday
-	entries := valued(map[Date]int{friday.AddDays(-3): 30})                  // over on Tuesday
+	h.Schedules[0].From = monday                            // created on Monday
+	entries := valued(map[Date]int{friday.AddDays(-3): 30}) // over on Tuesday
 	st := ComputeStats(h, entries, friday, rateDays)
 	if st.CurrentStreak != 3 || st.BestStreak != 3 {
 		t.Errorf("streak %d, best %d; want 3 and 3 (Wednesday to Friday)", st.CurrentStreak, st.BestStreak)

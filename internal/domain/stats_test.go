@@ -254,10 +254,30 @@ func TestHabitYoungerThanTheWindow(t *testing.T) {
 	}
 }
 
+// The history starts on the day the habit was created in the user's time
+// zone, the start of its first schedule, not on the day of CreatedAt in UTC.
+func TestHistoryStartsOnTheUsersCreationDay(t *testing.T) {
+	berlin, err := time.LoadLocation("Europe/Berlin")
+	if err != nil {
+		t.Fatalf("time.LoadLocation: %v", err)
+	}
+	// 01:30 on Friday in Berlin is still Thursday in UTC.
+	created := time.Date(2026, time.September, 18, 1, 30, 0, 0, berlin).UTC()
+	h := Habit{Kind: KindCheck, CreatedAt: created, Schedules: since(created.In(berlin), 1, Frequency{Kind: FreqDaily})}
+
+	if start := HistoryStart(h, nil); start != friday {
+		t.Errorf("HistoryStart = %s, want %s", start, friday)
+	}
+	st := ComputeStats(h, valued(map[Date]int{friday: 1}), friday, rateDays)
+	if st.Expected != 1 || st.Achieved != 1 {
+		t.Errorf("rate counts %d of %d, want 1 of 1", st.Achieved, st.Expected)
+	}
+}
+
 // A window of 0 covers the whole history, a shorter one only its last days.
 func TestRateWindow(t *testing.T) {
 	h := dailyHabit()
-	h.CreatedAt = friday.AddDays(-9).Time() // ten days of history
+	h.Schedules[0].From = friday.AddDays(-9) // ten days of history
 	entries := map[Date]int{}
 	for i := range 5 {
 		entries[friday.AddDays(-i)] = 1 // the last five days done

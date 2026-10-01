@@ -36,10 +36,15 @@ func ComputeStats(h Habit, entries map[Date]Entry, today Date, windowDays int) S
 	return st
 }
 
-// HistoryStart returns the first day of the habit's history: its creation day,
-// or its earliest entry if that is earlier.
+// HistoryStart returns the first day of the habit's history: the start of its
+// first schedule, or its earliest entry if that is earlier. The first schedule
+// starts on the day the habit was created in the user's time zone (NewHabit),
+// which CreatedAt, a time in UTC, does not tell.
 func HistoryStart(h Habit, entries map[Date]Entry) Date {
-	start := DateFromTime(h.CreatedAt)
+	var start Date
+	if len(h.Schedules) > 0 {
+		start = h.Schedules[0].From
+	}
 	for d := range entries {
 		if start.IsZero() || d.Before(start) {
 			start = d

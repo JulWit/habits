@@ -6,6 +6,7 @@ import (
 	"maps"
 	"net/http"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -265,13 +266,18 @@ func importFile(ctx context.Context, tx *store.Tx, in exportFile, today domain.D
 }
 
 // importHabit adds the habit eh with its entries; catByKey maps the category
-// keys of the file to category IDs. Entries are bounded like recorded ones
-// (checkRecordDate), and a creation day before domain.EarliestEntry moves up
-// to it: the statistics walk the history day by day from the earlier of both,
-// so a file dated centuries back would make every request of the user slow.
+// keys of the file to category IDs. Entries and the starts of the schedules
+// are bounded like recorded days (checkRecordDate): the history begins with
+// the earliest of them (domain.HistoryStart), and the statistics walk it day
+// by day, so a file dated centuries back would make every request of the user
+// slow.
 func importHabit(ctx context.Context, tx *store.Tx, eh exportHabit, catByKey map[string]string, today domain.Date) error {
-	if earliest := domain.EarliestEntry.Time(); eh.CreatedAt.Before(earliest) {
-		eh.CreatedAt = earliest
+	for _, s := range eh.Schedules {
+		if s.From.Before(domain.EarliestEntry) || s.From.After(today.AddDays(domain.EntryHorizonDays)) {
+			return domain.Invalid("schedule_start_out_of_range",
+				"schedules may not start before {year} or more than one year ahead",
+				"year", strconv.Itoa(domain.EarliestEntry.Year))
+		}
 	}
 	h := domain.Habit{
 		Name:  eh.Name,

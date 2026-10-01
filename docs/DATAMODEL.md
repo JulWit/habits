@@ -129,9 +129,10 @@ are versioned in [`habit_schedules`](#schedules).
   the day statistics and skipping all habits leave them out.
 - `created_at`, `updated_at`
 
-A habit's history starts on the day it was created, or on its earliest entry
-if that is earlier (`domain.HistoryStart`). Imported habits keep their
-creation day.
+A habit's history starts with its first schedule, or on its earliest entry
+if that is earlier (`domain.HistoryStart`). The first schedule starts on the
+day the habit was created in the user's time zone; `created_at` is a time in
+UTC, whose date can be a day off. Imported habits keep their first schedule.
 
 ### Kinds
 

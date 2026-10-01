@@ -150,25 +150,29 @@ func TestImportIsAllOrNothing(t *testing.T) {
 	}
 }
 
-// Imported entries are bounded like recorded ones, and a creation day before
-// the earliest entry moves up to it, so the history never reaches centuries
-// back.
+// Imported entries and schedule starts are bounded like recorded days, so the
+// history never reaches centuries back; the creation time does not count.
 func TestImportBoundsTheHistory(t *testing.T) {
 	h := newTestServer(t)
-	habit := func(entries string) string {
+	habit := func(from, entries string) string {
 		return `{"format":"habits","version":2,"categories":[],"habits":[
 			{"name":"Read","kind":"check","color":"red","createdAt":"0001-01-01T00:00:00Z",
-			 "schedules":[{"from":"2026-01-01","targetValue":1,"frequency":{"kind":"daily"}}],
+			 "schedules":[{"from":"` + from + `","targetValue":1,"frequency":{"kind":"daily"}}],
 			 "entries":` + entries + `}]}`
 	}
-	for _, entries := range []string{`{"1500-01-01":1}`, `{"9999-01-01":1}`} {
-		w := do(t, h, "POST", "/api/import", habit(entries), "application/json")
+	for _, file := range []string{
+		habit("2026-01-01", `{"1500-01-01":1}`),
+		habit("2026-01-01", `{"9999-01-01":1}`),
+		habit("1500-01-01", `{}`),
+		habit("9999-01-01", `{}`),
+	} {
+		w := do(t, h, "POST", "/api/import", file, "application/json")
 		if w.Code != http.StatusUnprocessableEntity {
-			t.Errorf("import of entries %s: status %d (%s), want 422", entries, w.Code, w.Body)
+			t.Errorf("import of %s: status %d (%s), want 422", file, w.Code, w.Body)
 		}
 	}
 
-	mustDo(t, h, "POST", "/api/import", habit(`{}`), http.StatusOK)
+	mustDo(t, h, "POST", "/api/import", habit("2026-01-01", `{}`), http.StatusOK)
 	var state struct {
 		Habits []struct {
 			HistoryStart domain.Date `json:"historyStart"`
@@ -177,8 +181,9 @@ func TestImportBoundsTheHistory(t *testing.T) {
 	if err := json.Unmarshal(mustDo(t, h, "GET", "/api/state", "", http.StatusOK), &state); err != nil {
 		t.Fatalf("json.Unmarshal(GET /api/state): %v", err)
 	}
-	if len(state.Habits) != 1 || state.Habits[0].HistoryStart != domain.EarliestEntry {
-		t.Errorf("habits = %+v, want one starting on %s", state.Habits, domain.EarliestEntry)
+	want := domain.Date{Year: 2026, Month: time.January, Day: 1}
+	if len(state.Habits) != 1 || state.Habits[0].HistoryStart != want {
+		t.Errorf("habits = %+v, want one starting on %s", state.Habits, want)
 	}
 }
 

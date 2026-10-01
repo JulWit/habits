@@ -204,6 +204,36 @@ func TestWeekdayHabitOnlyCountsItsOwnDays(t *testing.T) {
 	}
 }
 
+// After a change from times per week to daily, the weeks before it count as
+// their day statuses show: the days a met week no longer needed are not due,
+// so they neither lower the rate nor break the streak.
+func TestSwitchFromWeeklyToDailyKeepsTheMetWeeks(t *testing.T) {
+	first := monday.AddDays(-28)
+	h := Habit{
+		Kind: KindCheck, CreatedAt: longAgo,
+		Schedules: []Schedule{
+			{From: first, TargetValue: 1, Frequency: Frequency{Kind: FreqTimesPerWeek, TimesPerWeek: 3}},
+			{From: monday, TargetValue: 1, Frequency: Frequency{Kind: FreqDaily}},
+		},
+	}
+	entries := fillWeekly(first, monday.AddDays(-1), 3) // Mon, Tue, Wed
+	for d := monday; !d.After(friday); d = d.AddDays(1) {
+		entries[d] = 1
+	}
+
+	st := ComputeStats(h, valued(entries), friday, rateDays)
+	if st.CompletionRate != 1 {
+		t.Errorf("rate = %.3f (%d/%d), want 1.000", st.CompletionRate, st.Achieved, st.Expected)
+	}
+	// Four weeks of three days, then Monday to Friday.
+	if want := 4*3 + 5; st.CurrentStreak != want || st.BestStreak != want {
+		t.Errorf("streak = %d, best = %d, want %d", st.CurrentStreak, st.BestStreak, want)
+	}
+	if runs := StreakRuns(h, valued(entries), friday); len(runs) != 1 || runs[0].From != first {
+		t.Errorf("runs = %v, want one from %v", runs, first)
+	}
+}
+
 // Future entries are not included in the total.
 func TestTotalExcludesTheFuture(t *testing.T) {
 	h := Habit{

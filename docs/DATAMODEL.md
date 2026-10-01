@@ -168,7 +168,10 @@ can still be applied to the past later. A change of kind converts the history
 
 For a times-per-week or times-per-month habit, periods from before a switch to
 that frequency are met when every day due in them was completed; periods
-without a due day neither extend nor break the streak.
+without a due day neither extend nor break the streak. After a switch from
+such a frequency to fixed days, the days before it count as their status
+shows: the days a met period no longer needed are not due, so they neither
+lower the completion rate nor break the streak.
 
 ### Targets and limits
 

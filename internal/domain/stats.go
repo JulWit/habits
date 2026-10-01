@@ -67,10 +67,21 @@ func rateStart(today, start Date, windowDays int) Date {
 	return from
 }
 
-// isDue reports whether d is a due day of the habit: scheduled and not
-// skipped.
-func isDue(h Habit, entries map[Date]Entry, d Date) bool {
-	return h.IsScheduled(d) && !entries[d].Skipped
+// judgeDay reports whether d is a due day of a habit with fixed due days, and
+// whether it is complete, by the day's status, as DayTotals counts it. A day
+// under a times-per-week or times-per-month schedule from before a change to
+// fixed days is due as its status shows: once its period had enough completed
+// days, the other days were not due, and further completed days were a bonus
+// that neither extends nor breaks a streak. start is the first day of the
+// habit's history (HistoryStart).
+func judgeDay(h Habit, entries map[Date]Entry, d, start, today Date) (due, done bool) {
+	switch h.Status(d, entries, start, today) {
+	case StatusDone:
+		return true, true
+	case StatusOpen, StatusOver:
+		return true, false
+	}
+	return false, false
 }
 
 // totalValue sums the values of all entries up to today.
@@ -95,11 +106,12 @@ func dailyStats(h Habit, entries map[Date]Entry, today Date, windowDays int) Sta
 
 	run := 0
 	for d := start; !d.After(today); d = d.AddDays(1) {
-		if !isDue(h, entries, d) {
+		due, done := judgeDay(h, entries, d, start, today)
+		if !due {
 			continue
 		}
 		switch {
-		case h.IsComplete(d, entries[d].Value):
+		case done:
 			run++
 			if run > st.BestStreak {
 				st.BestStreak = run
@@ -114,11 +126,12 @@ func dailyStats(h Habit, entries map[Date]Entry, today Date, windowDays int) Sta
 
 	from := rateStart(today, start, windowDays)
 	for d := from; !d.After(today); d = d.AddDays(1) {
-		if !isDue(h, entries, d) {
+		due, done := judgeDay(h, entries, d, start, today)
+		if !due {
 			continue
 		}
 		st.Expected++
-		if h.IsComplete(d, entries[d].Value) {
+		if done {
 			st.Achieved++
 		}
 	}

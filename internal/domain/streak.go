@@ -26,11 +26,12 @@ func dailyRuns(h Habit, entries map[Date]Entry, today Date) []StreakRun {
 	var runs []StreakRun
 	var open *StreakRun
 	for d := start; !d.After(today); d = d.AddDays(1) {
-		if !isDue(h, entries, d) {
+		due, done := judgeDay(h, entries, d, start, today)
+		if !due {
 			continue
 		}
 		switch {
-		case h.IsComplete(d, entries[d].Value):
+		case done:
 			if open == nil {
 				open = &StreakRun{From: d}
 			}

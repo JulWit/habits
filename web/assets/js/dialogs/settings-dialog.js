@@ -39,8 +39,21 @@ function report(message) {
 }
 
 /**
- * Saves settings. The state is updated immediately and restored if the
- * server rejects the change. Resolves to whether the change was saved.
+ * The last save of settings, which the next one waits for, so the server
+ * applies them in the order they were made.
+ * @type {!Promise<*>}
+ */
+let lastSave = Promise.resolve();
+
+/** Counts the saves of settings, so only the last one takes over the answer. */
+let saves = 0;
+
+/**
+ * Saves settings. The state is updated immediately and the changed settings
+ * restored if the server rejects the change. Saves run one after another;
+ * each answers with all settings, so only the answer of the last one is
+ * taken over, as an earlier one lacks the changes made since. Resolves to
+ * whether the change was saved.
  * @param {!Object<string, *>} patch
  * @return {!Promise<boolean>}
  */
@@ -48,12 +61,18 @@ async function saveSetting(patch) {
   const before = {...state.settings};
   // Apply immediately; restored on failure.
   replaceState({settings: {...state.settings, ...patch}});
+  const save = ++saves;
+  const request = lastSave.then(() => api.saveSettings(patch));
+  lastSave = request.catch(() => {});
   try {
-    replaceState({settings: await api.saveSettings(patch)});
+    const saved = await request;
+    if (save === saves) replaceState({settings: saved});
     error.message = '';
     return true;
   } catch (err) {
-    replaceState({settings: before});
+    const restored =
+        Object.fromEntries(Object.keys(patch).map((key) => [key, before[key]]));
+    replaceState({settings: {...state.settings, ...restored}});
     report(errorText(err));
     return false;
   }

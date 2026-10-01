@@ -1823,40 +1823,57 @@ html[data-filtering='on'] {
   cursor: default;
 }
 
-/* ---------- back to today ----------
+/* ---------- floating buttons ----------
 
-   Floating button at the bottom centre of the screen, shown while the board
-   is paged away from today or another day is active. */
-.board-view-today-pill {
-  background: var(--float);
-  border-color: var(--border);
-  border-radius: 999px;
+   Stacked at the bottom centre of the screen: "Finish arranging" while
+   reorder mode is on, "Back to today" while the board is paged away from
+   today or another day is active. */
+.board-view-pills {
+  align-items: center;
   bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px));
-  box-shadow: var(--shadow-float);
+  display: flex;
+  flex-direction: column;
+  gap: calc(0.5 * var(--space));
   left: 50%;
-  padding-inline: calc(0.9 * var(--space)) calc(1.1 * var(--space));
   position: fixed;
   transform: translateX(-50%);
   z-index: 55;
 }
 
-.board-view-today-pill svg {
+.board-view-pill {
+  background: var(--float);
+  border-color: var(--border);
+  border-radius: 999px;
+  box-shadow: var(--shadow-float);
+  padding-inline: calc(0.9 * var(--space)) calc(1.1 * var(--space));
+  white-space: nowrap;
+}
+
+.board-view-pill svg {
   height: var(--icon);
   width: var(--icon);
 }
 
-.board-view-today-pill:active {
-  transform: translateX(-50%) translateY(1px);
+.board-view-pill:active {
+  transform: translateY(1px);
 }
 
-/* Room below the last row, so it can be scrolled clear of the button. */
-.board-view:has(.board-view-today-pill:not([hidden])) {
+/* Room below the last row, so it can be scrolled clear of the buttons. */
+.board-view:has(.board-view-pill:not([hidden])) {
   padding-bottom: 5rem;
 }
 
-/* Toasts appear above the floating button. */
-.board-view:not([hidden]):has(.board-view-today-pill:not([hidden])) ~ .toast-list {
+.board-view:has(.board-view-pill:not([hidden]) ~ .board-view-pill:not([hidden])) {
+  padding-bottom: 8rem;
+}
+
+/* Toasts appear above the floating buttons. */
+.board-view:not([hidden]):has(.board-view-pill:not([hidden])) ~ .toast-list {
   bottom: calc(4.75rem + env(safe-area-inset-bottom, 0px));
+}
+
+.board-view:not([hidden]):has(.board-view-pill:not([hidden]) ~ .board-view-pill:not([hidden])) ~ .toast-list {
+  bottom: calc(7.6rem + env(safe-area-inset-bottom, 0px));
 }
 
 /* ---------- toasts ---------- */

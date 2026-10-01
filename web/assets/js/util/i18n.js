@@ -232,6 +232,7 @@ const DE = {
   'Halftone dots': 'Halbtonpunkte',
   'Reordering': 'Anordnen',
   'Arrange': 'Anordnen',
+  'Finish arranging': 'Anordnen beenden',
   'Shows the handles for moving habits and categories. Applies until the page is next loaded.':
       'Zeigt die Griffe zum Verschieben von Gewohnheiten und Kategorien. Gilt bis zum nächsten Laden der Seite.',
   'Drag': 'Ziehen',

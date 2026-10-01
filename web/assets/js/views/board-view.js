@@ -1096,6 +1096,12 @@ export const TheBoardView = {
       page,
       selectDay,
       backToToday,
+      editing,
+      // Reorder mode is switched on in the settings; the overview offers to
+      // end it right there.
+      endEditing: () => {
+        editing.value = false;
+      },
       dayOfMonth,
       onBoardKeydown,
       onBoardFocus,
@@ -1205,14 +1211,24 @@ export const TheBoardView = {
         {{ t('Create first habit') }}
       </button>
     </div>
-    <button
-      type="button"
-      class="button board-view-today-pill"
-      :hidden="offset === 0 && selectedDay === null"
-      @click="backToToday"
-    >
-      <app-icon name="toToday"/><span>{{ t('Back to today') }}</span>
-    </button>`,
+    <div class="board-view-pills">
+      <button
+        type="button"
+        class="button board-view-pill"
+        :hidden="!editing"
+        @click="endEditing"
+      >
+        <app-icon name="check"/><span>{{ t('Finish arranging') }}</span>
+      </button>
+      <button
+        type="button"
+        class="button board-view-pill"
+        :hidden="offset === 0 && selectedDay === null"
+        @click="backToToday"
+      >
+        <app-icon name="toToday"/><span>{{ t('Back to today') }}</span>
+      </button>
+    </div>`,
 };
 
 /**

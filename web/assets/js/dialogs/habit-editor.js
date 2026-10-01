@@ -248,15 +248,17 @@ function scheduleKey(input) {
 }
 
 /**
- * Reports whether to offer applying a changed target or frequency to past
- * days as well. Only when editing, and not when the kind changes, which
- * converts the history anyway.
+ * Reports whether to offer applying the target and frequency to past days as
+ * well: when they changed, or when an earlier change left past days with a
+ * schedule of their own. Only when editing, and not when the kind changes,
+ * which converts the history anyway.
  * @param {!HabitInput} input
  * @return {boolean}
  */
 function offersRetroactive(input) {
-  return editing.value !== null && input.kind === editing.value.kind &&
-      scheduleKey(input) !== initialSchedule;
+  const habit = editing.value;
+  if (habit === null || input.kind !== habit.kind) return false;
+  return scheduleKey(input) !== initialSchedule || habit.schedules.length > 1;
 }
 
 /**

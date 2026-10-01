@@ -70,7 +70,9 @@ Target, target type (target or limit) and frequency are versioned in
 past days keep the target and frequency they had, so their completion and
 streaks do not change. Several changes on one day replace that day's version,
 and changing back merges it with the previous one. "Apply to past days as
-well" replaces the whole history with the new schedule. The first version also
+well" replaces the whole history with the new schedule; the editor offers it
+whenever the schedule changes or the habit has more than one version, so an
+earlier change can still be applied to the past later. The first version also
 covers days before it (entries recorded before the habit was created). A
 change of kind converts the history (see [Kinds](#kinds)).
 

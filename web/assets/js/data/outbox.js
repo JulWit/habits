@@ -219,9 +219,6 @@ let flushing = null;
  * at the first connection error or expired session and keeps the rest; a
  * write the server rejects is dropped and reported with `onRejected`.
  * Resolves to the number of writes sent.
- */
-
-/**
  * @param {function(string, string, number): !Promise<*>} send
  * @param {function(*, {habitId: string, date: string, value: number}): void}
  *     onRejected

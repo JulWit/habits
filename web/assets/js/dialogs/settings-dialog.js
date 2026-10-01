@@ -1045,6 +1045,7 @@ export const TheSettingsDialog = {
           v-if="importChange"
           type="button"
           class="button"
+          data-role="undo-import"
           @click="undoImport"
         >
           {{ t('Undo import') }}

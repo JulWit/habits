@@ -204,10 +204,14 @@ class Fixture:
 
 def desktop(run, f):
     board_input(run, f)
+    closed_day(run, f)
     search_and_views(run, f)
     editor(run, f)
+    statistics_years(run, f)
+    category_picker(run, f)
     arranging(run, f)
     settings(run, f)
+    import_undo(run, f)
 
 
 def board_input(run, f):
@@ -272,6 +276,36 @@ def board_input(run, f):
     run.check("hovering shows a tooltip", tip == run.label("#open-settings"), str(tip))
     run.actions().move_by_offset(-300, 200).perform()
     time.sleep(0.3)
+
+
+def closed_day(run, f):
+    """A day the habit is no longer due on only offers to clear its value."""
+    weekday = run.js("""
+        const day = new Date(arguments[0] + 'T00:00:00Z');
+        return (day.getUTCDay() + 6) % 7;""", f.today)
+    habit = f._habit({
+        "name": "Firefox weekly", "color": "red", "icon": "", "kind": "check",
+        "targetValue": 1, "frequency": {**DAILY, "kind": "weekdays", "weekdays": 1 << weekday}})
+    run.api("PUT", f"/api/habits/{habit}/entries/{f.today}", {"value": 1})
+    other = {**DAILY, "kind": "weekdays", "weekdays": 1 << ((weekday + 1) % 7)}
+    run.api("PATCH", f"/api/habits/{habit}", {"frequency": other, "retroactive": True})
+    run.load()
+
+    run.actions().context_click(run.find(f.cell(habit))).perform()
+    time.sleep(0.4)
+    dialog = run.js("""
+        const dialog = document.getElementById('day-editor');
+        return {open: dialog.open,
+                value: !!dialog.querySelector('.day-editor-value'),
+                buttons: dialog.querySelectorAll('.dialog-foot button').length,
+                focus: document.activeElement.dataset.role};""")
+    run.check("a day not due offers only to clear it",
+              dialog["open"] and not dialog["value"] and dialog["buttons"] == 1
+              and dialog["focus"] == "clear", str(dialog))
+    run.keys(Keys.ESCAPE)
+    time.sleep(0.4)
+    run.api("DELETE", f"/api/habits/{habit}")
+    run.load()
 
 
 def search_and_views(run, f):
@@ -344,6 +378,44 @@ def search_and_views(run, f):
     run.check("hovering the heatmap shows the day", tip.endswith(status) and len(tip) > len(status), tip)
 
 
+def statistics_years(run, f):
+    """The category view and the day statistics go back to an earlier year of
+    the history, which an entry of the check habit opens."""
+    year = int(f.today[:4])
+    earlier = f"{year - 1}-06-15"
+    run.api("PUT", f"/api/habits/{f.check_habit}/entries/{earlier}", {"value": 1})
+    run.load()
+
+    heading = "return document.querySelector(arguments[0] + ' .app-year-nav h3').textContent;"
+    run.click(f'.board-block[data-category="{f.category}"] [data-role="open-category"]')
+    time.sleep(1.2)
+    run.check("the category view shows this year",
+              str(year) in run.js(heading, "#category-view"))
+    run.click('#category-view [data-action="year-earlier"]')
+    time.sleep(1.5)
+    perfect = run.js(f"""return !!document.querySelector(
+        '#category-view .heatmap-day.is-perfect[data-date="{earlier}"]');""")
+    run.check("its arrow shows the year before, with its perfect days",
+              str(year - 1) in run.js(heading, "#category-view") and perfect)
+    run.keys(Keys.ESCAPE)
+    time.sleep(0.8)
+
+    run.click('[data-role="open-days"]')
+    time.sleep(1.5)
+    sub = "return document.querySelector('#day-stats-view .app-bar-sub').textContent;"
+    run.check("the day statistics show this year", str(year) in run.js(sub))
+    run.click('#day-stats-view [data-action="year-earlier"]')
+    time.sleep(1.5)
+    counted = run.js(f"""return document.querySelector(
+        '#day-stats-view .heatmap-day[data-date="{earlier}"]')?.style.getPropertyValue('--rate');""")
+    run.check("their arrow shows the year before",
+              str(year - 1) in run.js(sub) and counted, f"{run.js(sub)}, {counted}")
+    run.keys(Keys.ESCAPE)
+    time.sleep(0.8)
+    run.api("PUT", f"/api/habits/{f.check_habit}/entries/{earlier}", {"value": 0})
+    run.load()
+
+
 def editor(run, f):
     """The habit editor: guarding unsaved changes, and creating a habit."""
     edit = "#habit-view .app-bar-actions > .icon-button:not([popovertarget])"
@@ -400,6 +472,35 @@ def editor(run, f):
         run.load()
 
 
+def category_picker(run, f):
+    """A category that cannot be created says why in the picker, whose page
+    covers the toasts. The request fails as without a connection."""
+    run.js("document.activeElement.blur();")
+    run.keys("n")
+    time.sleep(0.5)
+    run.click("#habit-editor-category")
+    time.sleep(0.5)
+    run.js("""
+        const real = window.fetch;
+        window.fetch = (url, options) =>
+            options?.method === 'POST' && String(url).endsWith('/api/categories') ?
+            Promise.reject(new TypeError('offline')) : real(url, options);
+        window.restoreFetch = () => { window.fetch = real; };""")
+    run.find('#category-picker input[name="name"]').send_keys("Firefox failed")
+    run.click('#category-picker .category-picker-create button[type="submit"]')
+    time.sleep(0.6)
+    error = run.js("return document.querySelector('#category-picker .error')?.textContent.trim();")
+    run.check("a failed category shows its error in the picker",
+              run.is_open("category-picker") and error, str(error))
+    run.js("window.restoreFetch();")
+    run.keys(Keys.ESCAPE)
+    time.sleep(0.4)
+    run.keys(Keys.ESCAPE)
+    time.sleep(0.6)
+    run.check("Escape closes the picker, then the unchanged editor",
+              not run.is_open("category-picker") and not run.is_open("habit-editor"))
+
+
 def arranging(run, f):
     """Drag and drop in arrange mode, switched on in the settings."""
     run.click("#open-settings")
@@ -427,6 +528,24 @@ def arranging(run, f):
     time.sleep(1.2)
     after = run.js(names)
     run.check("dragging reorders the habits", after == before[::-1], f"{before} -> {after}")
+
+    # Held near the window's bottom edge, a drag scrolls the page along; the
+    # padding makes the page long enough for it.
+    run.js("document.body.style.paddingBottom = '3000px';")
+    handle = run.find(f'.board-block[data-category="{f.category}"] .board-habit-row:first-child [data-role="drag-habit"]')
+    start = run.js("return scrollY;")
+    to_edge = run.js("""
+        const box = arguments[0].getBoundingClientRect();
+        return innerHeight - 10 - (box.top + box.height / 2);""", handle)
+    (run.actions().move_to_element(handle).click_and_hold()
+        .move_by_offset(0, 5).move_by_offset(0, int(to_edge) - 5)
+        .pause(1.0).release().perform())
+    time.sleep(1.2)
+    scrolled = run.js("return scrollY;") - start
+    run.js("document.body.style.paddingBottom = '';")
+    run.check("dragging near the bottom edge scrolls the page", scrolled > 100, f"{scrolled} px")
+    after = run.js(names)
+
     run.load()
     run.check("the new order is saved", run.js(names) == after)
 
@@ -457,6 +576,40 @@ def settings(run, f):
     time.sleep(0.5)
     run.check("Escape closes the settings",
               not run.is_open("settings-dialog") and not run.is_open("settings-look"))
+
+
+def import_undo(run, f):
+    """An import on the data page can be undone right there."""
+    run.click("#open-settings")
+    time.sleep(0.4)
+    run.click('#settings-dialog [data-open-page="settings-data"]')
+    time.sleep(0.4)
+    export = {"format": "habits", "version": 2, "categories": [], "habits": [{
+        "name": "Firefox import", "kind": "check", "color": "red",
+        "createdAt": f"{f.today}T08:00:00Z", "entries": {}, "skipped": [],
+        "schedules": [{"from": f.today, "targetValue": 1, "frequency": DAILY}]}]}
+    # A file chosen as in the file picker.
+    run.js("""
+        const input = document.querySelector('#settings-data input[type="file"]');
+        const files = new DataTransfer();
+        files.items.add(new File([JSON.stringify(arguments[0])], 'habits.json',
+                                 {type: 'application/json'}));
+        input.files = files.files;
+        input.dispatchEvent(new Event('change'));""", export)
+    time.sleep(1.5)
+    imported = lambda: any(h["name"] == "Firefox import"
+                           for h in run.api("GET", "/api/state")["habits"])
+    run.check("the import adds the habit and offers to undo it",
+              imported() and run.js("return !!document.querySelector('[data-role=\"undo-import\"]');"))
+    run.click('[data-role="undo-import"]')
+    time.sleep(1.5)
+    run.check("undoing it removes the habit",
+              not imported()
+              and not run.js("return !!document.querySelector('[data-role=\"undo-import\"]');"))
+    run.keys(Keys.ESCAPE)
+    time.sleep(0.3)
+    run.keys(Keys.ESCAPE)
+    time.sleep(0.5)
 
 
 # ---------------------------------------------------------------- touch

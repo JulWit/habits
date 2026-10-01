@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -47,50 +48,29 @@ func TestStateCarriesTheKindDescriptors(t *testing.T) {
 	}
 }
 
-// Changing the kind of a habit with entries converts its history: values keep
-// their number in the new unit, and the step falls back to the new kind's.
-func TestKindChangeConvertsTheHistory(t *testing.T) {
+// The kind of a habit is fixed: a PATCH may repeat it, as the editor sends
+// every field, but not change it, and the recorded days stay as they are.
+func TestKindCannotChange(t *testing.T) {
 	h := newTestServer(t)
-	w := do(t, h, "POST", "/api/habits",
-		`{"name":"Running","kind":"distance","targetValue":5000,"frequency":{"kind":"daily"}}`,
-		"application/json")
-	var created struct {
-		ID string `json:"id"`
-	}
-	if err := json.Unmarshal(w.Body.Bytes(), &created); err != nil {
-		t.Fatalf("reading response: %v", err)
-	}
+	id := createHabit(t, h, `{"name":"Running","kind":"distance","targetValue":5000,"frequency":{"kind":"daily"}}`)
 	day := domain.Today(time.UTC).AddDays(-1).String()
-	w = do(t, h, "PUT", "/api/habits/"+created.ID+"/entries/"+day, `{"value":5200}`, "application/json")
-	if w.Code != http.StatusOK {
-		t.Fatalf("PUT entry: status %d, want 200 (%s)", w.Code, w.Body)
+	mustDo(t, h, "PUT", "/api/habits/"+id+"/entries/"+day, `{"value":5200}`, http.StatusOK)
+
+	w := do(t, h, "PATCH", "/api/habits/"+id, `{"kind":"time","targetValue":300}`, "application/json")
+	if w.Code != http.StatusUnprocessableEntity || !strings.Contains(w.Body.String(), `"kind_unchangeable"`) {
+		t.Fatalf("PATCH with a new kind: status %d (%s), want 422 kind_unchangeable", w.Code, w.Body)
 	}
 
-	w = do(t, h, "PATCH", "/api/habits/"+created.ID,
-		`{"kind":"time","targetValue":300}`, "application/json")
-	if w.Code != http.StatusOK {
-		t.Fatalf("PATCH /api/habits/{id}: status %d, want 200 (%s)", w.Code, w.Body)
-	}
 	var view struct {
-		StepValue int                 `json:"stepValue"`
-		Unit      string              `json:"unit"`
-		Entries   map[string]int      `json:"entries"`
-		Schedules []domain.Schedule   `json:"schedules"`
-		Stats     struct{ Total int } `json:"stats"`
+		Kind    domain.Kind    `json:"kind"`
+		Entries map[string]int `json:"entries"`
 	}
-	if err := json.Unmarshal(w.Body.Bytes(), &view); err != nil {
+	body := mustDo(t, h, "PATCH", "/api/habits/"+id, `{"name":"Run","kind":"distance"}`, http.StatusOK)
+	if err := json.Unmarshal(body, &view); err != nil {
 		t.Fatalf("reading response: %v", err)
 	}
-	// 5.2 km become 5.2 minutes. The habit was created today, so the new
-	// target replaces today's schedule (domain tests cover older ones).
-	if view.Entries[day] != 52 {
-		t.Errorf("entry = %d, want 52 (5.2 minutes)", view.Entries[day])
-	}
-	if len(view.Schedules) != 1 || view.Schedules[0].TargetValue != 300 {
-		t.Errorf("schedules = %+v, want one with 30 minutes", view.Schedules)
-	}
-	if view.StepValue != domain.KindTime.Step() || view.Unit != "min" {
-		t.Errorf("step %d, unit %q; want the time defaults", view.StepValue, view.Unit)
+	if view.Kind != domain.KindDistance || view.Entries[day] != 5200 {
+		t.Errorf("kind %q, entry %d; want distance with 5200 m", view.Kind, view.Entries[day])
 	}
 }
 

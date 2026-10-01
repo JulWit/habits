@@ -66,5 +66,3 @@ see [Deployment](docs/DEPLOYMENT.md).
 
 - The SQLite pool uses a single connection. If read throughput becomes an
   issue, add a separate read-only pool.
-- Changing the kind to check keeps only whether each day was completed; the
-  recorded values come back only by undoing the change.

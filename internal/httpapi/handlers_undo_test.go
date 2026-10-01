@@ -80,27 +80,6 @@ func TestUndoDeleteHabitOverHTTP(t *testing.T) {
 	}
 }
 
-// Undoing a change of kind brings back the values recorded before it, which
-// the conversion to a check habit replaced.
-func TestUndoChangeOfKindOverHTTP(t *testing.T) {
-	h := newTestServer(t)
-	id := createHabit(t, h, `{"name":"Water","kind":"count","targetValue":80,"frequency":{"kind":"daily"}}`)
-	today := domain.Today(time.UTC).String()
-	mustDo(t, h, "PUT", "/api/habits/"+id+"/entries/"+today, `{"value":120}`, http.StatusOK)
-
-	w := do(t, h, "PATCH", "/api/habits/"+id, `{"kind":"check"}`, "application/json")
-	if w.Code != http.StatusOK {
-		t.Fatalf("PATCH kind: status %d, want 200 (%s)", w.Code, w.Body)
-	}
-	if value := entryValue(t, h, id, today); value != 1 {
-		t.Fatalf("value as a check habit = %d, want 1", value)
-	}
-	mustDo(t, h, "POST", "/api/undo", `{"id":`+w.Header().Get("Change-Id")+`}`, http.StatusOK)
-	if value := entryValue(t, h, id, today); value != 120 {
-		t.Errorf("value after undo = %d, want 120", value)
-	}
-}
-
 // entryValue returns the value of a habit on date, from its full view.
 func entryValue(t *testing.T, h http.Handler, id, date string) int {
 	t.Helper()

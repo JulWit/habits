@@ -105,29 +105,6 @@ func (t *Tx) SetEntries(ctx context.Context, h domain.Habit, entries map[domain.
 	return nil
 }
 
-// ReplaceEntries replaces all entries of the habit h with entries, e.g. with
-// its history converted to a new kind (domain.ConvertKind).
-func (t *Tx) ReplaceEntries(ctx context.Context, h domain.Habit, entries map[domain.Date]domain.Entry) error {
-	for _, e := range entries {
-		if err := e.Validate(h.Kind); err != nil {
-			return err
-		}
-	}
-	if err := t.watch(ctx, "entries", "habit_id = ?", h.ID); err != nil {
-		return err
-	}
-	if _, err := t.exec(ctx, `DELETE FROM entries WHERE habit_id = ?`, h.ID); err != nil {
-		return fmt.Errorf("deleting entries of habit %s: %w", h.ID, err)
-	}
-	now := formatTime(t.now)
-	for d, e := range entries {
-		if err := t.writeEntry(ctx, h.ID, d, e, now); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 // writeEntry stores e as the entry of the habit on date, or deletes the entry
 // if e records nothing.
 func (t *Tx) writeEntry(ctx context.Context, habitID string, date domain.Date, e domain.Entry, now string) error {

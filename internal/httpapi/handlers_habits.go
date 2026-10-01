@@ -271,9 +271,9 @@ func (s *server) handleCreateHabit(w http.ResponseWriter, r *http.Request, user 
 
 // handleUpdateHabit changes the fields of a habit given in the request body,
 // as saved in the editor (domain.Habit.Apply): a new target or frequency
-// starts a new schedule from today on unless it is retroactive, and a change
-// of kind converts the recorded history. "archived" archives the habit or
-// reactivates it; the undo step is named after that then.
+// starts a new schedule from today on unless it is retroactive; the kind
+// cannot change. "archived" archives the habit or reactivates it; the undo
+// step is named after that then.
 func (s *server) handleUpdateHabit(w http.ResponseWriter, r *http.Request, user auth.User) {
 	var in domain.HabitEdit
 	if !s.decodeJSON(w, r, &in) {
@@ -297,8 +297,7 @@ func (s *server) handleUpdateHabit(w http.ResponseWriter, r *http.Request, user 
 			return err
 		}
 		name := h.Name
-		converted, err := h.Apply(in, entries, b.today)
-		if err != nil {
+		if err := h.Apply(in, b.today); err != nil {
 			return err
 		}
 		switch {
@@ -311,12 +310,6 @@ func (s *server) handleUpdateHabit(w http.ResponseWriter, r *http.Request, user 
 		}
 		if err := tx.SaveHabit(ctx, &h); err != nil {
 			return err
-		}
-		if converted != nil {
-			if err := tx.ReplaceEntries(ctx, h, converted); err != nil {
-				return err
-			}
-			entries = converted
 		}
 		data = habitData{habit: h, entries: entries, basis: b}
 		return nil

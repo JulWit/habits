@@ -12,7 +12,7 @@ only `/healthz` outside `/api` does not.
 | `GET` | `/api/days` | Day statistics of `?year=` (default: this year) over the habits that are not archived, or those of `?category=`, see [Statistics](#statistics) |
 | `POST` | `/api/habits` | Create a habit |
 | `GET` | `/api/habits/{id}` | A habit with its full history |
-| `PATCH` | `/api/habits/{id}` | Save what the editor shows: name, colour, icon, kind, category, step, unit, target, target type and frequency; `retroactive: true` applies a new target or frequency to past days, a new kind converts the history; `archived: true` archives the habit, `false` reactivates it |
+| `PATCH` | `/api/habits/{id}` | Save what the editor shows: name, colour, icon, kind, category, step, unit, target, target type and frequency; `retroactive: true` applies a new target or frequency to past days; the kind cannot change (422 `kind_unchangeable`); `archived: true` archives the habit, `false` reactivates it |
 | `DELETE` | `/api/habits/{id}` | Delete a habit with its history (undo brings it back) |
 | `GET` | `/api/habits/{id}/totals` | The habit's values of `?year=` summed per `?grain=` (`day`, `week`, `month`), see [Statistics](#statistics) |
 | `POST` | `/api/habits/reorder` | Set the order; missing habits keep their relative order after the given ones, duplicate IDs are rejected |
@@ -87,7 +87,7 @@ the target of a day from them. `PATCH /api/habits/{id}` accepts `targetValue`,
 `POST /api/habits` and `PATCH /api/habits/{id}` take the same body
 (`domain.HabitEdit`); a field left out stays as it is. Creating needs `name`,
 `kind` and `frequency`; the target defaults to 1, and the first schedule
-starts today. Values are in stored units (see
+starts today. Editing may repeat the `kind`, but not change it. Values are in stored units (see
 [DATAMODEL.md](DATAMODEL.md#kinds)):
 
 ```json

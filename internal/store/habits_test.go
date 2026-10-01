@@ -42,28 +42,6 @@ func TestHabitsAreScopedToTheirUser(t *testing.T) {
 	}
 }
 
-// ReplaceEntries replaces the history of a habit, as after a change of kind.
-func TestReplaceEntries(t *testing.T) {
-	st := openTestStore(t)
-	h := mustCreateHabit(t, st, "alice", countHabit(domain.KindDistance, 5000))
-	friday, saturday := day(2026, time.September, 18), day(2026, time.September, 19)
-	for _, d := range []domain.Date{friday, saturday} {
-		setEntry(t, st, "alice", h, d, domain.Entry{Value: 5200})
-	}
-
-	update(t, st, "alice", func(tx *Tx) error {
-		h.Kind = domain.KindCheck
-		if err := tx.SaveHabit(t.Context(), &h); err != nil {
-			return err
-		}
-		return tx.ReplaceEntries(t.Context(), h, map[domain.Date]domain.Entry{friday: {Value: 1}})
-	})
-	entries := entriesOf(t, st, "alice", h.ID)
-	if want := (domain.Entry{Value: 1}); len(entries) != 1 || entries[friday] != want {
-		t.Errorf("entries = %v, want only Friday, ticked", entries)
-	}
-}
-
 // SaveHabit stores every field and keeps the history.
 func TestSaveHabitKeepsTheEntries(t *testing.T) {
 	st := openTestStore(t)

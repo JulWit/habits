@@ -169,7 +169,7 @@ export const api = {
 
   /**
    * Saves what the editor shows; a new target or frequency starts today
-   * unless `retroactive` is set, a new kind converts the history.
+   * unless `retroactive` is set. The kind cannot change.
    * @param {string} id
    * @param {!HabitInput} input
    * @return {!Promise<!Habit>}

@@ -31,8 +31,7 @@ Undo restores it without further work, as undo steps keep whole rows (see
 
 Add it to `allKinds` in `internal/domain/habit.go` and handle it in `Scale`,
 `Step`, `MaxTarget` and `Unit`. The client receives these values via `kinds`;
-the editor needs its input fields. Also handle it in `domain.ConvertKind`
-(see [DATAMODEL.md](DATAMODEL.md#kinds)).
+the editor needs its input fields (see [DATAMODEL.md](DATAMODEL.md#kinds)).
 
 ## New frequency
 

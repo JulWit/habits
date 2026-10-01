@@ -83,42 +83,22 @@ func NewHabit(e HabitEdit, today Date) Habit {
 	return h
 }
 
-// Apply changes h by e on today and returns the entries converted to a new
-// kind, or nil if the kind stays. entries are the habit's entries.
-//
-// A change of kind converts the history (ConvertKind): ticked days get the
-// new target, and the step and unit of the old kind are reset unless e sets
-// them. A new target or frequency starts a new schedule from today on, or
-// replaces the history with Retroactive (Reschedule). h is validated when it
-// is saved.
-func (h *Habit) Apply(e HabitEdit, entries map[Date]Entry, today Date) (map[Date]Entry, error) {
-	before := *h
-	e.applyFields(h)
-
-	var converted map[Date]Entry
-	if h.Kind != before.Kind {
-		if !h.Kind.Valid() {
-			return nil, Invalid("unknown_kind", `unknown habit kind "{kind}"`, "kind", h.Kind)
-		}
-		target := h.Current().TargetValue
-		setIf(&target, e.TargetValue)
-		h.Schedules, converted = ConvertKind(before, entries, h.Kind, target)
-		if e.StepValue == nil {
-			h.StepValue = 0
-		}
-		if e.Unit == nil {
-			h.Unit = ""
-		}
+// Apply changes h by e on today. The kind is fixed once the habit exists, as
+// the recorded days and the targets are only meaningful in its unit; e may
+// repeat it, as the editor sends every field. A new target or frequency
+// starts a new schedule from today on, or replaces the history with
+// Retroactive (Reschedule). h is validated when it is saved.
+func (h *Habit) Apply(e HabitEdit, today Date) error {
+	if e.Kind != nil && *e.Kind != h.Kind {
+		return Invalid("kind_unchangeable", "the kind of a habit cannot be changed")
 	}
+	e.applyFields(h)
 	if !e.changesSchedule() {
-		return converted, nil
+		return nil
 	}
 	rules := h.Current()
 	setIf(&rules.TargetValue, e.TargetValue)
 	setIf(&rules.TargetType, e.TargetType)
 	setIf(&rules.Frequency, e.Frequency)
-	if err := h.Reschedule(rules, today, e.Retroactive); err != nil {
-		return nil, err
-	}
-	return converted, nil
+	return h.Reschedule(rules, today, e.Retroactive)
 }

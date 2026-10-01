@@ -143,11 +143,9 @@ UTC, whose date can be a day off. Imported habits keep their first schedule.
 
 A day's value is one integer; counts and minutes are stored in tenths.
 
-Changing the kind of a habit converts its history (`domain.ConvertKind`): to
-check, completed days stay ticked; from check, ticked days get the new target;
-between measured kinds, values and targets keep their number in the new unit.
-Completion and streaks stay the same. Skipped days are kept. A limit
-becomes a plain target, as check habits have none.
+The kind is chosen when a habit is created and cannot be changed afterwards
+(`kind_unchangeable`), as the recorded values and the targets only have a
+meaning in its unit. For another kind, create a new habit.
 
 ## Schedules
 
@@ -163,8 +161,7 @@ Several changes on one day replace that day's version, and changing back
 merges it with the previous one. "Apply to past days as well" replaces the
 whole history with the new schedule; the editor offers it whenever the
 schedule changes or the habit has more than one version, so an earlier change
-can still be applied to the past later. A change of kind converts the history
-(see [Kinds](#kinds)).
+can still be applied to the past later.
 
 For a times-per-week or times-per-month habit, periods from before a switch to
 that frequency are met when every day due in them was completed; periods

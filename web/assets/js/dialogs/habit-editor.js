@@ -268,37 +268,14 @@ function scheduleKey(input) {
 /**
  * Reports whether to offer applying the target and frequency to past days as
  * well: when they changed, or when an earlier change left past days with a
- * schedule of their own. Only when editing, and not when the kind changes,
- * which converts the history anyway.
+ * schedule of their own. Only when editing.
  * @param {!HabitInput} input
  * @return {boolean}
  */
 function offersRetroactive(input) {
   const habit = editing.value;
-  if (habit === null || input.kind !== habit.kind) return false;
+  if (habit === null) return false;
   return scheduleKey(input) !== initialSchedule || habit.schedules.length > 1;
-}
-
-/**
- * Explains what happens to the recorded days when the kind of a habit with
- * entries changes (domain.ConvertKind), or returns "".
- * @return {string}
- */
-function kindHint() {
-  const habit = editing.value;
-  const kind = form.kind;
-  const recorded = habit !== null &&
-      (Object.keys(habit.entries ?? {}).length > 0 ||
-       (habit.stats?.total ?? 0) > 0);
-  if (!recorded || kind === habit.kind) return '';
-  if (kind === 'check') {
-    return t(
-        'Days that reached their target stay ticked; the others are cleared. The recorded values are not kept.');
-  }
-  if (habit.kind === 'check') return t('Ticked days get the new daily target.');
-  return t(
-      'Recorded values keep their number in the new unit, e.g. 5 becomes 5 {unit}.',
-      {unit: t({time: 'minutes', distance: 'km'}[kind] ?? 'times')});
 }
 
 /**
@@ -447,7 +424,6 @@ export const TheHabitEditor = {
       busy,
       limit,
       retroactive,
-      kindHint: computed(kindHint),
       category,
       categoryName,
       countsDays,
@@ -574,15 +550,16 @@ export const TheHabitEditor = {
                   type="radio"
                   name="kind"
                   :value="kind.value"
+                  :disabled="editing !== null"
                 >
                 <span><app-icon :name="kind.icon"/>{{ kind.label }}</span>
               </label>
             </div>
             <p
-              v-if="kindHint"
+              v-if="editing"
               class="field-hint"
             >
-              {{ kindHint }}
+              {{ t('The kind cannot be changed once the habit exists.') }}
             </p>
           </fieldset>
           <!-- A target to reach or a limit to stay within, for measured

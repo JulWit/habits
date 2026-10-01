@@ -16,7 +16,6 @@ internal/domain             The rules of the tracker (no I/O)
   stats.go                    A habit's statistics: streaks, completion rate, total
   daystats.go                 Day statistics over many habits
   totals.go                   A habit's values summed per day, week or month
-  convert.go                  Converting the history to another kind
   category.go                 Category and CategoryEdit
   date.go                     Date without time of day
   problem.go                  Validation errors with a code (Problem)

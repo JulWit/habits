@@ -35,7 +35,7 @@ chooses a target or a limit (see "Limits" below). "Frequency" is
 few weeks, or one occurrence in the month such as the first Monday) or
 "Custom interval" (every few days from a starting day). A changed target or
 frequency applies from today on; "Apply to past days as well" applies it to
-the whole history. Changing the kind converts the recorded days. See
+the whole history. The kind is fixed once the habit exists. See
 [DATAMODEL.md](DATAMODEL.md#habits).
 
 **Archiving**: An archived habit keeps its history but leaves the board, the

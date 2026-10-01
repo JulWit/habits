@@ -165,15 +165,8 @@ const DE = {
       'Erster und Montag heißt: der erste Montag jedes Monats.',
   'Every … days': 'Alle … Tage',
   'Apply to past days as well': 'Auch für vergangene Tage übernehmen',
-  'Days that reached their target stay ticked; the others are cleared. The recorded values are not kept.':
-      'Tage, die ihr Ziel erreicht haben, bleiben abgehakt, die anderen werden geleert. Die erfassten Werte bleiben nicht erhalten.',
-  'Ticked days get the new daily target.':
-      'Abgehakte Tage bekommen das neue Tagesziel.',
-  'Recorded values keep their number in the new unit, e.g. 5 becomes 5 {unit}.':
-      'Erfasste Werte behalten ihre Zahl in der neuen Einheit, aus 5 wird z. B. 5 {unit}.',
-  'minutes': 'Minuten',
-  'km': 'km',
-  'times': 'Mal',
+  'The kind cannot be changed once the habit exists.':
+      'Die Art lässt sich nach dem Anlegen nicht mehr ändern.',
   'Cancel': 'Abbrechen',
   'Create': 'Anlegen',
   'Save': 'Speichern',
@@ -581,6 +574,7 @@ const DE_ERRORS = {
   unknown_color: 'Unbekannte Farbe „{color}“.',
   unknown_icon: 'Unbekanntes Symbol „{icon}“.',
   unknown_kind: 'Unbekannte Art „{kind}“.',
+  kind_unchangeable: 'Die Art einer Gewohnheit kann nicht geändert werden.',
   unknown_frequency: 'Unbekannte Häufigkeit „{frequency}“.',
   unknown_category: 'Diese Kategorie gibt es nicht mehr.',
   target_too_small: 'Das Tagesziel muss mindestens 0,1 sein.',

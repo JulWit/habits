@@ -593,6 +593,19 @@ html[data-scrolled='on'] .board-view-day-header-backdrop {
   width: 1rem;
 }
 
+/* Habits done on top of what their week or month needs. */
+.board-day-summary-bonus {
+  color: var(--done-text);
+  font-weight: var(--weight-semibold);
+  margin-inline-start: calc(0.35 * var(--space));
+  white-space: nowrap;
+}
+
+/* The complete count is a flex row with its own gap. */
+.board-day-summary.is-complete .board-day-summary-bonus {
+  margin-inline-start: 0;
+}
+
 .board-day-summary-ring {
   flex: none;
   height: 3rem;
@@ -1321,6 +1334,12 @@ html[data-filtering='on'] {
 /* Future days are dimmed. */
 .board-day-cell-mark.is-future {
   opacity: 0.6;
+}
+
+/* Days no longer needed because their week or month has enough completed
+   days. They can still be completed, as a bonus. */
+.board-day-cell-mark.is-free {
+  opacity: 0.45;
 }
 
 /* A write waiting for the server: its value is shown, but whether it

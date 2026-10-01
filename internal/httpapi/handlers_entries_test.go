@@ -297,3 +297,40 @@ func TestSkipNeedsADueDay(t *testing.T) {
 	}
 	mustDo(t, h, "PUT", path, `{"skipped":false}`, http.StatusOK)
 }
+
+// A habit with a maximum of times per week refuses a further day once the
+// week has reached it; the maximum is stored with the schedule.
+func TestEntryKeepsTheMaximumOfTimesPerWeek(t *testing.T) {
+	h := newTestServer(t)
+	w := do(t, h, "POST", "/api/habits",
+		`{"name":"Sweets","kind":"check","frequency":{"kind":"times_per_week","timesPerWeek":2,"timesAtMost":true}}`,
+		"application/json")
+	if w.Code != http.StatusCreated {
+		t.Fatalf("POST /api/habits: status %d, want 201 (%s)", w.Code, w.Body)
+	}
+	var created struct {
+		ID        string            `json:"id"`
+		Schedules []domain.Schedule `json:"schedules"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &created); err != nil {
+		t.Fatalf("reading response: %v", err)
+	}
+	if !created.Schedules[0].Frequency.TimesAtMost {
+		t.Errorf("schedule = %+v, want a maximum", created.Schedules[0])
+	}
+
+	// Monday to Wednesday of one week.
+	path := "/api/habits/" + created.ID + "/entries/"
+	for _, date := range []string{"2026-09-14", "2026-09-15"} {
+		if w := do(t, h, "PUT", path+date, `{"value":1}`, "application/json"); w.Code != http.StatusOK {
+			t.Fatalf("%s: status %d, want 200 (%s)", date, w.Code, w.Body)
+		}
+	}
+	w = do(t, h, "PUT", path+"2026-09-16", `{"value":1}`, "application/json")
+	if w.Code != http.StatusUnprocessableEntity || !strings.Contains(w.Body.String(), "times_maximum_reached") {
+		t.Errorf("a third day: status %d (%s), want 422 times_maximum_reached", w.Code, w.Body)
+	}
+	if w := do(t, h, "PUT", path+"2026-09-21", `{"value":1}`, "application/json"); w.Code != http.StatusOK {
+		t.Errorf("the next week: status %d, want 200 (%s)", w.Code, w.Body)
+	}
+}

@@ -40,11 +40,20 @@ func (s *server) handleSetEntry(w http.ResponseWriter, r *http.Request, user aut
 		if err := checkEntryDay(h, date, b.today, change); err != nil {
 			return err
 		}
-		previous, err := tx.Entry(ctx, h.ID, date)
+		// The other days of its week or month decide whether a day can be
+		// completed (Habit.CheckRecord).
+		entries, err := tx.HabitEntries(ctx, h.ID)
 		if err != nil {
 			return err
 		}
-		if err := tx.SetEntries(ctx, h, map[domain.Date]domain.Entry{date: change.Apply(previous)}); err != nil {
+		next := change.Apply(entries[date])
+		if change.Records() {
+			entries[date] = next
+			if err := h.CheckRecord(date, entries); err != nil {
+				return err
+			}
+		}
+		if err := tx.SetEntries(ctx, h, map[domain.Date]domain.Entry{date: next}); err != nil {
 			return err
 		}
 		tx.Record("{name} — {date}", "name", h.Name, "date", date.String())

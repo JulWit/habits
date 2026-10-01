@@ -80,16 +80,17 @@ function highlights(stats) {
 }
 
 /**
- * Returns the attributes of the square of a day from its total ({due,
- * done}): the shade grows with the share of completed habits.
+ * Returns the attributes of the square of a day from its total ({due, done,
+ * bonus}): the shade grows with the share of completed habits.
  * @param {string} iso
- * @param {{due: number, done: number}} total
+ * @param {{due: number, done: number, bonus: number}} total
  * @return {!Object<string, *>} the attributes
  */
-function heatSquare(iso, {due, done}) {
+function heatSquare(iso, {due, done, bonus}) {
   const ahead = iso > state.today;
   const counted = !ahead && due > 0;
-  const status = heatStatus(due, done, ahead);
+  const bonusText = bonus > 0 ? ` · ${t('+{n} bonus', {n: bonus})}` : '';
+  const status = heatStatus(due, done, ahead) + bonusText;
   const when = iso === state.today ?
       t('Today, {date}', {date: formatFull(iso)}) :
       formatFull(iso);
@@ -229,7 +230,7 @@ export const TheDayStatsView = {
             {label: MONTH_SHORT[month], name: MONTH_LONG[month], ...group});
       })),
       square: (iso) =>
-          heatSquare(iso, byDate.value.get(iso) ?? {due: 0, done: 0}),
+          heatSquare(iso, byDate.value.get(iso) ?? {due: 0, done: 0, bonus: 0}),
       legendRange: computed(
           () => `${formatDayMonth(`${year.value}-01-01`)} – ` +
               `${formatDayMonth(`${year.value}-12-31`)} ${year.value}`),

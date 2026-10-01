@@ -21,6 +21,8 @@ const STATUS = {
   done: 'c',
   over: 'x',
   skipped: 's',
+  free: 'f',
+  bonus: 'b',
 };
 
 /**
@@ -63,7 +65,8 @@ export function currentSchedule(habit) {
 }
 
 /**
- * Reports whether values can be recorded on `iso`: it is due or skipped.
+ * Reports whether values can be recorded on `iso`: it is due, skipped, free
+ * for a bonus or a bonus.
  * @param {!Habit} habit
  * @param {string} iso
  * @return {boolean}
@@ -139,7 +142,29 @@ export function isDue(habit, iso) {
  */
 export function isDone(habit, iso) {
   const s = statusOn(habit, iso);
-  return s === STATUS.done || s === STATUS.offDone;
+  return s === STATUS.done || s === STATUS.offDone || s === STATUS.bonus;
+}
+
+/**
+ * Reports whether the day is complete beyond what its week or month needs:
+ * not due, but counted on top.
+ * @param {!Habit} habit
+ * @param {string} iso
+ * @return {boolean}
+ */
+export function isBonus(habit, iso) {
+  return statusOn(habit, iso) === STATUS.bonus;
+}
+
+/**
+ * Reports whether the day's week or month has enough completed days, so the
+ * day is not due but can still be completed as a bonus.
+ * @param {!Habit} habit
+ * @param {string} iso
+ * @return {boolean}
+ */
+export function isFree(habit, iso) {
+  return statusOn(habit, iso) === STATUS.free;
 }
 
 /**
@@ -363,10 +388,16 @@ export function describeFrequency(frequency) {
   switch (frequency.kind) {
     case 'daily':
       return t('daily');
-    case 'times_per_week':
-      return t('{n}× per week', {n: frequency.timesPerWeek});
-    case 'times_per_month':
-      return t('{n}× per month', {n: frequency.timesPerMonth});
+    case 'times_per_week': {
+      const n = frequency.timesPerWeek;
+      return frequency.timesAtMost ? t('at most {n}× per week', {n}) :
+                                     t('{n}× per week', {n});
+    }
+    case 'times_per_month': {
+      const n = frequency.timesPerMonth;
+      return frequency.timesAtMost ? t('at most {n}× per month', {n}) :
+                                     t('{n}× per month', {n});
+    }
     case 'weekdays': {
       // Short weekday names.
       const days =

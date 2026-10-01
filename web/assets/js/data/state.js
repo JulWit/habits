@@ -19,6 +19,7 @@ export let Entry;
  *   kind: string,
  *   timesPerWeek: number,
  *   timesPerMonth: number,
+ *   timesAtMost: boolean,
  *   weekdays: number,
  *   intervalDays: number,
  *   weekInterval: number,

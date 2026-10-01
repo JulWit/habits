@@ -723,9 +723,10 @@ const BoardBlockProgress = {
   setup(props) {
     const progress = computed(() => dayProgress(props.habits, props.day));
     const title = computed(() => {
-      const {due, done} = progress.value;
-      return `${formatLong(props.day)}: ${
-          t('{done} of {due} done', {done, due})}`;
+      const {due, done, bonus} = progress.value;
+      const text =
+          `${formatLong(props.day)}: ${t('{done} of {due} done', {done, due})}`;
+      return bonus > 0 ? `${text} · ${t('+{n} bonus', {n: bonus})}` : text;
     });
     return {progress, title};
   },
@@ -755,6 +756,7 @@ const BoardBlockProgress = {
       </span>
       <span class="board-block-progress-count">
         {{ progress.done }}/{{ progress.due }}
+        <template v-if="progress.bonus > 0">+{{ progress.bonus }}</template>
       </span>
     </div>`,
 };

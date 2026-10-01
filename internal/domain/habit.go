@@ -146,8 +146,12 @@ type Frequency struct {
 	Kind          FrequencyKind `json:"kind"`
 	TimesPerWeek  int           `json:"timesPerWeek"`
 	TimesPerMonth int           `json:"timesPerMonth"`
-	Weekdays      Weekdays      `json:"weekdays"`
-	IntervalDays  int           `json:"intervalDays"`
+	// TimesAtMost makes TimesPerWeek or TimesPerMonth a maximum: once a
+	// period has that many completed days, no further day can be completed.
+	// Otherwise they are a minimum, and further completed days are a bonus.
+	TimesAtMost  bool     `json:"timesAtMost"`
+	Weekdays     Weekdays `json:"weekdays"`
+	IntervalDays int      `json:"intervalDays"`
 	// WeekInterval limits FreqWeekdays to every n-th week, counted from the
 	// week of AnchorDate. 1 means every week.
 	WeekInterval int `json:"weekInterval"`

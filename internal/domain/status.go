@@ -21,13 +21,24 @@ const (
 	StatusOver DayStatus = 'x'
 	// StatusSkipped is a skipped day.
 	StatusSkipped DayStatus = 's'
+	// StatusFree is a day of a times-per-week or times-per-month habit whose
+	// period already has as many completed days as it needs: not due, but
+	// it can still be completed, as a bonus.
+	StatusFree DayStatus = 'f'
+	// StatusBonus is a completed day of a times-per-week or times-per-month
+	// habit beyond the days its period needs. It is not due, but counts as
+	// done on top.
+	StatusBonus DayStatus = 'b'
 )
 
-// Status returns the status of the habit on d with the entry e. start is the
+// Status returns the status of the habit on d by its entries. start is the
 // first day of its history (HistoryStart). A limit is kept by a day without a
 // value from start up to today, as the statistics count it; a day ahead only
-// keeps a limit once it has come.
-func (h *Habit) Status(d Date, e Entry, start, today Date) DayStatus {
+// keeps a limit once it has come. A day of a times-per-week or
+// times-per-month habit depends on the other days of its period (see
+// periodStatus).
+func (h *Habit) Status(d Date, entries map[Date]Entry, start, today Date) DayStatus {
+	e := entries[d]
 	if e.Skipped {
 		return StatusSkipped
 	}
@@ -37,6 +48,9 @@ func (h *Habit) Status(d Date, e Entry, start, today Date) DayStatus {
 			return StatusOffDone
 		}
 		return StatusOff
+	}
+	if p, ok := periodOf(h.ScheduleOn(d).Frequency.Kind); ok {
+		return h.periodStatus(d, entries, p)
 	}
 	switch {
 	case done:
@@ -57,27 +71,28 @@ func (h *Habit) isDone(d Date, value int, start, today Date) bool {
 
 // DayStatuses returns the status of every day from from to to, one character
 // per day. start is the first day of the habit's history (HistoryStart);
-// entries need to cover the days from from to to only.
+// entries need to cover the days from from to to, and the weeks or months
+// around them for a times-per-week or times-per-month habit.
 func DayStatuses(h Habit, entries map[Date]Entry, start, from, to, today Date) string {
 	if to.Before(from) {
 		return ""
 	}
 	out := make([]byte, 0, to.DaysSince(from)+1)
 	for d := from; !d.After(to); d = d.AddDays(1) {
-		out = append(out, byte(h.Status(d, entries[d], start, today)))
+		out = append(out, byte(h.Status(d, entries, start, today)))
 	}
 	return string(out)
 }
 
-// LastDone returns the latest day up to today that is due and complete, or
-// the zero Date.
+// LastDone returns the latest day up to today that is complete, due or a
+// bonus, or the zero Date.
 func LastDone(h Habit, entries map[Date]Entry, today Date) Date {
 	start := HistoryStart(h, entries)
 	if start.IsZero() {
 		return Date{}
 	}
 	for d := today; !d.Before(start); d = d.AddDays(-1) {
-		if h.Status(d, entries[d], start, today) == StatusDone {
+		if s := h.Status(d, entries, start, today); s == StatusDone || s == StatusBonus {
 			return d
 		}
 	}

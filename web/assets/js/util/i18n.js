@@ -132,6 +132,7 @@ const DE = {
   'How many times per month': 'Wie oft pro Monat',
   'Counted per calendar month. Which days you pick is up to you.':
       'Gezählt wird je Kalendermonat. Welche Tage du wählst, bleibt dir überlassen.',
+  'Number of days': 'Anzahl der Tage',
   'Goal': 'Ziel',
   'At least': 'Mindestens',
   'At most': 'Höchstens',
@@ -381,6 +382,7 @@ const DE = {
   '{done} of {due} done': '{done} von {due} erledigt',
   'Nothing due on this day': 'An diesem Tag steht nichts an',
   'Done on this day': 'An diesem Tag erledigt',
+  '+{n} bonus': '+{n} Bonus',
   'All habits done!': 'Alle Gewohnheiten erledigt!',
   'Everything ticked off. Well done!': 'Alles abgehakt. Gut gemacht!',
   'Done for today – enjoy the rest of it.':
@@ -392,6 +394,9 @@ const DE = {
   // ---------- day cells ----------
   'done': 'erledigt',
   'planned': 'geplant',
+  'done as a bonus': 'als Bonus erledigt',
+  'planned as a bonus': 'als Bonus geplant',
+  'done often enough, a bonus is possible': 'oft genug erledigt, Bonus möglich',
   '{value} planned': '{value} geplant',
   '{value} of {target}': '{value} von {target}',
   '{value} of {target} planned': '{value} von {target} geplant',
@@ -414,6 +419,8 @@ const DE = {
   'daily': 'täglich',
   '{n}× per week': '{n}× pro Woche',
   '{n}× per month': '{n}× pro Monat',
+  'at most {n}× per week': 'höchstens {n}× pro Woche',
+  'at most {n}× per month': 'höchstens {n}× pro Monat',
   'last': 'letzter',
   '1st': '1.',
   '2nd': '2.',
@@ -599,6 +606,8 @@ const DE_ERRORS = {
   step_too_large_km: 'Der Schritt darf höchstens {max} Kilometer betragen.',
   times_per_week_range: '„Mal pro Woche“ muss zwischen 1 und 7 liegen.',
   times_per_month_range: '„Mal pro Monat“ muss zwischen 1 und 28 liegen.',
+  times_maximum_reached:
+      'Die Gewohnheit wurde in diesem Zeitraum schon so oft erledigt wie erlaubt.',
   weekday_missing: 'Bitte wähle mindestens einen Wochentag.',
   weekdays_invalid: 'Ungültige Auswahl der Wochentage.',
   week_interval_range:

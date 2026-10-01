@@ -100,7 +100,7 @@ func TestValidateRejects(t *testing.T) {
 func TestValidateClearsForeignFrequencyFields(t *testing.T) {
 	h := baseHabit()
 	h.Schedules[0].Frequency = Frequency{
-		Kind: FreqDaily, TimesPerWeek: 3, Weekdays: 0b0000101,
+		Kind: FreqDaily, TimesPerWeek: 3, TimesAtMost: true, Weekdays: 0b0000101,
 		IntervalDays: 9, AnchorDate: Date{2026, time.January, 1},
 	}
 	if err := h.Validate(); err != nil {

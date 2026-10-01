@@ -222,6 +222,8 @@ function describeCell(habit, iso) {
     !scheduled && value === 0 && 'is-off',
     // Future days are dimmed.
     iso > state.today && 'is-future',
+    // Days no longer needed in their week or month are dimmed too.
+    habitHelpers.isFree(habit, iso) && 'is-free',
     pending && 'is-pending',
   ];
   const view = {
@@ -316,12 +318,18 @@ function cellStatus(habit, iso, {value, skipped}, done, scheduled) {
   };
 
   if (done) {
+    if (habitHelpers.isBonus(habit, iso)) {
+      return ahead ? t('planned as a bonus') : t('done as a bonus');
+    }
     if (!ahead) return t('done');
     return habit.kind === 'check' ? t('planned') : t('{value} planned', vars);
   }
   if (value > 0) {
     return ahead ? t('{value} of {target} planned', vars) :
                    t('{value} of {target}', vars);
+  }
+  if (habitHelpers.isFree(habit, iso)) {
+    return t('done often enough, a bonus is possible');
   }
   return scheduled ? t('open') : t('not scheduled');
 }

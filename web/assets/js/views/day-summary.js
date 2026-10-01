@@ -27,15 +27,18 @@ export function initSummary(boardElement) {
 
 /**
  * Counts the habits due on `day` and how many of them are complete, by the
- * statuses the server sent.
+ * statuses the server sent, and the habits done on top of what their week or
+ * month needs (bonus), which are not due.
  * @param {!Array<!Habit>} habits
  * @param {string} day
- * @return {{due: number, done: number}}
+ * @return {{due: number, done: number, bonus: number}}
  */
 export function dayProgress(habits, day) {
-  const due = habits.filter((h) => !h.archivedAt && habitHelpers.isDue(h, day));
+  const active = habits.filter((h) => !h.archivedAt);
+  const due = active.filter((h) => habitHelpers.isDue(h, day));
   const done = due.filter((h) => habitHelpers.isDone(h, day));
-  return {due: due.length, done: done.length};
+  const bonus = active.filter((h) => habitHelpers.isBonus(h, day));
+  return {due: due.length, done: done.length, bonus: bonus.length};
 }
 
 /**
@@ -139,9 +142,10 @@ export const BoardDaySummary = {
    */
   setup(props) {
     const progress = computed(() => dayProgress(props.habits, props.day));
+    // A bonus takes the progress beyond 100%.
     const percent = computed(() => {
-      const {due, done} = progress.value;
-      return due === 0 ? 0 : Math.round((done / due) * 100);
+      const {due, done, bonus} = progress.value;
+      return due === 0 ? 0 : Math.round(((done + bonus) / due) * 100);
     });
     // No ring, and nothing to animate, if nothing is due on the day.
     watch(() => (progress.value.due > 0 ? percent.value : null), (value) => {
@@ -151,6 +155,11 @@ export const BoardDaySummary = {
     return {
       progress,
       percent,
+      ringMax: computed(() => Math.max(100, percent.value)),
+      bonusText: computed(
+          () => progress.value.bonus > 0 ?
+              t('+{n} bonus', {n: progress.value.bonus}) :
+              ''),
       isComplete: computed(() => {
         const {due, done} = progress.value;
         return due > 0 && done === due;
@@ -197,6 +206,12 @@ export const BoardDaySummary = {
           <template v-else><app-icon name="check"/>
             <span>{{ completeText }}</span>
           </template>
+          <span
+            v-if="bonusText"
+            class="board-day-summary-bonus"
+          >
+            {{ bonusText }}
+          </span>
         </p>
       </div>
       <div
@@ -204,7 +219,7 @@ export const BoardDaySummary = {
         class="board-day-summary-ring"
         role="progressbar"
         aria-valuemin="0"
-        aria-valuemax="100"
+        :aria-valuemax="ringMax"
         :aria-valuenow="percent"
         :aria-label="t('Done on this day')"
       >
@@ -277,9 +292,12 @@ const ORBS_PER_HABIT = 6;
  * @return {!Array<!Flight>}
  */
 export function newlyDone(habits, day) {
-  const due = habits.filter((h) => !h.archivedAt && habitHelpers.isDue(h, day));
-  const done =
-      new Set(due.filter((h) => habitHelpers.isDone(h, day)).map((h) => h.id));
+  // A bonus counts towards the ring as well.
+  const counted = habits.filter(
+      (h) => !h.archivedAt &&
+          (habitHelpers.isDue(h, day) || habitHelpers.isBonus(h, day)));
+  const done = new Set(
+      counted.filter((h) => habitHelpers.isDone(h, day)).map((h) => h.id));
   const before = lastDoneDay === day ? lastDone : null;
   lastDone = done;
   lastDoneDay = day;
@@ -288,7 +306,7 @@ export function newlyDone(habits, day) {
     return [];
   }
 
-  const fresh = due.filter((h) => done.has(h.id) && !before.has(h.id));
+  const fresh = counted.filter((h) => done.has(h.id) && !before.has(h.id));
   // No ring, no orbs.
   if (fresh.length === 0 || !board.querySelector('.board-day-summary-ring')) {
     return [];

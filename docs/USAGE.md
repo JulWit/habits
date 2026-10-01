@@ -49,6 +49,13 @@ year go back to the first year of the habit's history.
 most 2 cups of coffee; 0 means none at all). Days without an entry keep the
 limit. See [DATAMODEL.md](DATAMODEL.md#targets-and-limits).
 
+**Times per week or month**: "Number of days" in the habit editor chooses
+"At least" or "At most". Once a week or month has enough completed days, its
+other days are no longer due, so the day's progress can reach 100%. With "At
+least" they can still be ticked off as a bonus, which takes the day's
+progress beyond 100%; with "At most" they are closed. See
+[DATAMODEL.md](DATAMODEL.md#frequencies).
+
 **Undo**: Deleting, archiving and editing habits and categories, entries,
 skipped days and imports can be undone, the latest 100 changes for 30 days. A
 deleted habit comes back with its history. A change that was changed again

@@ -41,7 +41,7 @@ func TestStatusOfATarget(t *testing.T) {
 		{"not due, below the target", saturday, Entry{Value: 10}, StatusOff},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			if got := h.Status(tc.day, tc.e, start, friday); got != tc.want {
+			if got := h.Status(tc.day, map[Date]Entry{tc.day: tc.e}, start, friday); got != tc.want {
 				t.Errorf("Status = %c, want %c", got, tc.want)
 			}
 		})
@@ -64,7 +64,7 @@ func TestStatusOfALimit(t *testing.T) {
 		{"ahead over the limit", friday.AddDays(1), Entry{Value: 30}, StatusOpen},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			if got := h.Status(tc.day, tc.e, friday, friday); got != tc.want {
+			if got := h.Status(tc.day, map[Date]Entry{tc.day: tc.e}, friday, friday); got != tc.want {
 				t.Errorf("Status = %c, want %c", got, tc.want)
 			}
 		})
@@ -190,5 +190,122 @@ func TestSumValuesPerMonthStartsOnTheFirstDay(t *testing.T) {
 	got := SumValues(nil, from, Date{2026, time.March, 10}, GrainMonth)
 	if len(got.Buckets) != 3 || got.Buckets[2].Start != (Date{2026, time.March, 1}) {
 		t.Errorf("buckets = %+v, want 3 months, the last from 1 March", got.Buckets)
+	}
+}
+
+// weekStatuses returns the statuses of h from monday to sunday with the given
+// days of that week (0 = Monday) completed, judged on friday.
+func weekStatuses(h Habit, done ...int) string {
+	entries := map[Date]Entry{}
+	for _, i := range done {
+		entries[monday.AddDays(i)] = Entry{Value: 1}
+	}
+	return DayStatuses(h, entries, DateFromTime(longAgo), monday, sunday, friday)
+}
+
+// Once a week has as many completed days as it needs, its other days are no
+// longer due, and further completed days are a bonus.
+func TestStatusOfAWeekWithAMinimum(t *testing.T) {
+	h := weeklyHabit(3)
+	for _, tc := range []struct {
+		name string
+		done []int
+		want string
+	}{
+		{"nothing done", nil, "ooooooo"},
+		{"not enough yet", []int{0, 2}, "cocoooo"},
+		{"enough", []int{0, 1, 2}, "cccffff"},
+		{"a bonus", []int{0, 1, 2, 4}, "cccfbff"},
+		{"the earliest days count first", []int{1, 3, 4, 6}, "fcfccfb"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := weekStatuses(h, tc.done...); got != tc.want {
+				t.Errorf("statuses = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
+// A maximum closes the other days of a week once it is reached.
+func TestStatusOfAWeekWithAMaximum(t *testing.T) {
+	h := weeklyHabit(3)
+	h.Schedules[0].Frequency.TimesAtMost = true
+	if got, want := weekStatuses(h, 0, 2), "cocoooo"; got != want {
+		t.Errorf("statuses below the maximum = %q, want %q", got, want)
+	}
+	if got, want := weekStatuses(h, 0, 1, 2), "ccc----"; got != want {
+		t.Errorf("statuses at the maximum = %q, want %q", got, want)
+	}
+	// Recorded before the maximum, e.g. as a minimum: not counted.
+	if got, want := weekStatuses(h, 0, 1, 2, 4), "ccc-+--"; got != want {
+		t.Errorf("statuses over the maximum = %q, want %q", got, want)
+	}
+}
+
+// Skipped days lower what a week needs, so it is met sooner.
+func TestStatusOfAWeekWithSkippedDays(t *testing.T) {
+	h := weeklyHabit(3)
+	entries := map[Date]Entry{friday: {Value: 1}, friday.AddDays(1): {Value: 1}}
+	for i := range 4 {
+		entries[monday.AddDays(i)] = Entry{Skipped: true}
+	}
+	// Three days are left, so 3×3/7 rounds up to 2.
+	got := DayStatuses(h, entries, DateFromTime(longAgo), monday, sunday, friday)
+	if want := "ssssccf"; got != want {
+		t.Errorf("statuses = %q, want %q", got, want)
+	}
+}
+
+// The day totals leave the free days of a met week out and count its bonus
+// days on top.
+func TestDayTotalsCountABonus(t *testing.T) {
+	weekly := weeklyHabit(2)
+	weekly.ID = "weekly"
+	daily := dailyHabit()
+	daily.ID = "daily"
+	entries := map[string]map[Date]Entry{
+		"weekly": valued(map[Date]int{monday: 1, monday.AddDays(1): 1, friday: 1}),
+		"daily":  valued(map[Date]int{friday: 1}),
+	}
+	got := DayTotals([]Habit{weekly, daily}, entries, friday.AddDays(-1), friday, friday)
+	want := []DayTotal{
+		{Date: friday.AddDays(-1), Due: 1},
+		{Date: friday, Due: 1, Done: 1, Bonus: 1},
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("day %d = %+v, want %+v", i, got[i], want[i])
+		}
+	}
+	if !got[1].Perfect() {
+		t.Error("a day with a bonus must still be perfect")
+	}
+}
+
+// A maximum refuses to complete a day once the other days of the period have
+// reached it; changing a counted day stays possible.
+func TestCheckRecordKeepsTheMaximum(t *testing.T) {
+	h := weeklyHabit(2)
+	h.Schedules[0].Frequency.TimesAtMost = true
+	entries := valued(map[Date]int{monday: 1, monday.AddDays(1): 1, friday: 1})
+	if err := h.CheckRecord(friday, entries); err == nil {
+		t.Error("a third day of at most two a week must be refused")
+	}
+	if err := h.CheckRecord(monday, entries); err == nil {
+		t.Error("with two other days done, Monday must be refused as well")
+	}
+	delete(entries, friday)
+	if err := h.CheckRecord(monday, entries); err != nil {
+		t.Errorf("a counted day must stay recordable: %v", err)
+	}
+	entries[friday] = Entry{Skipped: true}
+	if err := h.CheckRecord(friday, entries); err != nil {
+		t.Errorf("a skip completes nothing and must be allowed: %v", err)
+	}
+
+	h.Schedules[0].Frequency.TimesAtMost = false
+	entries[friday] = Entry{Value: 1}
+	if err := h.CheckRecord(friday, entries); err != nil {
+		t.Errorf("a minimum must allow a bonus: %v", err)
 	}
 }

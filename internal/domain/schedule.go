@@ -86,14 +86,14 @@ func (s Schedule) normalizedFrequency() (Frequency, error) {
 		if f.TimesPerWeek < 1 || f.TimesPerWeek > 7 {
 			return Frequency{}, Invalid("times_per_week_range", "times per week must be between 1 and 7")
 		}
-		return Frequency{Kind: FreqTimesPerWeek, TimesPerWeek: f.TimesPerWeek}, nil
+		return Frequency{Kind: FreqTimesPerWeek, TimesPerWeek: f.TimesPerWeek, TimesAtMost: f.TimesAtMost}, nil
 
 	case FreqTimesPerMonth:
 		// 28 fits every month, so the target never exceeds the month.
 		if f.TimesPerMonth < 1 || f.TimesPerMonth > 28 {
 			return Frequency{}, Invalid("times_per_month_range", "times per month must be between 1 and 28")
 		}
-		return Frequency{Kind: FreqTimesPerMonth, TimesPerMonth: f.TimesPerMonth}, nil
+		return Frequency{Kind: FreqTimesPerMonth, TimesPerMonth: f.TimesPerMonth, TimesAtMost: f.TimesAtMost}, nil
 
 	case FreqWeekdays:
 		if f.Weekdays == 0 {
@@ -150,7 +150,9 @@ func (s Schedule) anchorOr(anchor Date) Date {
 }
 
 // IsScheduled reports whether the schedule makes d a due day. FreqDaily and
-// the times-per-week and times-per-month frequencies are due every day.
+// the times-per-week and times-per-month frequencies are due every day; for
+// the latter, Habit.Status leaves the other days of a period with enough
+// completed days no longer due.
 func (s Schedule) IsScheduled(d Date) bool {
 	f := s.Frequency
 	switch f.Kind {

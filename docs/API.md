@@ -77,8 +77,10 @@ Entries cover the last 200 days; the detail view loads the full history via
 Every habit carries `schedules` (`[{from, targetValue, targetType,
 frequency}]`, oldest first); the last one is the current schedule.
 `targetType` is `at_least` or, for a limit, `at_most` (see
-[DATAMODEL.md](DATAMODEL.md#targets-and-limits)). The client describes the
-target of a day from them. `PATCH /api/habits/{id}` accepts `targetValue`,
+[DATAMODEL.md](DATAMODEL.md#targets-and-limits)). In `frequency`,
+`timesAtMost` makes `timesPerWeek` or `timesPerMonth` a maximum instead of a
+minimum (see [DATAMODEL.md](DATAMODEL.md#frequencies)). The client describes
+the target of a day from them. `PATCH /api/habits/{id}` accepts `targetValue`,
 `targetType` and `frequency` to change the current schedule.
 
 Each habit also carries the status of each day as `days`, one character per
@@ -138,8 +140,9 @@ steps. See [DATAFLOW.md](DATAFLOW.md#undo).
 ## Statistics
 
 `GET /api/days?year=2026` answers with `totals`, the habits due and done on
-each day of the year (`{date, due, done}`), and `stats` over the days up to
-today: perfect days (`perfect` of `counted`), the current and best run of
+each day of the year (`{date, due, done, bonus}`; `bonus` counts the habits
+done beyond what their week or month needs, which are not due), and `stats`
+over the days up to today: perfect days (`perfect` of `counted`), the current and best run of
 them, the average share per day, completed habits, days without progress,
 a group per weekday (Monday first) and per month from `firstMonth` on
 (`{rate, perfect}`, `rate` null without due habits), and the best weekday

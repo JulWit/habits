@@ -59,6 +59,17 @@ completed days would always be met. Check habits always have the target 1.
   month
 - `custom_interval`: every n days from an anchor date
 
+The times per week or month are a minimum (`timesAtMost` false) or a maximum
+(`timesAtMost` true). Every day of such a period is due until it has as many
+completed days as it needs, skipped days lowering that number (see
+[Entries](#entries)); then its other days are no longer due
+(`domain.Habit.Status`). With a minimum they stay open for a bonus: further
+completed days are done on top, not due, and take the day's progress beyond
+100%. With a maximum they are closed, and the server refuses to complete
+another day of the period (`times_maximum_reached`). The days count in the
+order of the calendar: the earliest completed days are the ones the period
+needs.
+
 The frequency rules exist only on the server (`domain.Schedule.IsScheduled`);
 see [DATAFLOW.md](DATAFLOW.md#day-statuses) for how the client learns the
 status of each day.

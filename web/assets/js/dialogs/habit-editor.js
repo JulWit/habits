@@ -77,6 +77,7 @@ const KINDS = [
  *   freq: string,
  *   timesPerWeek: (number|string),
  *   timesPerMonth: (number|string),
+ *   timesAtMost: boolean,
  *   weekdays: !Array<boolean>,
  *   weekRepeat: string,
  *   weekInterval: (number|string),
@@ -100,6 +101,7 @@ const form = reactive({
   freq: 'daily',
   timesPerWeek: 3,
   timesPerMonth: 2,
+  timesAtMost: false,
   weekdays: [false, false, false, false, false, false, false],
   weekRepeat: 'weekly',
   weekInterval: 4,
@@ -185,6 +187,7 @@ function collect() {
       kind: form.freq,
       timesPerWeek: 0,
       timesPerMonth: 0,
+      timesAtMost: false,
       weekdays: 0,
       intervalDays: 0,
       weekInterval: 0,
@@ -206,9 +209,11 @@ function collect() {
   switch (frequency.kind) {
     case 'times_per_week':
       frequency.timesPerWeek = Number(form.timesPerWeek);
+      frequency.timesAtMost = form.timesAtMost;
       break;
     case 'times_per_month':
       frequency.timesPerMonth = Number(form.timesPerMonth);
+      frequency.timesAtMost = form.timesAtMost;
       break;
     case 'weekdays': {
       frequency.weekdays = form.weekdays.reduce(
@@ -315,6 +320,7 @@ export async function openEditor(habit, handler, createCategory) {
   form.freq = freq.kind;
   form.timesPerWeek = freq.timesPerWeek || 3;
   form.timesPerMonth = freq.timesPerMonth || 2;
+  form.timesAtMost = freq.timesAtMost ?? false;
   form.intervalDays = freq.intervalDays || 3;
   form.anchorDate = freq.anchorDate || state.today;
   form.weekdays =
@@ -748,6 +754,38 @@ export const TheHabitEditor = {
                   :disabled="limit && countsDays(freq.value)"
                 >
                 <span>{{ freq.label }}</span>
+              </label>
+            </div>
+          </fieldset>
+          <!-- The number of days per week or month as a minimum, with further
+               days as a bonus, or a maximum. -->
+          <fieldset
+            v-if="countsDays(form.freq)"
+            class="field"
+          >
+            <legend class="field-label">{{ t('Number of days') }}</legend>
+            <div
+              class="segmented"
+              role="radiogroup"
+              :aria-label="t('Number of days')"
+            >
+              <label>
+                <input
+                  v-model="form.timesAtMost"
+                  type="radio"
+                  name="timesAtMost"
+                  :value="false"
+                >
+                <span>{{ t('At least') }}</span>
+              </label>
+              <label>
+                <input
+                  v-model="form.timesAtMost"
+                  type="radio"
+                  name="timesAtMost"
+                  :value="true"
+                >
+                <span>{{ t('At most') }}</span>
               </label>
             </div>
           </fieldset>

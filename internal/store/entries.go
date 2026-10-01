@@ -3,7 +3,6 @@ package store
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"fmt"
 	"maps"
 	"slices"
@@ -75,23 +74,6 @@ func scanEntry(rows *sql.Rows, habitID *string) (domain.Date, domain.Entry, erro
 		return domain.Date{}, domain.Entry{}, fmt.Errorf("entry of habit %s: %w", *habitID, err)
 	}
 	return d, e, nil
-}
-
-// Entry returns the entry of a habit of the user on date; the zero Entry if
-// nothing is recorded.
-func (t *Tx) Entry(ctx context.Context, habitID string, date domain.Date) (domain.Entry, error) {
-	var e domain.Entry
-	err := t.queryRow(ctx, `
-		SELECT e.value, e.skipped FROM entries e JOIN habits h ON h.id = e.habit_id
-		WHERE h.user_id = ? AND e.habit_id = ? AND e.date = ?`,
-		t.userID, habitID, date.String()).Scan(&e.Value, &e.Skipped)
-	if errors.Is(err, sql.ErrNoRows) {
-		return domain.Entry{}, nil
-	}
-	if err != nil {
-		return domain.Entry{}, fmt.Errorf("loading entry: %w", err)
-	}
-	return e, nil
 }
 
 // SetEntries stores the entries of the habit h on their days, deleting those

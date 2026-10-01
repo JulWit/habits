@@ -68,6 +68,7 @@ CREATE TABLE habit_schedules (
 	freq_week_interval   INTEGER NOT NULL DEFAULT 0 CHECK (freq_week_interval >= 0),
 	freq_week_of_month   INTEGER NOT NULL DEFAULT 0 CHECK (freq_week_of_month BETWEEN -1 AND 4),
 	freq_anchor_date     TEXT    NOT NULL DEFAULT '',
+	freq_times_at_most   INTEGER NOT NULL DEFAULT 0 CHECK (freq_times_at_most IN (0, 1)),
 	PRIMARY KEY (habit_id, valid_from),
 	-- A limit may be 0 ("none at all"), a target not.
 	CHECK (target_value > 0 OR target_type = 'at_most')
@@ -159,10 +160,16 @@ UPDATE changes SET diff = (
 	SELECT json_group_array(json_remove(value, '$.before.revision', '$.after.revision'))
 	FROM (SELECT value FROM json_each(changes.diff) ORDER BY key));
 `,
+
+	// 5 → 6: the times per week or month can be a maximum. Undo steps from
+	// before leave the column out and so keep a minimum.
+	5: `
+ALTER TABLE habit_schedules ADD COLUMN freq_times_at_most INTEGER NOT NULL DEFAULT 0 CHECK (freq_times_at_most IN (0, 1));
+`,
 }
 
 // latestVersion is the schema version of schema.
-const latestVersion = 5
+const latestVersion = 6
 
 // migrate creates the schema in an empty database, or applies the migrations
 // an existing one is missing, each in its own transaction.

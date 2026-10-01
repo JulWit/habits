@@ -38,7 +38,7 @@ func TestEntriesStaySparse(t *testing.T) {
 	d := day(2026, time.September, 18)
 
 	setEntry(t, st, "alice", h, d, domain.Entry{Value: 30})
-	if got := read(t, st, "alice", func(tx *Tx) (domain.Entry, error) { return tx.Entry(t.Context(), h.ID, d) }); got.Value != 30 {
+	if got := read(t, st, "alice", func(tx *Tx) (map[domain.Date]domain.Entry, error) { return tx.HabitEntries(t.Context(), h.ID) })[d]; got.Value != 30 {
 		t.Errorf("Entry = %+v, want 30", got)
 	}
 	setEntry(t, st, "alice", h, d, domain.Entry{})

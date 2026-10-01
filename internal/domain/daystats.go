@@ -9,6 +9,9 @@ type DayTotal struct {
 	Date Date `json:"date"`
 	Due  int  `json:"due"`
 	Done int  `json:"done"`
+	// Bonus counts the habits done beyond what their week or month needs
+	// (StatusBonus). They are neither due nor part of Done.
+	Bonus int `json:"bonus"`
 }
 
 // Perfect reports whether every habit due on the day is complete.
@@ -41,11 +44,15 @@ func DayTotals(habits []Habit, entries map[string]map[Date]Entry, from, to, toda
 			if d.Before(start) {
 				continue
 			}
-			switch h.Status(d, own[d], start, today) {
+			switch h.Status(d, own, start, today) {
 			case StatusDone:
 				totals[i].Due++
 				if !d.After(today) {
 					totals[i].Done++
+				}
+			case StatusBonus:
+				if !d.After(today) {
+					totals[i].Bonus++
 				}
 			case StatusOpen, StatusOver:
 				totals[i].Due++

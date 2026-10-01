@@ -108,13 +108,89 @@ func (p period) tally(h Habit, entries map[Date]Entry, first, start, today Date)
 		t.expected = t.target
 		return t
 	}
-	length := end.DaysSince(first)
-	// Rounded up: skipping a single day of a week rarely lowers the target.
-	t.target = (max(p.times(schedule.Frequency), 1)*available + length - 1) / length
+	t.target = p.needed(schedule.Frequency, entries, first)
 	t.expected = t.target
 	if open < available {
 		// Partial periods expect a proportional share of the target.
 		t.expected = (t.target*open + available - 1) / available
 	}
 	return t
+}
+
+// needed returns how many completed days the period starting on first asks
+// for under f: the times of f, lowered in proportion to the days skipped in
+// the period and rounded up, so skipping a single day of a week rarely lowers
+// it. 0 if every day is skipped.
+func (p period) needed(f Frequency, entries map[Date]Entry, first Date) int {
+	end := p.next(first)
+	available := 0
+	for d := first; d.Before(end); d = d.AddDays(1) {
+		if !entries[d].Skipped {
+			available++
+		}
+	}
+	length := end.DaysSince(first)
+	return (max(p.times(f), 1)*available + length - 1) / length
+}
+
+// completedIn returns the number of completed days, skipped ones aside, of
+// the period containing d that come before d, and of the whole period
+// without d. Days ahead count as planned.
+func (p period) completedIn(h Habit, entries map[Date]Entry, d Date) (before, others int) {
+	first := p.startOf(d)
+	for day := first; day.Before(p.next(first)); day = day.AddDays(1) {
+		e := entries[day]
+		if day == d || e.Skipped || !h.IsComplete(day, e.Value) {
+			continue
+		}
+		others++
+		if day.Before(d) {
+			before++
+		}
+	}
+	return before, others
+}
+
+// periodStatus returns the status of d, a due day of a times-per-week or
+// times-per-month habit that is not skipped, counted in its period p. As many
+// completed days as the period needs are done, the earliest first; further
+// ones are a bonus, or for a maximum not counted. Once a period has enough,
+// its other days are no longer due: a minimum leaves them free for a bonus, a
+// maximum closes them.
+func (h *Habit) periodStatus(d Date, entries map[Date]Entry, p period) DayStatus {
+	f := h.ScheduleOn(d).Frequency
+	needed := p.needed(f, entries, p.startOf(d))
+	before, others := p.completedIn(*h, entries, d)
+	if h.IsComplete(d, entries[d].Value) {
+		switch {
+		case before < needed:
+			return StatusDone
+		case f.TimesAtMost:
+			return StatusOffDone
+		}
+		return StatusBonus
+	}
+	switch {
+	case others < needed:
+		return StatusOpen
+	case f.TimesAtMost:
+		return StatusOff
+	}
+	return StatusFree
+}
+
+// CheckRecord returns an error unless the entry of d in entries, which holds
+// the change to record, may be recorded on d, a due day of h. A day of a
+// habit with a maximum of times per week or month (Frequency.TimesAtMost)
+// cannot be completed once the other days of its period have reached it.
+func (h *Habit) CheckRecord(d Date, entries map[Date]Entry) error {
+	f := h.ScheduleOn(d).Frequency
+	p, ok := periodOf(f.Kind)
+	if !ok || !f.TimesAtMost || entries[d].Skipped || !h.IsComplete(d, entries[d].Value) {
+		return nil
+	}
+	if _, others := p.completedIn(*h, entries, d); others >= p.needed(f, entries, p.startOf(d)) {
+		return Invalid("times_maximum_reached", "the habit has already been done as often as the period allows")
+	}
+	return nil
 }

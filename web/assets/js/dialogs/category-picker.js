@@ -91,16 +91,9 @@ export const TheCategoryPicker = {
       dialog = el.value;
     });
 
-    // "No category" first. A deleted category is still offered, so that
-    // saving does not change the habit's category.
-    const options = computed(() => {
-      const all = [{id: NONE, name: t('No category')}, ...state.categories];
-      if (current.value !== NONE &&
-          !state.categories.some((c) => c.id === current.value)) {
-        all.push({id: current.value, name: t('Deleted category'), stale: true});
-      }
-      return all;
-    });
+    // "No category" first.
+    const options = computed(
+        () => [{id: NONE, name: t('No category')}, ...state.categories]);
 
     /** Creates a category from the form and chooses it. */
     const create = async () => {
@@ -167,7 +160,6 @@ export const TheCategoryPicker = {
             :key="option.id"
             type="button"
             class="category-picker-option"
-            :class="{'is-stale': option.stale}"
             role="option"
             :aria-selected="String(option.id === current)"
             @click="choose(option.id)"

@@ -178,7 +178,6 @@ const DE = {
   'Create': 'Anlegen',
   'Save': 'Speichern',
   'No category': 'Keine Kategorie',
-  'Deleted category': 'Gelöschte Kategorie',
   'Please select at least one weekday.':
       'Bitte wähle mindestens einen Wochentag.',
 

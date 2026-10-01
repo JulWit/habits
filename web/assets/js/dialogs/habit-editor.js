@@ -190,7 +190,9 @@ function collect() {
     color: form.color,
     icon: form.icon,
     kind,
-    categoryId: form.categoryId,
+    // A category deleted meanwhile, e.g. on another device, is left: the
+    // server would reject it.
+    categoryId: categoryById(form.categoryId) ? form.categoryId : '',
     unit: kind === 'count' ? form.unit.trim() : '',
     targetValue: 1,
     targetType: 'at_least',
@@ -430,13 +432,9 @@ export const TheHabitEditor = {
       if (chosen !== null) form.categoryId = chosen;
     };
 
-    const category =
-        computed(() => form.categoryId ? categoryById(form.categoryId) : null);
-    // A deleted category is shown as such.
-    const categoryName = computed(() => {
-      if (!form.categoryId) return t('No category');
-      return category.value?.name ?? t('Deleted category');
-    });
+    const category = computed(() => categoryById(form.categoryId));
+    const categoryName =
+        computed(() => category.value?.name ?? t('No category'));
 
     return {
       el,
@@ -553,7 +551,7 @@ export const TheHabitEditor = {
               />
               <span
                 class="picker-value"
-                :class="{'is-empty': !form.categoryId}"
+                :class="{'is-empty': !category}"
               >
                 {{ categoryName }}
               </span>

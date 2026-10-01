@@ -175,8 +175,8 @@ type Habit struct {
 	// Icon is one of HabitIcons, or "" for no icon.
 	Icon string `json:"icon"`
 	Kind Kind   `json:"kind"`
-	// CategoryID is "" for no category. If it refers to a deleted category,
-	// the habit is shown as uncategorised.
+	// CategoryID is "" for no category. Deleting a category clears it in the
+	// database (ON DELETE SET NULL).
 	CategoryID string `json:"categoryId"`
 	// StepValue is the increment per tap, in stored units. Always 1 for
 	// KindCheck.

@@ -889,11 +889,6 @@ html:has(.dialog.page[open]) {
   }
 }
 
-.category-picker-option.is-stale {
-  color: var(--text-faint);
-  font-style: italic;
-}
-
 /* The chosen category in the accent colour, as the chosen option of a
    dropdown. Hover and pressed states follow the primary button (see the
    pressed state below). */

@@ -94,10 +94,10 @@ async function failed(err) {
  * Returns the label of a step in the UI language: its English template,
  * translated like any text, with its parameters; a date is shown relative to
  * today.
- * @param {{id: number, label: string, params: ?Object<string, *>}} step
+ * @param {{label: string, params: ?Object<string, *>}} step
  * @return {string}
  */
-function stepLabel(step) {
+export function stepLabel(step) {
   const vars = {};
   for (const [name, value] of Object.entries(step.params ?? {})) {
     if (name === 'date') {

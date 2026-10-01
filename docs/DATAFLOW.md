@@ -136,8 +136,10 @@ The server keeps the undo steps (`internal/store/changes.go`). An `Update`
 that calls `tx.Record(label, params…)` stores the rows it replaced and wrote.
 The answer names the step in the `Change-Id` header; `api.js` adds it to the
 answer as `changeId`, and the toast offers to undo that step
-(`offerUndo` in `undo.js`). `Ctrl+Z` and `Ctrl+Y` undo the latest step and
-redo the one undone last.
+(`offerUndo` in `undo.js`). Deleting a category answers with the whole step,
+and the toast shows its label, which says how many habits were kept, so the
+client does not count them itself. `Ctrl+Z` and `Ctrl+Y` undo the latest step
+and redo the one undone last.
 
 Undoing writes the replaced rows back, redoing the written ones, but only
 where the rows still hold what the step left there, column by column: a

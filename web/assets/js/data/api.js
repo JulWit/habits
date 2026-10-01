@@ -275,8 +275,9 @@ export const api = {
       request('PATCH', `/api/categories/${encodeURIComponent(id)}`, input),
 
   /**
+   * Deletes a category; answers with the undo step it recorded.
    * @param {string} id
-   * @return {!Promise<?{changeId: number}>}
+   * @return {!Promise<{id: number, label: string, params: ?Object<string, *>}>}
    */
   deleteCategory: (id) =>
       request('DELETE', `/api/categories/${encodeURIComponent(id)}`),

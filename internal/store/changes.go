@@ -47,11 +47,12 @@ type Step struct {
 }
 
 // Record makes the transaction's change an undo step labelled with template
-// and params, alternating names and values (see domain.NamedParams).
-// Recording a step drops the steps that are undone, as they can no longer be
-// redone.
-func (t *Tx) Record(template string, params ...any) {
+// and params, alternating names and values (see domain.NamedParams), and
+// returns the label, for an answer that names the step. Recording a step
+// drops the steps that are undone, as they can no longer be redone.
+func (t *Tx) Record(template string, params ...any) Label {
 	t.log.label = &Label{Template: template, Params: domain.NamedParams(params...)}
+	return *t.log.label
 }
 
 // row is a table row by column name, with the values as the driver returns

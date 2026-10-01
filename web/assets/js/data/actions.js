@@ -18,7 +18,7 @@ import {refresh} from './loader.js';
 import {discard, enqueue, flush, isConnectionError, isOffline, isSessionExpired, pending, setOffline} from './outbox.js';
 import {currentHabitId, goHome} from './route.js';
 import {applyEntryAnswer, categoryById, dropPending, groupedHabits, habitById, removeCategory, removeHabit, reorderCategoriesLocal, reorderHabitsLocal, showPending, state, upsertCategory, upsertHabit} from './state.js';
-import {offerUndo} from './undo.js';
+import {offerUndo, stepLabel} from './undo.js';
 
 /**
  * The text of the live region that announces the result of a tap on the
@@ -545,34 +545,21 @@ export async function updateCategory(id, {name, color, icon, showProgress}) {
 
 /**
  * Deletes a category. Its habits stay, without a category; undo puts them
- * back.
+ * back. The toast shows the label of the server's undo step, which says how
+ * many habits were kept.
  * @param {string} id
  * @return {!Promise<void>}
  */
 export async function deleteCategory(id) {
-  const category = categoryById(id);
-  if (!category) return;
-  const affected = state.habits.filter((h) => h.categoryId === id).length;
-
-  let answer;
+  if (!categoryById(id)) return;
+  let step;
   try {
-    answer = await api.deleteCategory(id);
+    step = await api.deleteCategory(id);
   } catch (err) {
     toast(errorText(err), {error: true});
     return;
   }
   removeCategory(id);
   await refresh();
-
-  const name = category.name;
-  let label;
-  if (affected === 0) {
-    label = t('Category "{name}" deleted', {name});
-  } else if (affected === 1) {
-    label = t('Category "{name}" deleted — 1 habit kept', {name});
-  } else {
-    label =
-        t('Category "{name}" deleted — {n} habits kept', {name, n: affected});
-  }
-  offerUndo(answer?.changeId, label);
+  offerUndo(step.id, stepLabel(step));
 }

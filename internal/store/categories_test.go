@@ -45,6 +45,38 @@ func TestDeleteCategoryKeepsItsHabits(t *testing.T) {
 	}
 }
 
+// CountHabits counts the habits of a category, archived ones included, and
+// none of other categories or users.
+func TestCountHabitsOfCategory(t *testing.T) {
+	st := openTestStore(t)
+	sport := createCategory(t, st, "alice", domain.Category{Name: "Sport"})
+	other := createCategory(t, st, "alice", domain.Category{Name: "Food"})
+	for _, categoryID := range []string{sport.ID, sport.ID, other.ID, ""} {
+		h := countHabit(domain.KindCheck, 1)
+		h.CategoryID = categoryID
+		mustCreateHabit(t, st, "alice", h)
+	}
+	update(t, st, "alice", func(tx *Tx) error {
+		habits, err := tx.Habits(t.Context())
+		if err != nil {
+			return err
+		}
+		h := habits[0]
+		h.SetArchived(true, tx.Now())
+		return tx.SaveHabit(t.Context(), &h)
+	})
+
+	count := func(user, id string) int {
+		return read(t, st, user, func(tx *Tx) (int, error) { return tx.CountHabits(t.Context(), id) })
+	}
+	if n := count("alice", sport.ID); n != 2 {
+		t.Errorf("CountHabits(Sport) = %d, want 2", n)
+	}
+	if n := count("mallory", sport.ID); n != 0 {
+		t.Errorf("CountHabits(Sport) of another user = %d, want 0", n)
+	}
+}
+
 // A category icon is stored and read back; unknown icons are rejected.
 func TestCategoryIcon(t *testing.T) {
 	st := openTestStore(t)

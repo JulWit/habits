@@ -65,6 +65,17 @@ func (t *Tx) Category(ctx context.Context, id string) (domain.Category, error) {
 	return c, nil
 }
 
+// CountHabits returns the number of the user's habits in the category id,
+// archived ones included.
+func (t *Tx) CountHabits(ctx context.Context, id string) (int, error) {
+	var n int
+	if err := t.queryRow(ctx, `SELECT COUNT(*) FROM habits WHERE user_id = ? AND category_id = ?`,
+		t.userID, id).Scan(&n); err != nil {
+		return 0, fmt.Errorf("counting the habits of category %s: %w", id, err)
+	}
+	return n, nil
+}
+
 // CreateCategory validates the category and inserts it at the end of the
 // user's list, with a new ID, its position and timestamps.
 func (t *Tx) CreateCategory(ctx context.Context, c *domain.Category) error {

@@ -20,7 +20,7 @@ only `/healthz` outside `/api` does not.
 | `POST` | `/api/skips` | Skip the days `from` to `to` (up to 366) of the habits `habitIds`, or of all that are not archived; see [Skipping days](#skipping-days) |
 | `POST` | `/api/categories` | Create a category |
 | `PATCH` | `/api/categories/{id}` | Update name, icon, colour or progress display |
-| `DELETE` | `/api/categories/{id}` | Delete a category; its habits stay, without one (undo puts them back) |
+| `DELETE` | `/api/categories/{id}` | Delete a category; its habits stay, without one (undo puts them back). Answers with the undo step (`id`, `label`, `params`), whose label says how many habits were kept |
 | `POST` | `/api/categories/reorder` | Set the order (same rules as for habits) |
 | `POST` | `/api/undo` | Undo the step `id`, or the latest; see [Undo](#undo) |
 | `POST` | `/api/redo` | Redo the step `id`, or the one undone last |

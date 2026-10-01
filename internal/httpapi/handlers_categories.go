@@ -65,31 +65,27 @@ func (s *server) handleUpdateCategory(w http.ResponseWriter, r *http.Request, us
 }
 
 // handleDeleteCategory deletes a category. Its habits stay, without a
-// category; undo puts them back.
+// category; undo puts them back. The answer is the undo step, whose label
+// says how many habits were kept, for the client's toast.
 func (s *server) handleDeleteCategory(w http.ResponseWriter, r *http.Request, user auth.User) {
 	ctx := r.Context()
+	var label store.Label
 	changeID, err := s.store.Update(ctx, user.ID, func(tx *store.Tx) error {
 		c, err := tx.Category(ctx, r.PathValue("id"))
 		if err != nil {
 			return err
 		}
-		habits, err := tx.Habits(ctx)
+		kept, err := tx.CountHabits(ctx, c.ID)
 		if err != nil {
 			return err
 		}
-		kept := 0
-		for _, h := range habits {
-			if h.CategoryID == c.ID {
-				kept++
-			}
-		}
 		switch kept {
 		case 0:
-			tx.Record(`Category "{name}" deleted`, "name", c.Name)
+			label = tx.Record(`Category "{name}" deleted`, "name", c.Name)
 		case 1:
-			tx.Record(`Category "{name}" deleted — 1 habit kept`, "name", c.Name)
+			label = tx.Record(`Category "{name}" deleted — 1 habit kept`, "name", c.Name)
 		default:
-			tx.Record(`Category "{name}" deleted — {n} habits kept`, "name", c.Name, "n", kept)
+			label = tx.Record(`Category "{name}" deleted — {n} habits kept`, "name", c.Name, "n", kept)
 		}
 		return tx.DeleteCategory(ctx, c.ID)
 	})
@@ -98,7 +94,7 @@ func (s *server) handleDeleteCategory(w http.ResponseWriter, r *http.Request, us
 		return
 	}
 	writeChange(w, changeID)
-	w.WriteHeader(http.StatusNoContent)
+	s.writeJSON(w, http.StatusOK, store.Step{ID: changeID, Label: label})
 }
 
 // handleReorderCategories sets the order of the categories to the given IDs.

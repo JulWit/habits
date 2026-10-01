@@ -81,7 +81,7 @@ export function enableDragReorder(
       active: false,
     };
     // Capture the pointer on the handle. Failing to capture is not fatal, as
-    // the listeners are on the container.
+    // the listeners are on the document.
     try {
       grip.setPointerCapture(event.pointerId);
     } catch {
@@ -89,7 +89,10 @@ export function enableDragReorder(
     }
   });
 
-  container.addEventListener('pointermove', (event) => {
+  // On the document, not the container: moving the dragged element in the DOM
+  // (settle) releases the pointer capture, after which the events go to
+  // whatever lies under the pointer, which may be outside the container.
+  document.addEventListener('pointermove', (event) => {
     if (!drag || event.pointerId !== drag.pointerId) return;
     drag.pointerY = event.clientY;
 
@@ -145,7 +148,7 @@ export function enableDragReorder(
   };
 
   for (const type of ['pointerup', 'pointercancel']) {
-    container.addEventListener(type, (event) => {
+    document.addEventListener(type, (event) => {
       if (!drag || event.pointerId !== drag.pointerId) return;
       finish(type === 'pointerup');
     });

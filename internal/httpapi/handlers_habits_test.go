@@ -150,8 +150,8 @@ func TestEntriesFollowTheScheduleOfTheirDay(t *testing.T) {
 	}
 }
 
-// Every habit carries the status of its days, computed by the server, up to a year
-// ahead.
+// Every habit carries the status of its days, computed by the server, up to a
+// year ahead.
 func TestStateCarriesTheDueDays(t *testing.T) {
 	h := newTestServer(t)
 	today := domain.Today(time.UTC)

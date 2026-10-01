@@ -12,7 +12,7 @@ import {AppBar} from '../ui/app-bar.js';
 import {colorValue, hasHabitIcon} from '../ui/icons.js';
 import {AppFactsPanel, AppStatRow, changedItem, createdItem, daysAgo, factItem, rateLabel} from '../ui/stat-panels.js';
 import {hideTooltip} from '../ui/tooltip.js';
-import {AppYearGrid, centreToday, currentYear, initChartTooltips} from '../ui/year-grid.js';
+import {AppYearGrid, centreToday, currentYear, dayLabel, initChartTooltips} from '../ui/year-grid.js';
 import {addDays, dayOfMonth, formatDayMonth, formatFull, formatLong, MONTH_LONG, MONTH_SHORT, monthIndex} from '../util/dates.js';
 import * as habitHelpers from '../util/habit-helpers.js';
 import {t} from '../util/i18n.js';
@@ -161,9 +161,7 @@ function heatSquare(habit, iso) {
   const off = !habitHelpers.isScheduled(habit, iso) && value === 0;
   const skipped = !off && habitHelpers.isSkipped(habit, iso);
   const status = heatStatus(habit, iso, value);
-  const when = iso === state.today ?
-      t('Today, {date}', {date: formatFull(iso)}) :
-      formatFull(iso);
+  const when = dayLabel(iso);
 
   return {
     'class': [

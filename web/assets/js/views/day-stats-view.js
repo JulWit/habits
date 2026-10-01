@@ -13,8 +13,8 @@ import {state} from '../data/state.js';
 import {AppBar} from '../ui/app-bar.js';
 import {AppFactsPanel, AppStatRow, factItem} from '../ui/stat-panels.js';
 import {hideTooltip} from '../ui/tooltip.js';
-import {AppYearGrid, centreToday, currentYear, initChartTooltips, sinceLabel} from '../ui/year-grid.js';
-import {formatDayMonth, formatFull, MONTH_LONG, MONTH_SHORT, WEEKDAY_LONG, WEEKDAY_SHORT} from '../util/dates.js';
+import {AppYearGrid, centreToday, currentYear, dayLabel, initChartTooltips, sinceLabel} from '../ui/year-grid.js';
+import {formatDayMonth, MONTH_LONG, MONTH_SHORT, WEEKDAY_LONG, WEEKDAY_SHORT} from '../util/dates.js';
 import {t} from '../util/i18n.js';
 import {computed, nextTick, onMounted, ref, watch} from '../vue.js';
 
@@ -91,9 +91,7 @@ function heatSquare(iso, {due, done, bonus}) {
   const counted = !ahead && due > 0;
   const bonusText = bonus > 0 ? ` · ${t('+{n} bonus', {n: bonus})}` : '';
   const status = heatStatus(due, done, ahead) + bonusText;
-  const when = iso === state.today ?
-      t('Today, {date}', {date: formatFull(iso)}) :
-      formatFull(iso);
+  const when = dayLabel(iso);
   return {
     'class': [
       'heatmap-day',

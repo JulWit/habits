@@ -1,7 +1,8 @@
 /**
  * @fileoverview The current calendar year as the statistics views show it: the
- * label of the range counted and the year grid of the heatmaps with its
- * tooltips. Used by the habit, category and day statistics views.
+ * label of the range counted, the year grid of the heatmaps with its tooltips
+ * and the label of a day in it. Used by the habit, category and day statistics
+ * views.
  */
 
 import {state} from '../data/state.js';
@@ -17,6 +18,17 @@ import {hideTooltip, showTooltip} from './tooltip.js';
  */
 export function currentYear() {
   return state.today.slice(0, 4);
+}
+
+/**
+ * Returns the label of a day of the year grid: its full date, and for today
+ * "Today" before it.
+ * @param {string} iso
+ * @return {string}
+ */
+export function dayLabel(iso) {
+  const date = formatFull(iso);
+  return iso === state.today ? t('Today, {date}', {date}) : date;
 }
 
 /**

@@ -534,7 +534,11 @@ export const TheHabitEditor = {
               <span class="picker-caret"><app-icon name="chevron"/></span>
             </button>
           </div>
-          <fieldset class="field">
+          <!-- The kind is chosen once, when the habit is created. -->
+          <fieldset
+            v-if="!editing"
+            class="field"
+          >
             <legend class="field-label">{{ t('Kind') }}</legend>
             <div
               class="segmented"
@@ -550,17 +554,10 @@ export const TheHabitEditor = {
                   type="radio"
                   name="kind"
                   :value="kind.value"
-                  :disabled="editing !== null"
                 >
                 <span><app-icon :name="kind.icon"/>{{ kind.label }}</span>
               </label>
             </div>
-            <p
-              v-if="editing"
-              class="field-hint"
-            >
-              {{ t('The kind cannot be changed once the habit exists.') }}
-            </p>
           </fieldset>
           <!-- A target to reach or a limit to stay within, for measured
                kinds. -->

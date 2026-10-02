@@ -166,8 +166,6 @@ const DE = {
       'Erster und Montag heißt: der erste Montag jedes Monats.',
   'Every … days': 'Alle … Tage',
   'Apply to past days as well': 'Auch für vergangene Tage übernehmen',
-  'The kind cannot be changed once the habit exists.':
-      'Die Art lässt sich nach dem Anlegen nicht mehr ändern.',
   'Cancel': 'Abbrechen',
   'Create': 'Anlegen',
   'Save': 'Speichern',

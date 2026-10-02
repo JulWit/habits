@@ -44,7 +44,7 @@ func (s *server) handleSkipDays(w http.ResponseWriter, r *http.Request, user aut
 
 	skipped := 0
 	changeID, err := s.store.Update(ctx, user.ID, func(tx *store.Tx) error {
-		b, err := s.basis(ctx, tx)
+		b, err := s.loadBasis(ctx, tx)
 		if err != nil {
 			return err
 		}

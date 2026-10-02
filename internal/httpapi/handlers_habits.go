@@ -83,7 +83,7 @@ func (s *server) handleState(w http.ResponseWriter, r *http.Request, user auth.U
 	)
 	err := s.store.View(ctx, user.ID, func(tx *store.Tx) error {
 		var err error
-		if b, err = s.basis(ctx, tx); err != nil {
+		if b, err = s.loadBasis(ctx, tx); err != nil {
 			return err
 		}
 		if habits, err = tx.Habits(ctx); err != nil {
@@ -203,7 +203,7 @@ func (s *server) loadHabit(ctx context.Context, tx *store.Tx, id string) (habitD
 	if err != nil {
 		return habitData{}, err
 	}
-	b, err := s.basis(ctx, tx)
+	b, err := s.loadBasis(ctx, tx)
 	if err != nil {
 		return habitData{}, err
 	}
@@ -246,7 +246,7 @@ func (s *server) handleCreateHabit(w http.ResponseWriter, r *http.Request, user 
 
 	var data habitData
 	changeID, err := s.store.Update(ctx, user.ID, func(tx *store.Tx) error {
-		b, err := s.basis(ctx, tx)
+		b, err := s.loadBasis(ctx, tx)
 		if err != nil {
 			return err
 		}
@@ -284,7 +284,7 @@ func (s *server) handleUpdateHabit(w http.ResponseWriter, r *http.Request, user 
 
 	var data habitData
 	changeID, err := s.store.Update(ctx, user.ID, func(tx *store.Tx) error {
-		b, err := s.basis(ctx, tx)
+		b, err := s.loadBasis(ctx, tx)
 		if err != nil {
 			return err
 		}

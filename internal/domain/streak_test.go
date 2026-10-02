@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"slices"
 	"testing"
 	"time"
 )
@@ -9,15 +10,12 @@ import (
 // {-10, -6} for ten to six days ago.
 func wantRuns(t *testing.T, got []StreakRun, want [][2]int) {
 	t.Helper()
-	if len(got) != len(want) {
-		t.Fatalf("got %d runs %v, want %d %v", len(got), got, len(want), want)
+	runs := make([]StreakRun, 0, len(want))
+	for _, w := range want {
+		runs = append(runs, StreakRun{From: friday.AddDays(w[0]), To: friday.AddDays(w[1])})
 	}
-	for i, w := range want {
-		expect := StreakRun{From: friday.AddDays(w[0]), To: friday.AddDays(w[1])}
-		if got[i] != expect {
-			t.Errorf("run %d = %s…%s, want %s…%s",
-				i, got[i].From, got[i].To, expect.From, expect.To)
-		}
+	if !slices.Equal(got, runs) {
+		t.Errorf("runs = %v, want %v", got, runs)
 	}
 }
 

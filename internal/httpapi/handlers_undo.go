@@ -30,10 +30,14 @@ func (s *server) handleRedo(w http.ResponseWriter, r *http.Request, user auth.Us
 	s.turnStep(w, r, user, s.store.Redo)
 }
 
+// stepTurner undoes or redoes the step id of a user: store.Store's Undo or
+// Redo.
+type stepTurner func(ctx context.Context, userID string, id int64) (store.Step, error)
+
 // turnStep undoes or redoes a step with turn and answers with it
 // (store.Step). Nothing to undo is 404 nothing_to_undo; a step whose data
 // was changed since is dropped, 409 changed_since.
-func (s *server) turnStep(w http.ResponseWriter, r *http.Request, user auth.User, turn func(context.Context, string, int64) (store.Step, error)) {
+func (s *server) turnStep(w http.ResponseWriter, r *http.Request, user auth.User, turn stepTurner) {
 	var body struct {
 		// ID is the step, or 0 for the latest.
 		ID int64 `json:"id"`

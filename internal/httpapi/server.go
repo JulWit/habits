@@ -36,7 +36,7 @@ type server struct {
 
 // New returns the HTTP handler of the application. webFS contains the frontend
 // with index.html at its root.
-func New(cfg config.Config, st *store.Store, log *slog.Logger, webFS fs.FS) (http.Handler, error) {
+func New(cfg config.Config, st *store.Store, logger *slog.Logger, webFS fs.FS) (http.Handler, error) {
 	shell, err := template.ParseFS(webFS, "index.html")
 	if err != nil {
 		return nil, fmt.Errorf("loading index.html: %w", err)
@@ -52,7 +52,7 @@ func New(cfg config.Config, st *store.Store, log *slog.Logger, webFS fs.FS) (htt
 	s := &server{
 		cfg:      cfg,
 		store:    st,
-		log:      log,
+		log:      logger,
 		shell:    shell,
 		assets:   assets,
 		manifest: manifest,
@@ -196,9 +196,9 @@ type basis struct {
 	windowDays int
 }
 
-// basis loads the user's settings in tx and derives the basis of their
+// loadBasis loads the user's settings in tx and derives the basis of their
 // statistics from them.
-func (s *server) basis(ctx context.Context, tx *store.Tx) (basis, error) {
+func (s *server) loadBasis(ctx context.Context, tx *store.Tx) (basis, error) {
 	prefs, err := tx.Settings(ctx)
 	if err != nil {
 		return basis{}, err

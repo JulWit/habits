@@ -83,9 +83,9 @@ type Tx struct {
 	userID string
 	// now is the time of the transaction, used for all its timestamps.
 	now time.Time
-	// log collects the rows the transaction changes, for its undo step; nil
-	// in View.
-	log *changeLog
+	// changes collects the rows the transaction changes, for its undo step;
+	// nil in View.
+	changes *changeLog
 }
 
 // View runs fn in a transaction that only reads.
@@ -104,7 +104,7 @@ func (s *Store) Update(ctx context.Context, userID string, fn func(*Tx) error) (
 	}
 	var changeID int64
 	err := s.inTx(ctx, "saving", func(tx *sql.Tx) error {
-		t := &Tx{tx: tx, userID: userID, now: time.Now().UTC(), log: &changeLog{}}
+		t := &Tx{tx: tx, userID: userID, now: time.Now().UTC(), changes: &changeLog{}}
 		if err := t.ensureUser(ctx); err != nil {
 			return err
 		}

@@ -1,18 +1,5 @@
 package store
 
-// Undo steps. An Update that calls Tx.Record keeps the rows it replaced and
-// the rows it wrote (its diff) in the table changes. Undoing a step writes
-// the replaced rows back, redoing it the written ones. Both check first that
-// the rows still hold what the step left there, column by column, so that an
-// undo never overwrites a change made since, e.g. on another device; such a
-// step is dropped with ErrConflict.
-//
-// The rows a transaction changes are observed through watches: each write
-// method first registers a query for the rows it is about to change (watch),
-// whose result is the rows' state before. At the end, all watches are read
-// again for the state after. A watch must be registered before the first
-// write to any of its rows.
-
 import (
 	"context"
 	"database/sql"
@@ -51,8 +38,8 @@ type Step struct {
 // returns the label, for an answer that names the step. Recording a step
 // drops the steps that are undone, as they can no longer be redone.
 func (t *Tx) Record(template string, params ...any) Label {
-	t.log.label = &Label{Template: template, Params: domain.NamedParams(params...)}
-	return *t.log.label
+	t.changes.label = &Label{Template: template, Params: domain.NamedParams(params...)}
+	return *t.changes.label
 }
 
 // row is a table row by column name, with the values as the driver returns
@@ -79,7 +66,20 @@ type observed struct {
 	row   row
 }
 
-// changeLog collects what an Update changes.
+// changeLog collects what an Update changes, for its undo step.
+//
+// An Update that calls Tx.Record keeps the rows it replaced and the rows it
+// wrote (its diff) in the table changes. Undoing a step writes the replaced
+// rows back, redoing it the written ones. Both check first that the rows
+// still hold what the step left there, column by column, so that an undo
+// never overwrites a change made since, e.g. on another device; such a step
+// is dropped with ErrConflict.
+//
+// The rows a transaction changes are observed through watches: each write
+// method first registers a query for the rows it is about to change (watch),
+// whose result is the rows' state before. At the end, all watches are read
+// again for the state after. A watch must be registered before the first
+// write to any of its rows.
 type changeLog struct {
 	label   *Label
 	watches []watch
@@ -126,11 +126,11 @@ func rowKey(table string, r row) string {
 // watch registers the rows of table matching where (with args) as about to
 // change and remembers their state before.
 func (t *Tx) watch(ctx context.Context, table, where string, args ...any) error {
-	if t.log == nil {
+	if t.changes == nil {
 		return errors.New("writing in a read-only transaction")
 	}
 	w := watch{table: table, where: where, args: args}
-	for _, known := range t.log.watches {
+	for _, known := range t.changes.watches {
 		if known.table == w.table && known.where == w.where && slices.Equal(known.args, w.args) {
 			return nil
 		}
@@ -139,15 +139,15 @@ func (t *Tx) watch(ctx context.Context, table, where string, args ...any) error 
 	if err != nil {
 		return err
 	}
-	if t.log.before == nil {
-		t.log.before = map[string]observed{}
+	if t.changes.before == nil {
+		t.changes.before = map[string]observed{}
 	}
 	for key, r := range rows {
-		if _, seen := t.log.before[key]; !seen {
-			t.log.before[key] = observed{table: table, row: r}
+		if _, seen := t.changes.before[key]; !seen {
+			t.changes.before[key] = observed{table: table, row: r}
 		}
 	}
-	t.log.watches = append(t.log.watches, w)
+	t.changes.watches = append(t.changes.watches, w)
 	return nil
 }
 
@@ -213,7 +213,7 @@ func normalize(v any) any {
 // whose state differs from before, ordered by table and key.
 func (t *Tx) diff(ctx context.Context) ([]rowChange, error) {
 	after := map[string]observed{}
-	for _, w := range t.log.watches {
+	for _, w := range t.changes.watches {
 		rows, err := t.snapshot(ctx, w)
 		if err != nil {
 			return nil, err
@@ -224,7 +224,7 @@ func (t *Tx) diff(ctx context.Context) ([]rowChange, error) {
 	}
 	// A row may no longer match its watch, such as a habit whose category was
 	// deleted; it is read again by its key.
-	for key, b := range t.log.before {
+	for key, b := range t.changes.before {
 		if _, ok := after[key]; ok || b.row == nil {
 			continue
 		}
@@ -236,9 +236,9 @@ func (t *Tx) diff(ctx context.Context) ([]rowChange, error) {
 			after[key] = observed{table: b.table, row: cur}
 		}
 	}
-	keys := slices.Collect(maps.Keys(t.log.before))
+	keys := slices.Collect(maps.Keys(t.changes.before))
 	for key := range after {
-		if _, ok := t.log.before[key]; !ok {
+		if _, ok := t.changes.before[key]; !ok {
 			keys = append(keys, key)
 		}
 	}
@@ -252,7 +252,7 @@ func (t *Tx) diff(ctx context.Context) ([]rowChange, error) {
 
 	var out []rowChange
 	for _, key := range keys {
-		b, a := t.log.before[key], after[key]
+		b, a := t.changes.before[key], after[key]
 		table := b.table
 		if table == "" {
 			table = a.table
@@ -293,7 +293,7 @@ func changedColumns(a, b row) []string {
 // saveChange keeps the transaction's change as an undo step if it was
 // recorded and changed something, and returns its ID.
 func (t *Tx) saveChange(ctx context.Context) (int64, error) {
-	if t.log.label == nil {
+	if t.changes.label == nil {
 		return 0, nil
 	}
 	diff, err := t.diff(ctx)
@@ -306,7 +306,7 @@ func (t *Tx) saveChange(ctx context.Context) (int64, error) {
 	if _, err := t.exec(ctx, `DELETE FROM changes WHERE user_id = ? AND undone_at IS NOT NULL`, t.userID); err != nil {
 		return 0, fmt.Errorf("dropping undone steps: %w", err)
 	}
-	params, err := json.Marshal(t.log.label.Params)
+	params, err := json.Marshal(t.changes.label.Params)
 	if err != nil {
 		return 0, fmt.Errorf("encoding the undo step's params: %w", err)
 	}
@@ -316,7 +316,7 @@ func (t *Tx) saveChange(ctx context.Context) (int64, error) {
 	}
 	res, err := t.exec(ctx,
 		`INSERT INTO changes (user_id, label, params, diff, created_at) VALUES (?,?,?,?,?)`,
-		t.userID, t.log.label.Template, string(params), string(encoded), formatTime(t.now))
+		t.userID, t.changes.label.Template, string(params), string(encoded), formatTime(t.now))
 	if err != nil {
 		return 0, fmt.Errorf("recording the undo step: %w", err)
 	}

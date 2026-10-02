@@ -2,6 +2,7 @@ package domain
 
 import (
 	"errors"
+	"slices"
 	"testing"
 	"time"
 )
@@ -32,7 +33,7 @@ func TestMonthlyStreakCountsMonths(t *testing.T) {
 		{From: Date{2026, time.June, 1}, To: Date{2026, time.June, 30}},
 		{From: Date{2026, time.August, 1}, To: friday},
 	}
-	if len(runs) != len(want) || runs[0] != want[0] || runs[1] != want[1] {
+	if !slices.Equal(runs, want) {
 		t.Errorf("runs = %v, want %v", runs, want)
 	}
 }

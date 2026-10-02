@@ -63,7 +63,7 @@ func (s *server) handleDays(w http.ResponseWriter, r *http.Request, user auth.Us
 	)
 	err := s.store.View(ctx, user.ID, func(tx *store.Tx) error {
 		var err error
-		if b, err = s.basis(ctx, tx); err != nil {
+		if b, err = s.loadBasis(ctx, tx); err != nil {
 			return err
 		}
 		if year, err = statsYear(r, b.today); err != nil {

@@ -83,7 +83,7 @@ func (s *server) handleExport(w http.ResponseWriter, r *http.Request, user auth.
 		today domain.Date
 	)
 	err := s.store.View(ctx, user.ID, func(tx *store.Tx) error {
-		b, err := s.basis(ctx, tx)
+		b, err := s.loadBasis(ctx, tx)
 		if err != nil {
 			return err
 		}
@@ -190,7 +190,7 @@ func (s *server) handleImport(w http.ResponseWriter, r *http.Request, user auth.
 
 	var result importResult
 	changeID, err := s.store.Update(ctx, user.ID, func(tx *store.Tx) error {
-		b, err := s.basis(ctx, tx)
+		b, err := s.loadBasis(ctx, tx)
 		if err != nil {
 			return err
 		}

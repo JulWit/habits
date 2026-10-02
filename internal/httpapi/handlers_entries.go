@@ -34,7 +34,7 @@ func (s *server) handleSetEntry(w http.ResponseWriter, r *http.Request, user aut
 
 	var data habitData
 	changeID, err := s.store.Update(ctx, user.ID, func(tx *store.Tx) error {
-		b, err := s.basis(ctx, tx)
+		b, err := s.loadBasis(ctx, tx)
 		if err != nil {
 			return err
 		}

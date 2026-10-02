@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"slices"
 	"testing"
 	"time"
 )
@@ -133,13 +134,8 @@ func TestDayTotalsCountFromTheHistoryStart(t *testing.T) {
 		{Date: friday, Due: 1, Done: 1},
 		{Date: friday.AddDays(1), Due: 2, Done: 0},
 	}
-	if len(got) != len(want) {
-		t.Fatalf("DayTotals = %v, want %v", got, want)
-	}
-	for i := range want {
-		if got[i] != want[i] {
-			t.Errorf("day %d = %+v, want %+v", i, got[i], want[i])
-		}
+	if !slices.Equal(got, want) {
+		t.Errorf("DayTotals = %+v, want %+v", got, want)
 	}
 }
 
@@ -197,13 +193,8 @@ func TestSumValuesPerWeek(t *testing.T) {
 		{Start: monday, Sum: 40, Cumulative: 40},
 		{Start: monday.AddDays(7), Sum: 5, Cumulative: 45},
 	}
-	if len(got.Buckets) != len(want) {
-		t.Fatalf("buckets = %+v, want %+v", got.Buckets, want)
-	}
-	for i := range want {
-		if got.Buckets[i] != want[i] {
-			t.Errorf("bucket %d = %+v, want %+v", i, got.Buckets[i], want[i])
-		}
+	if !slices.Equal(got.Buckets, want) {
+		t.Errorf("buckets = %+v, want %+v", got.Buckets, want)
 	}
 }
 
@@ -294,10 +285,8 @@ func TestDayTotalsCountABonus(t *testing.T) {
 		{Date: friday.AddDays(-1), Due: 1},
 		{Date: friday, Due: 1, Done: 1, Bonus: 1},
 	}
-	for i := range want {
-		if got[i] != want[i] {
-			t.Errorf("day %d = %+v, want %+v", i, got[i], want[i])
-		}
+	if !slices.Equal(got, want) {
+		t.Fatalf("DayTotals = %+v, want %+v", got, want)
 	}
 	if !got[1].Perfect() {
 		t.Error("a day with a bonus must still be perfect")

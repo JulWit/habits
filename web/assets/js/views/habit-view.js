@@ -10,7 +10,7 @@ import {goHome, route} from '../data/route.js';
 import {habitById, state} from '../data/state.js';
 import {AppBar} from '../ui/app-bar.js';
 import {colorValue, hasHabitIcon} from '../ui/icons.js';
-import {AppFactsPanel, AppStatRow, changedItem, createdItem, daysAgo, factItem, rateLabel} from '../ui/stat-panels.js';
+import {AppFactsPanel, AppStatRow, changedItem, createdItem, daysAgo, factItem, percent, rateLabel} from '../ui/stat-panels.js';
 import {hideTooltip} from '../ui/tooltip.js';
 import {AppYearGrid, AppYearNav, centreToday, currentYear, dayLabel, initChartTooltips, yearRange} from '../ui/year-grid.js';
 import {addDays, dayOfMonth, formatDayMonth, formatFull, formatLong, MONTH_LONG, MONTH_SHORT, monthIndex} from '../util/dates.js';
@@ -58,7 +58,8 @@ function streakText(count, unit) {
 }
 
 /**
- * Returns the stat tiles from the server's statistics of the habit.
+ * Returns the stat tiles from the server's statistics of the habit. Without a
+ * due day in its window, the rate is a dash rather than 0 %.
  * @param {!Habit} habit
  * @return {!Array<!Array<string>>}
  */
@@ -67,7 +68,7 @@ function statTiles(habit) {
   return [
     [t('Current streak'), streakText(s.currentStreak, s.streakUnit), 'streak'],
     [t('Best streak'), streakText(s.bestStreak, s.streakUnit), 'trophy'],
-    [rateLabel(), `${Math.round(s.completionRate * 100)} %`, 'percent'],
+    [rateLabel(), percent(s.expected > 0 ? s.completionRate : null), 'percent'],
     [t('Total'), habitHelpers.formatTotal(habit, s.total), 'total'],
   ];
 }

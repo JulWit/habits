@@ -12,7 +12,7 @@ import {categoryById, state} from '../data/state.js';
 import {openCategoryEditor} from '../dialogs/category-editor.js';
 import {AppBar} from '../ui/app-bar.js';
 import {colorValue, hasHabitIcon} from '../ui/icons.js';
-import {AppFactsPanel, AppStatRow, changedItem, createdItem, factItem, rateLabel} from '../ui/stat-panels.js';
+import {AppFactsPanel, AppStatRow, changedItem, createdItem, factItem, percent, rateLabel} from '../ui/stat-panels.js';
 import {hideTooltip} from '../ui/tooltip.js';
 import {AppDayHeatmap, AppYearNav, centreToday, currentYear, initChartTooltips, sinceLabel, streakLabel, yearRange} from '../ui/year-grid.js';
 import * as habitHelpers from '../util/habit-helpers.js';
@@ -31,7 +31,8 @@ let shownFor = null;
 /**
  * Returns the stat tiles from the server's day statistics of the category's
  * habits in a year (GET /api/days?category=), or dashes until they have
- * arrived. The rate and the number of habits are those of today.
+ * arrived. The rate and the number of habits are those of today; without a
+ * due day, e.g. in an empty category, the rate is a dash rather than 0 %.
  * @param {?Days} s
  * @param {string} year
  * @return {!Array<!Array<string>>}
@@ -49,7 +50,7 @@ function statTiles(s, year) {
       [t('Habits'), '–', 'list'],
     ];
   }
-  const rate = s.expected > 0 ? Math.round((s.achieved / s.expected) * 100) : 0;
+  const rate = s.expected > 0 ? s.achieved / s.expected : null;
   const {currentStreak, perfect, counted} = s.stats;
   return [
     [
@@ -62,7 +63,7 @@ function statTiles(s, year) {
       t('{n} of {total}', {n: perfect, total: counted}),
       'calendarCheck',
     ],
-    [rateLabel(), `${rate} %`, 'percent'],
+    [rateLabel(), percent(rate), 'percent'],
     [t('Habits'), String(s.habits), 'list'],
   ];
 }

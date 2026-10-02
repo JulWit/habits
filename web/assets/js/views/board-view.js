@@ -12,7 +12,7 @@ import {enableDragReorder} from '../ui/drag-reorder.js';
 import {addDays, dayOfMonth, daysBetween, formatLong, MONTH_LONG, MONTH_SHORT, monthIndex, weekdayIndex, yearOf} from '../util/dates.js';
 import * as habitHelpers from '../util/habit-helpers.js';
 import {t} from '../util/i18n.js';
-import {computed, nextTick, onBeforeUpdate, onMounted, onUpdated, ref, watch} from '../vue.js';
+import {computed, nextTick, onBeforeUpdate, onMounted, onUpdated, reactive, ref, watch} from '../vue.js';
 
 import {BoardDayCell, BoardHabitLabel, BoardHeadDay} from './board-cells.js';
 import {BoardDaySummary, dayProgress, initSummary, launchOrbs, newlyDone} from './day-summary.js';
@@ -342,13 +342,41 @@ export function toggleFilter() {
 }
 
 /**
+ * How long a habit just changed on the board stays shown while filtering,
+ * after the last change, in ms. Without the delay, a row completed by a tap
+ * would vanish at once and the next row move under the finger, which a quick
+ * second tap would then change.
+ */
+const LINGER_MS = 2000;
+
+/**
+ * The habits just changed on the board, which the filter keeps showing until
+ * their timer runs out; the timers by habit ID.
+ * @type {!Map<string, number>}
+ */
+const lingering = reactive(new Map());
+
+/**
+ * Keeps a habit shown for LINGER_MS from now, though the filter would hide
+ * it, as its row was just changed.
+ * @param {string} habitId
+ */
+function linger(habitId) {
+  if (!onlyOpen.value) return;
+  clearTimeout(lingering.get(habitId));
+  lingering.set(
+      habitId, setTimeout(() => lingering.delete(habitId), LINGER_MS));
+}
+
+/**
  * Reports whether a habit passes the filter: with it, only habits due on the
- * active day (as counted by the day summary) and not yet complete.
+ * active day (as counted by the day summary) and not yet complete, and those
+ * just changed on the board (see linger).
  * @param {!Habit} habit
  * @return {boolean}
  */
 function matches(habit) {
-  if (!onlyOpen.value) return true;
+  if (!onlyOpen.value || lingering.has(habit.id)) return true;
   const day = activeDay();
   return !habit.archivedAt && habitHelpers.isDue(habit, day) &&
       !habitHelpers.isDone(habit, day);
@@ -612,6 +640,7 @@ function tapCell(habitId, iso) {
     clearTimeout(suppressTimer);
     return;
   }
+  linger(habitId);
   actions.tapEntry(habitId, iso);
 }
 

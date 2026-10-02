@@ -69,7 +69,9 @@ habits and categories, settings, undo) needs a connection. See
 **Active day**: The board has one active day, today by default. The day
 marker in the header, the band in the cards, the day summary, the categories'
 progress bars and the "only open" filter all refer to it. The filter shows the
-habits due on the active day that are not yet complete. While another day is
+habits due on the active day that are not yet complete; a habit completed
+by a tap stays for two seconds, so a quick second tap does not hit the next
+row moving up. While another day is
 active, today's date is underlined in the header. The selection is not saved;
 it resets to today on reload and with "Back to today". Tapping a cell still
 writes to that cell's day, whichever day is active.

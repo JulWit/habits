@@ -48,6 +48,28 @@ func TestStatusOfATarget(t *testing.T) {
 	}
 }
 
+// Days before the history are not counted: due days get a status of their
+// own, which can still take a value, and other days are off.
+func TestStatusBeforeTheHistory(t *testing.T) {
+	h := Habit{
+		Kind: KindCheck, CreatedAt: longAgo,
+		Schedules: []Schedule{{From: friday, TargetValue: 1, Frequency: Frequency{Kind: FreqWeekdays, Weekdays: 0b0011111}}}, // Mo–Fr
+	}
+	// Monday to Friday of the week: the history starts on Friday.
+	if got := DayStatuses(h, nil, HistoryStart(h, nil), monday, friday, friday); got != "<<<<o" {
+		t.Errorf("DayStatuses = %q, want <<<<o", got)
+	}
+	// The weekend before is not due, so it stays off.
+	if got := DayStatuses(h, nil, HistoryStart(h, nil), monday.AddDays(-2), monday.AddDays(-1), friday); got != "--" {
+		t.Errorf("weekend before = %q, want --", got)
+	}
+	// An entry on Tuesday moves the start there.
+	entries := map[Date]Entry{monday.AddDays(1): {Value: 1}}
+	if got := DayStatuses(h, entries, HistoryStart(h, entries), monday, friday, friday); got != "<cooo" {
+		t.Errorf("after an entry on Tuesday = %q, want <cooo", got)
+	}
+}
+
 func TestStatusOfALimit(t *testing.T) {
 	h := limitHabit(20)
 	for _, tc := range []struct {
@@ -59,7 +81,7 @@ func TestStatusOfALimit(t *testing.T) {
 		{"today without a value", friday, Entry{}, StatusDone},
 		{"within the limit", friday, Entry{Value: 20}, StatusDone},
 		{"over the limit", friday, Entry{Value: 30}, StatusOver},
-		{"before the history", friday.AddDays(-1), Entry{}, StatusOpen},
+		{"before the history", friday.AddDays(-1), Entry{}, StatusBeforeStart},
 		{"ahead without a value", friday.AddDays(1), Entry{}, StatusOpen},
 		{"ahead over the limit", friday.AddDays(1), Entry{Value: 30}, StatusOpen},
 	} {

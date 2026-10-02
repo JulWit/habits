@@ -387,6 +387,7 @@ const DE = {
   '{value} of {target} planned': '{value} von {target} geplant',
   'open': 'offen',
   'not scheduled': 'nicht geplant',
+  'before the habit began': 'vor Beginn der Gewohnheit',
   'skipped': 'übersprungen',
   '{value}, over the limit of {target}': '{value}, über dem Limit von {target}',
   '{value}, within the limit of {target}': '{value}, im Limit von {target}',

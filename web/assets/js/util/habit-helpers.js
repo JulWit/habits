@@ -23,6 +23,7 @@ const STATUS = {
   skipped: 's',
   free: 'f',
   bonus: 'b',
+  beforeStart: '<',
 };
 
 /**
@@ -154,6 +155,17 @@ export function isDone(habit, iso) {
  */
 export function isBonus(habit, iso) {
   return statusOn(habit, iso) === STATUS.bonus;
+}
+
+/**
+ * Reports whether the day lies before the habit's history began: not due and
+ * not counted, though a value can still be recorded on it.
+ * @param {!Habit} habit
+ * @param {string} iso
+ * @return {boolean}
+ */
+export function isBeforeStart(habit, iso) {
+  return statusOn(habit, iso) === STATUS.beforeStart;
 }
 
 /**

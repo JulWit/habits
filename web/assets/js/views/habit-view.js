@@ -147,8 +147,10 @@ function heatSquare(habit, iso) {
   const {value} = habitHelpers.entryOn(habit, iso);
   const ahead = iso > state.today;
   // Unscheduled days are marked in the future too, so the schedule stays
-  // visible.
-  const off = !habitHelpers.isScheduled(habit, iso) && value === 0;
+  // visible. Days before the habit began are not counted, so they look the
+  // same.
+  const off = (!habitHelpers.isScheduled(habit, iso) && value === 0) ||
+      habitHelpers.isBeforeStart(habit, iso);
   const skipped = !off && habitHelpers.isSkipped(habit, iso);
   const status = heatStatus(habit, iso, value);
   const when = dayLabel(iso);
@@ -183,6 +185,9 @@ function heatSquare(habit, iso) {
  */
 function heatStatus(habit, iso, value) {
   if (habitHelpers.isSkipped(habit, iso)) return t('skipped');
+  if (habitHelpers.isBeforeStart(habit, iso)) {
+    return t('before the habit began');
+  }
   const vars = {
     value: habitHelpers.formatValue(habit, value),
     target: habitHelpers.formatValue(habit, habitHelpers.target(habit, iso)),

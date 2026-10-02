@@ -154,7 +154,9 @@ meaning in its unit. For another kind, create a new habit.
 and frequency; its key is the habit and `valid_from`, the first day a version
 applies to. A valid habit has at least one version. Each applies until the
 next one starts; the first one also covers days before it (entries recorded
-before the habit was created).
+before the habit was created). Days before the history are not counted
+(status `<`, see [DATAFLOW.md](DATAFLOW.md#day-statuses)); recording a value
+on one of them moves the start there.
 
 A change in the editor starts a new version from today on; past days keep the
 target and frequency they had, so their completion and streaks do not change.

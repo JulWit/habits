@@ -83,6 +83,7 @@ from `daysFrom` up to one year ahead (`domain.DayStatus`):
 | `s` | skipped |
 | `f` | not due, as its week or month has enough completed days, but can be completed as a bonus |
 | `b` | done as a bonus beyond what its week or month needs; not due |
+| `<` | before the habit's history began; not due and not counted, but a value can be recorded, which moves the start |
 
 The client reads them in `habit-helpers.js` (`statusOn`, `isDue`, `isDone`,
 …) and draws each day from its status and value. The frequency rules, targets,

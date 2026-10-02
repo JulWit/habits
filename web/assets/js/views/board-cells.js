@@ -218,8 +218,11 @@ function describeCell(habit, iso) {
   const flags = {pending, done, scheduled, streakDays};
 
   const mark = [
-    // Unscheduled days without a value are drawn as off.
-    !scheduled && value === 0 && 'is-off',
+    // Unscheduled days without a value are drawn as off, and so are the days
+    // before the habit began, which are not counted either; a tap can still
+    // record a value on them.
+    (!scheduled && value === 0 || habitHelpers.isBeforeStart(habit, iso)) &&
+        'is-off',
     // Future days are dimmed.
     iso > state.today && 'is-future',
     // Days no longer needed in their week or month are dimmed too.
@@ -308,6 +311,9 @@ function pendingStatus(habit, {value, skipped}) {
  */
 function cellStatus(habit, iso, {value, skipped}, done, scheduled) {
   if (skipped) return t('skipped');
+  if (habitHelpers.isBeforeStart(habit, iso)) {
+    return t('before the habit began');
+  }
   if (habitHelpers.isLimit(habit, iso)) {
     return limitStatus(habit, iso, value, done, scheduled);
   }

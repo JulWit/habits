@@ -29,6 +29,11 @@ const (
 	// habit beyond the days its period needs. It is not due, but counts as
 	// done on top.
 	StatusBonus DayStatus = 'b'
+	// StatusBeforeStart is a day before the habit's history began. It is not
+	// counted, as the statistics start with the history, but a value can
+	// still be recorded on it if the schedule makes it due, which moves the
+	// start (HistoryStart).
+	StatusBeforeStart DayStatus = '<'
 )
 
 // Status returns the status of the habit on d by its entries. start is the
@@ -38,6 +43,13 @@ const (
 // times-per-month habit depends on the other days of its period (see
 // periodStatus).
 func (h *Habit) Status(d Date, entries map[Date]Entry, start, today Date) DayStatus {
+	// Before the history, no day has an entry (start is the earliest one).
+	if d.Before(start) {
+		if !h.IsScheduled(d) {
+			return StatusOff
+		}
+		return StatusBeforeStart
+	}
 	e := entries[d]
 	if e.Skipped {
 		return StatusSkipped

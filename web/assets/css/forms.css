@@ -159,8 +159,11 @@ html:has(.dialog.page[open]) {
     box-shadow: var(--shadow-float);
     /* Not auto, which stretches a modal dialog between its insets. */
     height: fit-content;
-    margin: auto;
-    max-height: calc(100dvh - 4rem);
+    /* Anchored at the top, not centred: a centred dialog moves whenever its
+       height changes, e.g. with the fields of another kind, and the fields
+       jump away from under the pointer. */
+    margin: min(10dvh, 6rem) auto 2rem;
+    max-height: calc(100dvh - min(10dvh, 6rem) - 2rem);
     width: min(38rem, calc(100vw - 4rem));
   }
 

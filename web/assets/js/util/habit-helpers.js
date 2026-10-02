@@ -276,13 +276,15 @@ export function unitLabel(habit) {
 }
 
 /**
- * Formats metres: "800 m", "5 km", "12.5 km".
+ * Formats metres: "800 m", "5 km", "12.5 km". Kilometres are rounded down to
+ * one decimal, so a distance short of its target never reads as reaching it
+ * (4999 m: "4.9 km").
  * @param {number} metres
  * @return {string}
  */
 function formatDistance(metres) {
   if (metres < 1000) return `${metres} m`;
-  return `${(Math.round(metres / 100) / 10).toLocaleString(locale)} km`;
+  return `${(Math.floor(metres / 100) / 10).toLocaleString(locale)} km`;
 }
 
 /**
@@ -290,14 +292,18 @@ function formatDistance(metres) {
  * shown in kilometres. At most three digits, so the value fits the mark at the
  * minimum text size: longer values lose their decimal ("123,4" → "123"), and
  * from 1000 on minutes are shown in hours ("24h") and other values in
- * thousands ("1,5k"). The cell's label keeps the exact value.
+ * thousands ("1,5k"). Values are rounded down, so a value short of its target
+ * never reads as reaching it (4999 m: "4,9"). The cell's label keeps the
+ * whole value, with its unit.
  * @param {!Habit} habit
  * @param {number} value
  * @return {string}
  */
 export function cellValue(habit, value) {
-  const n =
-      habit.kind === 'distance' ? value / 1000 : value / scale(habit.kind);
+  // In tenths of the displayed unit, from the stored integer, as dividing
+  // first could leave 2.9999… for 3.
+  const tenths = Math.floor(value * 10 / scale(habit.kind));
+  const n = tenths / 10;
   /**
    * Formats `x` with at most one decimal. Without grouping, so "1.000" is
    * not counted as a short value.
@@ -306,13 +312,12 @@ export function cellValue(habit, value) {
    */
   const short = (x) =>
       x.toLocaleString(locale, {maximumFractionDigits: 1, useGrouping: false});
-  const text = short(Math.round(n * 10) / 10);
+  const text = short(n);
   if (text.replace(/\D/g, '').length <= 3) return text;
-  if (Math.round(n) < 1000) return String(Math.round(n));
-  if (habit.kind === 'time') return `${Math.round(n / 60)}h`;
-  const thousands = n / 1000;
-  if (thousands < 10) return `${short(Math.round(thousands * 10) / 10)}k`;
-  return `${Math.round(thousands)}k`;
+  if (n < 1000) return String(Math.floor(n));
+  if (habit.kind === 'time') return `${Math.floor(n / 60)}h`;
+  if (n < 10000) return `${short(Math.floor(n / 100) / 10)}k`;
+  return `${Math.floor(n / 1000)}k`;
 }
 
 /**

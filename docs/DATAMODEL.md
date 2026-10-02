@@ -139,7 +139,8 @@ UTC, whose date can be a day off. Imported habits keep their first schedule.
 - `check`: done or not
 - `count`: a number, e.g. 8 glasses
 - `time`: minutes
-- `distance`: stored in metres, shown in kilometres
+- `distance`: stored in metres, shown in kilometres, rounded down to one
+  decimal, so a distance short of its target never reads as reaching it
 
 A day's value is one integer; counts and minutes are stored in tenths.
 

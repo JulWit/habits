@@ -168,7 +168,8 @@ Writes of a value that cannot reach the server wait in an outbox
 state as pending writes, so they stay visible, and are sent once the
 connection is back: on the `online` event, when the page becomes visible, and
 every 30 seconds. A write sets an absolute value, so for each day the last
-one wins. Writes the server rejects are dropped with a message. The header
+one wins. Writes the server rejects are dropped with a message naming the
+habit and the day. The header
 shows how many changes are waiting. Undo needs a connection.
 
 The same happens when the session at the reverse proxy has expired: the proxy

@@ -296,7 +296,8 @@ function queueUntilSignedIn(habitId, iso, value, err) {
 
 /**
  * Sends the writes waiting in the outbox and reloads the state if any were
- * sent. Writes the server rejects are dropped with a message.
+ * sent. Writes the server rejects are dropped with a message that names the
+ * habit and the day, as several may have waited.
  * @return {!Promise<void>}
  */
 export async function syncOutbox() {
@@ -305,8 +306,13 @@ export async function syncOutbox() {
       // In order with other writes to the same day.
       (habitId, iso, value) => serialize(
           `${habitId}|${iso}`, () => api.setEntry(habitId, iso, {value})),
-      (err) =>
-          toast(t('Not sent: {error}', {error: errorText(err)}), {error: true}),
+      (err, {habitId, date}) => toast(
+          t('Not sent: {name}, {date}: {error}', {
+            name: habitById(habitId)?.name ?? t('deleted habit'),
+            date: formatRelative(date, state.today),
+            error: errorText(err),
+          }),
+          {error: true}),
   );
   if (n === 0) return;
   toast(

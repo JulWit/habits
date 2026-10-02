@@ -477,7 +477,9 @@ const DE = {
       'Sitzung abgelaufen — Änderungen bleiben auf diesem Gerät und werden gesendet, sobald du die Seite neu lädst.',
   'Back online — 1 change sent': 'Wieder online — 1 Änderung gesendet',
   'Back online — {n} changes sent': 'Wieder online — {n} Änderungen gesendet',
-  'Not sent: {error}': 'Nicht gesendet: {error}',
+  'Not sent: {name}, {date}: {error}':
+      'Nicht gesendet: {name}, {date}: {error}',
+  'deleted habit': 'gelöschte Gewohnheit',
   'Offline — showing the last loaded state':
       'Offline — du siehst den zuletzt geladenen Stand',
   'since {date}': 'seit {date}',

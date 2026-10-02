@@ -344,6 +344,7 @@ const DE = {
   'More': 'Mehr',
   'Value': 'Wert',
   'Value in {unit}': 'Wert in {unit}',
+  'The smallest value is {min}.': 'Der kleinste Wert ist {min}.',
   'Clear': 'Löschen',
   'Daily target: {target}': 'Tagesziel: {target}',
   'Daily limit: {target}': 'Tageslimit: {target}',

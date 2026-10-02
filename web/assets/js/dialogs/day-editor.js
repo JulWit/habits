@@ -216,7 +216,24 @@ export const TheDayEditor = {
         setValue(Math.round(next / day.step) * day.step);
       },
       jump: (offset) => setValue((Number(day.value) || 0) + offset),
-      save: () => submit(collect()),
+      /**
+       * Saves the entry, unless a value was typed that is too small to
+       * store: it would be rounded to nothing and clear the day unasked.
+       */
+      save: () => {
+        const entry = collect();
+        const typed = Number(day.value) || 0;
+        if (!check.value && !day.skipped && typed > 0 && entry.value === 0) {
+          input.value.setCustomValidity(t('The smallest value is {min}.', {
+            min: (1 / day.scale).toLocaleString(locale),
+          }));
+          input.value.reportValidity();
+          return;
+        }
+        submit(entry);
+      },
+      /** A changed value drops the message about one too small. */
+      resetValidity: () => input.value.setCustomValidity(''),
       clear: () => submit({value: 0, skipped: false}),
       /**
        * A tap on the backdrop cancels, as in the search: without a keyboard
@@ -280,6 +297,7 @@ export const TheDayEditor = {
                 :inputmode="day.scale === 1 ? 'numeric' : 'decimal'"
                 :disabled="check"
                 :aria-label="valueLabel"
+                @input="resetValidity"
               >
               <button
                 type="button"

@@ -397,14 +397,16 @@ function initShortcuts() {
     const mod = event.ctrlKey || event.metaKey;
     const key = event.key.toLowerCase();
 
-    if (mod && key === 'z' && !inField) {
+    // Not in a dialog, where an undo would change the data behind it
+    // unnoticed, e.g. while a colour is focused in the habit editor.
+    if (mod && key === 'z' && !inField && !inDialog) {
       event.preventDefault();
       if (event.shiftKey) {
         redoLast();
       } else {
         undoLast();
       }
-    } else if (mod && key === 'y' && !inField) {
+    } else if (mod && key === 'y' && !inField && !inDialog) {
       event.preventDefault();
       redoLast();
     } else if (key === 'n' && !mod && !inField && !inDialog) {

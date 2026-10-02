@@ -72,7 +72,11 @@ export function tapEntry(habitId, iso) {
   const next = habitHelpers.nextValue(habit, value);
   // Nothing to do at the maximum; a skipped day takes the first step.
   if (next === value && !skipped) return;
-  writeEntry(habit, iso, {value: next});
+  // A measured kind sends the step, which the server adds to the value it
+  // has, so a tap on another device in the meantime is not overwritten. A
+  // check is set, as two toggles would cancel out.
+  const request = habit.kind === 'check' ? {value: next} : {add: next - value};
+  writeEntry(habit, iso, {value: next}, request);
 }
 
 /**
@@ -165,9 +169,13 @@ function isValueOnly(change) {
  * @param {!Habit} habit
  * @param {string} iso
  * @param {{value: (number|undefined), skipped: (boolean|undefined)}} change
+ *     what is shown until the server answers, and what waits in the outbox
+ * @param {{value: (number|undefined), skipped: (boolean|undefined), add:
+ *     (number|undefined)}=} request what is sent, if not `change`: a step to
+ *     add, for a tap
  * @return {!Promise<void>}
  */
-async function writeEntry(habit, iso, change) {
+async function writeEntry(habit, iso, change, request = change) {
   const before = habitHelpers.entryOn(habit, iso);
   let after = applied(before, change);
   showPending(habit.id, iso, after);
@@ -175,7 +183,7 @@ async function writeEntry(habit, iso, change) {
   let changeId = null;
   try {
     const {changeId: id, ...view} = await serialize(
-        `${habit.id}|${iso}`, () => api.setEntry(habit.id, iso, change));
+        `${habit.id}|${iso}`, () => api.setEntry(habit.id, iso, request));
     sent(habit.id, iso);
     changeId = id;
     applyEntryAnswer(iso, view);

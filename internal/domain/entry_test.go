@@ -72,9 +72,30 @@ func TestEntryChangeValidate(t *testing.T) {
 	for name, bad := range map[string]EntryChange{
 		"empty":          {},
 		"value and skip": {Value: new(30), Skipped: new(true)},
+		"step of zero":   {Add: new(0)},
+		"step and value": {Add: new(10), Value: new(5)},
 	} {
 		if err := bad.Validate(); !errors.Is(err, ErrValidation) {
 			t.Errorf("%s: Validate = %v, want a validation error", name, err)
+		}
+	}
+}
+
+// A step adds to the stored value, ends a skip and stops at the maximum.
+func TestEntryChangeResolve(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		entry Entry
+		add   int
+		want  Entry
+	}{
+		{"adds to the stored value", Entry{Value: 30}, 10, Entry{Value: 40}},
+		{"ends a skip", Entry{Skipped: true}, 10, Entry{Value: 10}},
+		{"stops at the maximum", Entry{Value: KindCount.MaxTarget() - 5}, 10, Entry{Value: KindCount.MaxTarget()}},
+	} {
+		change := EntryChange{Add: new(tc.add)}.Resolve(tc.entry, KindCount)
+		if got := change.Apply(tc.entry); got != tc.want {
+			t.Errorf("%s: %+v, want %+v", tc.name, got, tc.want)
 		}
 	}
 }

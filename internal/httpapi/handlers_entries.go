@@ -9,8 +9,9 @@ import (
 	"github.com/JulWit/habits/internal/store"
 )
 
-// handleSetEntry changes the entry of a habit on a date: its value and
-// whether the day is skipped; a field left out stays as it is. A change that
+// handleSetEntry changes the entry of a habit on a date: its value, or a step
+// added to the value as stored, and whether the day is skipped; a field left
+// out stays as it is. A change that
 // records something (a value or a skip) is only accepted on due days between
 // domain.EarliestEntry and domain.EntryHorizonDays after today; removing is
 // allowed on any day. The answer is the habit with its full history, as an
@@ -50,8 +51,10 @@ func (s *server) handleSetEntry(w http.ResponseWriter, r *http.Request, user aut
 		if err != nil {
 			return err
 		}
-		next := change.Apply(entries[date])
-		if change.Records() {
+		// A step adds to the value as stored, not as the client last saw it.
+		resolved := change.Resolve(entries[date], h.Kind)
+		next := resolved.Apply(entries[date])
+		if resolved.Records() {
 			entries[date] = next
 			if err := h.CheckRecord(date, entries); err != nil {
 				return err

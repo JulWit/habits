@@ -125,13 +125,16 @@ the `rateWindow` setting, the total and `lastDone`, the latest complete day.
 
 `PUT …/entries/{date}` changes a day's entry. The body sets `value`,
 `skipped` or both; a field left out stays as it is. A value ends a skip, and
-`skipped: true` clears the value. A body with neither is 422
-`entry_change_empty`, and a value above 0 with `skipped: true` is 422
-`skipped_with_value`:
+`skipped: true` clears the value. Instead, `add` raises the stored value by a
+step, up to the kind's maximum, and ends a skip; a tap sends it, so taps on
+two devices both count. A body with none of them is 422 `entry_change_empty`,
+a value above 0 with `skipped: true` is 422 `skipped_with_value`, and an
+`add` below 1 or with another field is 422 `entry_add_invalid`:
 
 ```json
 {"value": 30}
 {"skipped": true}
+{"add": 10}
 ```
 
 The answer is the habit with its full history, as `GET /api/habits/{id}`

@@ -579,6 +579,8 @@ const DE_ERRORS = {
   unknown_color: 'Unbekannte Farbe „{color}“.',
   unknown_icon: 'Unbekanntes Symbol „{icon}“.',
   unknown_kind: 'Unbekannte Art „{kind}“.',
+  entry_add_invalid:
+      'Ein Schritt muss positiv sein und kommt ohne Wert oder Überspringen.',
   entry_change_empty:
       'Die Änderung enthält weder einen Wert noch ein Überspringen.',
   kind_unchangeable: 'Die Art einer Gewohnheit kann nicht geändert werden.',

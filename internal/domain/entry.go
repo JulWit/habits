@@ -33,18 +33,37 @@ type EntryChange struct {
 	Value *int `json:"value"`
 	// Skipped true skips the day and clears its value.
 	Skipped *bool `json:"skipped"`
+	// Add raises the stored value by a step, up to the kind's maximum, and
+	// ends a skip. A tap sends it rather than the new value, so taps on two
+	// devices both count, whatever each of them showed (see Resolve).
+	Add *int `json:"add"`
 }
 
-// Validate returns a validation error if c changes nothing, or sets a value
-// and skips the day at once, which contradict each other.
+// Validate returns a validation error if c changes nothing, sets a value and
+// skips the day at once, which contradict each other, or adds a step that is
+// not positive or comes with a value or a skip.
 func (c EntryChange) Validate() error {
-	if c.Value == nil && c.Skipped == nil {
+	if c.Value == nil && c.Skipped == nil && c.Add == nil {
 		return Invalid("entry_change_empty", "a change of a day needs a value or a skip")
 	}
 	if c.Value != nil && *c.Value > 0 && c.Skipped != nil && *c.Skipped {
 		return Invalid("skipped_with_value", "a skipped day cannot have a value")
 	}
+	if c.Add != nil && (*c.Add < 1 || c.Value != nil || c.Skipped != nil) {
+		return Invalid("entry_add_invalid", "a step must be positive and come without a value or a skip")
+	}
 	return nil
+}
+
+// Resolve returns c with Add turned into the value it leads to from e, the
+// entry as stored, at most the largest value of kind k. Other changes are
+// returned as they are.
+func (c EntryChange) Resolve(e Entry, k Kind) EntryChange {
+	if c.Add == nil {
+		return c
+	}
+	value := min(e.Value+*c.Add, k.MaxTarget())
+	return EntryChange{Value: &value}
 }
 
 // Apply returns e with the change applied.
@@ -65,7 +84,8 @@ func (c EntryChange) Apply(e Entry) Entry {
 // Records reports whether the change records something: a value or a skip.
 // Such a change needs a due day; one that only removes does not.
 func (c EntryChange) Records() bool {
-	return (c.Value != nil && *c.Value > 0) || (c.Skipped != nil && *c.Skipped)
+	return (c.Value != nil && *c.Value > 0) || (c.Skipped != nil && *c.Skipped) ||
+		(c.Add != nil && *c.Add > 0)
 }
 
 // DaysToSkip returns the days from from to to, oldest first, that skipping

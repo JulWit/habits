@@ -203,7 +203,9 @@ export const api = {
    * the habit's full view.
    * @param {string} habitId
    * @param {string} date
-   * @param {{value: (number|undefined), skipped: (boolean|undefined)}} change
+   * @param {{value: (number|undefined), skipped: (boolean|undefined), add:
+   *     (number|undefined)}} change `add` is a step added to the value the
+   *     server has
    * @return {!Promise<!Habit>}
    */
   setEntry: (habitId, date, change) => {

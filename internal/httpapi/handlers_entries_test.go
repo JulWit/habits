@@ -37,6 +37,31 @@ func TestBadSettingsAnswer422(t *testing.T) {
 }
 
 // Values above the kind's maximum are answered with 422.
+// Steps add to the value as stored, so taps on two devices both count, even
+// if one of them had not seen the other's yet; the kind's maximum caps them.
+func TestStepsAddToTheStoredValue(t *testing.T) {
+	h := newTestServer(t)
+	id := createHabit(t, h, `{"name":"Water","kind":"count","targetValue":80,"frequency":{"kind":"daily"}}`)
+	today := domain.Today(time.UTC).String()
+	path := "/api/habits/" + id + "/entries/" + today
+
+	mustDo(t, h, "PUT", path, `{"add":10}`, http.StatusOK) // device A
+	mustDo(t, h, "PUT", path, `{"add":10}`, http.StatusOK) // device B, unaware of A
+	if got := entryValue(t, h, id, today); got != 20 {
+		t.Errorf("value after two steps = %d, want 20", got)
+	}
+	mustDo(t, h, "PUT", path, `{"add":99999}`, http.StatusOK)
+	if got := entryValue(t, h, id, today); got != domain.KindCount.MaxTarget() {
+		t.Errorf("value after a huge step = %d, want the maximum %d", got, domain.KindCount.MaxTarget())
+	}
+	for _, body := range []string{`{"add":0}`, `{"add":-10}`, `{"add":10,"value":5}`, `{"add":10,"skipped":false}`} {
+		w := do(t, h, "PUT", path, body, "application/json")
+		if w.Code != http.StatusUnprocessableEntity || !strings.Contains(w.Body.String(), "entry_add_invalid") {
+			t.Errorf("%s: status %d (%s), want 422 entry_add_invalid", body, w.Code, w.Body)
+		}
+	}
+}
+
 func TestEntryValueIsBounded(t *testing.T) {
 	h := newTestServer(t)
 	w := do(t, h, "POST", "/api/habits",

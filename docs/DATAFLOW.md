@@ -106,7 +106,10 @@ A tap or the day dialog is handled in `actions.js`:
    server knows whether it completes the day. Writes to the same day wait for
    each other, so they reach the server in order.
 2. `api.js` sends `PUT /api/habits/{id}/entries/{date}` with the changed
-   parts only.
+   parts only. A tap on a count, time or distance sends the step (`add`),
+   which the server adds to the value it has, so a tap on another device in
+   the meantime is not overwritten; a check is set, as two toggles would
+   cancel out.
 3. The answer is the habit with its full history: the statuses of all days,
    the statistics and the streak runs (`applyEntryAnswer`).
 
@@ -168,8 +171,8 @@ Writes of a value that cannot reach the server wait in an outbox
 (`outbox.js`); a skip needs a connection. They are laid over every loaded
 state as pending writes, so they stay visible, and are sent once the
 connection is back: on the `online` event, when the page becomes visible, and
-every 30 seconds. A write sets an absolute value, so for each day the last
-one wins. Writes the server rejects are dropped with a message naming the
+every 30 seconds. A waiting write sets an absolute value, so for each day
+the last one wins. Writes the server rejects are dropped with a message naming the
 habit and the day. The header
 shows how many changes are waiting. Undo needs a connection.
 

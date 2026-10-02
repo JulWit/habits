@@ -733,6 +733,15 @@ html[data-scrolled='on'] .board-view-day-header-backdrop {
   padding-left: calc(0.55 * var(--space));
 }
 
+/* A month of one or two columns, e.g. the first days of a new one, needs all
+   of their width for its short name, which on a tight board is barely wider
+   than the three letters. */
+.board-view-month-label.is-narrow {
+  letter-spacing: 0;
+  padding-left: calc(0.2 * var(--space));
+  padding-right: 0;
+}
+
 /* The divider in the date row is a pseudo-element, as a border would follow the
    cell's rounded corners. */
 .board-head-day.is-month-start {

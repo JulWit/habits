@@ -369,6 +369,33 @@ function linger(habitId) {
 }
 
 /**
+ * How long a habit just changed on the board stays shown while filtering,
+ * after the last change, in ms. Without the delay, a row completed by a tap
+ * would vanish at once and the next row move under the finger, which a quick
+ * second tap would then change.
+ */
+const LINGER_MS = 2000;
+
+/**
+ * The habits just changed on the board, which the filter keeps showing until
+ * their timer runs out; the timers by habit ID.
+ * @type {!Map<string, number>}
+ */
+const lingering = reactive(new Map());
+
+/**
+ * Keeps a habit shown for LINGER_MS from now, though the filter would hide
+ * it, as its row was just changed.
+ * @param {string} habitId
+ */
+function linger(habitId) {
+  if (!onlyOpen.value) return;
+  clearTimeout(lingering.get(habitId));
+  lingering.set(
+      habitId, setTimeout(() => lingering.delete(habitId), LINGER_MS));
+}
+
+/**
  * Reports whether a habit passes the filter: with it, only habits due on the
  * active day (as counted by the day summary) and not yet complete, and those
  * just changed on the board (see linger).
@@ -1183,7 +1210,10 @@ export const TheBoardView = {
             v-for="month in monthLabels"
             :key="month.start"
             class="board-view-month-label"
-            :class="{'has-divider': month.start > 0}"
+            :class="{
+              'has-divider': month.start > 0,
+              'is-narrow': month.narrow,
+            }"
             :title="month.title"
             :style="{'grid-column': month.column}"
           >
@@ -1263,8 +1293,10 @@ export const TheBoardView = {
 
 /**
  * A month label of the day header, spanning its columns. `column` is its
- * CSS grid-column; column 1 holds the habit names.
- * @typedef {{start: number, column: string, name: string, title: string}}
+ * CSS grid-column; column 1 holds the habit names. `narrow` marks a month of
+ * one or two columns, whose label needs all of their width.
+ * @typedef {{start: number, column: string, name: string, title: string,
+ *     narrow: boolean}}
  */
 let MonthLabel;
 
@@ -1294,6 +1326,7 @@ function monthLabels(dates) {
       column: `${start + 2} / span ${span}`,
       name,
       title: `${MONTH_LONG[month]} ${year}`,
+      narrow: span <= 2,
     });
     start = i;
   }

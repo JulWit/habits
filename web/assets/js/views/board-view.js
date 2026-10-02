@@ -354,69 +354,33 @@ function loadFilter() {
   }
 }
 
-/** Switches the filter and stores it, if localStorage is available. */
-export function toggleFilter() {
-  onlyOpen.value = !onlyOpen.value;
+/**
+ * Sets the filter and stores it, if localStorage is available.
+ * @param {boolean} on
+ */
+function setFilter(on) {
+  onlyOpen.value = on;
   try {
-    localStorage.setItem(FILTER_KEY, onlyOpen.value ? '1' : '0');
+    localStorage.setItem(FILTER_KEY, on ? '1' : '0');
   } catch {
     // Not kept.
   }
 }
 
-/**
- * How long a habit just changed on the board stays shown while filtering,
- * after the last change, in ms. Without the delay, a row completed by a tap
- * would vanish at once and the next row move under the finger, which a quick
- * second tap would then change.
- */
-const LINGER_MS = 2000;
-
-/**
- * The habits just changed on the board, which the filter keeps showing until
- * their timer runs out; the timers by habit ID.
- * @type {!Map<string, number>}
- */
-const lingering = reactive(new Map());
-
-/**
- * Keeps a habit shown for LINGER_MS from now, though the filter would hide
- * it, as its row was just changed.
- * @param {string} habitId
- */
-function linger(habitId) {
-  if (!onlyOpen.value) return;
-  clearTimeout(lingering.get(habitId));
-  lingering.set(
-      habitId, setTimeout(() => lingering.delete(habitId), LINGER_MS));
+/** Switches the filter. */
+export function toggleFilter() {
+  setFilter(!onlyOpen.value);
 }
 
-/**
- * How long a habit just changed on the board stays shown while filtering,
- * after the last change, in ms. Without the delay, a row completed by a tap
- * would vanish at once and the next row move under the finger, which a quick
- * second tap would then change.
- */
-const LINGER_MS = 2000;
-
-/**
- * The habits just changed on the board, which the filter keeps showing until
- * their timer runs out; the timers by habit ID.
- * @type {!Map<string, number>}
- */
-const lingering = reactive(new Map());
-
-/**
- * Keeps a habit shown for LINGER_MS from now, though the filter would hide
- * it, as its row was just changed.
- * @param {string} habitId
- */
-function linger(habitId) {
-  if (!onlyOpen.value) return;
-  clearTimeout(lingering.get(habitId));
-  lingering.set(
-      habitId, setTimeout(() => lingering.delete(habitId), LINGER_MS));
-}
+// Arranging needs every habit on the board, which the filter would hide along
+// with the handles: switching reorder mode on (in the settings) turns the
+// filter off, and turning the filter on ends reorder mode.
+watch(editing, (on) => {
+  if (on && onlyOpen.value) setFilter(false);
+});
+watch(onlyOpen, (on) => {
+  if (on) editing.value = false;
+});
 
 /**
  * How long a habit just changed on the board stays shown while filtering,

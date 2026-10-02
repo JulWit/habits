@@ -503,6 +503,11 @@ def category_picker(run, f):
 
 def arranging(run, f):
     """Drag and drop in arrange mode, switched on in the settings."""
+    # The filter would hide habits and handles, so arranging turns it off.
+    filter_on = """return document.getElementById('filter-open-habits')
+        .getAttribute('aria-pressed') === 'true';"""
+    run.click("#filter-open-habits")
+    time.sleep(0.4)
     run.click("#open-settings")
     time.sleep(0.4)
     run.click('#settings-dialog [data-open-page="settings-board"]')
@@ -516,6 +521,10 @@ def arranging(run, f):
     time.sleep(0.6)
     run.check("the browser's back button closes the settings pages",
               not run.is_open("settings-dialog") and not run.is_open("settings-board"))
+    handles = run.js("""return [...document.querySelectorAll('[data-role="drag-habit"]')]
+        .filter((h) => h.offsetParent).length;""")
+    run.check("arranging turns the filter off and shows the handles",
+              not run.js(filter_on) and handles > 0, f"{handles} handles")
 
     names = f"""return [...document.querySelectorAll(
         '.board-block[data-category="{f.category}"] .habit-name')].map((n) => n.textContent);"""
@@ -548,6 +557,25 @@ def arranging(run, f):
 
     run.load()
     run.check("the new order is saved", run.js(names) == after)
+
+    # The other way round, the filter ends arranging. Reloading ended it, so
+    # it is switched on again first.
+    run.click("#open-settings")
+    time.sleep(0.4)
+    run.click('#settings-dialog [data-open-page="settings-board"]')
+    time.sleep(0.4)
+    run.click("#settings-board .switch input")
+    time.sleep(0.5)
+    run.driver.back()
+    time.sleep(0.4)
+    run.driver.back()
+    time.sleep(0.6)
+    run.click("#filter-open-habits")
+    time.sleep(0.4)
+    editing = run.js("return document.documentElement.dataset.edit;")
+    run.check("the filter ends arranging", run.js(filter_on) and editing == "off", editing)
+    run.click("#filter-open-habits")
+    time.sleep(0.4)
 
 
 def settings(run, f):

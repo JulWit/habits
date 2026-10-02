@@ -10,6 +10,12 @@ import (
 	"github.com/JulWit/habits/internal/auth"
 )
 
+// manifestDescriptions holds the manifest's description per UI language
+// besides English, the one of manifest.webmanifest.
+var manifestDescriptions = map[string]string{
+	"de": "Gewohnheiten verfolgen — täglich, an bestimmten Wochentagen oder alle paar Tage.",
+}
+
 // Colours of the system bars and the splash screen, matching --bg in base.css.
 const (
 	lightBarColor = "#e6e8ec"
@@ -30,7 +36,8 @@ func loadManifest(webFS fs.FS) (map[string]any, error) {
 }
 
 // handleManifest serves the manifest with the colours of the user's theme, so
-// an installed app starts with system bars in that theme.
+// an installed app starts with system bars in that theme, and in the user's
+// language.
 //
 // The manifest cannot follow the colour scheme, so for the "system" theme it
 // uses the scheme app.js stores in the color_scheme cookie, light without
@@ -38,8 +45,9 @@ func loadManifest(webFS fs.FS) (map[string]any, error) {
 // Android uses the manifest only.
 func (s *server) handleManifest(w http.ResponseWriter, r *http.Request, user auth.User) {
 	ctx := r.Context()
+	settings := s.settingsOf(ctx, user.ID)
 	dark := false
-	if settings := s.settingsOf(ctx, user.ID); settings.Theme != "system" {
+	if settings.Theme != "system" {
 		dark = settings.Theme == "dark"
 	} else if c, err := r.Cookie("color_scheme"); err == nil {
 		dark = c.Value == "dark"
@@ -52,6 +60,11 @@ func (s *server) handleManifest(w http.ResponseWriter, r *http.Request, user aut
 	m := maps.Clone(s.manifest)
 	m["theme_color"] = color
 	m["background_color"] = color
+	lang := resolveLanguage(settings.Language, r.Header.Get("Accept-Language"))
+	m["lang"] = lang
+	if description, ok := manifestDescriptions[lang]; ok {
+		m["description"] = description
+	}
 
 	w.Header().Set("Content-Type", "application/manifest+json")
 	w.Header().Set("Cache-Control", "no-cache")

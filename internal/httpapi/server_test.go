@@ -240,6 +240,35 @@ func TestManifestFollowsTheStoredTheme(t *testing.T) {
 	}
 }
 
+// The manifest is in the user's language: the chosen one, or the browser's.
+func TestManifestFollowsTheLanguage(t *testing.T) {
+	h := newTestServer(t)
+	for _, tc := range []struct {
+		setting, accept, want string
+	}{
+		{"de", "en", "de"},
+		{"system", "de-DE,de;q=0.9", "de"},
+		{"system", "fr", "en"},
+	} {
+		if w := do(t, h, "PATCH", "/api/settings", `{"language":"`+tc.setting+`"}`, "application/json"); w.Code != http.StatusOK {
+			t.Fatalf("PATCH /api/settings: status %d, want 200 (%s)", w.Code, w.Body)
+		}
+		r := httptest.NewRequest("GET", "/manifest.webmanifest", nil)
+		r.Header.Set("Accept-Language", tc.accept)
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, r)
+		var m map[string]any
+		if err := json.Unmarshal(w.Body.Bytes(), &m); err != nil {
+			t.Fatalf("parsing manifest: %v (%s)", err, w.Body)
+		}
+		description, _ := m["description"].(string)
+		german := strings.HasPrefix(description, "Gewohnheiten")
+		if m["lang"] != tc.want || german != (tc.want == "de") {
+			t.Errorf("%s/%s: lang %v, description %q; want %s", tc.setting, tc.accept, m["lang"], description, tc.want)
+		}
+	}
+}
+
 // For the "system" theme, the manifest follows the color_scheme cookie.
 func TestManifestFollowsTheColorSchemeCookie(t *testing.T) {
 	h := newTestServer(t)

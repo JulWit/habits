@@ -21,15 +21,15 @@ func baseHabit() Habit {
 
 func TestValidateNormalizes(t *testing.T) {
 	h := baseHabit()
-	h.Name = "  Lesen  "
+	h.Name = "  Lesen\tam\nAbend  "
 	h.Color = "Green"
 	h.Unit = "  Seiten  "
 
 	if err := h.Validate(); err != nil {
 		t.Fatalf("Validate: %v", err)
 	}
-	if h.Name != "Lesen" {
-		t.Errorf("name = %q, want trimmed", h.Name)
+	if h.Name != "Lesen am Abend" {
+		t.Errorf("name = %q, want trimmed, with spaces for the tab and line break", h.Name)
 	}
 	if h.Color != "green" {
 		t.Errorf("color = %q, want lower-cased", h.Color)

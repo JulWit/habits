@@ -46,7 +46,7 @@ const MaxCategoryNameLen = 60
 // Validate normalises c in place and returns a validation error if c is
 // invalid.
 func (c *Category) Validate() error {
-	c.Name = strings.TrimSpace(c.Name)
+	c.Name = cleanText(c.Name)
 	if c.Name == "" {
 		return Invalid("category_name_empty", "category name must not be empty")
 	}

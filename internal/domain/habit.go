@@ -8,6 +8,7 @@ import (
 	"slices"
 	"strings"
 	"time"
+	"unicode"
 )
 
 // Kind is how a habit is measured on a given day.
@@ -200,6 +201,18 @@ const (
 	MaxUnitLen = 16
 )
 
+// cleanText returns s without leading and trailing space, with each control
+// character (a tab, a line break) replaced by a space, as names and units are
+// shown on one line.
+func cleanText(s string) string {
+	return strings.TrimSpace(strings.Map(func(r rune) rune {
+		if unicode.IsControl(r) {
+			return ' '
+		}
+		return r
+	}, s))
+}
+
 // targetTooSmall returns the error for a target below the minimum of k.
 func targetTooSmall(k Kind) error {
 	switch k {
@@ -251,8 +264,8 @@ func valueTooLarge(k Kind) error {
 // Validate normalises h in place and returns a validation error if h is
 // invalid.
 func (h *Habit) Validate() error {
-	h.Name = strings.TrimSpace(h.Name)
-	h.Unit = strings.TrimSpace(h.Unit)
+	h.Name = cleanText(h.Name)
+	h.Unit = cleanText(h.Unit)
 
 	if h.Name == "" {
 		return Invalid("name_empty", "name must not be empty")

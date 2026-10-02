@@ -35,6 +35,18 @@ type EntryChange struct {
 	Skipped *bool `json:"skipped"`
 }
 
+// Validate returns a validation error if c changes nothing, or sets a value
+// and skips the day at once, which contradict each other.
+func (c EntryChange) Validate() error {
+	if c.Value == nil && c.Skipped == nil {
+		return Invalid("entry_change_empty", "a change of a day needs a value or a skip")
+	}
+	if c.Value != nil && *c.Value > 0 && c.Skipped != nil && *c.Skipped {
+		return Invalid("skipped_with_value", "a skipped day cannot have a value")
+	}
+	return nil
+}
+
 // Apply returns e with the change applied.
 func (c EntryChange) Apply(e Entry) Entry {
 	if c.Value != nil {

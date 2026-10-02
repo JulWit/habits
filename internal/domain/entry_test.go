@@ -57,6 +57,28 @@ func TestEntryValidate(t *testing.T) {
 	}
 }
 
+// A change must change something, and cannot set a value and skip the day.
+func TestEntryChangeValidate(t *testing.T) {
+	for _, ok := range []EntryChange{
+		{Value: new(30)},
+		{Skipped: new(true)},
+		{Value: new(30), Skipped: new(false)},
+		{Value: new(0), Skipped: new(true)},
+	} {
+		if err := ok.Validate(); err != nil {
+			t.Errorf("%+v: Validate = %v, want nil", ok, err)
+		}
+	}
+	for name, bad := range map[string]EntryChange{
+		"empty":          {},
+		"value and skip": {Value: new(30), Skipped: new(true)},
+	} {
+		if err := bad.Validate(); !errors.Is(err, ErrValidation) {
+			t.Errorf("%s: Validate = %v, want a validation error", name, err)
+		}
+	}
+}
+
 // Skipping a range skips the due days without a value and leaves the others.
 func TestDaysToSkip(t *testing.T) {
 	// Due on Mondays, Wednesdays and Fridays.

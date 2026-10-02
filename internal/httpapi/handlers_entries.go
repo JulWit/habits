@@ -20,6 +20,10 @@ func (s *server) handleSetEntry(w http.ResponseWriter, r *http.Request, user aut
 	if !s.decodeJSON(w, r, &change) {
 		return
 	}
+	if err := change.Validate(); err != nil {
+		s.writeProblem(w, http.StatusUnprocessableEntity, err)
+		return
+	}
 	date, err := domain.ParseDate(r.PathValue("date"))
 	if err != nil {
 		s.writeError(w, http.StatusBadRequest, "invalid_date", "Invalid date, expected YYYY-MM-DD")

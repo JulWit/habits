@@ -125,7 +125,9 @@ the `rateWindow` setting, the total and `lastDone`, the latest complete day.
 
 `PUT …/entries/{date}` changes a day's entry. The body sets `value`,
 `skipped` or both; a field left out stays as it is. A value ends a skip, and
-`skipped: true` clears the value:
+`skipped: true` clears the value. A body with neither is 422
+`entry_change_empty`, and a value above 0 with `skipped: true` is 422
+`skipped_with_value`:
 
 ```json
 {"value": 30}

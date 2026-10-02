@@ -575,6 +575,8 @@ const DE_ERRORS = {
   unknown_color: 'Unbekannte Farbe „{color}“.',
   unknown_icon: 'Unbekanntes Symbol „{icon}“.',
   unknown_kind: 'Unbekannte Art „{kind}“.',
+  entry_change_empty:
+      'Die Änderung enthält weder einen Wert noch ein Überspringen.',
   kind_unchangeable: 'Die Art einer Gewohnheit kann nicht geändert werden.',
   unknown_frequency: 'Unbekannte Häufigkeit „{frequency}“.',
   unknown_category: 'Diese Kategorie gibt es nicht mehr.',

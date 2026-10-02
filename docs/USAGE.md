@@ -103,7 +103,8 @@ limit. See [DATAMODEL.md](DATAMODEL.md#targets-and-limits).
 "At least" or "Exactly". Once a week or month has enough completed days, its
 other days are no longer due, so the day's progress can reach 100%. With "At
 least" they can still be ticked off as a bonus, which takes the day's
-progress beyond 100%; with "Exactly" they are closed. See
+progress beyond 100%; the board draws their ring dashed. With "Exactly" they
+are closed. See
 [DATAMODEL.md](DATAMODEL.md#frequencies).
 
 **Undo**: Deleting, archiving and editing habits and categories, entries,

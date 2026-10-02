@@ -1178,7 +1178,9 @@ html[data-filtering='on'] {
 
 /* Day mark: a ring whose fill (conic gradient) shows the progress towards the
    target; the rest of the ring is the muted track. Both are one gradient, so
-   the track never covers the progress. The inks below are fallbacks for
+   the track never covers the progress. The track is opaque, so the ring of an
+   open day has a contrast of at least 3:1 against the card in every colour
+   (WCAG 1.4.11); it stays muted, so the progress in full colour stands out. The inks below are fallbacks for
    browsers without relative colours (see the @supports rule after this one). */
 .board-day-cell-mark {
   --p: 0;
@@ -1188,10 +1190,9 @@ html[data-filtering='on'] {
   /* The ring of an open day and the value inside it. */
   --ring-ink: color-mix(in srgb, var(--habit-color) 45%, transparent);
   --value-ink: var(--habit-color);
-  /* The track is faded, so open days recede behind the days already done. */
   background: conic-gradient(
       var(--habit-color) calc(var(--p) * 360deg),
-      color-mix(in srgb, var(--ring-ink) 50%, transparent) 0);
+      var(--ring-ink) 0);
   border-radius: 50%;
   color: var(--text-muted);
   display: grid;
@@ -1214,9 +1215,9 @@ html[data-filtering='on'] {
   .board-day-cell-mark {
     --mark-ink: oklch(from var(--habit-color) clamp(0.2, calc((var(--ink-flip) - l) * 1000), 1) 0 0);
     --mark-halo: oklch(from var(--habit-color) clamp(0, calc((l - var(--ink-flip)) * 1000), 1) 0 0 / 0.45);
-    /* The ring of an open day at one lightness for every colour. Muted, so
-       the progress arc in full colour stands out; the track fades it further
-       (see .board-day-cell-mark). */
+    /* The ring of an open day at one lightness for every colour, chosen for
+       a contrast of 3.5:1 against the card in both themes. Muted, so the
+       progress arc in full colour stands out. */
     --ring-ink: light-dark(
         oklch(from var(--habit-color) 0.62 calc(c * 0.4) h),
         oklch(from var(--habit-color) 0.55 calc(c * 0.4) h));
@@ -1339,9 +1340,12 @@ html[data-filtering='on'] {
 }
 
 /* Days no longer needed because their week or month has enough completed
-   days. They can still be completed, as a bonus. */
+   days. They can still be completed, as a bonus. A dashed ring tells them
+   from open days: fading them instead would take the ring below a contrast
+   of 3:1. Progress is drawn over the dashes. */
 .board-day-cell-mark.is-free {
-  opacity: 0.45;
+  background: conic-gradient(var(--habit-color) calc(var(--p) * 360deg), transparent 0),
+      repeating-conic-gradient(var(--ring-ink) 0 18deg, transparent 0 30deg);
 }
 
 /* A write waiting for the server: its value is shown, but whether it

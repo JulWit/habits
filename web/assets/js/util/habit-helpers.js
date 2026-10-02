@@ -7,7 +7,7 @@
 
 import {state} from '../data/state.js';
 
-import {daysBetween, WEEKDAY_SHORT} from './dates.js';
+import {daysBetween, formatDayMonth, WEEKDAY_SHORT, yearOf} from './dates.js';
 import {locale, t} from './i18n.js';
 
 /**
@@ -397,6 +397,18 @@ export function describeTarget(habit, schedule = currentSchedule(habit)) {
 }
 
 /**
+ * Formats the first day of a repeating frequency, which says which weeks or
+ * days it falls on: "10 Oct", with the year if it is not this one.
+ * @param {string} iso
+ * @return {string}
+ */
+function startLabel(iso) {
+  const year = yearOf(iso);
+  return year === yearOf(state.today) ? formatDayMonth(iso) :
+                                        `${formatDayMonth(iso)} ${year}`;
+}
+
+/**
  * Describes a frequency, e.g. "daily" or "Mon, Wed".
  * @param {!Frequency} frequency
  * @return {string}
@@ -426,9 +438,11 @@ export function describeFrequency(frequency) {
         return t('{which} {days} of the month', {which, days: days.join(', ')});
       }
       if (frequency.weekInterval > 1) {
-        return t(
-            '{days} every {n} weeks',
-            {days: days.join(', '), n: frequency.weekInterval});
+        return t('{days} every {n} weeks from {date}', {
+          days: days.join(', '),
+          n: frequency.weekInterval,
+          date: startLabel(frequency.anchorDate),
+        });
       }
       if (days.length === 7) return t('daily');
       if (days.length === 5 && !(frequency.weekdays & (1 << 5)) &&
@@ -440,7 +454,10 @@ export function describeFrequency(frequency) {
     case 'custom_interval':
       return frequency.intervalDays === 1 ?
           t('daily') :
-          t('every {n} days', {n: frequency.intervalDays});
+          t('every {n} days from {date}', {
+            n: frequency.intervalDays,
+            date: startLabel(frequency.anchorDate),
+          });
     default:
       return '';
   }

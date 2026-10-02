@@ -14,7 +14,7 @@ import {TheCategoryPicker} from './dialogs/category-picker.js';
 import {TheDayEditor} from './dialogs/day-editor.js';
 import {TheHabitEditor} from './dialogs/habit-editor.js';
 import {openSearch, TheSearchDialog} from './dialogs/search-dialog.js';
-import {openSettings, TheSettingsDialog} from './dialogs/settings-dialog.js';
+import {openSettings, reopenSettings, TheSettingsDialog} from './dialogs/settings-dialog.js';
 import {TheSkipEditor} from './dialogs/skip-editor.js';
 import {AppIcon, AppIconBadge} from './ui/icons.js';
 import {definePatterns} from './ui/patterns.js';
@@ -309,6 +309,7 @@ async function main() {
   initTooltips();
   initSync(actions.syncOutbox);
   await refresh();
+  reopenSettings();
 }
 
 // ---------- theme ----------

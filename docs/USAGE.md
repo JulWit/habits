@@ -154,7 +154,8 @@ their normal width for touch; otherwise names and days shrink side by side
 
 **Language**: The server sets `<html lang>`; `web/assets/js/util/i18n.js`
 translates using the English text as key (`t('New habit')`). Untranslated
-texts are shown in English. Changing the language reloads the page.
+texts are shown in English. Changing the language reloads the page, which
+opens the language settings again.
 
 **Time zone**: Determines the server's `today`, and thus the last day of the
 board, the day a tap writes to and the open day for streaks.

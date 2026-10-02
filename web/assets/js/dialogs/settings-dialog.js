@@ -544,7 +544,13 @@ export const TheSettingsDialog = {
        * @param {string} language
        */
       saveLanguage: async (language) => {
-        if (await saveSetting({language})) location.reload();
+        if (!(await saveSetting({language}))) return;
+        try {
+          sessionStorage.setItem(REOPEN_KEY, 'settings-region');
+        } catch {
+          // The reload then shows the overview.
+        }
+        location.reload();
       },
       /**
        * Saves the completion rate's window; the server computes the rate, so
@@ -1124,4 +1130,28 @@ const MAX_IMPORT_MB = 16;
 export function openSettings() {
   error.message = '';
   openPage(document.getElementById('settings-dialog'));
+}
+
+/**
+ * sessionStorage key of the settings page to show again after the reload a
+ * new language needs.
+ */
+const REOPEN_KEY = 'habits.reopenSettings';
+
+/**
+ * Opens the settings page left by the reload for a new language, if any, so
+ * the user is where they were.
+ */
+export function reopenSettings() {
+  let page = null;
+  try {
+    page = sessionStorage.getItem(REOPEN_KEY);
+    sessionStorage.removeItem(REOPEN_KEY);
+  } catch {
+    // Not kept: the overview is shown.
+  }
+  const el = page && document.getElementById(page);
+  if (!el) return;
+  openSettings();
+  openPage(el);
 }

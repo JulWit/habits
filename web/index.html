@@ -39,10 +39,15 @@
         content="{{if eq .Theme "light"}}#e6e8ec{{else}}#0f0f0f{{end}}"
         media="(prefers-color-scheme: dark)">
 
+    <!-- From the general to the specific; a later file may override an
+         earlier one (see docs/STRUCTURE.md). -->
     <link rel="stylesheet" href="/assets/css/fonts.css">
     <link rel="stylesheet" href="/assets/css/base.css">
-    <link rel="stylesheet" href="/assets/css/components.css">
     <link rel="stylesheet" href="/assets/css/forms.css">
+    <link rel="stylesheet" href="/assets/css/ui.css">
+    <link rel="stylesheet" href="/assets/css/dialogs.css">
+    <link rel="stylesheet" href="/assets/css/board.css">
+    <link rel="stylesheet" href="/assets/css/views.css">
   </head>
   <body>
     <!-- The app, rendered by Vue (see assets/js/app.js). -->

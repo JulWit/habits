@@ -1,4 +1,7 @@
-/* Design tokens.
+/* Design tokens, the page, the app shell (title bar, views), buttons and the
+   text styles everything shares. The first stylesheet after the fonts; the
+   others build on its tokens. Global sizes for narrow and touch screens are
+   at the end.
 
    Colours are defined with light-dark(), so the theme only sets color-scheme
    ("system" follows the operating system). The design is flat: surfaces are
@@ -181,6 +184,7 @@ html[data-font='opensans'] {
    Compact lowers font weights by 50, comfortable raises them; regular text
    stays at 400. --cell is written out in px, as board-view.js reads it as a
    number. The page gutter does not scale (see .view). */
+
 :root {
   /* Gap between cards: on the board, in the settings and the detail views. */
   --card-gap: calc(0.85 * var(--space));
@@ -234,6 +238,7 @@ html[data-density='comfortable'] {
    the names above the days) if the days keep at least their normal width, or
    else sets data-tight, and smaller --cell and --label-min values inline.
    These are the lower bounds of a tight board, in px. */
+
 :root {
   --label-tight-min: 76px;
   --cell-tight-min: 22px;
@@ -256,6 +261,7 @@ html[data-tight][data-edit='on'][data-reorder='buttons']:not([data-filtering='on
 /* ---------- the today band in a habit colour ----------
 
    The attribute holds a palette name, see --c-red and following. */
+
 html[data-band='red'] {
   --band-ink: var(--c-red);
 }
@@ -338,6 +344,7 @@ html[data-band='yellow'] {
 
    Faint gradient patterns, mixed from the text colour so they follow the
    theme. */
+
 :root {
   --pattern-ink: color-mix(in srgb, var(--text) 5%, transparent);
   --pattern-image: none;
@@ -555,11 +562,6 @@ html[data-scrolled='on'] .board-view-day-header-backdrop {
   padding-top: calc(1.25 * var(--space));
 }
 
-/* Less top padding, as the day header has its own. */
-.board-view {
-  padding-top: calc(0.8 * var(--space));
-}
-
 .brand {
   align-items: center;
   display: flex;
@@ -677,7 +679,6 @@ html[data-scrolled='on'] .board-view-day-header-backdrop {
   width: 2.6rem;
 }
 
-
 /* Icon in a button with caption. */
 .button svg {
   flex: none;
@@ -744,17 +745,6 @@ html[data-scrolled='on'] .board-view-day-header-backdrop {
 
 /* ---------- misc text ---------- */
 
-.field-hint {
-  color: var(--text-faint);
-  font-size: var(--text-sm);
-  margin: calc(0.75 * var(--space)) calc(0.25 * var(--space)) 0;
-}
-
-/* Spacing below a hint that is followed by another control. */
-.field-hint:not(:last-child) {
-  margin-bottom: calc(0.9 * var(--space));
-}
-
 .error {
   color: var(--danger-text);
   font-size: var(--text-md);
@@ -784,4 +774,81 @@ html[data-scrolled='on'] .board-view-day-header-backdrop {
   position: absolute;
   white-space: nowrap;
   width: 1px;
+}
+
+/* ---------- title bar on the overview ---------- */
+
+/* The title bar is as wide as the board (plus its gutter on each side). Not in
+   the detail view. */
+html:not(.route-detail):not(.route-styleguide) .topbar-inner {
+  max-width: calc(var(--board-width) + 2 * var(--gutter));
+}
+
+/* ---------- reduced motion ---------- */
+
+/* Pressed buttons do not move. */
+@media (prefers-reduced-motion: reduce) {
+  .button:active {
+    transform: none;
+  }
+}
+
+/* ---------- narrow screens ---------- */
+
+/* Hide the app name when the title bar is too narrow (below ~257px); the
+   heading keeps its text for screen readers. */
+@container topbar (max-width: 270px) {
+  .brand-text {
+    clip-path: inset(50%);
+    height: 1px;
+    overflow: hidden;
+    position: absolute;
+    white-space: nowrap;
+    width: 1px;
+  }
+}
+
+@media (max-width: 40rem) {
+  :root {
+    /* Narrower columns. The name column keeps at least 120px even on a tight
+       board; the day columns shrink first (see board-view.js). */
+    --cell: 34px;
+    --label-min: 120px;
+    --label-tight-min: 120px;
+    --topbar-row: calc(2.25rem + 0.85 * var(--space));
+    /* Narrow page gutter and card padding, so the room goes to the names. */
+    --gutter: 8px;
+    --block-pad-x: 8px;
+  }
+
+  .brand {
+    font-size: 1.05rem;
+  }
+}
+
+/* ---------- touch screens ----------
+
+   Every control is at least 48px in both directions, the larger of Apple's
+   44pt and Material's 48dp. The mouse keeps the compact sizes. Not enlarged:
+   the day cells, whose width comes from the board layout (they span the full
+   column and row), and the reorder handles, whose column board-view.js
+   sizes. Each stylesheet enlarges its own controls with --hit. */
+
+@media (pointer: coarse) {
+  :root {
+    --hit: 48px;
+    /* The title bar grows with its buttons. After the narrow-screen rule. */
+    --topbar-row: calc(var(--hit) + 0.85 * var(--space));
+  }
+
+  .icon-button:not(.board-habit-row-tools *, .board-block-tools *),
+  .button {
+    min-height: var(--hit);
+    min-width: var(--hit);
+  }
+
+  /* The buttons bring their own room. */
+  .topbar-actions {
+    gap: calc(0.15 * var(--space));
+  }
 }

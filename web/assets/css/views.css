@@ -1,0 +1,411 @@
+/* The detail views (web/assets/js/views/): the habit and category views
+   with the cumulative chart, the day statistics and the style guide. The
+   last stylesheet; the overview is in board.css. */
+
+/* ---------- detail view ---------- */
+
+/* The habit and category views have their own title bar (app-bar.js), as
+   Material's top app bar, instead of the app's. */
+.route-detail .topbar {
+  display: none;
+}
+
+.route-detail .view {
+  padding-top: 0;
+}
+
+/* ---------- category view ---------- */
+
+.category-view-habits {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.category-view-habit {
+  align-items: center;
+  background: none;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: inherit;
+  cursor: pointer;
+  display: flex;
+  gap: var(--row-gap);
+  padding: var(--row-pad);
+  text-align: left;
+  transition: var(--fill-fade);
+  width: 100%;
+}
+
+@media (hover: hover) {
+  .category-view-habit:hover {
+    background: var(--surface-2);
+  }
+}
+
+.category-view-habit-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: calc(0.1 * var(--space));
+  min-width: 0;
+}
+
+.category-view-habit-streak {
+  color: var(--text-muted);
+  flex: none;
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.category-view-empty {
+  color: var(--text-faint);
+  font-size: var(--text-sm);
+  margin: 0;
+  padding: calc(0.35 * var(--space)) calc(0.55 * var(--space)) calc(0.8 * var(--space));
+}
+
+/* ---------- cumulative chart ----------
+   One bar per period, as tall as the running total. Built from HTML elements,
+   so labels keep the page's font sizes. */
+
+.habit-cumulative-chart-summary {
+  color: var(--text-muted);
+  font-size: var(--text-md);
+  margin: calc(-0.35 * var(--space)) 0 var(--space);
+}
+
+.habit-cumulative-chart-summary strong {
+  color: var(--text);
+  font-weight: var(--weight-bold);
+}
+
+.habit-cumulative-chart-empty {
+  color: var(--text-faint);
+  font-size: var(--text-md);
+  margin: 0;
+}
+
+/* Holds the place of the chart until its totals have arrived. */
+.habit-cumulative-chart-loading {
+  min-height: 8rem;
+}
+
+.habit-cumulative-chart-plot {
+  --cols: 12;
+}
+
+/* Scale line at the year's total (the tallest bar). */
+.habit-cumulative-chart-scale {
+  border-bottom: 1px dashed var(--border);
+  color: var(--text-faint);
+  font-size: var(--text-xs);
+  padding-bottom: calc(0.2 * var(--space));
+  text-align: right;
+}
+
+/* The bars determine the track width. */
+.habit-cumulative-chart-bars {
+  align-items: end;
+  display: grid;
+  gap: calc(0.3 * var(--space));
+  grid-template-columns: repeat(var(--cols), minmax(var(--bar-min, 24px), 1fr));
+  height: 9rem;
+}
+
+.habit-cumulative-chart-column {
+  align-items: flex-end;
+  display: flex;
+  height: 100%;
+}
+
+.habit-cumulative-chart-bar {
+  /* The total of previous periods, faded. */
+  background: color-mix(in srgb, var(--habit-color) 28%, transparent);
+  border-radius: var(--radius-2xs) var(--radius-2xs) 0 0;
+  display: flex;
+  flex-direction: column;
+  /* The period's own sum is the first child, at the top. */
+  justify-content: flex-start;
+  min-height: 2px;
+  width: 100%;
+}
+
+/* No sliver for zero. */
+.habit-cumulative-chart-bar.is-zero {
+  min-height: 0;
+}
+
+.habit-cumulative-chart-gain {
+  background: var(--habit-color);
+  border-radius: var(--radius-2xs) var(--radius-2xs) 0 0;
+  min-height: 2px;
+}
+
+/* Labels use the same columns. They are positioned absolutely, so they do not
+   widen the columns. */
+.habit-cumulative-chart-months {
+  color: var(--text-faint);
+  display: grid;
+  font-size: var(--text-xs);
+  gap: calc(0.3 * var(--space));
+  grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
+  margin-top: calc(0.4 * var(--space));
+  text-align: center;
+}
+
+/* Title and granularity switch on one line. */
+.habit-cumulative-chart-head {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space);
+  justify-content: space-between;
+  margin-bottom: calc(0.85 * var(--space));
+}
+
+.habit-cumulative-chart-head h3 {
+  margin-bottom: 0;
+}
+
+/* Smaller gaps for many bars. */
+.habit-cumulative-chart-plot.is-fine :is(.habit-cumulative-chart-bars, .habit-cumulative-chart-months) {
+  column-gap: 2px;
+}
+
+/* Bars and labels scroll horizontally together; with few bars they fill the
+   width. */
+.habit-cumulative-chart-scroll {
+  overflow-x: auto;
+  padding-bottom: calc(0.35 * var(--space));
+}
+
+.habit-cumulative-chart-track {
+  min-width: 100%;
+  width: max-content;
+}
+
+.habit-cumulative-chart-months span {
+  height: 1em;
+  position: relative;
+}
+
+.habit-cumulative-chart-months i {
+  font-style: normal;
+  left: 50%;
+  position: absolute;
+  transform: translatex(-50%);
+  white-space: nowrap;
+}
+
+/* The grain switch beside the heading, smaller than a form's segmented
+   control. */
+.segmented.habit-cumulative-chart-grain {
+  flex: none;
+  width: auto;
+}
+
+.segmented.habit-cumulative-chart-grain span {
+  font-size: var(--text-xs);
+  padding: calc(0.25 * var(--space)) calc(0.7 * var(--space));
+}
+
+/* Columns show their tooltip (tooltip.js) on hover. */
+.habit-cumulative-chart-column[data-tip] {
+  cursor: default;
+}
+
+/* ---------- day statistics: bars per weekday and month ---------- */
+
+.day-stats-bar-panel-bars {
+  display: flex;
+  flex-direction: column;
+  gap: calc(0.45 * var(--space));
+}
+
+.day-stats-bar-panel-bar {
+  align-items: center;
+  display: grid;
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+  gap: calc(0.6 * var(--space));
+  grid-template-columns: 3rem 1fr 3.5rem;
+}
+
+.day-stats-bar-panel-label {
+  color: var(--text-muted);
+}
+
+.day-stats-bar-panel-track {
+  background: var(--surface-2);
+  border-radius: 999px;
+  height: 0.6rem;
+  overflow: hidden;
+}
+
+.day-stats-bar-panel-fill {
+  background: var(--done);
+  border-radius: inherit;
+  display: block;
+  height: 100%;
+}
+
+.day-stats-bar-panel-value {
+  text-align: right;
+}
+
+.day-stats-bar-panel-bar.is-empty .day-stats-bar-panel-value {
+  color: var(--text-faint);
+}
+
+/* ---------- styleguide ----------
+   Only used on #/styleguide. */
+
+.style-guide-view-head {
+  padding: calc(0.5 * var(--space)) 0 calc(1.5 * var(--space));
+}
+
+.style-guide-view-head h1 {
+  font-size: var(--text-xl);
+}
+
+.style-guide-view-note,
+.style-guide-section-note {
+  color: var(--text-muted);
+  font-size: var(--text-md);
+  margin: calc(0.35 * var(--space)) 0 0;
+  max-width: 46rem;
+}
+
+/* Light and dark panel side by side (stacked on narrow screens). Each panel has
+   its own background. */
+.style-guide-view-themes {
+  align-items: start;
+  display: grid;
+  gap: calc(1.25 * var(--space));
+  grid-template-columns: repeat(auto-fit, minmax(28rem, 1fr));
+}
+
+.style-guide-panel {
+  background: var(--bg);
+  border-radius: var(--radius);
+  color: var(--text);
+  padding: var(--space) calc(1.15 * var(--space)) calc(1.5 * var(--space));
+}
+
+.style-guide-panel-title {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  letter-spacing: 0.08em;
+  padding-bottom: calc(0.75 * var(--space));
+  text-transform: uppercase;
+}
+
+.style-guide-section {
+  padding-top: calc(1.5 * var(--space));
+}
+
+.style-guide-section-title {
+  font-size: var(--text-base);
+}
+
+/* Row of specimens, aligned on the baseline. */
+.style-guide-section-row {
+  align-items: flex-end;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space) calc(0.9 * var(--space));
+  margin-top: calc(0.9 * var(--space));
+}
+
+.style-guide-section-row.is-block {
+  display: block;
+}
+
+.style-guide-specimen {
+  align-items: flex-start;
+  display: flex;
+  flex-direction: column;
+  gap: calc(0.3 * var(--space));
+  min-width: 0;
+}
+
+.style-guide-specimen-label {
+  color: var(--text-faint);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.68rem;
+}
+
+/* Day cells in a plain row. */
+.style-guide-panel-cells {
+  display: flex;
+  gap: 2px;
+}
+
+.style-guide-panel-cells .board-day-cell {
+  width: var(--cell);
+}
+
+.style-guide-panel-heatmap {
+  display: flex;
+  gap: var(--heat-gap);
+}
+
+/* Limit the width of form fields. */
+.style-guide-section-row .field {
+  max-width: 20rem;
+  min-width: 14rem;
+  padding: 0;
+}
+
+.style-guide-panel-tokens {
+  align-items: center;
+  display: grid;
+  font-size: 0.78rem;
+  gap: calc(0.3 * var(--space)) calc(0.6 * var(--space));
+  grid-template-columns: auto 1fr auto;
+}
+
+.style-guide-panel-token {
+  display: contents;
+}
+
+.style-guide-panel-chip {
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-2xs);
+  height: 1.4rem;
+  width: 1.4rem;
+}
+
+.style-guide-panel-chip.is-empty {
+  visibility: hidden;
+}
+
+.style-guide-panel-token-name {
+  color: var(--text);
+  font-size: 0.74rem;
+}
+
+.style-guide-panel-token-value {
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- pressed state ----------
+
+   Touch has no hover, so rows and fields darken one step beyond their hover
+   fill while pressed. After the hover rules above. */
+
+.category-view-habit:active {
+  background: var(--border);
+}
+
+/* ---------- touch screens ----------
+
+   Controls are at least --hit in both directions (see base.css). */
+
+@media (pointer: coarse) {
+  .category-view-habit {
+    min-height: var(--hit);
+  }
+}

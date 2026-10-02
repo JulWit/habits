@@ -62,13 +62,26 @@ web/                        Frontend (Vue, ES modules, no build step)
   manifest.webmanifest        Web app manifest; served with the colours of the
                               user's theme (manifest.go)
   sw.js                       Service worker for offline start
-  assets/css/
-    base.css                    Design tokens (colours, palette, density), layout,
-                                buttons, background patterns
-    forms.css                   Dialogs, pages, settings and form controls
-    components.css              Board, detail views, heatmap, charts, toasts,
-                                tooltips, search, reordering
+  assets/css/                 Loaded in this order, from the general to the
+                              specific; a later file may override an earlier one
     fonts.css                   @font-face rules of the embedded fonts
+    base.css                    Design tokens (colours, palette, density), the
+                                page and background patterns, the app shell,
+                                buttons, shared text; global sizes for narrow
+                                and touch screens
+    forms.css                   Form controls: fields, segmented controls,
+                                weekday buttons, dropdowns, stepper, picker
+                                button, switch, slider
+    ui.css                      Building blocks of js/ui/: habit icons and names,
+                                app bar, stat tiles and panels, year navigation,
+                                grid and heatmap, tooltips, toasts, drag and
+                                drop, colour and icon choices
+    dialogs.css                 Dialog and page frames, settings, search,
+                                category picker, day dialog
+    board.css                   The overview: day header, cards, rows, day cells,
+                                day summary, tight and stacked board, edit mode
+    views.css                   Habit, category and day statistics views, the
+                                cumulative chart, the style guide
   assets/fonts/               Embedded woff2 fonts and their licences
   assets/images/              App icon (SVG and PNG), the chevron of dropdowns and
                               the grain pattern

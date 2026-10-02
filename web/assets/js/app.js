@@ -276,7 +276,7 @@ function initRouting() {
   syncRoute();
 
   // The route classes on <html> hide the app's title bar on the views that
-  // have their own (see components.css).
+  // have their own (see views.css).
   watchEffect(() => {
     const root = document.documentElement;
     root.classList.toggle('route-styleguide', route.view === 'styleguide');

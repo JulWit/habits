@@ -1,360 +1,19 @@
-/* ---------- dialogs ---------- */
+/* Form controls, shared by the dialogs and views: fields and their hints,
+   segmented controls, weekday buttons, dropdowns, the stepper, the picker
+   button, switches and sliders. After base.css; the dialogs and views
+   arrange them. */
 
-.dialog {
-  background: var(--surface);
-  border: none;
-  border-radius: var(--radius);
-  color: var(--text);
-  padding: 0;
-  width: min(34rem, calc(100vw - 2rem));
-}
+/* ---------- hints ---------- */
 
-.dialog.compact {
-  width: min(20rem, calc(100vw - 2rem));
-}
-
-/* Neutral backdrop, without a colour cast in the dark theme. */
-.dialog::backdrop {
-  background: rgba(0, 0, 0, 0.55);
-}
-
-.dialog-head {
-  font-size: var(--text-lg);
-  font-weight: var(--weight-bold);
-  padding: calc(1.15 * var(--space)) calc(1.15 * var(--space)) calc(0.25 * var(--space));
-}
-
-.dialog-text {
-  color: var(--text-muted);
-  margin: 0;
-  padding: calc(0.35 * var(--space)) calc(1.15 * var(--space)) 0;
-}
-
-.dialog-foot {
-  display: flex;
-  gap: calc(0.5 * var(--space));
-  justify-content: flex-end;
-  padding: calc(0.85 * var(--space)) calc(1.15 * var(--space)) calc(1.15 * var(--space));
-}
-
-/* ---------- pages ---------- */
-
-/* Full-screen dialogs, stacked like app screens (see page-stack.js). The dialog
-   itself scrolls; the title bar stays at the top. Like the overview, flat
-   cards lie on the page background, which the backdrop paints. */
-.dialog.page {
-  /* A readable column for forms, but never wider than the overview's cards. */
-  --page-width: min(42rem, calc(var(--board-width) - var(--tools-outset)));
-  /* Head and body share the column, however wide the window. */
-  --page-inset: max(var(--gutter), calc((100% - var(--page-width)) / 2));
-  background: transparent;
-  border-radius: 0;
-  height: 100%;
-  margin: 0;
-  max-height: none;
-  max-width: none;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  width: 100%;
-}
-
-/* The page background, as behind the overview (see body::before): colour and
-   pattern, fixed in place. Opaque, so it hides the page below. */
-.dialog.page::backdrop {
-  background-color: var(--bg);
-  background-image: var(--pattern-image);
-  background-size: var(--pattern-size);
-}
-
-/* Slides in from the right, as a new screen does. */
-.dialog.page[open] {
-  animation: page-in 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
-}
-
-@keyframes page-in {
-  from {
-    opacity: 0;
-    transform: translatex(2.5rem);
-  }
-}
-
-/* The editors are full-screen dialogs, which rise from below. */
-.dialog.page.is-sheet[open] {
-  animation: sheet-in 0.26s cubic-bezier(0.2, 0.8, 0.2, 1);
-}
-
-@keyframes sheet-in {
-  from {
-    opacity: 0;
-    transform: translatey(3rem);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .dialog.page[open],
-  .dialog.page.is-sheet[open] {
-    animation: none;
-  }
-}
-
-/* Pages cover the view, so it need not scroll behind them. */
-html:has(.dialog.page[open]) {
-  overflow: hidden;
-}
-
-/* Title bar: back button, title and an optional action. Like the app's title
-   bar, it uses the page background, so cards scrolling underneath are hidden
-   (see base.css). */
-.page-head {
-  align-items: center;
-  display: flex;
-  gap: calc(0.5 * var(--space));
-  min-height: var(--topbar-row);
-  padding: env(safe-area-inset-top, 0px) var(--page-inset) 0;
-  /* The back button's icon lines up with the card's edge. */
-  padding-left: calc(var(--page-inset) - 0.5rem);
-  position: sticky;
-  top: 0;
-  z-index: 1;
-}
-
-.page-head h2 {
-  flex: 1;
-  font-size: var(--text-lg);
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.page-head .icon-button svg {
-  height: var(--icon);
-  width: var(--icon);
-}
-
-@media (hover: hover) {
-  .page-head .icon-button:hover {
-    background: var(--surface-2);
-  }
-}
-
-/* The content: one flat card on the page background, like the overview's. */
-.page-body {
-  background: var(--surface);
-  border-radius: var(--radius);
-  margin: calc(0.5 * var(--space)) var(--page-inset)
-      calc(3 * var(--space) + env(safe-area-inset-bottom, 0px));
-  padding: calc(1.25 * var(--space)) calc(1.15 * var(--space)) calc(0.25 * var(--space));
-}
-
-/* On wide screens, the editors float as dialogs over the dimmed view instead
-   of covering it, as Material Design has full-screen dialogs only on compact
-   windows (below 840dp) and Apple uses sheets on the Mac. Their card is the
-   dialog itself, with the title bar on it. */
-@media (min-width: 840px) and (min-height: 560px) {
-  .dialog.page.is-floating {
-    --page-inset: calc(1.15 * var(--space));
-    background: var(--surface);
-    border-radius: var(--radius);
-    box-shadow: var(--shadow-float);
-    /* Not auto, which stretches a modal dialog between its insets. */
-    height: fit-content;
-    /* Anchored at the top, not centred: a centred dialog moves whenever its
-       height changes, e.g. with the fields of another kind, and the fields
-       jump away from under the pointer. */
-    margin: min(10dvh, 6rem) auto 2rem;
-    max-height: calc(100dvh - min(10dvh, 6rem) - 2rem);
-    width: min(38rem, calc(100vw - 4rem));
-  }
-
-  /* :root outranks the grain pattern's rules for backdrop and title bar. */
-  :root .dialog.page.is-floating::backdrop {
-    background: rgba(0, 0, 0, 0.55);
-  }
-
-  :root .dialog.page.is-floating .page-head {
-    background: var(--surface);
-  }
-
-  /* The title bar's buttons keep the same distance from the top edge as the
-     content from the other edges. */
-  .dialog.page.is-floating .page-head {
-    min-height: 0;
-    padding-top: var(--page-inset);
-  }
-
-  /* The same padding on all sides. */
-  .dialog.page.is-floating .page-body {
-    border-radius: 0;
-    margin: 0;
-    padding-block: var(--page-inset);
-  }
-
-  /* The last shown field has no margin below, so the padding alone sets the
-     space above the card's bottom edge. Hidden fields may follow it. */
-  .dialog.page.is-floating .page-body > .field:not([hidden]):not(:has(~ .field:not([hidden]))) {
-    margin-bottom: 0;
-  }
-}
-
-/* ---------- settings menu ---------- */
-
-/* The settings menu has a card per section instead of one for the page. */
-.page-body:has(> .settings-menu) {
-  background: none;
-  display: flex;
-  flex-direction: column;
-  gap: var(--card-gap);
-  padding: 0;
-}
-
-/* A section, each row opening its page. The rows reach to the card's edge. */
-.settings-menu {
-  background: var(--surface);
-  border-radius: var(--radius);
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: calc(0.35 * var(--space));
-}
-
-/* The signed-in user, a card above the sections. */
-.settings-account {
-  align-items: center;
-  background: var(--surface);
-  border-radius: var(--radius);
-  display: flex;
-  gap: var(--space);
-  padding: var(--space) calc(1.1 * var(--space));
-}
-
-/* Initials on the accent colour. */
-.settings-account-avatar {
-  background: var(--primary);
-  border-radius: 50%;
-  color: var(--primary-text);
-  display: grid;
-  flex: none;
-  font-size: var(--text-lg);
-  font-weight: var(--weight-bold);
-  height: 2.75rem;
-  letter-spacing: 0.02em;
-  place-items: center;
-  width: 2.75rem;
-}
-
-.settings-account-text {
-  min-width: 0;
-}
-
-.settings-account-text p {
-  margin: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.settings-account-name {
-  font-size: var(--text-lg);
-  font-weight: var(--weight-bold);
-}
-
-.settings-account-detail {
-  color: var(--text-muted);
-  font-size: var(--text-md);
-}
-
-.settings-menu-item {
-  align-items: center;
-  background: transparent;
-  border: none;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  display: flex;
-  gap: var(--space);
-  padding: calc(0.8 * var(--space)) calc(0.75 * var(--space));
-  text-align: left;
-  transition: var(--fill-fade);
-  width: 100%;
-}
-
-@media (hover: hover) {
-  .settings-menu-item:hover {
-    background: var(--surface-2);
-  }
-}
-
-.settings-menu-item-icon,
-.settings-menu-item-caret {
-  display: flex;
-  flex: none;
-}
-
-.settings-menu-item-icon {
-  color: var(--text-muted);
-}
-
-.settings-menu-item-icon svg {
-  height: 1.3rem;
-  width: 1.3rem;
-}
-
-.settings-menu-item-caret {
+.field-hint {
   color: var(--text-faint);
-}
-
-.settings-menu-item-caret svg {
-  height: 1rem;
-  width: 1rem;
-}
-
-.settings-menu-item-text {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-
-.settings-menu-item-title {
-  font-weight: var(--weight-emphasis);
-}
-
-.settings-menu-item-hint {
-  color: var(--text-muted);
   font-size: var(--text-sm);
+  margin: calc(0.75 * var(--space)) calc(0.25 * var(--space)) 0;
 }
 
-/* ---------- facts ---------- */
-
-/* Label and value rows, e.g. on the version page. */
-.settings-facts {
-  margin: 0 0 calc(1.1 * var(--space));
-}
-
-.settings-facts > div {
-  display: flex;
-  gap: var(--space);
-  justify-content: space-between;
-  padding: calc(0.6 * var(--space)) 0;
-}
-
-/* Dotted separators, like below the board's category headings. */
-.settings-facts > div + div {
-  background: radial-gradient(circle, var(--border) 1px, transparent 1.3px)
-      left top / 10px 3px repeat-x;
-}
-
-.settings-facts dt {
-  color: var(--text-muted);
-}
-
-.settings-facts dd {
-  font-variant-numeric: tabular-nums;
-  margin: 0;
-  min-width: 0;
-  overflow-wrap: anywhere;
-  text-align: right;
+/* Spacing below a hint that is followed by another control. */
+.field-hint:not(:last-child) {
+  margin-bottom: calc(0.9 * var(--space));
 }
 
 /* ---------- form fields ---------- */
@@ -402,7 +61,6 @@ html:has(.dialog.page[open]) {
 
 .field input:focus,
 .field textarea:focus,
-.category-picker-create input:focus,
 .select:focus-visible {
   border-color: var(--primary);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 22%, transparent);
@@ -474,87 +132,6 @@ html:has(.dialog.page[open]) {
   opacity: 0.6;
 }
 
-/* ---------- colour swatches ---------- */
-
-.app-color-swatches {
-  display: flex;
-  flex-wrap: wrap;
-  gap: calc(0.4 * var(--space));
-}
-
-.app-color-swatches-item {
-  /* The colour is set by the script. */
-  background: var(--swatch, transparent) content-box;
-  border: 2px solid transparent;
-  border-radius: 50%;
-  cursor: pointer;
-  height: 1.75rem;
-  /* Room between the colour and the selection ring; set on touch screens. */
-  padding: var(--swatch-pad, 0);
-  width: 1.75rem;
-}
-
-/* "No colour": a struck-through empty ring, drawn in the content box, so it
-   has the size of the colour discs. */
-.app-color-swatches-item.is-none {
-  background: linear-gradient(to top right, transparent 46%, var(--text-muted) 46% 54%, transparent 54%)
-      content-box,
-      radial-gradient(closest-side, transparent calc(100% - 1.5px), var(--text-muted) calc(100% - 1px))
-      content-box;
-}
-
-.app-color-swatches-item[aria-checked='true'] {
-  border-color: var(--text);
-  transform: scale(1.06);
-}
-
-/* ---------- icon picker ---------- */
-
-/* Icons on the same tiles as on the board, in the colour set by habit-editor.js
-   (--habit-color). */
-.app-icon-choices {
-  display: grid;
-  gap: calc(0.35 * var(--space));
-  grid-template-columns: repeat(auto-fill, minmax(2.25rem, 1fr));
-}
-
-.app-icon-choices-item {
-  aspect-ratio: 1;
-  background: color-mix(in srgb, var(--habit-color) 16%, transparent) padding-box;
-  border: 2px solid transparent;
-  border-radius: var(--radius-sm);
-  color: var(--habit-color);
-  cursor: pointer;
-  display: grid;
-  padding: 0;
-  place-items: center;
-}
-
-.app-icon-choices-item svg {
-  height: 1.15rem;
-  width: 1.15rem;
-}
-
-@media (hover: hover) {
-  .app-icon-choices-item:hover {
-    background-color: color-mix(in srgb, var(--habit-color) 26%, transparent);
-  }
-}
-
-.app-icon-choices-item.is-none {
-  background: transparent;
-  border: 2px dashed var(--border-strong);
-}
-
-.app-icon-choices-item[aria-checked='true'] {
-  border: 2px solid var(--text);
-}
-
-.app-icon-choices-item:focus-visible {
-  outline: 2px solid var(--primary);
-  outline-offset: 1px;
-}
-
 /* ---------- weekday picker ---------- */
 
 .weekdays {
@@ -581,6 +158,8 @@ html:has(.dialog.page[open]) {
   border-color: var(--primary);
   color: var(--primary-text);
 }
+
+/* ---------- dropdown ---------- */
 
 /* Dropdown styled like the category picker: flat, with its own chevron. */
 .select {
@@ -689,31 +268,6 @@ html:has(.dialog.page[open]) {
   }
 }
 
-/* Font preview: the field and each option use their own font. */
-.settings-font {
-  font-family: var(--font);
-}
-
-.settings-font option[value='system'] {
-  font-family: var(--font-system);
-}
-
-.settings-font option[value='inter'] {
-  font-family: 'Inter', var(--font-system);
-}
-
-.settings-font option[value='roboto'] {
-  font-family: 'Roboto', var(--font-system);
-}
-
-.settings-font option[value='geist'] {
-  font-family: 'Geist', var(--font-system);
-}
-
-.settings-font option[value='opensans'] {
-  font-family: 'Open Sans', var(--font-system);
-}
-
 /* ---------- stepper ---------- */
 
 .stepper {
@@ -735,84 +289,9 @@ html:has(.dialog.page[open]) {
   text-align: center;
 }
 
-/* Quick value buttons below the stepper, in equal columns. */
-.day-editor-quick-steps {
-  display: grid;
-  gap: calc(0.4 * var(--space));
-  grid-template-columns: repeat(4, 1fr);
-  padding: calc(0.7 * var(--space)) calc(1.15 * var(--space)) 0;
-}
-
-.day-editor-quick-steps .button {
-  font-variant-numeric: tabular-nums;
-  padding-inline: calc(0.2 * var(--space));
-}
-
-.day-editor-hint {
-  margin-top: calc(0.4 * var(--space));
-  padding: 0 calc(1.15 * var(--space));
-}
-
-/* ---------- day dialog ---------- */
-
-/* The value controls, dimmed while the day is skipped, which clears the value. */
-.day-editor-value {
-  border: none;
-  margin: 0;
-  min-width: 0;
-  padding: 0;
-}
-
-.day-editor-value:disabled {
-  opacity: 0.45;
-}
-
-.day-editor-value > .switch {
-  padding: calc(0.9 * var(--space)) calc(1.15 * var(--space)) 0;
-}
-
-.day-editor-skip {
-  padding: calc(0.9 * var(--space)) calc(1.15 * var(--space)) 0;
-}
-
 /* ---------- narrow screens ---------- */
 
-/* Hide the app name when the title bar is too narrow (below ~257px); the
-   heading keeps its text for screen readers. */
-@container topbar (max-width: 270px) {
-  .brand-text {
-    clip-path: inset(50%);
-    height: 1px;
-    overflow: hidden;
-    position: absolute;
-    white-space: nowrap;
-    width: 1px;
-  }
-}
-
 @media (max-width: 40rem) {
-  :root {
-    /* Narrower columns. The name column keeps at least 120px even on a tight
-       board; the day columns shrink first (see board-view.js). */
-    --cell: 34px;
-    --label-min: 120px;
-    --label-tight-min: 120px;
-    --topbar-row: calc(2.25rem + 0.85 * var(--space));
-    /* Narrow page gutter and card padding, so the room goes to the names. */
-    --gutter: 8px;
-    --block-pad-x: 8px;
-  }
-
-  /* The smaller corner radius on the board keeps the today band clear of the
-     rounded corners at 8px card padding. */
-  .board-view-grid {
-    --radius: 10px;
-  }
-
-  .brand {
-    font-size: 1.05rem;
-  }
-
   .field.row,
   .field-row {
     flex-direction: column;
@@ -820,7 +299,7 @@ html:has(.dialog.page[open]) {
   }
 }
 
-/* ---------- category picker ---------- */
+/* ---------- picker button ---------- */
 
 /* Input-like button that opens the category picker. */
 .picker {
@@ -865,78 +344,7 @@ html:has(.dialog.page[open]) {
   width: 1rem;
 }
 
-/* Category list of the picker. */
-.category-picker-list {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  margin-bottom: calc(0.85 * var(--space));
-}
-
-.category-picker-option {
-  align-items: center;
-  background: transparent;
-  border: none;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  display: flex;
-  gap: var(--row-gap);
-  padding: var(--row-pad);
-  text-align: left;
-  transition: var(--fill-fade);
-}
-
-@media (hover: hover) {
-  .category-picker-option:hover {
-    background: var(--surface-2);
-  }
-}
-
-/* The chosen category in the accent colour, as the chosen option of a
-   dropdown. Hover and pressed states follow the primary button (see the
-   pressed state below). */
-.category-picker-option[aria-selected='true'] {
-  background: var(--primary);
-  color: var(--primary-text);
-  font-weight: var(--weight-semibold);
-}
-
-/* The icon tile takes the text colour, as a habit colour may clash with the
-   accent. Not via --habit-color, which is set inline. */
-.category-picker-option[aria-selected='true'] .habit-icon {
-  background: color-mix(in srgb, currentcolor 16%, transparent);
-  color: inherit;
-}
-
-.category-picker-option-name {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* Creating a category in the picker. */
-.category-picker-create {
-  display: flex;
-  gap: calc(0.5 * var(--space));
-  padding-top: calc(0.85 * var(--space));
-}
-
-/* The create row has no margin of its own, unlike form fields, so the card
-   gets the same padding below as above. */
-.page-body:has(> .category-picker-create) {
-  padding-bottom: calc(1.25 * var(--space));
-}
-
-.category-picker-create input {
-  background: var(--field);
-  border: 1px solid transparent;
-  border-radius: var(--radius-sm);
-  flex: 1;
-  min-width: 0;
-  padding: calc(0.5 * var(--space)) calc(0.6 * var(--space));
-}
+/* ---------- switch ---------- */
 
 /* Checkbox with label, for on/off settings. */
 .switch {
@@ -953,6 +361,8 @@ html:has(.dialog.page[open]) {
   height: 1.05rem;
   width: 1.05rem;
 }
+
+/* ---------- slider ---------- */
 
 /* Slider with its value beside it. */
 .slider {
@@ -988,85 +398,21 @@ html:has(.dialog.page[open]) {
 /* ---------- pressed state ----------
 
    Touch has no hover, so rows and fields darken one step beyond their hover
-   fill while pressed. Here, after the hover rules of all three files. */
-.settings-menu-item:active,
-.picker:active,
-.category-picker-option:active,
-.search-option:active,
-.category-view-habit:active,
-.board-block-link:active,
-.board-habit-row-label .board-habit-label:active,
-.board-day-cell:active:not(:disabled) {
+   fill while pressed. After the hover rules above. */
+
+.picker:active {
   background: var(--border);
-}
-
-/* The today column keeps its band colour, a step darker than on hover. */
-.board-day-cell.is-today:active:not(:disabled) {
-  background: color-mix(in srgb, var(--band-shown) 76%, var(--text));
-}
-
-html[data-today-band='off'] .board-day-cell.is-today:active:not(:disabled) {
-  background: var(--border);
-}
-
-/* The chosen category keeps its accent fill, like a primary button. */
-.category-picker-option[aria-selected='true']:active {
-  background: var(--primary-hover);
-}
-
-@media (hover: hover) {
-  .category-picker-option[aria-selected='true']:hover {
-    background: var(--primary-hover);
-  }
 }
 
 /* ---------- touch screens ----------
 
-   Every control is at least 48px in both directions, the larger of Apple's
-   44pt and Material's 48dp. The mouse keeps the compact sizes. Not enlarged:
-   the day cells, whose width comes from the board layout (they span the full
-   column and row), and the reorder handles, whose column board-view.js
-   sizes. */
+   Controls are at least --hit in both directions (see base.css). */
+
 @media (pointer: coarse) {
-  :root {
-    --hit: 48px;
-    /* The title bar grows with its buttons. After the narrow-screen rule. */
-    --topbar-row: calc(var(--hit) + 0.85 * var(--space));
-  }
-
-  .icon-button:not(.board-habit-row-tools *, .board-block-tools *),
-  .button {
-    min-height: var(--hit);
-    min-width: var(--hit);
-  }
-
-  /* The buttons bring their own room. */
-  .topbar-actions {
-    gap: calc(0.15 * var(--space));
-  }
-
-  html[data-tight] .board-view-day-nav,
-  .board-view-day-nav {
-    gap: 0;
-  }
-
-  /* The usual arrow size, also on a tight board. */
-  html[data-tight] .board-view-day-nav .icon-button svg {
-    height: var(--icon);
-    width: var(--icon);
-  }
-
-  .settings-menu-item,
   .picker,
-  .category-picker-option,
-  .search-option,
-  .category-view-habit,
-  .board-block-link,
   .select,
   .switch,
-  .app-bar-menu-item,
-  .field input,
-  .category-picker-create input {
+  .field input {
     min-height: var(--hit);
   }
 
@@ -1085,23 +431,8 @@ html[data-today-band='off'] .board-day-cell.is-today:active:not(:disabled) {
     min-height: calc(var(--hit) - 2 * var(--segment-inset));
   }
 
-  /* A ring of room around each colour; the selection ring lies on it. */
-  .app-color-swatches {
-    gap: 0;
-  }
-
-  .app-color-swatches-item {
-    --swatch-pad: 5px;
-    height: var(--hit);
-    width: var(--hit);
-  }
-
-  .app-icon-choices {
-    grid-template-columns: repeat(auto-fill, minmax(var(--hit), 1fr));
-  }
-
   /* Seven equal columns, shrinking slightly on very narrow cards instead of
-     wrapping a day into a second row. */
+       wrapping a day into a second row. */
   .weekdays {
     display: grid;
     gap: 2px;
@@ -1117,9 +448,7 @@ html[data-today-band='off'] .board-day-cell.is-today:active:not(:disabled) {
   /* iOS zooms into fields below 16px when they are focused. */
   .field input,
   .field textarea,
-  .select,
-  .category-picker-create input,
-  .search-input {
+  .select {
     font-size: max(16px, 1rem);
   }
 }

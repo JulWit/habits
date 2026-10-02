@@ -8,7 +8,7 @@
  * Name of the cache; raising the version drops the caches of older workers on
  * activation.
  */
-const CACHE = 'habits-v9';
+const CACHE = 'habits-v10';
 
 /**
  * Files cached on install. Other files are cached on first use.
@@ -18,10 +18,13 @@ const SHELL = [
   '/',
   '/assets/js/app.js',
   '/assets/vendor/vue.esm-browser.prod.js',
-  '/assets/css/base.css',
-  '/assets/css/components.css',
-  '/assets/css/forms.css',
   '/assets/css/fonts.css',
+  '/assets/css/base.css',
+  '/assets/css/forms.css',
+  '/assets/css/ui.css',
+  '/assets/css/dialogs.css',
+  '/assets/css/board.css',
+  '/assets/css/views.css',
   '/assets/images/chevron-down.svg',
   '/assets/images/grain.svg',
   '/assets/images/icon.svg',

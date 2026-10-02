@@ -200,10 +200,18 @@ asked.
   name in kebab-case, without `The` (`board-block-head`, `app-stat-row-tile`);
   views and dialogs use the prefix of their element IDs (`habit-view-year-nav`,
   `settings-menu`). Classes without such a prefix are shared: the app shell
-  (`topbar`, `view`), base styles and form controls in `base.css` and
-  `forms.css` (`button`, `panel`, `dialog`, `field`, `segmented`), what
-  several views show (`habit-icon`, `color-dot`, `heatmap-day`), and the
-  states `is-…` and `has-…`.
+  and buttons in `base.css` (`topbar`, `view`, `button`), form controls in
+  `forms.css` (`field`, `segmented`), what several views show in `ui.css`
+  (`habit-icon`, `color-dot`, `heatmap-day`, `panel`), the dialog frame in
+  `dialogs.css` (`dialog`), and the states `is-…` and `has-…`.
+- A rule goes into the stylesheet of the first component its selector names,
+  read from the left, as the context owns its overrides: `base.css` (no
+  component), `forms.css` (form controls), `ui.css` (`app-…` and the shared
+  classes of `web/assets/js/ui/`), `dialogs.css`, `board.css` (`board-…`) or
+  `views.css`. They load in this order (`index.html`, `sw.js`), so a later
+  file may override an earlier one; raise `CACHE` in `sw.js` when adding or
+  removing one. Hover, pressed (`:active`) and touch-screen rules of a
+  component sit at the end of its file, after its other rules.
 - Prose in docs and comments uses British spelling ("colour"); identifiers use
   American spelling (`color`).
 

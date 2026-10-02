@@ -37,6 +37,7 @@ function capitalize(text) {
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
+/** How long a toast stays without a timeout of its own, in milliseconds. */
 const DEFAULT_TIMEOUT = 7000;
 
 /**

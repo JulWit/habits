@@ -166,9 +166,11 @@ asked.
   80 columns (templates included), braces around every block except a
   one-line `if` without `else`, a trailing comma in wrapped array and object
   literals, `CONSTANT_CASE` for module constants that are never changed
-  (`ICONS`, `STATUS`), and no import cycles between modules: a module that
-  must call back into one that imports it gets the function passed in (see
-  `initSync` in `loader.js`). Format with
+  (`ICONS`, `HABIT_ICONS`), an `@enum` in `UpperCamelCase` with
+  `CONSTANT_CASE` members (`Status.OFF_DONE`), a JSDoc comment on every
+  module constant (with `@const {type}` for objects and arrays), and no import
+  cycles between modules: a module that must call back into one that imports
+  it gets the function passed in (see `initSync` in `loader.js`). Format with
   `uvx clang-format -i web/sw.js web/assets/js/*.js web/assets/js/*/*.js`
   (`.clang-format`; a developer tool, not a build step). Long UI texts in
   `t('…')` and `i18n.js` stay on one line, so they can be searched for.

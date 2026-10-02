@@ -13,7 +13,7 @@ import {state} from '../data/state.js';
 import {AppBar} from '../ui/app-bar.js';
 import {AppFactsPanel, AppStatRow, factItem, percent} from '../ui/stat-panels.js';
 import {hideTooltip} from '../ui/tooltip.js';
-import {AppDayHeatmap, AppYearNav, centreToday, currentYear, initChartTooltips, sinceLabel, streakLabel, yearRange} from '../ui/year-grid.js';
+import {AppDayHeatmap, AppYearNavigation, centreToday, currentYear, initChartTooltips, sinceLabel, streakLabel, yearRange} from '../ui/year-grid.js';
 import {MONTH_LONG, MONTH_SHORT, WEEKDAY_LONG, WEEKDAY_SHORT} from '../util/dates.js';
 import {t} from '../util/i18n.js';
 import {computed, nextTick, onMounted, ref, watch} from '../vue.js';
@@ -140,7 +140,7 @@ export const TheDayStatsView = {
     AppDayHeatmap,
     AppFactsPanel,
     AppStatRow,
-    AppYearNav,
+    AppYearNavigation,
     DayStatsBarPanel,
   },
   /** @return {!Object<string, *>} the bindings of the template */
@@ -184,6 +184,7 @@ export const TheDayStatsView = {
 
     return {
       root,
+      state,
       shown,
       year,
       range,
@@ -233,7 +234,7 @@ export const TheDayStatsView = {
           :bars="months"
         />
         <section class="panel">
-          <app-year-nav
+          <app-year-navigation
             v-model:year="year"
             :first="range[0]"
             :last="range[1]"
@@ -241,6 +242,7 @@ export const TheDayStatsView = {
           <app-day-heatmap
             :year="shownYear"
             :totals="data.totals"
+            :today="state.today"
           />
         </section>
       </template>

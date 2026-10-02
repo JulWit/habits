@@ -14,16 +14,16 @@ import {locale, t} from './i18n.js';
  * The statuses of domain.DayStatus.
  * @enum {string}
  */
-const STATUS = {
-  off: '-',
-  offDone: '+',
-  open: 'o',
-  done: 'c',
-  over: 'x',
-  skipped: 's',
-  free: 'f',
-  bonus: 'b',
-  beforeStart: '<',
+const Status = {
+  OFF: '-',
+  OFF_DONE: '+',
+  OPEN: 'o',
+  DONE: 'c',
+  OVER: 'x',
+  SKIPPED: 's',
+  FREE: 'f',
+  BONUS: 'b',
+  BEFORE_START: '<',
 };
 
 /**
@@ -34,9 +34,9 @@ const STATUS = {
  * @return {string}
  */
 function statusOn(habit, iso) {
-  if (!habit.days || !habit.daysFrom) return STATUS.off;
+  if (!habit.days || !habit.daysFrom) return Status.OFF;
   const i = daysBetween(habit.daysFrom, iso);
-  return i >= 0 && i < habit.days.length ? habit.days[i] : STATUS.off;
+  return i >= 0 && i < habit.days.length ? habit.days[i] : Status.OFF;
 }
 
 /**
@@ -74,7 +74,7 @@ export function currentSchedule(habit) {
  */
 export function isScheduled(habit, iso) {
   const s = statusOn(habit, iso);
-  return s !== STATUS.off && s !== STATUS.offDone;
+  return s !== Status.OFF && s !== Status.OFF_DONE;
 }
 
 /**
@@ -89,7 +89,7 @@ export function entryOn(habit, iso) {
   if (pending) return pending;
   return {
     value: habit.entries?.[iso] ?? 0,
-    skipped: statusOn(habit, iso) === STATUS.skipped,
+    skipped: statusOn(habit, iso) === Status.SKIPPED,
   };
 }
 
@@ -132,7 +132,7 @@ export function isSkipped(habit, iso) {
  */
 export function isDue(habit, iso) {
   const s = statusOn(habit, iso);
-  return s === STATUS.open || s === STATUS.done || s === STATUS.over;
+  return s === Status.OPEN || s === Status.DONE || s === Status.OVER;
 }
 
 /**
@@ -143,7 +143,7 @@ export function isDue(habit, iso) {
  */
 export function isDone(habit, iso) {
   const s = statusOn(habit, iso);
-  return s === STATUS.done || s === STATUS.offDone || s === STATUS.bonus;
+  return s === Status.DONE || s === Status.OFF_DONE || s === Status.BONUS;
 }
 
 /**
@@ -154,7 +154,7 @@ export function isDone(habit, iso) {
  * @return {boolean}
  */
 export function isBonus(habit, iso) {
-  return statusOn(habit, iso) === STATUS.bonus;
+  return statusOn(habit, iso) === Status.BONUS;
 }
 
 /**
@@ -165,7 +165,7 @@ export function isBonus(habit, iso) {
  * @return {boolean}
  */
 export function isBeforeStart(habit, iso) {
-  return statusOn(habit, iso) === STATUS.beforeStart;
+  return statusOn(habit, iso) === Status.BEFORE_START;
 }
 
 /**
@@ -176,7 +176,7 @@ export function isBeforeStart(habit, iso) {
  * @return {boolean}
  */
 export function isFree(habit, iso) {
-  return statusOn(habit, iso) === STATUS.free;
+  return statusOn(habit, iso) === Status.FREE;
 }
 
 /**
@@ -186,7 +186,7 @@ export function isFree(habit, iso) {
  * @return {boolean}
  */
 export function isOver(habit, iso) {
-  return statusOn(habit, iso) === STATUS.over;
+  return statusOn(habit, iso) === Status.OVER;
 }
 
 /**

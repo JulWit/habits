@@ -386,7 +386,7 @@ def statistics_years(run, f):
     run.api("PUT", f"/api/habits/{f.check_habit}/entries/{earlier}", {"value": 1})
     run.load()
 
-    heading = "return document.querySelector(arguments[0] + ' .app-year-nav h3').textContent;"
+    heading = "return document.querySelector(arguments[0] + ' .app-year-navigation h3').textContent;"
     run.click(f'.board-block[data-category="{f.category}"] [data-role="open-category"]')
     time.sleep(1.2)
     run.check("the category view shows this year",

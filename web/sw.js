@@ -4,6 +4,10 @@
  * cache.
  */
 
+/**
+ * Name of the cache; raising the version drops the caches of older workers on
+ * activation.
+ */
 const CACHE = 'habits-v9';
 
 /**

@@ -6,7 +6,7 @@
 
 import {state} from '../data/state.js';
 import {colorValue} from '../ui/icons.js';
-import {AppYearNav, currentYear} from '../ui/year-grid.js';
+import {AppYearNavigation, currentYear} from '../ui/year-grid.js';
 import {addDays, daysBetween, weekdayIndex} from '../util/dates.js';
 import {STREAK_LEVELS} from '../util/habit-helpers.js';
 import {computed, onMounted, ref} from '../vue.js';
@@ -200,18 +200,21 @@ function tokenNames() {
   return names;
 }
 
-/** A section with a title, an optional note and its specimens. */
+/**
+ * A section with a title, an optional note and its specimens. The note is a
+ * slot rather than a prop, so a long note can wrap like any text.
+ */
 const StyleGuideSection = {
   name: 'StyleGuideSection',
-  props: {title: String, note: String, block: Boolean},
+  props: {title: String, block: Boolean},
   template: `
     <section class="style-guide-section">
       <h3 class="style-guide-section-title">{{ title }}</h3>
       <p
-        v-if="note"
+        v-if="$slots.note"
         class="style-guide-section-note"
       >
-        {{ note }}
+        <slot name="note"/>
       </p>
       <div
         class="style-guide-section-row"
@@ -239,7 +242,7 @@ const StyleGuideSpecimen = {
 const StyleGuidePanel = {
   name: 'StyleGuidePanel',
   components: {
-    AppYearNav,
+    AppYearNavigation,
     BoardDayCell,
     StyleGuideSection,
     StyleGuideSpecimen,
@@ -304,9 +307,11 @@ const StyleGuidePanel = {
       </h2>
       <style-guide-section
         title="Tokens"
-        note="Read straight from the stylesheet, not maintained here."
         block
       >
+        <template #note>
+          Read straight from the stylesheet, not maintained here.
+        </template>
         <div class="style-guide-panel-tokens">
           <div
             v-for="(name, i) in names"
@@ -323,10 +328,11 @@ const StyleGuidePanel = {
           </div>
         </div>
       </style-guide-section>
-      <style-guide-section
-        title="Buttons"
-        note="Primary carries the single accent colour of the interface: dark grey on light, light on dark."
-      >
+      <style-guide-section title="Buttons">
+        <template #note>
+          Primary carries the single accent colour of the interface: dark grey
+          on light, light on dark.
+        </template>
         <style-guide-specimen label=".button.primary">
           <button
             type="button"
@@ -383,10 +389,8 @@ const StyleGuidePanel = {
           </button>
         </style-guide-specimen>
       </style-guide-section>
-      <style-guide-section
-        title="Form fields"
-        note="Everything the editor and the settings use."
-      >
+      <style-guide-section title="Form fields">
+        <template #note>Everything the editor and the settings use.</template>
         <label class="field"><span class="field-label">Name</span>
           <input
             type="text"
@@ -515,10 +519,11 @@ const StyleGuidePanel = {
           <p class="error">Please select at least one weekday.</p>
         </style-guide-specimen>
       </style-guide-section>
-      <style-guide-section
-        title="Board"
-        note="Built with the same components as the overview — BoardHeadDay, BoardHabitLabel, BoardDayCell."
-      >
+      <style-guide-section title="Board">
+        <template #note>
+          Built with the same components as the overview — BoardHeadDay,
+          BoardHabitLabel, BoardDayCell.
+        </template>
         <style-guide-specimen label="BoardHeadDay: today / normal">
           <div class="style-guide-panel-cells"><board-head-day :iso="today"/>
             <board-head-day :iso="yesterday"/>
@@ -558,10 +563,12 @@ const StyleGuidePanel = {
           <div class="board-view-month-label">September</div>
         </style-guide-specimen>
       </style-guide-section>
-      <style-guide-section
-        title="Heatmap"
-        note="Levels 0–4, then &quot;not scheduled&quot; and the future; the day statistics shade a day by its share of completed habits. The arrows lead to the other years of the history."
-      >
+      <style-guide-section title="Heatmap">
+        <template #note>
+          Levels 0–4, then "not scheduled" and the future; the day statistics
+          shade a day by its share of completed habits. The arrows lead to the
+          other years of the history.
+        </template>
         <style-guide-specimen label="data-level 0 … 4 · is-off · is-future">
           <div class="style-guide-panel-heatmap">
             <div
@@ -590,18 +597,19 @@ const StyleGuidePanel = {
             ></div>
           </div>
         </style-guide-specimen>
-        <style-guide-specimen label="AppYearNav">
-          <app-year-nav
+        <style-guide-specimen label="AppYearNavigation">
+          <app-year-navigation
             v-model:year="year"
             :first="years[0]"
             :last="years[1]"
           />
         </style-guide-specimen>
       </style-guide-section>
-      <style-guide-section
-        title="Messages"
-        note="In the running app toasts sit at the bottom right; here they stand in the flow."
-      >
+      <style-guide-section title="Messages">
+        <template #note>
+          In the running app toasts sit at the bottom right; here they stand in
+          the flow.
+        </template>
         <style-guide-specimen label=".toast-list-item">
           <div class="toast-list-item">
             <span class="toast-list-item-text">Habit deleted.</span>
@@ -628,10 +636,10 @@ const StyleGuidePanel = {
           </div>
         </style-guide-specimen>
       </style-guide-section>
-      <style-guide-section
-        title="Text"
-        note="The type sizes that appear outside the building blocks."
-      >
+      <style-guide-section title="Text">
+        <template #note>
+          The type sizes that appear outside the building blocks.
+        </template>
         <style-guide-specimen label="h2"><h2>Heading</h2></style-guide-specimen>
         <style-guide-specimen label=".board-block-title">
           <h2 class="board-block-title">Category</h2>

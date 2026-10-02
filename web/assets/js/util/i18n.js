@@ -22,6 +22,7 @@ export const locale = lang === 'de' ? 'de-DE' : 'en-GB';
 /**
  * German translations, keyed by the English text. An array holds singular and
  * plural, selected by `n`.
+ * @const {!Object<string, (string|!Array<string>)>}
  */
 const DE = {
   // ---------- shell: header, board, empty state ----------
@@ -534,6 +535,7 @@ const DE = {
  * writeError) and of the client's own network errors, keyed by code. The
  * server's English message is shown for codes missing here and in English.
  * Placeholders are filled from the problem's params.
+ * @const {!Object<string, string>}
  */
 const DE_ERRORS = {
   // Network and session (api.js).

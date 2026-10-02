@@ -63,12 +63,15 @@ function completeText(due) {
   return COMPLETE_TEXTS[pick](due);
 }
 
-/*
- * Ring geometry in viewBox units (0 0 40 40): radius, wave amplitude and number
- * of waves. RING_WAVES must be a whole number so the wave closes smoothly.
- */
+// Ring geometry in viewBox units (0 0 40 40).
+
+/** Radius of the ring. */
 const RING_R = 15.5;
+
+/** Amplitude of the ring's wave. */
 const RING_WAVE = 0.9;
+
+/** Number of waves around the ring; whole, so the wave closes smoothly. */
 const RING_WAVES = 16;
 
 /**
@@ -154,8 +157,6 @@ export const BoardDaySummary = {
 
     return {
       progress,
-      percent,
-      ringMax: computed(() => Math.max(100, percent.value)),
       bonusText: computed(
           () => progress.value.bonus > 0 ?
               t('+{n} bonus', {n: progress.value.bonus}) :
@@ -184,20 +185,17 @@ export const BoardDaySummary = {
     };
   },
   template: `
-    <section
+    <button
       class="board-day-summary"
       :class="{'is-complete': isComplete}"
       data-role="open-days"
-      role="button"
-      tabindex="0"
+      type="button"
       :title="t('Show day statistics')"
-      :aria-label="date + ' — ' + t('Show day statistics')"
       @click="$emit('open')"
-      @keydown.enter.space.prevent="$emit('open')"
     >
-      <div class="board-day-summary-text">
-        <h2 class="board-day-summary-date">{{ date }}</h2>
-        <p class="board-day-summary-count">
+      <span class="board-day-summary-text">
+        <span class="board-day-summary-date">{{ date }}</span>
+        <span class="board-day-summary-count">
           <template v-if="progress.due === 0">{{ t('Nothing due on this day') }}
           </template>
           <template v-else-if="progress.done < progress.due">
@@ -212,16 +210,11 @@ export const BoardDaySummary = {
           >
             {{ bonusText }}
           </span>
-        </p>
-      </div>
-      <div
+        </span>
+      </span>
+      <span
         v-if="progress.due > 0"
         class="board-day-summary-ring"
-        role="progressbar"
-        aria-valuemin="0"
-        :aria-valuemax="ringMax"
-        :aria-valuenow="percent"
-        :aria-label="t('Done on this day')"
       >
         <svg
           viewBox="0 0 40 40"
@@ -245,8 +238,8 @@ export const BoardDaySummary = {
         </svg>
         <span class="board-day-summary-percent">
           {{ Math.round(ring.to) }}%</span>
-      </div>
-    </section>`,
+      </span>
+    </button>`,
 };
 
 // ---------- ticking off: orbs into the ring ----------

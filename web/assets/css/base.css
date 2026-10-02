@@ -620,7 +620,7 @@ html[data-scrolled='on'] .board-view-day-header-backdrop {
 }
 
 .button:active {
-  transform: translateY(1px);
+  transform: translatey(1px);
 }
 
 .button.primary {

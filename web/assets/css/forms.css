@@ -74,7 +74,7 @@
 @keyframes page-in {
   from {
     opacity: 0;
-    transform: translateX(2.5rem);
+    transform: translatex(2.5rem);
   }
 }
 
@@ -86,7 +86,7 @@
 @keyframes sheet-in {
   from {
     opacity: 0;
-    transform: translateY(3rem);
+    transform: translatey(3rem);
   }
 }
 
@@ -904,7 +904,7 @@ html:has(.dialog.page[open]) {
 /* The icon tile takes the text colour, as a habit colour may clash with the
    accent. Not via --habit-color, which is set inline. */
 .category-picker-option[aria-selected='true'] .habit-icon {
-  background: color-mix(in srgb, currentColor 16%, transparent);
+  background: color-mix(in srgb, currentcolor 16%, transparent);
   color: inherit;
 }
 

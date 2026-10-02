@@ -12,7 +12,7 @@ import {AppBar} from '../ui/app-bar.js';
 import {colorValue, hasHabitIcon} from '../ui/icons.js';
 import {AppFactsPanel, AppStatRow, changedItem, createdItem, daysAgo, factItem, percent, rateLabel} from '../ui/stat-panels.js';
 import {hideTooltip} from '../ui/tooltip.js';
-import {AppYearGrid, AppYearNav, centreToday, currentYear, dayLabel, initChartTooltips, yearRange} from '../ui/year-grid.js';
+import {AppYearGrid, AppYearNavigation, centreToday, currentYear, dayLabel, initChartTooltips, yearRange} from '../ui/year-grid.js';
 import {addDays, dayOfMonth, formatDayMonth, formatFull, formatLong, MONTH_LONG, MONTH_SHORT, monthIndex} from '../util/dates.js';
 import * as habitHelpers from '../util/habit-helpers.js';
 import {t} from '../util/i18n.js';
@@ -153,7 +153,7 @@ function heatSquare(habit, iso) {
       habitHelpers.isBeforeStart(habit, iso);
   const skipped = !off && habitHelpers.isSkipped(habit, iso);
   const status = heatStatus(habit, iso, value);
-  const when = dayLabel(iso);
+  const when = dayLabel(iso, state.today);
 
   return {
     'class': [
@@ -440,7 +440,7 @@ export const TheHabitView = {
     AppFactsPanel,
     AppStatRow,
     AppYearGrid,
-    AppYearNav,
+    AppYearNavigation,
   },
   /** @return {!Object<string, *>} the bindings of the template */
   setup() {
@@ -572,7 +572,7 @@ export const TheHabitView = {
           :year="shownYear"
         />
         <section class="panel">
-          <app-year-nav
+          <app-year-navigation
             v-model:year="shownYear"
             :first="range[0]"
             :last="range[1]"

@@ -1083,7 +1083,6 @@ export const TheSettingsDialog = {
       </div>
     </settings-page>
     <dialog
-      id="delete-all-dialog"
       ref="deleteDialog"
       class="dialog compact"
       aria-labelledby="delete-all-title"

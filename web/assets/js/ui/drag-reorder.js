@@ -123,7 +123,7 @@ export function enableDragReorder(
   /** Moves the dragged element with the pointer, past the neighbours. */
   const follow = () => {
     const dy = offset();
-    drag.element.style.transform = `translateY(${dy}px)`;
+    drag.element.style.transform = `translatey(${dy}px)`;
     crossNeighbours(dy);
   };
 
@@ -197,7 +197,7 @@ export function enableDragReorder(
     const jump = element.getBoundingClientRect().top - before;
     // Compensate the layout jump caused by the DOM move.
     drag.startY += jump;
-    element.style.transform = `translateY(${dy - jump}px)`;
+    element.style.transform = `translatey(${dy - jump}px)`;
   };
 
   /**

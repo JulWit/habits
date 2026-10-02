@@ -523,10 +523,12 @@ html[data-scrolled='on'] .board-view-day-header-backdrop {
 }
 
 /* Today's summary between the day header and the first card, as wide as a card
-   surface. It opens the day statistics. */
+   surface. A button that opens the day statistics; it holds only spans, as a
+   button may not contain headings or paragraphs. */
 .board-day-summary {
   align-items: center;
   background: var(--surface);
+  border: 0;
   border-radius: var(--radius);
   cursor: pointer;
   display: flex;
@@ -534,6 +536,7 @@ html[data-scrolled='on'] .board-view-day-header-backdrop {
   justify-content: space-between;
   margin: 0 calc(var(--tools-outset) + 1px) 0 1px;
   padding: calc(0.7 * var(--space)) calc(var(--block-pad-x) + 0.55 * var(--space));
+  text-align: start;
   transition: var(--fill-fade);
 }
 
@@ -555,8 +558,11 @@ html[data-scrolled='on'] .board-view-day-header-backdrop {
   min-width: 0;
 }
 
+/* Set like the h2 it replaces. */
 .board-day-summary-date {
   font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
+  letter-spacing: -0.01em;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -566,7 +572,6 @@ html[data-scrolled='on'] .board-view-day-header-backdrop {
   color: var(--text-muted);
   font-size: var(--text-md);
   font-variant-numeric: tabular-nums;
-  margin: 0;
 }
 
 /* All habits due today are done. */
@@ -895,7 +900,7 @@ html[data-stacked] .board-view-day-header > .board-head-day {
 
 /* Disabled buttons are dimmed. */
 .board-view-day-nav .icon-button:disabled,
-.app-year-nav-buttons .icon-button:disabled {
+.app-year-navigation-buttons .icon-button:disabled {
   background: transparent;
   cursor: default;
   opacity: var(--disabled-opacity);
@@ -1561,7 +1566,7 @@ html[data-filtering='on'] {
 @keyframes menu-in {
   from {
     opacity: 0;
-    transform: translateY(-4px);
+    transform: translatey(-4px);
   }
 }
 
@@ -1679,7 +1684,7 @@ html[data-filtering='on'] {
 }
 
 /* The heading of the year heatmap with the arrows to other years. */
-.app-year-nav {
+.app-year-navigation {
   align-items: center;
   display: flex;
   gap: var(--space);
@@ -1687,11 +1692,11 @@ html[data-filtering='on'] {
   margin-bottom: calc(0.5 * var(--space));
 }
 
-.app-year-nav h3 {
+.app-year-navigation h3 {
   margin-bottom: 0;
 }
 
-.app-year-nav-buttons {
+.app-year-navigation-buttons {
   display: flex;
   gap: calc(0.25 * var(--space));
 }
@@ -1901,7 +1906,7 @@ html[data-filtering='on'] {
   gap: calc(0.5 * var(--space));
   left: 50%;
   position: fixed;
-  transform: translateX(-50%);
+  transform: translatex(-50%);
   z-index: 55;
 }
 
@@ -1920,7 +1925,7 @@ html[data-filtering='on'] {
 }
 
 .board-view-pill:active {
-  transform: translateY(1px);
+  transform: translatey(1px);
 }
 
 /* Room below the last row, so it can be scrolled clear of the buttons. */
@@ -1950,7 +1955,7 @@ html[data-filtering='on'] {
   gap: calc(0.5 * var(--space));
   left: 50%;
   position: fixed;
-  transform: translateX(-50%);
+  transform: translatex(-50%);
   width: min(28rem, calc(100vw - 2rem));
   z-index: 60;
 }
@@ -1979,7 +1984,7 @@ html[data-filtering='on'] {
 @keyframes toast-in {
   from {
     opacity: 0;
-    transform: translateY(0.5rem);
+    transform: translatey(0.5rem);
   }
 
   to {
@@ -2270,7 +2275,7 @@ html[data-filtering='on'] {
   font-style: normal;
   left: 50%;
   position: absolute;
-  transform: translateX(-50%);
+  transform: translatex(-50%);
   white-space: nowrap;
 }
 

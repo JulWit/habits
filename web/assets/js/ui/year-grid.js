@@ -49,11 +49,12 @@ export function streakLabel(year) {
  * Returns the label of a day of the year grid: its full date, and for today
  * "Today" before it.
  * @param {string} iso
+ * @param {string} today
  * @return {string}
  */
-export function dayLabel(iso) {
+export function dayLabel(iso, today) {
   const date = formatFull(iso);
-  return iso === state.today ? t('Today, {date}', {date}) : date;
+  return iso === today ? t('Today, {date}', {date}) : date;
 }
 
 /**
@@ -70,8 +71,8 @@ export function sinceLabel(from) {
  * The heading of a year panel, "Year 2026", with arrows to the years before and
  * after, from `first` to `last`. `year` is bound with v-model:year.
  */
-export const AppYearNav = {
-  name: 'AppYearNav',
+export const AppYearNavigation = {
+  name: 'AppYearNavigation',
   props: {
     year: {type: String, required: true},
     first: {type: Number, required: true},
@@ -109,10 +110,10 @@ export const AppYearNav = {
   template: `
     <div
       ref="el"
-      class="app-year-nav"
+      class="app-year-navigation"
     >
       <h3>{{ t('Year {year}', {year}) }}</h3>
-      <div class="app-year-nav-buttons">
+      <div class="app-year-navigation-buttons">
         <button
           type="button"
           class="icon-button"
@@ -234,17 +235,18 @@ function dayStatus(due, done, ahead) {
  * habits.
  * @param {string} iso
  * @param {{due: number, done: number, bonus: number}} total
+ * @param {string} today
  * @return {!Object<string, *>} the attributes
  */
-function daySquare(iso, {due, done, bonus}) {
-  const ahead = iso > state.today;
+function daySquare(iso, {due, done, bonus}, today) {
+  const ahead = iso > today;
   const counted = !ahead && due > 0;
   const bonusText = bonus > 0 ? ` · ${t('+{n} bonus', {n: bonus})}` : '';
   const status = dayStatus(due, done, ahead) + bonusText;
   return {
     'class': [
       'heatmap-day',
-      iso === state.today && 'is-today',
+      iso === today && 'is-today',
       ahead && 'is-future',
       !ahead && due === 0 && 'is-off',
       counted && done === due && 'is-perfect',
@@ -253,14 +255,15 @@ function daySquare(iso, {due, done, bonus}) {
     'data-date': iso,
     'data-status': status,
     'role': 'img',
-    'aria-label': `${dayLabel(iso)} — ${status}`,
+    'aria-label': `${dayLabel(iso, today)} — ${status}`,
   };
 }
 
 /**
  * The heatmap of the day statistics of `year`: each day shaded by its share
  * of completed habits, from the totals of GET /api/days, with its legend.
- * Used by the day statistics and the category view.
+ * `today` marks the current day and the future. Used by the day statistics
+ * and the category view.
  */
 export const AppDayHeatmap = {
   name: 'AppDayHeatmap',
@@ -268,17 +271,20 @@ export const AppDayHeatmap = {
   props: {
     year: {type: String, required: true},
     totals: {type: Array, required: true},
+    today: {type: String, required: true},
   },
   /**
-   * @param {{year: string, totals: !Array<!Object>}} props
+   * @param {{year: string, totals: !Array<!DayTotal>, today: string}} props
    * @return {!Object<string, *>} the bindings of the template
    */
   setup(props) {
     const byDate = computed(
         () => new Map(props.totals.map((total) => [total.date, total])));
     return {
-      square: (iso) =>
-          daySquare(iso, byDate.value.get(iso) ?? {due: 0, done: 0, bonus: 0}),
+      square: (iso) => daySquare(
+          iso,
+          byDate.value.get(iso) ?? {due: 0, done: 0, bonus: 0},
+          props.today),
       legendRange: computed(
           () => `${formatDayMonth(`${props.year}-01-01`)} – ` +
               `${formatDayMonth(`${props.year}-12-31`)} ${props.year}`),

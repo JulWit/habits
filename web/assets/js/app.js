@@ -97,7 +97,7 @@ const App = {
             viewBox="0 0 24 24"
             aria-hidden="true"
             fill="none"
-            stroke="currentColor"
+            stroke="currentcolor"
             stroke-width="2.4"
           >
             <path d="M2.98 15.28A9.6 9.6 0 1 1 21.02 15.28"/>
@@ -124,7 +124,6 @@ const App = {
             {{ syncStatus.text }}
           </span>
           <button
-            id="add-habit"
             class="icon-button"
             type="button"
             :title="t('New habit')"
@@ -134,7 +133,6 @@ const App = {
             <app-icon name="plus"/>
           </button>
           <button
-            id="open-search"
             class="icon-button"
             type="button"
             :title="searchTitle"

@@ -8,6 +8,7 @@
 
 import {HABIT_ICONS} from './icons.js';
 
+/** SVG attributes of the faint grey every pattern is drawn in. */
 const INK = 'color="#808080" fill="#808080" opacity=".12"';
 
 /**
@@ -33,9 +34,17 @@ function tile(width, height, shapes) {
 // Icon grid: every habit icon at least once per tile, in rows of COLS, each
 // second row shifted by half a column. A last row not filled by the icons is
 // completed with the first ones again.
+
+/** Number of icons per row of the icon grid. */
 const COLS = 8;
+
+/** Horizontal distance between the icons of a row, in px. */
 const STEP_X = 76;
+
+/** Vertical distance between the rows, in px. */
 const STEP_Y = 66;
+
+/** Size of an icon, in px. */
 const ICON = 22;
 
 /**
@@ -74,8 +83,14 @@ function iconTile() {
 
 // Halftone: a staggered dot grid whose dots swell and shrink in diagonal
 // waves, one wave per tile in each direction, so the tile repeats seamlessly.
+
+/** Distance between the dots, in px. */
 const DOT_STEP = 16;
+
+/** Size of the square halftone tile, in px; a multiple of DOT_STEP. */
 const HALFTONE_TILE = 256;
+
+/** Radius of the largest dot, at the crest of a wave, in px. */
 const DOT_MAX = 5.2;
 
 /**

@@ -17,9 +17,12 @@ import {computed, nextTick, onBeforeUpdate, onMounted, onUpdated, reactive, ref,
 import {BoardDayCell, BoardHabitLabel, BoardHeadDay} from './board-cells.js';
 import {BoardDaySummary, dayProgress, initSummary, launchOrbs, newlyDone} from './day-summary.js';
 
+/** How long a cell is pressed to open its value dialog, in milliseconds. */
 const LONG_PRESS_MS = 450;
 
-// Number of additional days loaded when paging back beyond the loaded entries.
+/**
+ * Number of additional days loaded when paging back beyond the loaded entries.
+ */
 const PREFETCH_DAYS = 180;
 
 /** Maximum number of days the board can be paged into the future. */
@@ -1262,14 +1265,12 @@ export const TheBoardView = {
       </template>
     </div>
     <p
-      id="board-no-match"
       class="empty"
       :hidden="!noMatch"
     >
       {{ t('Nothing left open on this day.') }}
     </p>
     <div
-      id="board-empty"
       class="empty"
       :hidden="all.length > 0"
     >

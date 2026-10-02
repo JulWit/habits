@@ -14,7 +14,7 @@ import {AppBar} from '../ui/app-bar.js';
 import {colorValue, hasHabitIcon} from '../ui/icons.js';
 import {AppFactsPanel, AppStatRow, changedItem, createdItem, factItem, percent, rateLabel} from '../ui/stat-panels.js';
 import {hideTooltip} from '../ui/tooltip.js';
-import {AppDayHeatmap, AppYearNav, centreToday, currentYear, initChartTooltips, sinceLabel, streakLabel, yearRange} from '../ui/year-grid.js';
+import {AppDayHeatmap, AppYearNavigation, centreToday, currentYear, initChartTooltips, sinceLabel, streakLabel, yearRange} from '../ui/year-grid.js';
 import * as habitHelpers from '../util/habit-helpers.js';
 import {t} from '../util/i18n.js';
 import {computed, nextTick, onMounted, ref, watch} from '../vue.js';
@@ -87,7 +87,8 @@ function shortStreak({currentStreak, streakUnit}) {
  */
 export const TheCategoryView = {
   name: 'TheCategoryView',
-  components: {AppBar, AppDayHeatmap, AppFactsPanel, AppStatRow, AppYearNav},
+  components:
+      {AppBar, AppDayHeatmap, AppFactsPanel, AppStatRow, AppYearNavigation},
   /** @return {!Object<string, *>} the bindings of the template */
   setup() {
     const root = ref(null);
@@ -131,6 +132,7 @@ export const TheCategoryView = {
 
     return {
       root,
+      state,
       category,
       colorValue,
       hasHabitIcon,
@@ -240,7 +242,7 @@ export const TheCategoryView = {
           v-if="habits.length > 0"
           class="panel"
         >
-          <app-year-nav
+          <app-year-navigation
             v-model:year="shownYear"
             :first="range[0]"
             :last="range[1]"
@@ -249,6 +251,7 @@ export const TheCategoryView = {
             v-if="days"
             :year="String(days.year)"
             :totals="days.totals"
+            :today="state.today"
           />
         </section>
         <app-facts-panel

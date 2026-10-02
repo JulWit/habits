@@ -47,8 +47,8 @@ function sessionExpired(res) {
  * @param {string} method
  * @param {string} path
  * @param {*=} body
- * @return {!Promise<*>} the answer, with `changeId` if the write recorded an
- *     undo step
+ * @return {!Promise<?Object<string, *>>} the answer, with `changeId` if the
+ *     write recorded an undo step
  * @throws {!ApiError}
  */
 async function request(method, path, body) {
@@ -103,9 +103,10 @@ async function request(method, path, body) {
  * Adds the undo step a write recorded (the Change-Id header) to its answer as
  * `changeId`, for the undo button. An answer without a body becomes an object
  * holding only that.
- * @param {*} data
+ * @param {?Object<string, *>} data the parsed answer; every answer of the API
+ *     is a JSON object, null without a body
  * @param {?string} changeId
- * @return {*}
+ * @return {?Object<string, *>}
  */
 function withChange(data, changeId) {
   if (!changeId) return data;

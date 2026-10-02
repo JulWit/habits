@@ -159,10 +159,17 @@ export let Totals;
 export let DayStats;
 
 /**
+ * The habits due and done on one day (domain.DayTotal); `bonus` counts those
+ * done beyond what their week or month needs.
+ * @typedef {{date: string, due: number, done: number, bonus: number}}
+ */
+export let DayTotal;
+
+/**
  * The days of a year as GET /api/days sends them.
  * @typedef {{
  *   year: number,
- *   totals: !Array<{date: string, due: number, done: number}>,
+ *   totals: !Array<!DayTotal>,
  *   stats: !DayStats,
  *   habits: number,
  *   expected: number,

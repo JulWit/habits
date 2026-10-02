@@ -8,7 +8,10 @@
 
 import {t} from '../util/i18n.js';
 
+/** Prefix of the localStorage key of a user's outbox. */
 const OUTBOX = 'habits.outbox';
+
+/** Prefix of the localStorage keys of the remembered state and its user. */
 const STATE = 'habits.state';
 
 /**

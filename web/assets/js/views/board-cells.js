@@ -11,8 +11,9 @@ import * as habitHelpers from '../util/habit-helpers.js';
 import {t} from '../util/i18n.js';
 import {computed} from '../vue.js';
 
+/** The check mark of a completed check habit's cell, as SVG markup. */
 const CHECK_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path
-    d="M5 12.5 10 17.5 19 7" fill="none" stroke="currentColor" stroke-width="3"
+    d="M5 12.5 10 17.5 19 7" fill="none" stroke="currentcolor" stroke-width="3"
     stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 
 /**

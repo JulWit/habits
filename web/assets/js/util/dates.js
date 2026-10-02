@@ -5,6 +5,7 @@
 
 import {lang, t, userTimeZone} from './i18n.js';
 
+/** Milliseconds per day; dates are computed in UTC, which has no DST. */
 const DAY_MS = 86400000;
 
 /**
@@ -72,7 +73,12 @@ export function startOfWeek(iso) {
   return addDays(iso, -weekdayIndex(iso));
 }
 
-// Weekday and month names per language, short enough for a day column.
+/**
+ * Weekday and month names in the UI language, the short ones short enough for
+ * a day column.
+ * @const {{weekdayShort: !Array<string>, weekdayLong: !Array<string>,
+ *     monthShort: !Array<string>, monthLong: !Array<string>}}
+ */
 const NAMES = {
   en: {
     weekdayShort: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
@@ -156,9 +162,28 @@ const NAMES = {
   },
 }[lang];
 
+/**
+ * Short weekday names, Monday first.
+ * @const {!Array<string>}
+ */
 export const WEEKDAY_SHORT = NAMES.weekdayShort;
+
+/**
+ * Full weekday names, Monday first.
+ * @const {!Array<string>}
+ */
 export const WEEKDAY_LONG = NAMES.weekdayLong;
+
+/**
+ * Short month names, January first.
+ * @const {!Array<string>}
+ */
 export const MONTH_SHORT = NAMES.monthShort;
+
+/**
+ * Full month names, January first.
+ * @const {!Array<string>}
+ */
 export const MONTH_LONG = NAMES.monthLong;
 
 /**

@@ -1,5 +1,5 @@
 /**
- * @fileoverview Inline SVG icons. They use currentColor. The markup is
+ * @fileoverview Inline SVG icons. They use currentcolor. The markup is
  * constant, so it is safe to assign with innerHTML.
  */
 
@@ -12,7 +12,7 @@ import {computed, h} from '../vue.js';
  * @return {string}
  */
 const draw = (body) => `<svg viewBox="0 0 24 24" aria-hidden="true"
-    fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"
+    fill="none" stroke="currentcolor" stroke-width="1.9" stroke-linecap="round"
     stroke-linejoin="round">${body}</svg>`;
 
 /**
@@ -89,7 +89,7 @@ const ICONS = {
 
   // Current streak. Filled, to be distinguishable from the flame habit icon.
   streak: draw(
-      '<path fill="currentColor" stroke="none" fill-rule="evenodd" d="' +
+      '<path fill="currentcolor" stroke="none" fill-rule="evenodd" d="' +
           'M12 22C7.6 22 4.8 19 4.8 15.2 4.8 12 6.6 9.9 8.4 8.2 8.6 10' +
           ' 9.4 11.2 10.6 11.8' +
           ' 10.4 8 11.8 4.6 14.6 2.4 15 5.4 16.4 7.4 17.7 9.1 18.8 10.6' +
@@ -145,16 +145,16 @@ const ICONS = {
 
   // Three dots: the overflow menu of a title bar.
   moreVertical: draw(
-      '<circle cx="12" cy="5.5" r=".9" fill="currentColor"/>' +
-          '<circle cx="12" cy="12" r=".9" fill="currentColor"/>' +
-          '<circle cx="12" cy="18.5" r=".9" fill="currentColor"/>',
+      '<circle cx="12" cy="5.5" r=".9" fill="currentcolor"/>' +
+          '<circle cx="12" cy="12" r=".9" fill="currentcolor"/>' +
+          '<circle cx="12" cy="18.5" r=".9" fill="currentcolor"/>',
       ),
 
   chevron: draw('<path d="M6 9.5 12 15.5l6-6"/>'),
 
   // Drag handle: two columns of dots.
   grip: draw(
-      '<g fill="currentColor" stroke="none">' +
+      '<g fill="currentcolor" stroke="none">' +
           '<circle cx="9" cy="6" r="1.4"/><circle cx="15" cy="6" r="1.4"/>' +
           '<circle cx="9" cy="12" r="1.4"/><circle cx="15" cy="12" r="1.4"/>' +
           '<circle cx="9" cy="18" r="1.4"/><circle cx="15" cy="18" r="1.4"/>' +
@@ -173,7 +173,7 @@ const ICONS = {
   toToday: draw(
       '<rect x="3.4" y="5.2" width="17.2" height="15.4" rx="2.2"/>' +
           '<path d="M8 2.9v4.2M16 2.9v4.2M3.4 10.2h17.2"/>' +
-          '<circle cx="12" cy="15.6" r="1.9" fill="currentColor" ' +
+          '<circle cx="12" cy="15.6" r="1.9" fill="currentcolor" ' +
           'stroke="none"/>',
       ),
 
@@ -210,6 +210,7 @@ const ICONS = {
 /**
  * Drawings of the habit icons, keyed by the names in domain.HabitIcons. Names
  * without a drawing are not offered.
+ * @const {!Object<string, string>}
  */
 export const HABIT_ICONS = {
   droplet: draw(
@@ -343,8 +344,11 @@ export const HABIT_ICONS = {
   check: ICONS.check,
 };
 
-// Names of the icons and colours, for screen readers and tooltips. Missing
-// entries fall back to the identifier.
+/**
+ * English names of the habit icons, for screen readers and tooltips. Missing
+ * entries fall back to the identifier.
+ * @const {!Object<string, string>}
+ */
 const ICON_LABELS = {
   droplet: 'Water drop',
   apple: 'Apple',
@@ -387,6 +391,10 @@ const ICON_LABELS = {
   check: 'Check mark',
 };
 
+/**
+ * English names of the palette colours, for screen readers and tooltips.
+ * @const {!Object<string, string>}
+ */
 const COLOR_LABELS = {
   red: 'Red',
   orange: 'Orange',

@@ -276,6 +276,7 @@ const DE = {
   'The import was undone.': 'Der Import wurde rückgängig gemacht.',
   'The file is not an export of the habits.':
       'Die Datei ist kein Export der Gewohnheiten.',
+  'The file is larger than {max} MB.': 'Die Datei ist größer als {max} MB.',
   '1 habit imported.': '1 Gewohnheit importiert.',
   '{n} habits imported.': '{n} Gewohnheiten importiert.',
   '1 habit imported': '1 Gewohnheit importiert',

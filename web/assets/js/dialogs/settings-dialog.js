@@ -417,10 +417,20 @@ export const TheSettingsDialog = {
       importResult.value = '';
       importChange.value = 0;
 
+      // Checked here, as the server would end the connection during the
+      // upload of a larger file, which reads like a lost connection.
+      if (file.size > MAX_IMPORT_MB * 1024 * 1024) {
+        report(t('The file is larger than {max} MB.', {max: MAX_IMPORT_MB}));
+        return;
+      }
       let data;
       try {
         data = JSON.parse(await file.text());
       } catch {
+        data = null;
+      }
+      // An export is a JSON object; anything else is no export at all.
+      if (data === null || typeof data !== 'object' || Array.isArray(data)) {
         report(t('The file is not an export of the habits.'));
         return;
       }
@@ -1106,6 +1116,9 @@ export const TheSettingsDialog = {
       </form>
     </dialog>`,
 };
+
+/** Largest import file in MB, as the server's maxImportBytes. */
+const MAX_IMPORT_MB = 16;
 
 /** Opens the settings. */
 export function openSettings() {

@@ -146,8 +146,11 @@ immediately. Missing or invalid values fall back to their defaults.
 
 **Day columns**: "Automatic" shows as many days as fit. A fixed number is an
 upper limit; the dialog shows how many are actually displayed. At least seven
-days are shown: if they do not fit, the board is compacted (`data-tight`, set
-in `board-view.js`). A fixed number below seven is respected.
+days are shown: if they do not fit, the board is stacked, each habit's name
+on a line of its own above its days, which then share the whole width
+(`data-stacked`, set in `board-view.js`), as long as the days keep at least
+their normal width for touch; otherwise names and days shrink side by side
+(`data-tight`). A fixed number below seven is respected.
 
 **Language**: The server sets `<html lang>`; `web/assets/js/util/i18n.js`
 translates using the English text as key (`t('New habit')`). Untranslated

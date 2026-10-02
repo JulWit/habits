@@ -28,6 +28,12 @@ const MAX_AHEAD_DAYS = 365;
 /** Minimum number of day columns. */
 const MIN_DAYS = 7;
 
+/**
+ * Widest day column of a stacked board, in px: the touch target size of
+ * Material Design (48dp), more than Apple's 44pt.
+ */
+const STACKED_CELL_MAX = 48;
+
 /** The board element (#board-grid), once mounted. @type {?HTMLElement} */
 let board = null;
 
@@ -252,23 +258,40 @@ function visibleDays(width) {
 /** Resets the board to its normal sizes. */
 function loosen() {
   const root = document.documentElement;
-  if (!root.hasAttribute('data-tight')) return;
+  if (!root.hasAttribute('data-tight') && !root.hasAttribute('data-stacked')) {
+    return;
+  }
   root.removeAttribute('data-tight');
+  root.removeAttribute('data-stacked');
   root.style.removeProperty('--cell');
   root.style.removeProperty('--label-min');
 }
 
 /**
- * Shrinks the board so that `count` columns fit into `width`: first the day
- * columns down to --cell-tight-min, then the name column down to
- * --label-tight-min. Sets data-tight and the size tokens on <html>.
+ * Fits `count` columns into `width`. Preferably the board is stacked: each
+ * habit's name takes a line of its own above its days, which then share the
+ * whole width (data-stacked), as long as that keeps the days at least at
+ * their normal size, for touch. Otherwise the names stay beside the days, and
+ * both shrink: first the day columns down to --cell-tight-min, then the name
+ * column down to --label-tight-min (data-tight). Sets the size tokens on
+ * <html>.
  * @param {number} width
  * @param {number} count
  */
 function tighten(width, count) {
   const root = document.documentElement;
-  root.setAttribute('data-tight', '');
   const room = roomForColumns(width);
+
+  // Stacked, the name column has no width; each day column keeps its gap.
+  const stacked = Math.min(STACKED_CELL_MAX, Math.floor(room / count) - 2);
+  if (stacked >= token('--cell')) {
+    root.setAttribute('data-stacked', '');
+    root.style.setProperty('--cell', `${stacked}px`);
+    root.style.setProperty('--label-min', '0px');
+    return;
+  }
+
+  root.setAttribute('data-tight', '');
 
   // The widest cell that leaves the name column its minimum width.
   const widest = Math.floor((room - token('--label-tight-min')) / count) - 2;
@@ -339,6 +362,33 @@ export function toggleFilter() {
   } catch {
     // Not kept.
   }
+}
+
+/**
+ * How long a habit just changed on the board stays shown while filtering,
+ * after the last change, in ms. Without the delay, a row completed by a tap
+ * would vanish at once and the next row move under the finger, which a quick
+ * second tap would then change.
+ */
+const LINGER_MS = 2000;
+
+/**
+ * The habits just changed on the board, which the filter keeps showing until
+ * their timer runs out; the timers by habit ID.
+ * @type {!Map<string, number>}
+ */
+const lingering = reactive(new Map());
+
+/**
+ * Keeps a habit shown for LINGER_MS from now, though the filter would hide
+ * it, as its row was just changed.
+ * @param {string} habitId
+ */
+function linger(habitId) {
+  if (!onlyOpen.value) return;
+  clearTimeout(lingering.get(habitId));
+  lingering.set(
+      habitId, setTimeout(() => lingering.delete(habitId), LINGER_MS));
 }
 
 /**

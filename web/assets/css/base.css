@@ -230,9 +230,10 @@ html[data-density='comfortable'] {
 
 /* ---------- a tight board ----------
 
-   If seven columns do not fit, board-view.js sets data-tight on <html> and
-   smaller --cell and --label-min values inline. These are the lower bounds, in
-   px. */
+   If seven columns do not fit, board-view.js stacks the board (data-stacked:
+   the names above the days) if the days keep at least their normal width, or
+   else sets data-tight, and smaller --cell and --label-min values inline.
+   These are the lower bounds of a tight board, in px. */
 :root {
   --label-tight-min: 76px;
   --cell-tight-min: 22px;

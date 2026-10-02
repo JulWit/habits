@@ -840,6 +840,59 @@ html[data-tight] .board-habit-row-tools .icon-button svg {
   width: 0.95rem;
 }
 
+/* ---------- a stacked board ----------
+
+   Set by board-view.js on narrow screens instead of a tight board, as long as
+   the days keep at least their normal width (see base.css): each habit's name
+   takes a line of its own above its days, and the name column has no width.
+   The day header gets a row of its own for the paging buttons. */
+html[data-stacked] .board-habit-row-label {
+  grid-column: 1 / -1;
+}
+
+/* The days start after the empty name column. */
+html[data-stacked] .board-habit-row-label + .board-day-cell {
+  grid-column-start: 2;
+}
+
+/* Name and streak on one line, without the icon, so the extra line stays
+   short. */
+html[data-stacked] .board-habit-label .habit-icon {
+  display: none;
+}
+
+html[data-stacked] .board-habit-label {
+  padding-block: calc(0.35 * var(--space)) 0;
+}
+
+html[data-stacked] .board-habit-label .board-habit-label-text {
+  align-items: baseline;
+  flex-direction: row;
+  gap: calc(0.5 * var(--space));
+  justify-content: flex-start;
+  /* One line, not the two of name and streak. */
+  min-height: 0;
+}
+
+html[data-stacked] .habit-meta {
+  flex: none;
+}
+
+html[data-stacked] .board-view-day-nav {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  justify-content: space-between;
+  padding-bottom: 0;
+}
+
+html[data-stacked] .board-view-day-header > .board-view-month-label {
+  grid-row: 2;
+}
+
+html[data-stacked] .board-view-day-header > .board-head-day {
+  grid-row: 3;
+}
+
 /* Disabled buttons are dimmed. */
 .board-view-day-nav .icon-button:disabled,
 .app-year-nav-buttons .icon-button:disabled {

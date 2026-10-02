@@ -239,6 +239,54 @@ func TestImportReusesCategoriesByName(t *testing.T) {
 	}
 }
 
+// Categories that share a name stay apart: importing an export of two of them
+// restores both, each with its habits, and importing it again adds neither.
+func TestImportKeepsCategoriesOfTheSameNameApart(t *testing.T) {
+	h := newTestServer(t)
+	var green, red struct{ ID string }
+	if err := json.Unmarshal(mustDo(t, h, "POST", "/api/categories", `{"name":"Sport","color":"green"}`, http.StatusCreated), &green); err != nil {
+		t.Fatalf("json.Unmarshal(POST /api/categories): %v", err)
+	}
+	if err := json.Unmarshal(mustDo(t, h, "POST", "/api/categories", `{"name":"Sport","color":"red"}`, http.StatusCreated), &red); err != nil {
+		t.Fatalf("json.Unmarshal(POST /api/categories): %v", err)
+	}
+	mustDo(t, h, "POST", "/api/habits", `{"name":"Run","kind":"check","frequency":{"kind":"daily"},"categoryId":"`+green.ID+`"}`, http.StatusCreated)
+	mustDo(t, h, "POST", "/api/habits", `{"name":"Yoga","kind":"check","frequency":{"kind":"daily"},"categoryId":"`+red.ID+`"}`, http.StatusCreated)
+	file := mustDo(t, h, "GET", "/api/export", "", http.StatusOK)
+	mustDo(t, h, "DELETE", "/api/data", "", http.StatusNoContent)
+
+	var result importResult
+	if err := json.Unmarshal(mustDo(t, h, "POST", "/api/import", string(file), http.StatusOK), &result); err != nil {
+		t.Fatalf("json.Unmarshal(POST /api/import): %v", err)
+	}
+	if result != (importResult{Habits: 2, Categories: 2}) {
+		t.Errorf("import = %+v, want 2 habits and 2 categories", result)
+	}
+	var state struct {
+		Categories []struct{ ID, Color string }
+		Habits     []struct{ Name, CategoryID string }
+	}
+	if err := json.Unmarshal(mustDo(t, h, "GET", "/api/state", "", http.StatusOK), &state); err != nil {
+		t.Fatalf("json.Unmarshal(GET /api/state): %v", err)
+	}
+	colorOf := map[string]string{}
+	for _, c := range state.Categories {
+		colorOf[c.ID] = c.Color
+	}
+	for _, hb := range state.Habits {
+		if want := map[string]string{"Run": "green", "Yoga": "red"}[hb.Name]; colorOf[hb.CategoryID] != want {
+			t.Errorf("%s is in the %s category, want %s", hb.Name, colorOf[hb.CategoryID], want)
+		}
+	}
+
+	if err := json.Unmarshal(mustDo(t, h, "POST", "/api/import", string(file), http.StatusOK), &result); err != nil {
+		t.Fatalf("json.Unmarshal(POST /api/import): %v", err)
+	}
+	if result != (importResult{Skipped: 2}) {
+		t.Errorf("second import = %+v, want both habits skipped and no category", result)
+	}
+}
+
 // Deleting the data leaves an empty board with the default settings.
 func TestDeleteDataEmptiesTheBoard(t *testing.T) {
 	h := newTestServer(t)

@@ -171,7 +171,9 @@ func (p importProblem) Unwrap() error { return p.err }
 // habits' schedules and entries. The import is one undo step.
 //
 // Categories are matched by name: a habit joins an existing category of the
-// same name, and only missing categories are created. Habits whose name is
+// same name, and only missing categories are created. Each existing category
+// stands in for one category of the file, so categories that share a name
+// stay apart, and importing a file twice adds none. Habits whose name is
 // already taken are skipped, so importing a file twice adds nothing. Nothing
 // is saved if any habit or category is invalid.
 func (s *server) handleImport(w http.ResponseWriter, r *http.Request, user auth.User) {
@@ -227,22 +229,23 @@ func importFile(ctx context.Context, tx *store.Tx, in exportFile, today domain.D
 		return importResult{}, err
 	}
 
-	// Category IDs by normalised name, and by key in the file.
-	catByName := map[string]string{}
+	// The existing categories not yet matched, by normalised name in their
+	// order, and the category IDs by key in the file.
+	unmatched := map[string][]string{}
 	for _, c := range existingCats {
-		catByName[nameKey(c.Name)] = c.ID
+		unmatched[nameKey(c.Name)] = append(unmatched[nameKey(c.Name)], c.ID)
 	}
 	catByKey := map[string]string{}
 	for _, ec := range in.Categories {
-		if id, ok := catByName[nameKey(ec.Name)]; ok {
-			catByKey[ec.Key] = id
+		if ids := unmatched[nameKey(ec.Name)]; len(ids) > 0 {
+			catByKey[ec.Key] = ids[0]
+			unmatched[nameKey(ec.Name)] = ids[1:]
 			continue
 		}
 		c := domain.Category{Name: ec.Name, Icon: ec.Icon, Color: ec.Color, ShowProgress: ec.ShowProgress}
 		if err := tx.CreateCategory(ctx, &c); err != nil {
 			return importResult{}, importProblem{err: err, param: "category", name: ec.Name}
 		}
-		catByName[nameKey(c.Name)] = c.ID
 		catByKey[ec.Key] = c.ID
 		result.Categories++
 	}

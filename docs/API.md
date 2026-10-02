@@ -26,7 +26,7 @@ only `/healthz` outside `/api` does not.
 | `POST` | `/api/redo` | Redo the step `id`, or the one undone last |
 | `GET`/`PATCH` | `/api/settings` | Settings, see [USAGE.md](USAGE.md#settings) |
 | `GET` | `/api/export` | Habits (archived ones included) with their schedules and entries, and the categories, as a file |
-| `POST` | `/api/import` | Add the habits and categories of an export (up to 16 MB) with their history; habits whose name exists are skipped, categories are matched by name; all or nothing, one undo step |
+| `POST` | `/api/import` | Add the habits and categories of an export (up to 16 MB) with their history; habits whose name exists are skipped, categories are matched by name, each existing one to one category of the file; all or nothing, one undo step |
 | `DELETE` | `/api/data` | Delete all of the user's data (habits, entries, categories, settings, undo steps); cannot be undone |
 
 Writing endpoints require `Content-Type: application/json`. This forces a CORS

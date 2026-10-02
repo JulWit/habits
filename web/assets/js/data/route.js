@@ -92,6 +92,15 @@ function replaceWithOverview() {
 }
 
 /**
+ * Reports whether the state has been loaded. Before, a habit or category the
+ * URL names, e.g. after a reload of its view, may yet exist.
+ * @return {boolean}
+ */
+function stateLoaded() {
+  return state.today !== '';
+}
+
+/**
  * Shows the view `name`.
  * @param {string} name
  * @param {?string=} id the habit or category shown
@@ -123,8 +132,8 @@ export function syncRoute() {
       show('category', categoryId);
       return;
     }
-    // The category no longer exists.
-    replaceWithOverview();
+    // The category no longer exists; before the state is loaded, it may yet.
+    if (stateLoaded()) replaceWithOverview();
   }
 
   const habitId = currentHabitId();
@@ -137,7 +146,7 @@ export function syncRoute() {
       return;
     }
     // The habit no longer exists; before the state is loaded, it may yet.
-    if (state.habits.length > 0) replaceWithOverview();
+    if (stateLoaded()) replaceWithOverview();
   }
 
   show('board');

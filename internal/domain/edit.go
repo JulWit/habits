@@ -5,8 +5,9 @@ import "time"
 // EntryHorizonDays is how many days after today an entry may be dated.
 const EntryHorizonDays = 365
 
-// EarliestEntry is the earliest date an entry may have.
-var EarliestEntry = Date{Year: 2000, Month: time.January, Day: 1}
+// EarliestEntry returns the earliest date an entry may have. It is a function
+// rather than a variable, which another package could change.
+func EarliestEntry() Date { return Date{Year: 2000, Month: time.January, Day: 1} }
 
 // HabitEdit is a change of a habit as the editor saves it, and the request
 // body of creating and editing one. Nil fields are left unchanged.

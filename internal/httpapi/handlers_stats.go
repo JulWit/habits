@@ -20,7 +20,7 @@ func statsYear(r *http.Request, today domain.Date) (int, error) {
 		return today.Year, nil
 	}
 	year, err := strconv.Atoi(v)
-	if err != nil || year < domain.EarliestEntry.Year || year > today.Year {
+	if err != nil || year < domain.EarliestEntry().Year || year > today.Year {
 		return 0, domain.Invalid("invalid_year", "invalid year")
 	}
 	return year, nil

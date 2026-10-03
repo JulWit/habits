@@ -95,11 +95,11 @@ func checkEntryDay(h domain.Habit, date, today domain.Date, change domain.EntryC
 // checkRecordDate returns an error unless something may be recorded on date:
 // not before domain.EarliestEntry and within checkEntryHorizon.
 func checkRecordDate(date, today domain.Date) error {
-	if date.Before(domain.EarliestEntry) {
+	if date.Before(domain.EarliestEntry()) {
 		// The year is passed as a string so the client does not format it as
 		// a number.
 		return domain.Invalid("entry_too_early",
-			"entries may not be dated before {year}", "year", strconv.Itoa(domain.EarliestEntry.Year))
+			"entries may not be dated before {year}", "year", strconv.Itoa(domain.EarliestEntry().Year))
 	}
 	return checkEntryHorizon(date, today)
 }

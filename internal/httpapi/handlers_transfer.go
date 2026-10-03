@@ -276,10 +276,10 @@ func importFile(ctx context.Context, tx *store.Tx, in exportFile, today domain.D
 // slow.
 func importHabit(ctx context.Context, tx *store.Tx, eh exportHabit, catByKey map[string]string, today domain.Date) error {
 	for _, s := range eh.Schedules {
-		if s.From.Before(domain.EarliestEntry) || s.From.After(today.AddDays(domain.EntryHorizonDays)) {
+		if s.From.Before(domain.EarliestEntry()) || s.From.After(today.AddDays(domain.EntryHorizonDays)) {
 			return domain.Invalid("schedule_start_out_of_range",
 				"schedules may not start before {year} or more than one year ahead",
-				"year", strconv.Itoa(domain.EarliestEntry.Year))
+				"year", strconv.Itoa(domain.EarliestEntry().Year))
 		}
 	}
 	h := domain.Habit{

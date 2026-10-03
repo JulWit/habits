@@ -124,7 +124,7 @@ func (s *server) handleState(w http.ResponseWriter, r *http.Request, user auth.U
 		Icons:          domain.HabitIcons(),
 		Kinds:          domain.KindDescriptors(),
 		EntriesFrom:    from,
-		EarliestEntry:  domain.EarliestEntry,
+		EarliestEntry:  domain.EarliestEntry(),
 		ServerTimeZone: s.cfg.Location.String(),
 		Build:          currentBuild(),
 		Options:        settings.Options(),

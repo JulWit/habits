@@ -92,13 +92,15 @@ function useLingering() {
 // ---------- components ----------
 
 /**
- * An icon button of the board. `handle` makes it a drag handle, `habit`
- * names the habit it acts on; `icon` names one of `ICONS`.
+ * An icon button of the board. `tool` names what it does (data-role, which
+ * the keyboard navigation, drag and drop and the Firefox test find it by),
+ * `handle` makes it a drag handle, `habit` names the habit it acts on; `icon`
+ * names one of `ICONS`.
  */
 const BoardToolButton = {
   name: 'BoardToolButton',
   props: {
-    role: {type: String, required: true},
+    tool: {type: String, required: true},
     icon: {type: String, required: true},
     label: {type: String, required: true},
     handle: Boolean,
@@ -112,7 +114,7 @@ const BoardToolButton = {
       type="button"
       class="icon-button"
       :class="{'drag-reorder-handle': handle}"
-      :data-role="role"
+      :data-role="tool"
       :data-habit="habit"
       :aria-label="label"
       :disabled="disabled"
@@ -232,7 +234,7 @@ const BoardHabitRow = {
         <template v-if="siblings >= 2">
           <board-tool-button
             v-if="byDragging()"
-            role="drag-habit"
+            tool="drag-habit"
             icon="grip"
             :label="t('Move habit')"
             handle
@@ -240,7 +242,7 @@ const BoardHabitRow = {
           />
           <template v-else>
             <board-tool-button
-              role="move-habit-up"
+              tool="move-habit-up"
               icon="chevronUp"
               :label="t('Move habit up')"
               :habit="habit.id"
@@ -248,7 +250,7 @@ const BoardHabitRow = {
               @click="move(habit.id, -1)"
             />
             <board-tool-button
-              role="move-habit-down"
+              tool="move-habit-down"
               icon="chevronDown"
               :label="t('Move habit down')"
               :habit="habit.id"
@@ -353,21 +355,21 @@ const BoardBlock = {
         >
           <board-tool-button
             v-if="byDragging()"
-            role="drag-category"
+            tool="drag-category"
             icon="grip"
             :label="t('Move category')"
             handle
           />
           <template v-else>
             <board-tool-button
-              role="move-category-up"
+              tool="move-category-up"
               icon="chevronUp"
               :label="t('Move category up')"
               :disabled="at <= 0"
               @click="move(-1)"
             />
             <board-tool-button
-              role="move-category-down"
+              tool="move-category-down"
               icon="chevronDown"
               :label="t('Move category down')"
               :disabled="at === state.categories.length - 1"
@@ -611,14 +613,14 @@ export const TheBoardView = {
                the floating button. -->
           <div class="board-view-day-nav">
             <board-tool-button
-              role="page-older"
+              tool="page-older"
               icon="chevronLeft"
               :label="t('Earlier days')"
               :disabled="offset >= maxBack"
               @click="page(1)"
             />
             <board-tool-button
-              role="page-newer"
+              tool="page-newer"
               icon="chevronRight"
               :label="t('Later days')"
               :disabled="offset <= -MAX_AHEAD_DAYS"

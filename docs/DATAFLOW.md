@@ -5,20 +5,36 @@ the status of each day, statistics, streaks and totals. The client shows what
 it is sent and writes changes back; it never judges a day or counts anything
 beyond what it displays.
 
-```
-browser                                      server
-───────                                      ──────
-loader.js ─load──> api.js ── GET /api/state ──> httpapi ── View ──> store (SQLite)
-                     │                             │
-state.js, reactive <─┘                          domain (schedules, statuses,
-  │                                              streaks, statistics)
-  └─> Vue components (board-view.js, habit-view.js …) render again
+```mermaid
+flowchart LR
+  subgraph browser
+    tap([tap])
+    actions[actions.js]
+    loader[loader.js]
+    api[api.js]
+    outbox["outbox.js<br>(localStorage)"]
+    state["state.js<br>(reactive)"]
+    vue["Vue components<br>(board-view.js, habit-view.js …)"]
+  end
 
-tap ─> actions.js ─> state.js (shown as pending)
-            │
-            └─> api.js ── PUT …/entries/{date} ──> httpapi ── Update ──> store
-                  │                                                   └─ undo step
-                  └─ no connection ─> outbox.js (localStorage)
+  subgraph server
+    httpapi[httpapi]
+    domain["domain<br>(schedules, statuses,<br>streaks, statistics)"]
+    store[("store<br>(SQLite)")]
+  end
+
+  loader -- load --> api
+  tap --> actions
+  actions -- shown as pending --> state
+  actions --> api
+  api -- "GET /api/state" --> httpapi
+  api -- "PUT …/entries/{date}" --> httpapi
+  api -- no connection --> outbox
+  api -- answer --> state
+  state -- render again --> vue
+  httpapi --> domain
+  httpapi -- View --> store
+  httpapi -- "Update (+ undo step)" --> store
 ```
 
 ## Request path on the server

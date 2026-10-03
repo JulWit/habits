@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"slices"
 	"strings"
 	"sync"
 	"syscall"
@@ -33,27 +34,25 @@ import (
 //go:embed all:web
 var webFiles embed.FS
 
+// command is a subcommand of the binary.
+type command struct {
+	name string
+	// args and about describe the command in the usage.
+	args, about string
+	run         func(args []string) error
+}
+
+// commands are the subcommands, in the order the usage lists them. Without
+// one, the binary runs the server.
+var commands = []command{
+	{"healthcheck", "", "ask the running server for /healthz (the container's HEALTHCHECK)", healthcheck},
+	{"backup", "PATH", "write a consistent copy of the database to PATH", backup},
+	{"move-user", "FROM TO", "hand all data of user FROM to user TO", moveUser},
+}
+
 func main() {
-	if len(os.Args) == 2 && os.Args[1] == "healthcheck" {
-		if err := healthcheck(); err != nil {
-			fmt.Fprintln(os.Stderr, "unhealthy:", err)
-			os.Exit(1)
-		}
-		return
-	}
-	if len(os.Args) >= 2 && os.Args[1] == "move-user" {
-		if err := moveUser(os.Args[2:]); err != nil {
-			fmt.Fprintln(os.Stderr, "move-user:", err)
-			os.Exit(1)
-		}
-		return
-	}
-	if len(os.Args) >= 2 && os.Args[1] == "backup" {
-		if err := backup(os.Args[2:]); err != nil {
-			fmt.Fprintln(os.Stderr, "backup:", err)
-			os.Exit(1)
-		}
-		return
+	if len(os.Args) > 1 {
+		os.Exit(runCommand(os.Args[1], os.Args[2:]))
 	}
 
 	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo}))
@@ -64,6 +63,38 @@ func main() {
 		logger.Error("startup failed", "error", err)
 		os.Exit(1)
 	}
+}
+
+// runCommand runs the subcommand name with args and returns the exit code: 0
+// on success, 1 if the command fails and 2 for an unknown command, which
+// prints the usage instead of starting the server.
+func runCommand(name string, args []string) int {
+	if name == "help" || name == "-h" || name == "-help" || name == "--help" {
+		fmt.Print(usage())
+		return 0
+	}
+	i := slices.IndexFunc(commands, func(c command) bool { return c.name == name })
+	if i == -1 {
+		fmt.Fprintf(os.Stderr, "unknown command %q\n\n%s", name, usage())
+		return 2
+	}
+	if err := commands[i].run(args); err != nil {
+		fmt.Fprintf(os.Stderr, "%s: %v\n", name, err)
+		return 1
+	}
+	return 0
+}
+
+// usage describes how the binary is called.
+func usage() string {
+	var b strings.Builder
+	b.WriteString("usage:\n")
+	fmt.Fprintf(&b, "  %-26s %s\n", "habits", "run the server")
+	for _, c := range commands {
+		fmt.Fprintf(&b, "  %-26s %s\n", strings.TrimSpace("habits "+c.name+" "+c.args), c.about)
+	}
+	b.WriteString("\nThe configuration comes from environment variables, see docs/DEPLOYMENT.md.\n")
+	return b.String()
 }
 
 // run starts the server and blocks until it fails or receives a shutdown
@@ -169,7 +200,10 @@ func purgeSteps(ctx context.Context, st *store.Store, retention time.Duration, l
 // healthcheck asks the server running with the same configuration for
 // /healthz. It is the container's HEALTHCHECK, as the image has no shell and
 // no curl.
-func healthcheck() error {
+func healthcheck(args []string) error {
+	if len(args) != 0 {
+		return errors.New("usage: habits healthcheck")
+	}
 	cfg, err := config.Load()
 	if err != nil {
 		return err

@@ -22,6 +22,13 @@ belongs to the user `local`.
 The time zone is resolved on the server, so all devices of a user agree on the
 current day.
 
+## Commands
+
+Without arguments, the binary runs the server. Its subcommands are
+`healthcheck`, `backup PATH` and `move-user FROM TO` (see below);
+`habits help` lists them. An unknown subcommand prints the list and exits
+with 2 instead of starting the server.
+
 ## Container
 
 Every push to `main` runs `gofmt`, `go vet` and the tests, and once they pass

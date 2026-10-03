@@ -18,7 +18,7 @@ import {openSettings, reopenSettings, TheSettingsDialog} from './dialogs/setting
 import {TheSkipEditor} from './dialogs/skip-editor.js';
 import {onlyOpen, toggleFilter} from './ui/board-state.js';
 import {AppIcon, AppIconBadge} from './ui/icons.js';
-import {TheDiscardDialog} from './ui/page-stack.js';
+import {handlePagePop, TheDiscardDialog} from './ui/page-stack.js';
 import {definePatterns} from './ui/patterns.js';
 import {errorText, TheToastList, toast} from './ui/toast.js';
 import {initTooltips, vTooltip} from './ui/tooltip.js';
@@ -244,8 +244,11 @@ function initServiceWorker() {
  */
 function initRouting() {
   window.addEventListener('hashchange', syncRoute);
-  // pushState navigation triggers popstate, not hashchange.
-  window.addEventListener('popstate', syncRoute);
+  // pushState navigation triggers popstate, not hashchange. A step back that
+  // closes a page leaves the view as it is: the hash does not change.
+  window.addEventListener('popstate', () => {
+    if (!handlePagePop()) syncRoute();
+  });
   watch(stateRevision, syncRoute);
   syncRoute();
 

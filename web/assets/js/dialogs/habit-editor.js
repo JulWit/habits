@@ -415,6 +415,7 @@ export const TheHabitEditor = {
 
     return {
       el: page.el,
+      cancel: page.cancel,
       errorEl: page.errorEl,
       error: page.error,
       busy: page.busy,
@@ -463,8 +464,8 @@ export const TheHabitEditor = {
             v-tooltip="t('Close')"
             type="button"
             class="icon-button"
-            data-page-back
             :aria-label="t('Close')"
+            @click="cancel"
           >
             <app-icon name="close"/>
           </button>

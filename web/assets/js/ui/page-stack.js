@@ -12,7 +12,8 @@
  *
  * The pages are rendered by Vue; this module opens and closes them. A dialog
  * module keeps its page in a controller (createPage), which opens it, resolves
- * once it is closed and runs its saving.
+ * once it is closed and runs its saving. The history's steps back reach it
+ * through handlePagePop, called by the app's one popstate listener.
  */
 
 import {nextTick, ref, shallowRef} from '../vue.js';
@@ -148,44 +149,32 @@ function drop(index) {
   }
 }
 
-// Registered before app.js's listener, so the route is left alone when only a
-// page closes: the hash does not change.
-window.addEventListener('popstate', (event) => {
+/**
+ * Handles a step back in the history (popstate) that belongs to the pages:
+ * one taken by closePage, or the system or browser back closing the top
+ * pages. Returns whether it did; otherwise the step changes the view, which
+ * the caller shows (see initRouting in app.js).
+ * @return {boolean}
+ */
+export function handlePagePop() {
   if (ownPops.length > 0) {
     ownPops.shift()?.();
-    event.stopImmediatePropagation();
-    return;
+    return true;
   }
   const depth = history.state?.pages ?? 0;
-  if (depth < stack.length) {
-    event.stopImmediatePropagation();
-    // The browser's back button: restore the history entries of a page with
-    // unsaved changes and ask.
-    if (stack.slice(depth).some(isDirty)) {
-      for (let i = depth + 1; i <= stack.length; i++) {
-        history.pushState({pages: i}, '');
-      }
-      askToDiscard(stack[depth]);
-      return;
+  if (depth >= stack.length) return false;
+  // The browser's back button: restore the history entries of a page with
+  // unsaved changes and ask.
+  if (stack.slice(depth).some(isDirty)) {
+    for (let i = depth + 1; i <= stack.length; i++) {
+      history.pushState({pages: i}, '');
     }
-    drop(depth);
+    askToDiscard(stack[depth]);
+    return true;
   }
-});
-
-// Back buttons in the page headers, and rows that open another page.
-document.addEventListener('click', (event) => {
-  const target = /** @type {?Element} */ (event.target);
-  const back = target?.closest?.('.page [data-page-back]');
-  if (back) {
-    closePage(/** @type {!HTMLDialogElement} */ (back.closest('.page')));
-    return;
-  }
-  const link = target?.closest?.('[data-open-page]');
-  if (link instanceof HTMLElement && link.dataset.openPage) {
-    openPage(/** @type {!HTMLDialogElement} */ (
-        document.getElementById(link.dataset.openPage)));
-  }
-});
+  drop(depth);
+  return true;
+}
 
 // ---------- the question before discarding ----------
 

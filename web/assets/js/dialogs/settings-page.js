@@ -7,9 +7,11 @@
 
 import {api} from '../data/api.js';
 import {replaceState, state} from '../data/state.js';
-import {topPage} from '../ui/page-stack.js';
+import {closePage, topPage} from '../ui/page-stack.js';
 import {errorText, toast} from '../ui/toast.js';
-import {reactive} from '../vue.js';
+import {reactive, shallowRef} from '../vue.js';
+
+/** @import {Ref} from '../vue.js' */
 
 /**
  * A choice of an enumerated setting, as the server offers it (state.options),
@@ -143,10 +145,18 @@ export const SettingsPage = {
   },
   /** @return {!Object<string, *>} the bindings of the template */
   setup() {
-    return {error};
+    /** @type {!Ref<?HTMLDialogElement>} */
+    const el = shallowRef(null);
+    return {
+      el,
+      error,
+      /** Closes the page, as the system back does. */
+      back: () => el.value && closePage(el.value),
+    };
   },
   template: `
     <dialog
+      ref="el"
       :id="id"
       class="dialog page"
       :aria-labelledby="id + '-title'"
@@ -156,8 +166,8 @@ export const SettingsPage = {
           v-tooltip="t('Back')"
           type="button"
           class="icon-button"
-          data-page-back
           :aria-label="t('Back')"
+          @click="back"
         >
           <app-icon name="arrowLeft"/>
         </button>

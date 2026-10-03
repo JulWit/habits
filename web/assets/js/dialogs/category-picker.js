@@ -79,6 +79,7 @@ export const TheCategoryPicker = {
 
     return {
       el: page.el,
+      cancel: page.cancel,
       error: page.error,
       nameInput,
       creating,
@@ -107,8 +108,8 @@ export const TheCategoryPicker = {
           v-tooltip="t('Back')"
           type="button"
           class="icon-button"
-          data-page-back
           :aria-label="t('Back')"
+          @click="cancel"
         >
           <app-icon name="arrowLeft"/>
         </button>

@@ -163,7 +163,7 @@ export let Write;
 /**
  * The outbox as last read or written, so that it is parsed once rather than
  * on every call; null until it is read. Another tab of the app writes the same
- * storage, which drops the copy (see the storage listener below).
+ * storage, which drops the copy (see watchOtherTabs).
  * @type {?Array<!Write>}
  */
 let outbox = null;
@@ -187,13 +187,18 @@ function storeOutbox(list) {
   return write(outboxKey(), list.length > 0 ? list : null);
 }
 
-// Another tab sent or queued writes: read the outbox again on next use.
-globalThis.addEventListener?.('storage', (event) => {
-  if (event.key === null || event.key === outboxKey()) {
-    outbox = null;
-    onStatus();
-  }
-});
+/**
+ * Reads the outbox again on next use once another tab of the app has sent or
+ * queued writes.
+ */
+export function watchOtherTabs() {
+  window.addEventListener('storage', (event) => {
+    if (event.key === null || event.key === outboxKey()) {
+      outbox = null;
+      onStatus();
+    }
+  });
+}
 
 /**
  * Queues a write. A newer write to the same day replaces the older one.

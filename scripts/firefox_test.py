@@ -520,7 +520,7 @@ def arranging(run, f):
     time.sleep(0.4)
     run.click("#open-settings")
     time.sleep(0.4)
-    run.click('#settings-dialog [data-open-page="settings-board"]')
+    run.click('#settings-dialog [data-page="settings-board"]')
     time.sleep(0.4)
     run.click('#settings-board input[name="settings-reorder"][value="drag"]')
     run.click("#settings-board .switch input")
@@ -572,7 +572,7 @@ def arranging(run, f):
     # it is switched on again first.
     run.click("#open-settings")
     time.sleep(0.4)
-    run.click('#settings-dialog [data-open-page="settings-board"]')
+    run.click('#settings-dialog [data-page="settings-board"]')
     time.sleep(0.4)
     run.click("#settings-board .switch input")
     time.sleep(0.5)
@@ -592,7 +592,7 @@ def settings(run, f):
     """Settings take effect at once and are saved."""
     run.click("#open-settings")
     time.sleep(0.4)
-    run.click('#settings-dialog [data-open-page="settings-look"]')
+    run.click('#settings-dialog [data-page="settings-look"]')
     time.sleep(0.4)
     theme = "light" if f.settings["theme"] != "light" else "dark"
     run.click(f'#settings-look input[name="settings-theme"][value="{theme}"] + span')
@@ -617,7 +617,7 @@ def settings(run, f):
 
     run.click("#open-settings")
     time.sleep(0.4)
-    run.click('#settings-dialog [data-open-page="settings-look"]')
+    run.click('#settings-dialog [data-page="settings-look"]')
     time.sleep(0.4)
     run.click("#settings-look-style-guide")
     time.sleep(1.5)
@@ -635,7 +635,7 @@ def import_undo(run, f):
     """An import on the data page can be undone right there."""
     run.click("#open-settings")
     time.sleep(0.4)
-    run.click('#settings-dialog [data-open-page="settings-data"]')
+    run.click('#settings-dialog [data-page="settings-data"]')
     time.sleep(0.4)
     export = {"format": "habits", "version": 2, "categories": [], "habits": [{
         "name": "Firefox import", "kind": "check", "color": "red",

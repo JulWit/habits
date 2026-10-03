@@ -42,7 +42,8 @@ function formatBuildTime(time) {
 }
 
 /**
- * A row of the settings menu that opens the page `page` (see page-stack.js).
+ * A row of the settings menu that opens the settings page `page`; without
+ * one, its user handles the click.
  */
 const SettingsMenuItem = {
   name: 'SettingsMenuItem',
@@ -52,11 +53,24 @@ const SettingsMenuItem = {
     title: {type: String, required: true},
     hint: {type: String, default: ''},
   },
+  /**
+   * @param {{page?: string}} props
+   * @return {!Object<string, *>} the bindings of the template
+   */
+  setup(props) {
+    return {
+      /** Opens the row's page, if it has one. */
+      open: () => {
+        if (props.page) openSettingsPage(props.page);
+      },
+    };
+  },
   template: `
     <button
       type="button"
       class="settings-menu-item"
-      :data-open-page="page"
+      :data-page="page"
+      @click="open"
     >
       <span
         class="settings-menu-item-icon"
@@ -261,11 +275,19 @@ function pageById(id) {
   return el instanceof HTMLDialogElement ? el : null;
 }
 
+/**
+ * Opens the settings page with the ID on top of the open pages.
+ * @param {string} id
+ */
+function openSettingsPage(id) {
+  const el = pageById(id);
+  if (el) openPage(el);
+}
+
 /** Opens the settings. */
 export function openSettings() {
   clearError();
-  const dialog = pageById('settings-dialog');
-  if (dialog) openPage(dialog);
+  openSettingsPage('settings-dialog');
 }
 
 /**
@@ -274,8 +296,7 @@ export function openSettings() {
  */
 export function reopenSettings() {
   const page = pageToReopen();
-  const el = page && pageById(page);
-  if (!el) return;
+  if (!page || !pageById(page)) return;
   openSettings();
-  openPage(el);
+  openSettingsPage(page);
 }

@@ -89,8 +89,10 @@ that keeps each request until the test answers it (`installFetch` in
 Vue's embedded build has no declarations; `types/vue.esm-browser.prod.d.ts`
 describes the parts the frontend uses, mapped to it by `rootDirs`. Neither
 `types/` nor `test/` is embedded in the binary. The tests run the modules
-outside a browser, so a module must not touch the document when it is
-imported; outside a browser the UI language is English.
+outside a browser, so a module must not touch the document or the window
+when it is imported: its listeners are registered by a function `app.js`
+calls at start (`initSync`, `initTooltips`, …). Outside a browser the UI
+language is English.
 
 ### Frontend in Firefox
 

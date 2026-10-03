@@ -9,7 +9,7 @@ import {t} from '../util/i18n.js';
 import {reactive} from '../vue.js';
 
 import {api} from './api.js';
-import {isConnectionError, isOffline, overlay, pending, rememberedState, rememberState, setOffline, setStatusHandler, statusText} from './outbox.js';
+import {isConnectionError, isOffline, overlay, pending, rememberedState, rememberState, setOffline, setStatusHandler, statusText, watchOtherTabs} from './outbox.js';
 import {replaceState, state, stateRevision, upsertHabit} from './state.js';
 
 /** @import {LoadedState} from './state.js' */
@@ -231,6 +231,7 @@ export function initSync(send, keep) {
   };
   setStatusHandler(paint);
   paint();
+  watchOtherTabs();
 
   /** Sends the waiting writes, or reloads the state after being offline. */
   const retry = () => {

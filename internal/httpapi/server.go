@@ -318,6 +318,10 @@ func (rec *statusRecorder) Write(b []byte) (int, error) {
 	return rec.ResponseWriter.Write(b)
 }
 
+// Unwrap returns the wrapped ResponseWriter, so that http.ResponseController
+// reaches its Flush and deadlines through the recorder.
+func (rec *statusRecorder) Unwrap() http.ResponseWriter { return rec.ResponseWriter }
+
 // assetTypes are the content types of asset extensions that may be missing
 // from the host's MIME table (e.g. on Windows). The asset handler sets them
 // itself instead of changing the process-wide table (mime.AddExtensionType).

@@ -324,3 +324,16 @@ func TestRefusedAuthenticationIsAProblem(t *testing.T) {
 		t.Error("the refusal has no security headers")
 	}
 }
+
+// statusRecorder hands the ResponseWriter it wraps to
+// http.ResponseController, which flushes through it.
+func TestStatusRecorderUnwraps(t *testing.T) {
+	w := httptest.NewRecorder()
+	rec := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
+	if err := http.NewResponseController(rec).Flush(); err != nil {
+		t.Fatalf("Flush through the recorder: %v", err)
+	}
+	if !w.Flushed {
+		t.Error("the wrapped ResponseWriter was not flushed")
+	}
+}

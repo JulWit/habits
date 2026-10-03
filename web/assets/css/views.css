@@ -283,7 +283,7 @@
   align-items: start;
   display: grid;
   gap: calc(1.25 * var(--space));
-  grid-template-columns: repeat(auto-fit, minmax(28rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(28rem, 100%), 1fr));
 }
 
 .style-guide-panel {
@@ -336,6 +336,11 @@
   font-size: 0.68rem;
 }
 
+/* The stepper's input grows; within the panel on a phone. */
+.style-guide-specimen .stepper {
+  max-width: 100%;
+}
+
 /* Day cells in a plain row. */
 .style-guide-panel-cells {
   display: flex;
@@ -363,7 +368,7 @@
   display: grid;
   font-size: 0.78rem;
   gap: calc(0.3 * var(--space)) calc(0.6 * var(--space));
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: auto auto 1fr;
 }
 
 .style-guide-panel-token {

@@ -297,7 +297,8 @@ const StyleGuidePanel = {
         ['not scheduled', s.sparse],
       ],
       // Non-colours get no swatch, keeping the grid cell.
-      isColor: (value) => /^(#|rgb|hsl|color|oklch)/i.test(value ?? ''),
+      isColor: (value) =>
+          /^(#|rgb|hsl|color|oklch|light-dark)/i.test(value ?? ''),
     };
   },
   template: `

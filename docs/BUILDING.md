@@ -56,6 +56,16 @@ The tests use a temporary SQLite file and need no setup:
 go test ./...
 ```
 
+`TestLargeHistoryStaysFast` imports 50 habits with ten years of entries and
+checks that `GET /api/state` and a day's change stay within generous time
+budgets, which catch a slower algorithm rather than a slow machine; it takes
+a few seconds and `go test -short ./...` skips it. `BenchmarkState` measures
+the state in detail:
+
+```bash
+go test ./internal/httpapi -run '^$' -bench BenchmarkState
+```
+
 ### Frontend in Firefox
 
 `scripts/firefox_test.py` tests the frontend in an installed Firefox with real

@@ -8,34 +8,44 @@ beyond what it displays.
 ```mermaid
 flowchart LR
   subgraph browser
+    loader[loader.js]
     tap([tap])
     actions[actions.js]
-    loader[loader.js]
     api[api.js]
     outbox["outbox.js<br>(localStorage)"]
     state["state.js<br>(reactive)"]
-    vue["Vue components<br>(board-view.js, habit-view.js …)"]
+    vue[Vue components]
   end
 
   subgraph server
     httpapi[httpapi]
-    domain["domain<br>(schedules, statuses,<br>streaks, statistics)"]
+    domain["domain<br>(rules, statistics)"]
     store[("store<br>(SQLite)")]
   end
 
-  loader -- load --> api
-  tap --> actions
-  actions -- shown as pending --> state
-  actions --> api
+  %% Loading the state
+  loader --> api
   api -- "GET /api/state" --> httpapi
-  api -- "PUT …/entries/{date}" --> httpapi
-  api -- no connection --> outbox
-  api -- answer --> state
-  state -- render again --> vue
-  httpapi --> domain
   httpapi -- View --> store
-  httpapi -- "Update (+ undo step)" --> store
+  %% Writing an entry
+  tap --> actions
+  actions -- pending --> state
+  actions --> api
+  api -- "PUT …/entries/{date}" --> httpapi
+  httpapi -- "Update + undo step" --> store
+  api -. no connection .-> outbox
+  %% Both
+  httpapi --> domain
+  api -- answer --> state
+  state --> vue
+
+  linkStyle 0,1,2 stroke:#2563eb,stroke-width:2px
+  linkStyle 3,4,5,6,7,8 stroke:#ea580c,stroke-width:2px
 ```
+
+Blue: [loading the state](#loading-the-state); orange: [writing an
+entry](#writing-an-entry), dashed when the connection is lost
+([offline](#offline)); grey: both.
 
 ## Request path on the server
 

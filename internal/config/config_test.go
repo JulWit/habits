@@ -2,6 +2,7 @@ package config
 
 import (
 	"net/netip"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -14,6 +15,7 @@ func withEnv(t *testing.T, vars map[string]string) {
 		"HABITS_ADDR", "HABITS_DB", "HABITS_TZ", "HABITS_AUTH_MODE",
 		"HABITS_DEFAULT_USER", "HABITS_TRUSTED_PROXIES", "HABITS_USER_HEADER",
 		"HABITS_NAME_HEADER", "HABITS_EMAIL_HEADER", "HABITS_GROUPS_HEADER",
+		"HABITS_ALLOWED_HOSTS",
 	} {
 		t.Setenv(key, "")
 	}
@@ -135,5 +137,42 @@ func TestNamedTimezoneResolves(t *testing.T) {
 	}
 	if cfg.Location.String() != "Europe/Berlin" {
 		t.Errorf("Location = %q, want Europe/Berlin", cfg.Location)
+	}
+}
+
+// Single-user mode answers only on localhost and IP addresses unless
+// HABITS_ALLOWED_HOSTS names more; trusted-header mode allows any host unless
+// it names some, and "*" allows any host in either mode.
+func TestAllowedHosts(t *testing.T) {
+	trusted := map[string]string{
+		"HABITS_AUTH_MODE":       "trusted-header",
+		"HABITS_TRUSTED_PROXIES": "127.0.0.1",
+	}
+	for _, tc := range []struct {
+		name string
+		env  map[string]string
+		want []string
+	}{
+		{"single-user default", nil, []string{"localhost"}},
+		{"single-user list", map[string]string{"HABITS_ALLOWED_HOSTS": " Habits.Example.com., nas.local ,"},
+			[]string{"habits.example.com", "nas.local"}},
+		{"single-user any", map[string]string{"HABITS_ALLOWED_HOSTS": "*"}, nil},
+		{"trusted-header default", trusted, nil},
+		{"trusted-header list", map[string]string{
+			"HABITS_AUTH_MODE":       "trusted-header",
+			"HABITS_TRUSTED_PROXIES": "127.0.0.1",
+			"HABITS_ALLOWED_HOSTS":   "habits.example.com",
+		}, []string{"habits.example.com"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			withEnv(t, tc.env)
+			cfg, err := Load()
+			if err != nil {
+				t.Fatalf("Load: %v", err)
+			}
+			if !slices.Equal(cfg.AllowedHosts, tc.want) {
+				t.Errorf("AllowedHosts = %q, want %q", cfg.AllowedHosts, tc.want)
+			}
+		})
 	}
 }

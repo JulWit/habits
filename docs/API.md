@@ -32,6 +32,10 @@ only `/healthz` outside `/api` does not.
 Writing endpoints require `Content-Type: application/json`. This forces a CORS
 preflight and protects against CSRF.
 
+Requests to a host name that is not allowed (`HABITS_ALLOWED_HOSTS`, see
+[DEPLOYMENT.md](DEPLOYMENT.md#configuration)) are answered with 421
+`host_not_allowed`, against DNS rebinding; `/healthz` answers on any host.
+
 Every response carries the header `X-Request-Id`, which the server's log
 lines of that request carry as `request`, along with the `user`.
 

@@ -39,6 +39,13 @@ func newTestServer(t testing.TB) http.Handler {
 // newTestServerLogging is newTestServer with its log written to w.
 func newTestServerLogging(t testing.TB, w io.Writer) http.Handler {
 	t.Helper()
+	return newTestServerWith(t, w, func(*config.Config) {})
+}
+
+// newTestServerWith is newTestServer with its log written to w and its
+// configuration changed by adjust.
+func newTestServerWith(t testing.TB, w io.Writer, adjust func(*config.Config)) http.Handler {
+	t.Helper()
 	st, err := store.Open(context.Background(), filepath.Join(t.TempDir(), "test.db"))
 	if err != nil {
 		t.Fatalf("store.Open: %v", err)
@@ -51,6 +58,7 @@ func newTestServerLogging(t testing.TB, w io.Writer) http.Handler {
 		UserHeader:  "Remote-User",
 		Location:    time.UTC,
 	}
+	adjust(&cfg)
 	h, err := New(cfg, st, slog.New(slog.NewTextHandler(w, nil)), testWeb)
 	if err != nil {
 		t.Fatalf("New: %v", err)
@@ -325,6 +333,55 @@ func TestRefusedAuthenticationIsAProblem(t *testing.T) {
 	}
 }
 
+// With AllowedHosts, a request to another host name is refused with 421,
+// against DNS rebinding; IP addresses, the allowed names (with any port, case
+// and a trailing dot) and /healthz are answered.
+func TestOnlyAllowedHostsAreAnswered(t *testing.T) {
+	h := newTestServerWith(t, io.Discard, func(cfg *config.Config) {
+		cfg.AllowedHosts = []string{"localhost", "habits.example.com"}
+	})
+	get := func(host, path string) *httptest.ResponseRecorder {
+		r := httptest.NewRequest("GET", path, nil)
+		r.Host = host
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, r)
+		return w
+	}
+	for _, host := range []string{
+		"localhost", "localhost:8080", "Habits.Example.com.", "habits.example.com:443",
+		"127.0.0.1:8080", "192.168.1.20", "[::1]:8080",
+	} {
+		if w := get(host, "/api/state"); w.Code != http.StatusOK {
+			t.Errorf("Host %q: status %d (%s), want 200", host, w.Code, w.Body)
+		}
+	}
+	for _, host := range []string{"attacker.example", "attacker.example:8080", "localhost.attacker.example"} {
+		for _, path := range []string{"/", "/api/state", "/api/export"} {
+			w := get(host, path)
+			var body problemBody
+			json.Unmarshal(w.Body.Bytes(), &body)
+			if w.Code != http.StatusMisdirectedRequest || body.Code != "host_not_allowed" {
+				t.Errorf("Host %q, %s: status %d, code %q; want 421 host_not_allowed", host, path, w.Code, body.Code)
+			}
+		}
+	}
+	if w := get("attacker.example", "/healthz"); w.Code != http.StatusOK {
+		t.Errorf("/healthz on another host: status %d, want 200", w.Code)
+	}
+}
+
+// Without AllowedHosts, any host is answered.
+func TestAnyHostWithoutAllowedHosts(t *testing.T) {
+	h := newTestServer(t)
+	r := httptest.NewRequest("GET", "/api/state", nil)
+	r.Host = "whatever.example"
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, r)
+	if w.Code != http.StatusOK {
+		t.Errorf("status %d (%s), want 200", w.Code, w.Body)
+	}
+}
+
 // Every response carries the ID of its request, and the request's log lines
 // carry the ID and the user, the error of a handler included.
 func TestRequestsAreLoggedWithIDAndUser(t *testing.T) {
@@ -359,5 +416,31 @@ func TestStatusRecorderUnwraps(t *testing.T) {
 	}
 	if !w.Flushed {
 		t.Error("the wrapped ResponseWriter was not flushed")
+	}
+}
+
+// hostAllowed allows any host for nil, IP addresses always, and the allowed
+// names regardless of port, case and a trailing dot.
+func TestHostAllowed(t *testing.T) {
+	allowed := []string{"localhost", "nas.local"}
+	for host, want := range map[string]bool{
+		"localhost":      true,
+		"LOCALHOST:8080": true,
+		"nas.local.":     true,
+		"10.0.0.5":       true,
+		"10.0.0.5:8080":  true,
+		"[::1]:8080":     true,
+		"::1":            true,
+		"evil.example":   false,
+		"nas.local.evil": false,
+		"sub.localhost":  false,
+		"":               false,
+	} {
+		if got := hostAllowed(allowed, host); got != want {
+			t.Errorf("hostAllowed(%q) = %v, want %v", host, got, want)
+		}
+	}
+	if !hostAllowed(nil, "evil.example") {
+		t.Error("hostAllowed(nil, …) = false, want true")
 	}
 }

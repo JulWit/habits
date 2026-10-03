@@ -15,9 +15,31 @@ All configuration is done through environment variables.
 | `HABITS_USER_HEADER` | `Remote-User` | Header with the user ID |
 | `HABITS_NAME_HEADER` | `Remote-Name` | Display name (optional) |
 | `HABITS_EMAIL_HEADER` | `Remote-Email` | Email (optional) |
+| `HABITS_ALLOWED_HOSTS` | `localhost` in `single-user` mode, any in `trusted-header` mode | Comma-separated host names the app answers on (e.g. `habits.example.com,nas.local`), or `*` for any; IP addresses are always allowed |
 
 In the default `single-user` mode there is no authentication and all data
 belongs to the user `local`.
+
+### Allowed hosts
+
+Without authentication, any page the browser opens could make its own name
+resolve to this server's address (DNS rebinding) and then read, export or
+delete the data as if it were the app. So the server answers only on the host
+names in `HABITS_ALLOWED_HOSTS`, and on IP addresses, which such a page cannot
+use as its name; other names get 421 `host_not_allowed`, and the log names
+the refused host. `/healthz` answers on any host.
+
+In `single-user` mode only `localhost` is allowed by default. Reaching the app
+under another name, e.g. `http://nas.local:8080` or through a reverse proxy at
+`https://habits.example.com`, needs that name in the list:
+
+```bash
+HABITS_ALLOWED_HOSTS=habits.example.com,nas.local
+```
+
+In `trusted-header` mode any host is allowed by default, as the reverse proxy
+signs in and routes by host name; setting the variable restricts it all the
+same.
 
 The time zone is resolved on the server, so all devices of a user agree on the
 current day.

@@ -41,10 +41,23 @@ type Config struct {
 	// DefaultUser is the user in single-user mode.
 	DefaultUser string
 
+	// AllowedHosts are the host names (lower case, without port) requests
+	// may be addressed to, against DNS rebinding: a page of another site
+	// whose name resolves to this server would otherwise act as this app.
+	// IP addresses are always allowed, as such a page cannot use them as its
+	// name. nil allows any host.
+	AllowedHosts []string
+
 	// UndoRetention is how long undo steps are kept, e.g. to bring back a
 	// deleted habit.
 	UndoRetention time.Duration
 }
+
+// defaultSingleUserHosts are the AllowedHosts of single-user mode without
+// HABITS_ALLOWED_HOSTS: a server without authentication answers only on the
+// loopback name and IP addresses. In trusted-header mode the reverse proxy
+// routes by host name and signs in, so any host is allowed by default.
+var defaultSingleUserHosts = []string{"localhost"}
 
 // env returns the trimmed value of key, or fallback if it is unset or blank.
 func env(key, fallback string) string {
@@ -96,7 +109,30 @@ func Load() (Config, error) {
 	if cfg.UserHeader == "" {
 		return Config{}, errors.New("HABITS_USER_HEADER must not be empty")
 	}
+
+	if raw, ok := os.LookupEnv("HABITS_ALLOWED_HOSTS"); ok && strings.TrimSpace(raw) != "" {
+		cfg.AllowedHosts = parseHosts(raw)
+	} else if cfg.AuthMode == AuthModeSingleUser {
+		cfg.AllowedHosts = defaultSingleUserHosts
+	}
 	return cfg, nil
+}
+
+// parseHosts parses a comma-separated list of host names, e.g.
+// "habits.example.com,nas.local", into lower case without trailing dots. A
+// "*" allows any host and yields nil.
+func parseHosts(raw string) []string {
+	var out []string
+	for part := range strings.SplitSeq(raw, ",") {
+		host := strings.TrimSuffix(strings.ToLower(strings.TrimSpace(part)), ".")
+		if host == "*" {
+			return nil
+		}
+		if host != "" {
+			out = append(out, host)
+		}
+	}
+	return out
 }
 
 // parsePrefixes parses a comma-separated list of IP addresses and CIDR

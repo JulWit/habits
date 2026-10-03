@@ -11,9 +11,12 @@ import (
 	"html/template"
 	"io/fs"
 	"log/slog"
+	"net"
 	"net/http"
+	"net/netip"
 	"path"
 	"runtime/debug"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -93,15 +96,56 @@ func New(cfg config.Config, st *store.Store, logger *slog.Logger, webFS fs.FS) (
 	mux.HandleFunc("GET /manifest.webmanifest", s.withUser(s.handleManifest))
 	mux.Handle("GET /sw.js", s.assets)
 
-	// The health check requires no authentication.
+	// The health check requires no authentication, and answers on any host:
+	// it reveals nothing, and the container asks it on the address it
+	// listens on.
 	root := http.NewServeMux()
 	root.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		fmt.Fprintln(w, "ok")
 	})
-	root.Handle("/", s.authenticate(mux))
+	root.Handle("/", s.checkHost(s.authenticate(mux)))
 
 	return s.logRequests(s.recoverPanics(securityHeaders(root))), nil
+}
+
+// checkHost refuses requests addressed to a host name that is not in
+// cfg.AllowedHosts (see hostAllowed), so that a page of another site whose
+// name resolves to this server (DNS rebinding) cannot read or change data.
+func (s *server) checkHost(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if hostAllowed(s.cfg.AllowedHosts, r.Host) {
+			next.ServeHTTP(w, r)
+			return
+		}
+		name := hostName(r.Host)
+		s.logFor(r.Context()).Warn("host not allowed", "host", name, "peer", r.RemoteAddr)
+		s.writeError(w, http.StatusMisdirectedRequest, "host_not_allowed",
+			fmt.Sprintf("The host %q is not allowed; add it to HABITS_ALLOWED_HOSTS", name))
+	})
+}
+
+// hostAllowed reports whether a request to host (the Host header, with or
+// without port) may be answered: any host for a nil allowed, an IP address,
+// or one of allowed, ignoring case and a trailing dot.
+func hostAllowed(allowed []string, host string) bool {
+	if allowed == nil {
+		return true
+	}
+	name := hostName(host)
+	if _, err := netip.ParseAddr(name); err == nil {
+		return true
+	}
+	return slices.Contains(allowed, name)
+}
+
+// hostName returns the name of a Host header as HABITS_ALLOWED_HOSTS lists
+// it: without port and brackets, in lower case, without a trailing dot.
+func hostName(host string) string {
+	if h, _, err := net.SplitHostPort(host); err == nil {
+		host = h
+	}
+	return strings.TrimSuffix(strings.ToLower(strings.Trim(host, "[]")), ".")
 }
 
 // contentSecurityPolicy is sent with every response. Inline styles are allowed

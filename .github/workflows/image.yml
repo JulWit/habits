@@ -37,8 +37,27 @@ jobs:
 
       - run: go test ./...
 
+  # The type check and unit tests of the frontend; developer tools, not part
+  # of the build (see docs/BUILDING.md).
+  frontend:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Type check
+        run: npx -y -p typescript@5.9 tsc -p jsconfig.json
+
+      - name: Unit tests
+        run: node --test "test/js/*.test.mjs"
+
   image:
-    needs: test
+    needs: [test, frontend]
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
 

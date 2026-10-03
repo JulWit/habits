@@ -14,6 +14,7 @@ import (
 	"path"
 	"runtime/debug"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/JulWit/habits/internal/auth"
@@ -32,6 +33,9 @@ type server struct {
 	assets http.Handler
 	// manifest is the parsed web app manifest, see handleManifest.
 	manifest map[string]any
+	// zones caches the users' time zones by name (see location), as
+	// time.LoadLocation reads and parses the zone on every call.
+	zones sync.Map
 }
 
 // New returns the HTTP handler of the application. webFS contains the frontend
@@ -213,14 +217,22 @@ func (s *server) loadBasis(ctx context.Context, tx *store.Tx) (basis, error) {
 }
 
 // location returns the user's time zone, or the server's if the user has not
-// chosen one.
+// chosen one or it is unknown. Zones are cached by name; only known ones
+// are, a few hundred at most.
 func (s *server) location(prefs settings.Settings) *time.Location {
-	if prefs.TimeZone != "" {
-		if loc, err := time.LoadLocation(prefs.TimeZone); err == nil {
-			return loc
-		}
+	name := prefs.TimeZone
+	if name == "" {
+		return s.cfg.Location
 	}
-	return s.cfg.Location
+	if loc, ok := s.zones.Load(name); ok {
+		return loc.(*time.Location)
+	}
+	loc, err := time.LoadLocation(name)
+	if err != nil {
+		return s.cfg.Location
+	}
+	s.zones.Store(name, loc)
+	return loc
 }
 
 // settingsOf returns the user's settings, or the defaults if they cannot be

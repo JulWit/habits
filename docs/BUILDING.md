@@ -70,8 +70,9 @@ go test ./internal/httpapi -run '^$' -bench BenchmarkState
 
 The JSDoc types of the frontend are checked by TypeScript (`jsconfig.json`,
 with `strictNullChecks`, so a nullable `?T` must be checked before use),
-and its pure parts (dates, translations, the day statuses, the state, the
-outbox, the board's window and layout, `useRemote`) have unit tests in
+and its parts without a document (dates, translations, the day statuses,
+the state, the outbox, writing an entry, loading the state, the board's
+window and layout, `useRemote`) have unit tests in
 `test/js/`, run by Node's own test runner. Both are developer tools, not
 build steps, and run in the CI. [uv](https://docs.astral.sh/uv/) fetches
 Node and, through npx, TypeScript:
@@ -80,6 +81,10 @@ Node and, through npx, TypeScript:
 uvx --from nodejs-wheel npx -y -p typescript@5.9 tsc -p jsconfig.json
 uvx --from nodejs-wheel node --test "test/js/*.test.mjs"
 ```
+
+Tests of the modules that talk to the server replace `fetch` with a fake
+that keeps each request until the test answers it (`installFetch` in
+`test/js/fixtures.mjs`).
 
 Vue's embedded build has no declarations; `types/vue.esm-browser.prod.d.ts`
 describes the parts the frontend uses, mapped to it by `rootDirs`. Neither

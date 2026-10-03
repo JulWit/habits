@@ -33,7 +33,8 @@ internal/store              SQLite: transactions, schema, migrations, undo steps
   settings.go                 Settings
   changes.go                  Undo steps: watching the rows a change writes, undo, redo
 internal/httpapi            Routing, JSON API, frontend delivery
-  server.go                   Routes of all endpoints, middleware, GET /, the
+  server.go                   Routes of all endpoints, middleware (allowed hosts,
+                              cross-origin protection, request log), GET /, the
                               assets and GET /healthz
   json.go                     JSON bodies, error responses, 404 for unknown /api/ paths
   build.go                    Version and build information of the binary

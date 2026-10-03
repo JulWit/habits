@@ -118,7 +118,9 @@ asked.
 - **UI text** is written in English and wrapped in `t('...')`; the English text
   is the key. Add the German translation to `DE` in `i18n.js`.
 - **Writing endpoints** require `Content-Type: application/json` (CSRF
-  protection). Keep it that way.
+  protection). Keep it that way. On top, `http.CrossOriginProtection` refuses
+  changing requests from other origins and `HABITS_ALLOWED_HOSTS` other host
+  names, for every route behind `authenticate` (`internal/httpapi/server.go`).
 - **Logging** in a handler goes through `s.logFor(ctx)`, which adds the
   request's ID and user; `writeStoreError` does so for errors.
 - **CSP** forbids inline scripts and external origins; it allows eval only

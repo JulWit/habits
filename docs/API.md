@@ -30,7 +30,11 @@ only `/healthz` outside `/api` does not.
 | `DELETE` | `/api/data` | Delete all of the user's data (habits, entries, categories, settings, undo steps); cannot be undone |
 
 Writing endpoints require `Content-Type: application/json`. This forces a CORS
-preflight and protects against CSRF.
+preflight and protects against CSRF. In addition, every changing request
+(`POST`, `PUT`, `PATCH`, `DELETE`) that a browser sends from another origin is
+refused with 403 `cross_origin` (`http.CrossOriginProtection`, by the headers
+`Sec-Fetch-Site` and `Origin`); requests without these headers, e.g. from
+`curl`, pass.
 
 Requests to a host name that is not allowed (`HABITS_ALLOWED_HOSTS`, see
 [DEPLOYMENT.md](DEPLOYMENT.md#configuration)) are answered with 421

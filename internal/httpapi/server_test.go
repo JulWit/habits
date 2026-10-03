@@ -382,6 +382,57 @@ func TestAnyHostWithoutAllowedHosts(t *testing.T) {
 	}
 }
 
+// A changing request a browser sends from another site is refused, even
+// with a JSON body; one from the app's own origin, and one without the
+// headers of a browser, is not.
+func TestCrossOriginRequestsAreRefused(t *testing.T) {
+	h := newTestServer(t)
+	send := func(method, path string, headers map[string]string) *httptest.ResponseRecorder {
+		r := httptest.NewRequest(method, path, strings.NewReader(`{"name":"Read","kind":"check","frequency":{"kind":"daily"}}`))
+		r.Header.Set("Content-Type", "application/json")
+		for k, v := range headers {
+			r.Header.Set(k, v)
+		}
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, r)
+		return w
+	}
+	for _, headers := range []map[string]string{
+		{"Sec-Fetch-Site": "cross-site"},
+		{"Sec-Fetch-Site": "same-site"},
+		{"Origin": "https://attacker.example"},
+	} {
+		for _, req := range []struct{ method, path string }{
+			{"POST", "/api/habits"}, {"POST", "/api/undo"}, {"DELETE", "/api/data"},
+		} {
+			w := send(req.method, req.path, headers)
+			var body problemBody
+			json.Unmarshal(w.Body.Bytes(), &body)
+			if w.Code != http.StatusForbidden || body.Code != "cross_origin" {
+				t.Errorf("%s %s with %v: status %d, code %q; want 403 cross_origin",
+					req.method, req.path, headers, w.Code, body.Code)
+			}
+		}
+	}
+	for _, headers := range []map[string]string{
+		{"Sec-Fetch-Site": "same-origin"},
+		{"Origin": "http://example.com"}, // httptest's host
+		{},
+	} {
+		if w := send("POST", "/api/habits", headers); w.Code != http.StatusCreated {
+			t.Errorf("POST /api/habits with %v: status %d (%s), want 201", headers, w.Code, w.Body)
+		}
+	}
+	// Reading stays possible, e.g. for links opened from another site.
+	r := httptest.NewRequest("GET", "/", nil)
+	r.Header.Set("Sec-Fetch-Site", "cross-site")
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, r)
+	if w.Code != http.StatusOK {
+		t.Errorf("GET / from another site: status %d, want 200", w.Code)
+	}
+}
+
 // Every response carries the ID of its request, and the request's log lines
 // carry the ID and the user, the error of a handler included.
 func TestRequestsAreLoggedWithIDAndUser(t *testing.T) {

@@ -545,6 +545,7 @@ const DE_ERRORS = {
   untrusted_proxy: 'Zugriff nur über den eingerichteten Reverse Proxy',
   host_not_allowed:
       'Diese Adresse ist nicht freigegeben — trage sie in HABITS_ALLOWED_HOSTS ein',
+  cross_origin: 'Anfragen von einer anderen Website werden abgelehnt',
 
   // Requests.
   internal: 'Interner Serverfehler',

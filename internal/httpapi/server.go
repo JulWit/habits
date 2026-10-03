@@ -104,7 +104,7 @@ func New(cfg config.Config, st *store.Store, logger *slog.Logger, webFS fs.FS) (
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		fmt.Fprintln(w, "ok")
 	})
-	root.Handle("/", s.checkHost(s.authenticate(mux)))
+	root.Handle("/", s.checkHost(s.refuseCrossOrigin(s.authenticate(mux))))
 
 	return s.logRequests(s.recoverPanics(securityHeaders(root))), nil
 }
@@ -146,6 +146,21 @@ func hostName(host string) string {
 		host = h
 	}
 	return strings.TrimSuffix(strings.ToLower(strings.Trim(host, "[]")), ".")
+}
+
+// refuseCrossOrigin refuses changing requests (POST, PUT, PATCH, DELETE) that
+// a browser sends from another origin (http.CrossOriginProtection, by the
+// headers Sec-Fetch-Site and Origin). Requiring JSON bodies (decodeJSON)
+// protects the writing endpoints as well; this covers every endpoint,
+// including future ones without a body.
+func (s *server) refuseCrossOrigin(next http.Handler) http.Handler {
+	protection := http.NewCrossOriginProtection()
+	protection.SetDenyHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		s.logFor(r.Context()).Warn("cross-origin request refused",
+			"origin", r.Header.Get("Origin"), "path", r.URL.Path)
+		s.writeError(w, http.StatusForbidden, "cross_origin", "Cross-origin request refused")
+	}))
+	return protection.Handler(next)
 }
 
 // contentSecurityPolicy is sent with every response. Inline styles are allowed

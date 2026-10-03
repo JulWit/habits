@@ -193,8 +193,14 @@ func (s *Store) migrate(ctx context.Context) error {
 		return fmt.Errorf("database has schema version %d, this binary migrates from %d on — open it with an older release first", version, oldestVersion)
 	}
 	for v := version; v < latestVersion; v++ {
+		// A missing migration would run as an empty statement and raise the
+		// version without changing the schema.
+		migration, ok := migrations[v]
+		if !ok {
+			return fmt.Errorf("no migration from schema version %d", v)
+		}
 		if err := inTx(ctx, s.db, "migrating", func(tx *sql.Tx) error {
-			if _, err := tx.ExecContext(ctx, migrations[v]); err != nil {
+			if _, err := tx.ExecContext(ctx, migration); err != nil {
 				return fmt.Errorf("migration from version %d: %w", v, err)
 			}
 			return setVersion(ctx, tx, v+1)

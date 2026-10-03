@@ -208,6 +208,21 @@ func TestMigrationFromVersion4KeepsUndoSteps(t *testing.T) {
 	}
 }
 
+// There is a migration from every version between oldestVersion and
+// latestVersion, and none beyond.
+func TestEveryVersionHasAMigration(t *testing.T) {
+	for v := oldestVersion; v < latestVersion; v++ {
+		if strings.TrimSpace(migrations[v]) == "" {
+			t.Errorf("no migration from version %d", v)
+		}
+	}
+	for v := range migrations {
+		if v < oldestVersion || v >= latestVersion {
+			t.Errorf("migration from version %d lies outside %d to %d", v, oldestVersion, latestVersion-1)
+		}
+	}
+}
+
 // A database older than oldestVersion is refused and left as it is.
 func TestTooOldDatabaseIsRefused(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "v2.db")

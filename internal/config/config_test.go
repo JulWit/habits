@@ -33,8 +33,8 @@ func TestLoadDefaultsToSingleUser(t *testing.T) {
 	if cfg.AuthMode != AuthModeSingleUser {
 		t.Errorf("AuthMode = %q, want single-user", cfg.AuthMode)
 	}
-	if cfg.Addr != ":8080" || cfg.DatabasePath != "habits.db" || cfg.DefaultUser != "local" {
-		t.Errorf(`Addr, DatabasePath, DefaultUser = %q, %q, %q; want ":8080", "habits.db", "local"`, cfg.Addr, cfg.DatabasePath, cfg.DefaultUser)
+	if cfg.Addr != "127.0.0.1:8080" || cfg.DatabasePath != "habits.db" || cfg.DefaultUser != "local" {
+		t.Errorf(`Addr, DatabasePath, DefaultUser = %q, %q, %q; want "127.0.0.1:8080", "habits.db", "local"`, cfg.Addr, cfg.DatabasePath, cfg.DefaultUser)
 	}
 	if cfg.UserHeader != "Remote-User" {
 		t.Errorf("UserHeader = %q, want Remote-User", cfg.UserHeader)
@@ -54,8 +54,8 @@ func TestBlankEnvFallsBackToTheDefault(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
-	if cfg.Addr != ":8080" {
-		t.Errorf(`Addr = %q, want ":8080"`, cfg.Addr)
+	if cfg.Addr != "127.0.0.1:8080" {
+		t.Errorf(`Addr = %q, want "127.0.0.1:8080"`, cfg.Addr)
 	}
 	if cfg.DatabasePath != "data.db" {
 		t.Errorf(`DatabasePath = %q, want "data.db"`, cfg.DatabasePath)

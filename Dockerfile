@@ -45,8 +45,9 @@ COPY --from=build /out/habits /habits
 # server.
 COPY --from=build --chown=65534:65534 /data /data
 
-# The default in config.go is a relative path; inside the container it has to
-# point at the volume, or the database lands in the read-only top layer.
+# The defaults in config.go only fit a local run: the address listens on the
+# loopback interface, which a published port cannot reach, and the database is
+# a relative path, which would land in the read-only top layer, not the volume.
 ENV HABITS_ADDR=:8080 \
     HABITS_DB=/data/habits.db
 

@@ -33,7 +33,8 @@ go build -o habits .
 ```
 
 The app listens on <http://localhost:8080> in `single-user` mode: no
-authentication, all data belongs to the user `local`.
+authentication, all data belongs to the user `local`. It binds to `127.0.0.1`
+only; `HABITS_ADDR=:8080` makes it reachable from other machines.
 
 Or with Docker:
 

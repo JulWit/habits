@@ -70,7 +70,7 @@ func env(key, fallback string) string {
 // Load reads the configuration from the environment and validates it.
 func Load() (Config, error) {
 	cfg := Config{
-		Addr:          env("HABITS_ADDR", ":8080"),
+		Addr:          env("HABITS_ADDR", "127.0.0.1:8080"),
 		DatabasePath:  env("HABITS_DB", "habits.db"),
 		AuthMode:      AuthMode(strings.ToLower(env("HABITS_AUTH_MODE", string(AuthModeSingleUser)))),
 		UserHeader:    env("HABITS_USER_HEADER", "Remote-User"),

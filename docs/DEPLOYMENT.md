@@ -6,7 +6,7 @@ All configuration is done through environment variables.
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `HABITS_ADDR` | `:8080` | Listen address |
+| `HABITS_ADDR` | `127.0.0.1:8080` | Listen address; the default is reachable only from this machine, `:8080` listens on all interfaces (the container image sets it) |
 | `HABITS_DB` | `habits.db` | Path to the SQLite file |
 | `HABITS_TZ` | `Local` | Default time zone for "today" (e.g. `Europe/Berlin`); users can override it in the settings |
 | `HABITS_AUTH_MODE` | `single-user` | `single-user` or `trusted-header` |
@@ -31,9 +31,12 @@ the refused host. `/healthz` answers on any host.
 
 In `single-user` mode only `localhost` is allowed by default. Reaching the app
 under another name, e.g. `http://nas.local:8080` or through a reverse proxy at
-`https://habits.example.com`, needs that name in the list:
+`https://habits.example.com`, needs that name in the list. Unless the proxy
+runs on the same machine, the server must also listen beyond the loopback
+interface:
 
 ```bash
+HABITS_ADDR=:8080
 HABITS_ALLOWED_HOSTS=habits.example.com,nas.local
 ```
 

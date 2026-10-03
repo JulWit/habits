@@ -67,7 +67,7 @@ func (s *server) handleSkipDays(w http.ResponseWriter, r *http.Request, user aut
 			for _, d := range domain.DaysToSkip(h, entries[h.ID], body.From, body.To) {
 				days[d] = domain.Entry{Skipped: true}
 			}
-			if err := tx.SetEntries(ctx, h, days); err != nil {
+			if err := tx.SetEntries(ctx, &h, days); err != nil {
 				return err
 			}
 			skipped += len(days)

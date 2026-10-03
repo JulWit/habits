@@ -78,7 +78,7 @@ func setEntry(t *testing.T, st *Store, user string, h domain.Habit, date domain.
 	t.Helper()
 	return update(t, st, user, func(tx *Tx) error {
 		tx.Record("{name} — {date}", "name", h.Name, "date", date.String())
-		return tx.SetEntries(t.Context(), h, map[domain.Date]domain.Entry{date: e})
+		return tx.SetEntries(t.Context(), &h, map[domain.Date]domain.Entry{date: e})
 	})
 }
 

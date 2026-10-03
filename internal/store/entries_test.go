@@ -16,7 +16,7 @@ func TestSetEntriesBoundsTheValue(t *testing.T) {
 	d := day(2026, time.September, 18)
 	write := func(value int) error {
 		_, err := st.Update(context.Background(), "alice", func(tx *Tx) error {
-			return tx.SetEntries(t.Context(), h, map[domain.Date]domain.Entry{d: {Value: value}})
+			return tx.SetEntries(t.Context(), &h, map[domain.Date]domain.Entry{d: {Value: value}})
 		})
 		return err
 	}
@@ -58,7 +58,7 @@ func TestEntriesStoreSkips(t *testing.T) {
 		t.Errorf("after the skip: %+v, want %+v", got, want)
 	}
 	_, err := st.Update(context.Background(), "alice", func(tx *Tx) error {
-		return tx.SetEntries(t.Context(), h, map[domain.Date]domain.Entry{d: {Value: 5, Skipped: true}})
+		return tx.SetEntries(t.Context(), &h, map[domain.Date]domain.Entry{d: {Value: 5, Skipped: true}})
 	})
 	if !errors.Is(err, domain.ErrValidation) {
 		t.Errorf("a skip with a value: %v, want a validation error", err)

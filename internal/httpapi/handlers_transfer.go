@@ -318,7 +318,7 @@ func importHabit(ctx context.Context, tx *store.Tx, eh exportHabit, catByKey map
 		}
 		entries[d] = domain.Entry{Skipped: true}
 	}
-	return tx.SetEntries(ctx, h, entries)
+	return tx.SetEntries(ctx, &h, entries)
 }
 
 // handleDeleteData removes all of the user's data: habits with their entries,

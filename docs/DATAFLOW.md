@@ -43,6 +43,10 @@ would keep every other write waiting. `store.View` reads on a pool of
 read-only connections of its own, which see the last committed state (WAL),
 so reading requests do not wait for a running write such as an import.
 
+Changing a day's entry, the most frequent write, answers with the habit
+computed from the entries the change loaded and wrote, without reading them
+again.
+
 ## Loading the state
 
 On start, `loader.js` requests `/api/state` with the last 200 days of entries

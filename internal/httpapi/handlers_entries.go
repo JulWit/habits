@@ -60,12 +60,19 @@ func (s *server) handleSetEntry(w http.ResponseWriter, r *http.Request, user aut
 				return err
 			}
 		}
-		if err := tx.SetEntries(ctx, h, map[domain.Date]domain.Entry{date: next}); err != nil {
+		if err := tx.SetEntries(ctx, &h, map[domain.Date]domain.Entry{date: next}); err != nil {
 			return err
 		}
 		tx.Record("{name} — {date}", "name", h.Name, "date", date.String())
-		data, err = s.loadHabit(ctx, tx, h.ID)
-		return err
+		// The answer is computed from what was loaded and written, instead of
+		// reading it all again: this is the most frequent write.
+		if next.IsZero() {
+			delete(entries, date)
+		} else {
+			entries[date] = next
+		}
+		data = habitData{habit: h, entries: entries, basis: b}
+		return nil
 	})
 	if err != nil {
 		s.writeStoreError(w, err, "saving entry")

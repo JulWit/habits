@@ -77,9 +77,9 @@ func scanEntry(rows *sql.Rows, habitID *string) (domain.Date, domain.Entry, erro
 }
 
 // SetEntries stores the entries of the habit h on their days, deleting those
-// that record nothing, and updates the habit's updated_at. Each entry is
-// validated for the habit's kind.
-func (t *Tx) SetEntries(ctx context.Context, h domain.Habit, entries map[domain.Date]domain.Entry) error {
+// that record nothing, and updates the habit's updated_at, in h as well. Each
+// entry is validated for the habit's kind.
+func (t *Tx) SetEntries(ctx context.Context, h *domain.Habit, entries map[domain.Date]domain.Entry) error {
 	if len(entries) == 0 {
 		return nil
 	}
@@ -102,6 +102,7 @@ func (t *Tx) SetEntries(ctx context.Context, h domain.Habit, entries map[domain.
 	if _, err := t.exec(ctx, `UPDATE habits SET updated_at = ? WHERE id = ? AND user_id = ?`, now, h.ID, t.userID); err != nil {
 		return fmt.Errorf("touching habit %s: %w", h.ID, err)
 	}
+	h.UpdatedAt = t.now
 	return nil
 }
 

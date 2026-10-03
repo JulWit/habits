@@ -3,6 +3,7 @@ package httpapi
 import (
 	"encoding/json"
 	"net/http"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -357,5 +358,35 @@ func TestEntryKeepsTheMaximumOfTimesPerWeek(t *testing.T) {
 	}
 	if w := do(t, h, "PUT", path+"2026-09-21", `{"value":1}`, "application/json"); w.Code != http.StatusOK {
 		t.Errorf("the next week: status %d, want 200 (%s)", w.Code, w.Body)
+	}
+}
+
+// The answer to a change of a day is the habit as GET /api/habits/{id} then
+// shows it, for setting, skipping and removing a value alike, although it is
+// computed from what the change loaded rather than read again.
+func TestEntryAnswerMatchesTheStoredHabit(t *testing.T) {
+	h := newTestServer(t)
+	id := createHabit(t, h, `{"name":"Water","kind":"count","targetValue":80,"frequency":{"kind":"daily"}}`)
+	today := domain.Today(time.UTC)
+	for _, change := range []struct{ date, body string }{
+		{today.String(), `{"value":50}`},
+		{today.String(), `{"add":30}`},
+		{today.AddDays(-1).String(), `{"skipped":true}`},
+		{today.AddDays(-2).String(), `{"value":90}`},
+		{today.String(), `{"value":0}`},
+		{today.AddDays(-1).String(), `{"skipped":false}`},
+	} {
+		answer := mustDo(t, h, "PUT", "/api/habits/"+id+"/entries/"+change.date, change.body, http.StatusOK)
+		stored := mustDo(t, h, "GET", "/api/habits/"+id, "", http.StatusOK)
+		var got, want any
+		if err := json.Unmarshal(answer, &got); err != nil {
+			t.Fatalf("json.Unmarshal(answer): %v", err)
+		}
+		if err := json.Unmarshal(stored, &want); err != nil {
+			t.Fatalf("json.Unmarshal(GET): %v", err)
+		}
+		if !reflect.DeepEqual(got, want) {
+			t.Errorf("after %s on %s, the answer differs from GET:\n%s\nwant:\n%s", change.body, change.date, answer, stored)
+		}
 	}
 }

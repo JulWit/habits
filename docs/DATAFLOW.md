@@ -166,6 +166,12 @@ kept as well: undoing the creation of a habit takes the entries recorded since
 with it, and redoing it brings them back. A new step drops the undone ones;
 the latest 100 steps per user are kept, for 30 days.
 
+As a step keeps whole rows, its size grows with the rows it changed: deleting
+a habit with years of entries, or an import, keeps every one of its rows. An
+import of a large file keeps a step of several megabytes, which stays in the
+database until it is dropped (see
+[DATAMODEL.md](DATAMODEL.md#changes)); undoing it reads it whole.
+
 Deleting a habit or a category removes it; undo brings it back with its
 history, or puts a category's habits back into it.
 

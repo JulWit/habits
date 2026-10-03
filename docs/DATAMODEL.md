@@ -259,7 +259,11 @@ its `params`, which make up the undo message, and as `diff` the rows the change 
 (see [DATAFLOW.md](DATAFLOW.md#undo)). `undone_at` is set while a step is
 undone. IDs are never reused, as a client may still offer to undo a step that
 has been dropped since. The latest 100 steps per user are kept; steps older
-than 30 days are removed on start and once a day.
+than 30 days are removed on start and once a day. A step holds every row its
+change wrote, so the step of an import is about as large as the imported
+history (a few megabytes for years of entries of dozens of habits); the
+database file keeps its size after the step is removed, until a `VACUUM`
+(e.g. `habits backup`, which writes a compacted copy).
 
 ## Colours
 

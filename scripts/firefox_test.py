@@ -241,6 +241,16 @@ def board_input(run, f):
     run.check("Enter saves the typed value",
               not run.is_open("day-editor") and f.value(f.count_habit) == 40
               and f.done(f.count_habit))
+    # Only if no other habit is due today, as in a scratch database.
+    if run.js("return !!document.querySelector('.board-day-summary.is-complete');"):
+        confetti = run.js("""
+            for (let i = 0; i < 30; i++) {
+              const n = document.querySelectorAll('.board-day-summary-confetti').length;
+              if (n > 0) return n;
+              await new Promise((r) => setTimeout(r, 100));
+            }
+            return 0;""")
+        run.check("the perfect day throws confetti", confetti > 0, f"{confetti} pieces")
 
     run.actions().context_click(run.find(f.cell(f.count_habit))).perform()
     time.sleep(0.3)

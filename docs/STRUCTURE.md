@@ -113,7 +113,8 @@ web/                        Frontend (Vue, ES modules, no build step)
       board-keyboard.js           Keyboard navigation and tab stops of the board
       board-press.js              Long presses on the day cells
       board-cells.js              Header day, habit label and day cell of the board
-      day-summary.js              Day summary with progress ring and the orbs flying into it
+      day-summary.js              Day summary with progress ring, the orbs flying into it
+                                  and the confetti of a perfect day
       habit-view.js               Habit detail view
       category-view.js            Category detail view
       day-stats-view.js           Day statistics view

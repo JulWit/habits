@@ -80,6 +80,11 @@ active, today's date is underlined in the header. The selection is not saved;
 it resets to today on reload and with "Back to today". Tapping a cell still
 writes to that cell's day, whichever day is active.
 
+**Day summary**: Above the board, the active day's progress with a ring. A
+completed habit sends orbs in its colour into the ring; ticking off the last
+open habit makes the day perfect, and colourful confetti burst from the ring.
+With "reduce motion" set in the system, neither is shown.
+
 **Skipping a day**: "Skip this day" in the day dialog, e.g. when ill or on
 holiday. A skipped day does not count: it neither breaks nor extends the
 streak and is left out of the rate, the day summary and the filter. Future

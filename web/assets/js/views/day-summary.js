@@ -1,8 +1,9 @@
 /**
  * @fileoverview Day summary above the board: the active day's date, how many
  * habits are done, and a progress ring that the orbs of newly completed habits
- * fly into. The ring and the orbs are kept by a controller of the board
- * (createOrbs), which the summary shows.
+ * fly into; confetti burst from it when the day turns perfect. The ring, the
+ * orbs and the confetti are kept by a controller of the board (createOrbs),
+ * which the summary shows.
  */
 
 import * as habitHelpers from '../data/habit-helpers.js';
@@ -28,6 +29,16 @@ export function dayProgress(habits, day) {
   const done = due.filter((h) => habitHelpers.isDone(h, day));
   const bonus = active.filter((h) => habitHelpers.isBonus(h, day));
   return {due: due.length, done: done.length, bonus: bonus.length};
+}
+
+/**
+ * Reports whether every habit due on the day is complete: the server's
+ * perfect day (domain.DayTotal.Perfect).
+ * @param {{due: number, done: number}} progress as counted by dayProgress
+ * @return {boolean}
+ */
+function isPerfect({due, done}) {
+  return due > 0 && done === due;
 }
 
 /**
@@ -118,10 +129,7 @@ export const BoardDaySummary = {
           () => progress.value.bonus > 0 ?
               t('+{n} bonus', {n: progress.value.bonus}) :
               ''),
-      isComplete: computed(() => {
-        const {due, done} = progress.value;
-        return due > 0 && done === due;
-      }),
+      isComplete: computed(() => isPerfect(progress.value)),
       ring,
       // Filling from empty, the ring also fades in (ring-wind in the CSS).
       ringStyle: computed(() => ({
@@ -199,7 +207,7 @@ export const BoardDaySummary = {
     </button>`,
 };
 
-// ---------- ticking off: orbs into the ring ----------
+// ---------- ticking off: orbs into the ring, confetti ----------
 
 /**
  * An orb flight: the habit's colour and the centre of its cell.
@@ -217,7 +225,7 @@ export let Flight;
 export let Ring;
 
 /**
- * The ring and orbs of a board (see createOrbs).
+ * The ring, orbs and confetti of a board (see createOrbs).
  * @typedef {{
  *   ring: !Ring,
  *   showPercent: function(number): void,
@@ -232,6 +240,52 @@ export let Orbs;
 /** The number of orbs sent per completed habit. */
 const ORBS_PER_HABIT = 6;
 
+/** The number of confetti pieces thrown for a perfect day. */
+const CONFETTI_PIECES = 90;
+
+/**
+ * Palette colours of the confetti, see --c-red and following.
+ * @const {!Array<string>}
+ */
+const CONFETTI_COLORS = [
+  'red',
+  'orange',
+  'yellow',
+  'lime',
+  'teal',
+  'sky',
+  'blue',
+  'violet',
+  'pink',
+];
+
+/** How long the confetti fly, in seconds; they fade out towards the end. */
+const CONFETTI_SECONDS = 3.2;
+
+/** Gravity on the confetti, in px/s². */
+const CONFETTI_GRAVITY = 900;
+
+/** Air drag on the confetti, per second; slows them to a flutter. */
+const CONFETTI_DRAG = 2.4;
+
+/**
+ * A confetti piece in flight: its element, position and velocity (px, px/s),
+ * rotation and turning speed (degrees, degrees/s), and the phase and speed of
+ * its flutter (radians, radians/s).
+ * @typedef {{
+ *   el: !HTMLElement,
+ *   x: number,
+ *   y: number,
+ *   vx: number,
+ *   vy: number,
+ *   angle: number,
+ *   turn: number,
+ *   phase: number,
+ *   flutter: number,
+ * }}
+ */
+let ConfettiPiece;
+
 /**
  * Reports whether the user asked for less motion.
  * @return {boolean}
@@ -243,9 +297,10 @@ function prefersReducedMotion() {
 
 /**
  * Creates the ring and orbs of a board: the ring's value, which the day
- * summary shows, and the orbs that fly from the cells of newly completed
- * habits into it. The orbs are drawn in a layer of their own outside the Vue
- * app, as they are moved frame by frame; `dispose` removes it.
+ * summary shows, the orbs that fly from the cells of newly completed habits
+ * into it, and the confetti that burst from it when the day turns perfect.
+ * Orbs and confetti are drawn in a layer of their own outside the Vue app, as
+ * they are moved frame by frame; `dispose` removes it.
  * @return {!Orbs}
  */
 export function createOrbs() {
@@ -262,15 +317,22 @@ export function createOrbs() {
   /**
    * State of the ring while orbs are in flight, or null. `shown` is the
    * displayed value, `planned` the value after all launched orbs, `target`
-   * the actual value and `pending` the number of orbs in flight.
-   * @type {?{shown: number, planned: number, target: number, pending: number}}
+   * the actual value and `pending` the number of orbs in flight. `perfect`
+   * holds the confetti back until the last orb has landed.
+   * @type {?{
+   *   shown: number,
+   *   planned: number,
+   *   target: number,
+   *   pending: number,
+   *   perfect: boolean,
+   * }}
    */
   let hold = null;
 
   /**
    * The IDs of the habits complete on the active day at the last call of
-   * newlyDone, and that day.
-   * @type {?{day: string, done: !Set<string>}}
+   * newlyDone, that day, and whether it was perfect.
+   * @type {?{day: string, done: !Set<string>, perfect: boolean}}
    */
   let last = null;
 
@@ -366,6 +428,88 @@ export function createOrbs() {
   };
 
   /**
+   * Throws confetti in the palette's colours from the ring: they shoot up,
+   * flutter down and fade.
+   */
+  const throwConfetti = () => {
+    const r = ringElement()?.getBoundingClientRect();
+    if (!r || r.width === 0) return;
+    const x = r.left + r.width / 2;
+    // From the top of the visible area if the ring is scrolled away.
+    const y = Math.max(r.top + r.height / 2, visibleTop());
+
+    const target = orbLayer();
+    /** @type {!Array<!ConfettiPiece>} */
+    const pieces = [];
+    for (let i = 0; i < CONFETTI_PIECES; i++) {
+      const el = document.createElement('span');
+      el.className = 'board-day-summary-confetti';
+      el.style.setProperty(
+          '--confetti-color',
+          colorValue(CONFETTI_COLORS[i % CONFETTI_COLORS.length]));
+      const width = 6 + Math.random() * 4;
+      el.style.width = `${width}px`;
+      el.style.height = `${width * (0.4 + Math.random() * 0.5)}px`;
+      target.append(el);
+      // Upwards in a wide fan, leaning to the left, as the ring sits at the
+      // right edge; not too fast, so most stay on the screen while the ring
+      // is at its top.
+      const direction = -Math.PI * (0.6 + (Math.random() - 0.5) * 0.9);
+      const speed = 350 + Math.random() * 750;
+      pieces.push({
+        el,
+        x,
+        y,
+        vx: Math.cos(direction) * speed,
+        vy: Math.sin(direction) * speed,
+        angle: Math.random() * 360,
+        turn: (Math.random() - 0.5) * 900,
+        phase: Math.random() * 2 * Math.PI,
+        flutter: 6 + Math.random() * 8,
+      });
+    }
+
+    /** @type {?number} */
+    let start = null;
+    /** @type {?number} */
+    let previous = null;
+
+    /**
+     * Moves the pieces to the time `now` and requests the next frame.
+     * @param {number} now
+     */
+    const frame = (now) => {
+      // The layer is gone (dispose).
+      if (!pieces[0].el.isConnected) return;
+      start ??= now;
+      // Seconds since the last frame, capped, so a stalled tab does not jump.
+      const dt = Math.min(0.05, (now - (previous ?? now)) / 1000);
+      previous = now;
+      const age = (now - start) / 1000;
+      if (age >= CONFETTI_SECONDS) {
+        pieces.forEach((p) => p.el.remove());
+        return;
+      }
+      const slow = Math.exp(-CONFETTI_DRAG * dt);
+      const opacity = Math.min(1, (CONFETTI_SECONDS - age) / 0.8);
+      for (const p of pieces) {
+        p.vx *= slow;
+        p.vy = p.vy * slow + CONFETTI_GRAVITY * dt;
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+        p.angle += p.turn * dt;
+        p.phase += p.flutter * dt;
+        // Turning about its long axis, the piece shows its edge in between.
+        p.el.style.transform = `translate(${p.x}px, ${p.y}px) ` +
+            `rotate(${p.angle}deg) scaleY(${Math.cos(p.phase)})`;
+        p.el.style.opacity = String(opacity);
+      }
+      requestAnimationFrame(frame);
+    };
+    requestAnimationFrame(frame);
+  };
+
+  /**
    * Advances the ring when an orb lands.
    * @param {number} landing the ring value the orb lands at
    * @param {boolean} visible whether the ring is visible
@@ -392,6 +536,7 @@ export function createOrbs() {
     if (held.pending === 0) {
       hold = null;
       lastPercent = held.target;
+      if (held.perfect) throwConfetti();
     }
   };
 
@@ -481,7 +626,8 @@ export function createOrbs() {
      * Returns the habits completed on `day` since the last call, each with
      * the position of its cell on `boardEl`. Must be called before the board
      * is updated, while it still shows the cells. Returns nothing on the
-     * first call and after a change of the day.
+     * first call and after a change of the day. If the day turned perfect
+     * since the last call, confetti follow once the orbs have landed.
      * @param {!Array<!Habit>} habits
      * @param {string} day
      * @param {?Element} boardEl
@@ -495,16 +641,20 @@ export function createOrbs() {
               (habitHelpers.isDue(h, day) || habitHelpers.isBonus(h, day)));
       const done = new Set(
           counted.filter((h) => habitHelpers.isDone(h, day)).map((h) => h.id));
-      const before = last?.day === day ? last.done : null;
-      last = {day, done};
+      const perfect = isPerfect(dayProgress(habits, day));
+      const before = last?.day === day ? last : null;
+      last = {day, done, perfect};
       // No animation in a hidden page.
       if (!before || !board || prefersReducedMotion() || document.hidden) {
         return [];
       }
-
-      const fresh = counted.filter((h) => done.has(h.id) && !before.has(h.id));
+      const fresh =
+          counted.filter((h) => done.has(h.id) && !before.done.has(h.id));
       // No ring, no orbs.
       if (fresh.length === 0 || !ringElement()) return [];
+      // Completed by ticking off, not by skipping, archiving or deleting the
+      // open habits.
+      const turnedPerfect = perfect && !before.perfect;
 
       const flights = [];
       for (const habit of fresh) {
@@ -520,11 +670,17 @@ export function createOrbs() {
           y: rect.top + rect.height / 2,
         });
       }
-      if (flights.length === 0) return [];
+      if (flights.length === 0) {
+        // Without orbs, the confetti follow once the board is updated.
+        if (turnedPerfect) requestAnimationFrame(throwConfetti);
+        return [];
+      }
 
       // Keep the ring at its current value.
       const shown = hold?.shown ?? lastPercent ?? 0;
-      hold ??= {shown, planned: shown, target: shown, pending: 0};
+      hold ??=
+          {shown, planned: shown, target: shown, pending: 0, perfect: false};
+      hold.perfect ||= turnedPerfect;
       return flights;
     },
     /**
@@ -563,7 +719,7 @@ export function createOrbs() {
         });
       }
     },
-    /** Removes the orbs' layer, with the orbs in flight. */
+    /** Removes the orbs' layer, with the orbs and confetti in flight. */
     dispose: () => {
       layer?.remove();
       layer = null;

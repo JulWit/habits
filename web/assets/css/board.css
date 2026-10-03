@@ -490,7 +490,8 @@ html[data-scrolled='on'] .board-view-day-header-backdrop {
   }
 }
 
-/* Layer for the orbs, moved by board-view.js. Ignores the pointer. */
+/* Layer for the orbs and confetti, moved by day-summary.js. Ignores the
+   pointer. */
 .board-day-summary-orbs {
   inset: 0;
   overflow: hidden;
@@ -512,6 +513,17 @@ html[data-scrolled='on'] .board-view-day-header-backdrop {
 /* Flash where an orb leaves the visible area. */
 .board-day-summary-orb-flash {
   box-shadow: 0 0 10px 3px color-mix(in srgb, var(--habit-color) 70%, transparent);
+}
+
+/* A piece of the confetti of a perfect day; --confetti-color is a palette
+   colour. */
+.board-day-summary-confetti {
+  background: var(--confetti-color);
+  border-radius: 1px;
+  left: 0;
+  position: absolute;
+  top: 0;
+  will-change: transform, opacity;
 }
 
 .board-day-summary-percent {

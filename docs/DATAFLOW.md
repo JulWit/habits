@@ -222,6 +222,10 @@ history, or puts a category's habits back into it.
 
 The service worker (`sw.js`) caches the app shell, and the client keeps the
 last loaded state in `localStorage`, so the app starts without a connection.
+The worker asks the network first and keeps a copy of each answer; without
+an answer within three seconds, e.g. on a weak connection that neither
+answers nor fails, it serves the copy, and the network's answer only
+refreshes it.
 
 Writes of a value that cannot reach the server wait in an outbox
 (`outbox.js`); a skip needs a connection. They are laid over every loaded

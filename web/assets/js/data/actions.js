@@ -14,7 +14,7 @@ import {api} from './api.js';
 import * as habitHelpers from './habit-helpers.js';
 import {refresh} from './loader.js';
 import {discard, enqueue, flush, isConnectionError, isOffline, isSessionExpired, pending, setOffline} from './outbox.js';
-import {currentHabitId, goHome} from './route.js';
+import {goHome, showsHabit} from './route.js';
 import {applyEntryAnswer, categoryById, dropPending, groupedHabits, habitById, removeCategory, removeHabit, reorderCategoriesLocal, reorderHabitsLocal, showPending, state, upsertCategory, upsertHabit} from './state.js';
 import {offerUndo, stepLabel} from './undo.js';
 
@@ -424,7 +424,7 @@ export async function deleteHabit(id) {
     return;
   }
   removeHabit(id);
-  if (currentHabitId() === id) goHome();
+  if (showsHabit(id)) goHome();
   offerUndo(answer?.changeId, t('"{name}" deleted', {name: habit.name}));
 }
 
@@ -444,7 +444,7 @@ export async function toggleArchive(id) {
     toast(errorText(err), {error: true});
     return;
   }
-  if (archived && currentHabitId() === id) goHome();
+  if (archived && showsHabit(id)) goHome();
   // The state keeps archived habits; the overview hides them unless shown.
   upsertHabit(withoutChange(answer));
   const name = habit.name;

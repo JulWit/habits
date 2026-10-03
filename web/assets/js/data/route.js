@@ -17,19 +17,29 @@ import {habitById, state} from './state.js';
 export const route = reactive({view: 'board', id: null});
 
 /**
- * Returns the ID of the habit the URL names, or null.
+ * Reports whether the habit view shows the habit `id`.
+ * @param {string} id
+ * @return {boolean}
+ */
+export function showsHabit(id) {
+  return route.view === 'habit' && route.id === id;
+}
+
+/**
+ * Returns the ID of the habit the URL names, or null. Only syncRoute reads
+ * the URL; everything else reads `route`.
  * @return {?string}
  */
-export function currentHabitId() {
+function hashHabitId() {
   const match = location.hash.match(/^#\/habit\/([\w-]+)$/);
   return match ? match[1] : null;
 }
 
 /**
- * Returns the ID of the category the URL names, or null.
+ * Returns the ID of the category the URL names, or null (see hashHabitId).
  * @return {?string}
  */
-function currentCategoryId() {
+function hashCategoryId() {
   const match = location.hash.match(/^#\/category\/([\w-]+)$/);
   return match ? match[1] : null;
 }
@@ -131,7 +141,7 @@ export function syncRoute() {
     return;
   }
 
-  const categoryId = currentCategoryId();
+  const categoryId = hashCategoryId();
   if (categoryId) {
     if (state.categories.some((c) => c.id === categoryId)) {
       show('category', categoryId);
@@ -141,7 +151,7 @@ export function syncRoute() {
     if (stateLoaded()) replaceWithOverview();
   }
 
-  const habitId = currentHabitId();
+  const habitId = hashHabitId();
   if (habitId) {
     if (habitById(habitId)) {
       show('habit', habitId);

@@ -51,7 +51,7 @@ func (t *Tx) reorder(ctx context.Context, table string, ids []string) error {
 	}
 
 	for position, id := range order {
-		if _, err := t.exec(ctx, `UPDATE `+table+` SET position = ? WHERE id = ?`, position, id); err != nil {
+		if _, err := t.exec(ctx, `UPDATE `+table+` SET position = ? WHERE id = ? AND user_id = ?`, position, id, t.userID); err != nil {
 			return fmt.Errorf("saving the order of %s: %w", table, err)
 		}
 	}

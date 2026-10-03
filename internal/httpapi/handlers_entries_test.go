@@ -234,7 +234,7 @@ func TestSkipReachesTheState(t *testing.T) {
 	if err := json.Unmarshal(w.Body.Bytes(), &created); err != nil {
 		t.Fatalf("reading response: %v", err)
 	}
-	today := time.Now()
+	today := time.Now().UTC()
 	path := func(daysAgo int) string {
 		return "/api/habits/" + created.ID + "/entries/" + today.AddDate(0, 0, -daysAgo).Format("2006-01-02")
 	}

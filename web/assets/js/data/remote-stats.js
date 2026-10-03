@@ -97,6 +97,9 @@ export function useRemote(key, load, {keep = () => false} = {}) {
     loading.value = true;
     try {
       const value = await load(controller.signal);
+      // Aborted while the answer was already on its way: a newer key may show
+      // its kept answer, which this one must not replace.
+      if (controller.signal.aborted) return;
       remember(wanted, value, revision);
       data.value = value;
       error.value = null;

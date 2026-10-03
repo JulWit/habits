@@ -124,3 +124,28 @@ test('stopping the scope aborts the running request', async () => {
   scope.stop();
   assert.ok(calls[0].signal.aborted);
 });
+
+test(
+    'an answer arriving after its abort does not replace a kept one',
+    async () => {
+      const key = ref('test|g1');
+      const calls = [];
+      // Resolves even after an abort, as a request whose body was read.
+      const load = (signal) => new Promise((resolve) => {
+        calls.push({resolve, signal});
+      });
+      const scope = effectScope();
+      const remote = scope.run(() => useRemote(() => key.value, load));
+      calls[0].resolve('g1');
+      await settle();
+      key.value = 'test|g2';
+      await settle();
+      key.value = 'test|g1';
+      await settle();
+      assert.equal(remote.data.value, 'g1');
+      assert.ok(calls[1].signal.aborted);
+      calls[1].resolve('g2');
+      await settle();
+      assert.equal(remote.data.value, 'g1');
+      scope.stop();
+    });

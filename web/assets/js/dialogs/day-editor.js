@@ -1,22 +1,20 @@
 /**
  * @fileoverview Day dialog, opened by a long press or right-click on a day
  * cell: the value (or for a check habit whether it is done) and whether the day
- * is skipped. It passes only what changed to its caller.
+ * is skipped. It writes only what changed, through actions.js.
  */
 
-import {state} from '../data/state.js';
-import {closePage, openPage} from '../ui/page-stack.js';
-import {errorText, toast} from '../ui/toast.js';
+import * as actions from '../data/actions.js';
+import * as habitHelpers from '../data/habit-helpers.js';
+import {habitById, state} from '../data/state.js';
+import {createPage} from '../ui/page-stack.js';
 import {formatRelative} from '../util/dates.js';
-import * as habitHelpers from '../util/habit-helpers.js';
 import {locale, t} from '../util/i18n.js';
-import {computed, nextTick, onMounted, reactive, ref} from '../vue.js';
+import {computed, reactive, shallowRef} from '../vue.js';
 
-/**
- * A change of a day's entry: the parts that differ.
- * @typedef {{value: (number|undefined), skipped: (boolean|undefined)}}
- */
-let EntryChange;
+/** @import {EntryChange} from '../data/actions.js' */
+/** @import {Entry, Habit} from '../data/state.js' */
+/** @import {Ref} from '../vue.js' */
 
 /**
  * Quick buttons per kind, in input units. They are fixed values, independent
@@ -35,6 +33,18 @@ const QUICK_JUMPS = {
  * per input unit (see scale in habit-helpers.js), `step` the habit's step and
  * `max` the kind's maximum, in input units. `closed` marks a day the habit is
  * not due on, whose value the server only lets clear.
+ * @type {{
+ *   habit: ?Habit,
+ *   iso: string,
+ *   closed: boolean,
+ *   before: !Entry,
+ *   value: string,
+ *   done: boolean,
+ *   skipped: boolean,
+ *   scale: number,
+ *   step: number,
+ *   max: number,
+ * }}
  */
 const day = reactive({
   habit: null,
@@ -49,33 +59,45 @@ const day = reactive({
   max: 1,
 });
 
-/**
- * Saves the change; set when the dialog opens.
- * @type {?function(!EntryChange): !Promise<void>}
- */
-let onSave = null;
+/** The dialog. */
+const page = createPage();
 
 /**
- * The dialog, once mounted.
- * @type {?HTMLDialogElement}
+ * The controls, one of which takes the focus when the dialog opens: the
+ * value, the switch of a check habit, the skip switch and the clear button.
+ * @type {{
+ *   value: !Ref<?HTMLInputElement>,
+ *   done: !Ref<?HTMLInputElement>,
+ *   skipped: !Ref<?HTMLInputElement>,
+ *   clear: !Ref<?HTMLButtonElement>,
+ * }}
  */
-let dialog = null;
+const controls = {
+  value: shallowRef(null),
+  done: shallowRef(null),
+  skipped: shallowRef(null),
+  clear: shallowRef(null),
+};
 
 /**
- * Opens the day dialog. `handler` receives the change ({value?, skipped?})
- * with the parts that differ from the entry as it was.
- * @param {!Habit} habit
+ * Opens the day dialog of a habit's day and writes what changes. A day the
+ * habit is not due on only opens with something to clear.
+ * @param {string} habitId
  * @param {string} iso
- * @param {function(!EntryChange): !Promise<void>} handler
+ * @return {!Promise<*>} resolves once the dialog is closed
  */
-export async function openDayDialog(habit, iso, handler) {
-  onSave = handler;
+export async function openDayEditor(habitId, iso) {
+  const habit = habitById(habitId);
+  if (!habit) return null;
   const before = habitHelpers.entryOn(habit, iso);
+  const closed = !habitHelpers.isScheduled(habit, iso);
+  if (closed && habitHelpers.isEmpty(before)) return null;
+
   const scale = habitHelpers.scale(habit.kind);
   Object.assign(day, {
     habit,
     iso,
-    closed: !habitHelpers.isScheduled(habit, iso),
+    closed,
     before,
     scale,
     step: habitHelpers.step(habit) / scale,
@@ -84,19 +106,18 @@ export async function openDayDialog(habit, iso, handler) {
     done: before.value > 0,
     skipped: before.skipped,
   });
-  await nextTick();
-
-  openPage(dialog);
   // The first control that can be used.
-  if (day.closed) {
-    dialog.querySelector('[data-role="clear"]').focus();
-  } else if (before.skipped) {
-    dialog.querySelector('input[name="skipped"]').focus();
-  } else if (habit.kind === 'check') {
-    dialog.querySelector('input[name="done"]').focus();
-  } else {
-    dialog.querySelector('input[name="value"]').select();
-  }
+  return page.open(() => {
+    if (day.closed) {
+      controls.clear.value.focus();
+    } else if (before.skipped) {
+      controls.skipped.value.focus();
+    } else if (habit.kind === 'check') {
+      controls.done.value.focus();
+    } else {
+      controls.value.value.select();
+    }
+  });
 }
 
 /**
@@ -112,26 +133,23 @@ function collect() {
 }
 
 /**
- * Passes the parts of `entry` that differ from the entry as it was to the
- * handler, and closes the dialog. A value is only sent for a day that is not
- * skipped, as a skip clears it anyway.
+ * Closes the dialog and writes the parts of `entry` that differ from the
+ * entry as it was. A value is only sent for a day that is not skipped, as a
+ * skip clears it anyway.
  * @param {!Entry} entry
  * @return {!Promise<void>}
  */
 async function submit(entry) {
+  /** @type {!EntryChange} */
   const change = {};
   if (entry.skipped !== day.before.skipped) change.skipped = entry.skipped;
   if (!entry.skipped && entry.value !== day.before.value) {
     change.value = entry.value;
   }
-
-  const handler = onSave;
-  closePage(dialog, {force: true});
-  if (Object.keys(change).length === 0) return;
-  try {
-    await handler(change);
-  } catch (err) {
-    toast(errorText(err), {error: true});
+  const {habit, iso} = day;
+  page.close(true);
+  if (Object.keys(change).length > 0) {
+    await actions.changeEntry(habit.id, iso, change);
   }
 }
 
@@ -157,16 +175,12 @@ function hint() {
       {goal, step: `${step.toLocaleString(locale)}${unit}`});
 }
 
-/** The day dialog (see openDayDialog). */
+/** The day dialog (see openDayEditor). */
 export const TheDayEditor = {
   name: 'TheDayEditor',
   /** @return {!Object<string, *>} the bindings of the template */
   setup() {
-    const el = ref(null);
-    const input = ref(null);
-    onMounted(() => {
-      dialog = el.value;
-    });
+    const input = controls.value;
 
     /**
      * Sets the value, clamped to the kind's range and rounded to stored-unit
@@ -186,8 +200,11 @@ export const TheDayEditor = {
             habitHelpers.unitLabel(day.habit));
 
     return {
-      el,
+      el: page.el,
       input,
+      doneInput: controls.done,
+      skippedInput: controls.skipped,
+      clearButton: controls.clear,
       day,
       check,
       title: computed(
@@ -241,7 +258,7 @@ export const TheDayEditor = {
        * @param {!MouseEvent} event
        */
       onBackdrop: (event) => {
-        if (event.target === el.value) closePage(el.value);
+        if (event.target === page.el.value) page.cancel();
       },
     };
   },
@@ -332,6 +349,7 @@ export const TheDayEditor = {
             class="switch"
           >
             <input
+              ref="doneInput"
               v-model="day.done"
               type="checkbox"
               name="done"
@@ -346,6 +364,7 @@ export const TheDayEditor = {
         >
           <label class="switch">
             <input
+              ref="skippedInput"
               v-model="day.skipped"
               type="checkbox"
               name="skipped"
@@ -356,6 +375,7 @@ export const TheDayEditor = {
         </div>
         <footer class="dialog-foot">
           <button
+            ref="clearButton"
             type="button"
             class="button ghost"
             data-role="clear"

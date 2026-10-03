@@ -5,6 +5,10 @@
  * (see views.css).
  */
 
+import {onMounted, onUnmounted, ref} from '../vue.js';
+
+/** @import {Ref} from '../vue.js' */
+
 /**
  * An item of the overflow menu; `icon` names one of `ICONS`.
  * @typedef {{action: string, label: string, icon: string, danger:
@@ -42,18 +46,21 @@ export const AppBar = {
    */
   setup(props, {emit}) {
     const menuId = `app-bar-menu-${++count}`;
+    /** @type {!Ref<?HTMLButtonElement>} */
+    const menuButton = ref(null);
+    /** @type {!Ref<?HTMLElement>} */
+    const menuEl = ref(null);
+    const expanded = ref(false);
 
     /**
      * Places the menu when it opens and focuses its first item.
      * @param {!ToggleEvent} event
      */
     const onToggle = (event) => {
-      const menu = event.target;
-      const button = document.querySelector(`[popovertarget="${menuId}"]`);
-      button.setAttribute('aria-expanded', String(event.newState === 'open'));
-      if (event.newState !== 'open') return;
-      place(menu, button);
-      menu.querySelector('[role="menuitem"]')?.focus();
+      expanded.value = event.newState === 'open';
+      if (!expanded.value) return;
+      place(menuEl.value, menuButton.value);
+      menuEl.value.querySelector('button')?.focus();
     };
 
     /**
@@ -63,31 +70,45 @@ export const AppBar = {
      */
     const onBeforeToggle = (event) => {
       if (event.newState === 'closed' &&
-          event.target.contains(document.activeElement)) {
-        document.querySelector(`[popovertarget="${menuId}"]`)?.focus({
-          preventScroll: true,
-        });
+          menuEl.value.contains(document.activeElement)) {
+        menuButton.value?.focus({preventScroll: true});
       }
     };
 
     /**
      * Closes the menu and passes on the chosen action.
      * @param {!MenuItem} item
-     * @param {!Event} event
      */
-    const choose = (item, event) => {
-      event.currentTarget.closest('[popover]').hidePopover();
+    const choose = (item) => {
+      menuEl.value.hidePopover();
       emit('action', item.action);
     };
 
-    return {menuId, onToggle, onBeforeToggle, choose, onMenuKey};
+    // A menu placed for the old layout would float in the wrong place.
+    /** Closes the menu when the window changes size. */
+    const closeOnResize = () => {
+      if (menuEl.value?.matches(':popover-open')) menuEl.value.hidePopover();
+    };
+    onMounted(() => window.addEventListener('resize', closeOnResize));
+    onUnmounted(() => window.removeEventListener('resize', closeOnResize));
+
+    return {
+      menuId,
+      menuButton,
+      menuEl,
+      expanded,
+      onToggle,
+      onBeforeToggle,
+      choose,
+      onMenuKey,
+    };
   },
   template: `
     <header class="app-bar">
       <button
+        v-tooltip="t('Back')"
         class="icon-button"
         type="button"
-        :title="t('Back')"
         :aria-label="t('Back')"
         @click="$emit('back')"
       >
@@ -108,9 +129,9 @@ export const AppBar = {
       <div class="app-bar-actions">
         <button
           v-if="edit"
+          v-tooltip="t('Edit')"
           class="icon-button"
           type="button"
-          :title="t('Edit')"
           :aria-label="t('Edit')"
           @click="$emit('edit')"
         >
@@ -118,17 +139,19 @@ export const AppBar = {
         </button>
         <template v-if="menu.length > 0">
           <button
+            ref="menuButton"
+            v-tooltip="t('More options')"
             type="button"
             class="icon-button"
-            :title="t('More options')"
             :aria-label="t('More options')"
             aria-haspopup="menu"
-            aria-expanded="false"
+            :aria-expanded="String(expanded)"
             :popovertarget="menuId"
           >
             <app-icon name="moreVertical"/>
           </button>
           <div
+            ref="menuEl"
             :id="menuId"
             class="app-bar-menu"
             popover="auto"
@@ -144,7 +167,7 @@ export const AppBar = {
               class="app-bar-menu-item"
               :class="{'is-danger': item.danger}"
               role="menuitem"
-              @click="choose(item, $event)"
+              @click="choose(item)"
             >
               <app-icon :name="item.icon"/><span>{{ item.label }}</span>
             </button>
@@ -171,8 +194,9 @@ function place(menu, button) {
  * @param {!KeyboardEvent} event
  */
 function onMenuKey(event) {
-  const items = [...event.currentTarget.querySelectorAll('[role="menuitem"]')];
-  const at = items.indexOf(document.activeElement);
+  const menu = /** @type {!HTMLElement} */ (event.currentTarget);
+  const items = [...menu.querySelectorAll('button')];
+  const at = items.findIndex((button) => button === document.activeElement);
   let next = -1;
   switch (event.key) {
     case 'ArrowDown':
@@ -197,10 +221,3 @@ function onMenuKey(event) {
   event.preventDefault();
   items[next].focus();
 }
-
-// A menu placed for the old layout would float in the wrong place.
-window.addEventListener('resize', () => {
-  for (const menu of document.querySelectorAll('.app-bar-menu:popover-open')) {
-    menu.hidePopover();
-  }
-});

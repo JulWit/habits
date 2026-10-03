@@ -5,27 +5,24 @@
 
 import * as actions from '../data/actions.js';
 import {api} from '../data/api.js';
-import {remote} from '../data/remote-stats.js';
+import * as habitHelpers from '../data/habit-helpers.js';
+import {useRemote} from '../data/remote-stats.js';
 import {goHome, route} from '../data/route.js';
 import {habitById, state} from '../data/state.js';
+import {openHabitEditor} from '../dialogs/habit-editor.js';
+import {openSkipEditor} from '../dialogs/skip-editor.js';
 import {AppBar} from '../ui/app-bar.js';
 import {colorValue, hasHabitIcon} from '../ui/icons.js';
 import {AppFactsPanel, AppStatRow, changedItem, createdItem, daysAgo, factItem, percent, rateLabel} from '../ui/stat-panels.js';
 import {hideTooltip} from '../ui/tooltip.js';
-import {AppYearGrid, AppYearNavigation, centreToday, currentYear, dayLabel, initChartTooltips, yearRange} from '../ui/year-grid.js';
+import {AppYearGrid, AppYearNavigation, centreToday, currentYear, dayLabel, useChartTooltips, yearRange} from '../ui/year-grid.js';
 import {addDays, dayOfMonth, formatDayMonth, formatFull, formatLong, MONTH_LONG, MONTH_SHORT, monthIndex} from '../util/dates.js';
-import * as habitHelpers from '../util/habit-helpers.js';
-import {t} from '../util/i18n.js';
-import {computed, nextTick, onMounted, ref, watch} from '../vue.js';
+import {plural, t} from '../util/i18n.js';
+import {computed, nextTick, ref, watch} from '../vue.js';
 
-/**
- * The year the heatmap and the cumulative chart show, e.g. "2025", and the
- * habit it was chosen for. Another habit opens with the current year; the
- * choice is not kept beyond the session.
- */
-const shownYear = ref('');
-/** @type {?string} */
-let shownFor = null;
+/** @import {Habit, Schedule, Totals} from '../data/state.js' */
+/** @import {Fact} from '../ui/stat-panels.js' */
+/** @import {Ref} from '../vue.js' */
 
 /**
  * Chart granularities, each covering the year to date. `barMin` is the minimum
@@ -38,9 +35,6 @@ const GRAINS = {
   month: {label: t('Month'), barMin: '24px', every: 1},
 };
 
-/** The selected granularity, kept for the session only. */
-const grain = ref('month');
-
 /**
  * Formats a streak with its unit: "1 day", "6 days", "1 week", "2 months".
  * @param {number} count
@@ -48,13 +42,9 @@ const grain = ref('month');
  * @return {string}
  */
 function streakText(count, unit) {
-  if (unit === 'months') {
-    return count === 1 ? t('1 month') : t('{n} months', {n: count});
-  }
-  if (unit === 'weeks') {
-    return count === 1 ? t('1 week') : t('{n} weeks', {n: count});
-  }
-  return count === 1 ? t('1 day') : t('{n} days', {n: count});
+  if (unit === 'months') return plural(count, '{n} month', '{n} months');
+  if (unit === 'weeks') return plural(count, '{n} week', '{n} weeks');
+  return plural(count, '{n} day', '{n} days');
 }
 
 /**
@@ -209,9 +199,10 @@ function heatStatus(habit, iso, value) {
 }
 
 /**
- * Returns a bar of the cumulative chart: its height is the running total,
- * the period's own sum is highlighted at its top.
+ * Returns a bar of the cumulative chart of `grain`: its height is the running
+ * total, the period's own sum is highlighted at its top.
  * @param {!Habit} habit
+ * @param {string} grain
  * @param {{start: string, sum: number, cumulative: number}} bucket
  * @param {number} total
  * @param {number} index
@@ -220,16 +211,16 @@ function heatStatus(habit, iso, value) {
  *     zero: boolean, gain: ?string, label: string}}
  */
 function chartColumn(
-    habit, {start, sum, cumulative: running}, total, index, count) {
+    habit, grain, {start, sum, cumulative: running}, total, index, count) {
   // Shown by the shared tooltip.
-  const tip = bucketName(start);
+  const tip = bucketName(grain, start);
   const runningTotal = habitHelpers.formatTotal(habit, running);
   const status = sum > 0 ?
       t('{total} · of that +{sum}',
         {total: runningTotal, sum: habitHelpers.formatTotal(habit, sum)}) :
       t('{total} · nothing added', {total: runningTotal});
   // Counted from the end, so the latest bucket is always labelled.
-  const labelled = (count - 1 - index) % GRAINS[grain.value].every === 0;
+  const labelled = (count - 1 - index) % GRAINS[grain].every === 0;
   return {
     start,
     tip,
@@ -238,23 +229,23 @@ function chartColumn(
     // Hides bars before the first entry.
     zero: running === 0,
     gain: sum > 0 && running > 0 ? `${(sum / running) * 100}%` : null,
-    label: !labelled ? '' :
-        grain.value === 'month' ?
-                       MONTH_SHORT[monthIndex(start)] :
-                       `${dayOfMonth(start)}.${monthIndex(start) + 1}.`,
+    label: !labelled      ? '' :
+        grain === 'month' ? MONTH_SHORT[monthIndex(start)] :
+                            `${dayOfMonth(start)}.${monthIndex(start) + 1}.`,
   };
 }
 
 /**
- * Returns the tooltip label of a bucket.
+ * Returns the tooltip label of a bucket of `grain`.
+ * @param {string} grain
  * @param {string} start
  * @return {string}
  */
-function bucketName(start) {
-  if (grain.value === 'month') {
+function bucketName(grain, start) {
+  if (grain === 'month') {
     return t('End of {month}', {month: MONTH_LONG[monthIndex(start)]});
   }
-  if (grain.value === 'week') {
+  if (grain === 'week') {
     return t('Week from {date}', {date: formatDayMonth(start)});
   }
   return formatFull(start);
@@ -264,31 +255,37 @@ function bucketName(start) {
  * The cumulative chart of a countable habit: each bar is the running total at
  * the end of its day, week or month, with the period's own sum highlighted at
  * the top. The server sums the values (GET /api/habits/{id}/totals). The
- * chart scrolls to its end (today) whenever it is drawn anew.
+ * chart scrolls to its end (today) whenever it is drawn anew. `grain` is the
+ * period of a bar, bound with v-model:grain.
  */
 const HabitCumulativeChart = {
   name: 'HabitCumulativeChart',
   props: {
     habit: {type: Object, required: true},
     year: {type: String, required: true},
+    grain: {type: String, required: true},
   },
+  emits: ['update:grain'],
   /**
-   * @param {{habit: !Habit, year: string}} props
+   * @param {{habit: !Habit, year: string, grain: string}} props
+   * @param {{emit: function(string, *): void}} context
    * @return {!Object<string, *>} the bindings of the template
    */
-  setup(props) {
+  setup(props, {emit}) {
     const scroller = ref(null);
-    /** @type {{value: (!Totals|undefined)}} */
-    const summary = computed(
-        () => remote(
-            `totals|${props.habit.id}|${props.year}|${grain.value}`,
-            () => api.habitTotals(props.habit.id, props.year, grain.value)));
+    // Until the first answer of a year and period, the chart is empty.
+    const {data} = useRemote(
+        () => `totals|${props.habit.id}|${props.year}|${props.grain}`,
+        (signal) =>
+            api.habitTotals(props.habit.id, props.year, props.grain, signal));
+    /** @type {!Ref<(!Totals|undefined)>} */
+    const summary = data;
     const columns = computed(() => {
       const s = summary.value;
       if (!s) return [];
       return s.buckets.map(
-          (bucket, i) =>
-              chartColumn(props.habit, bucket, s.total, i, s.buckets.length));
+          (bucket, i) => chartColumn(
+              props.habit, props.grain, bucket, s.total, i, s.buckets.length));
     });
     /**
      * Formats a total of the habit.
@@ -302,15 +299,18 @@ const HabitCumulativeChart = {
         scroller.value.scrollLeft = scroller.value.scrollWidth;
       }
     };
-    watch(columns, showNewest, {flush: 'post'});
-    onMounted(showNewest);
+    watch(columns, showNewest, {flush: 'post', immediate: true});
 
     return {
       scroller,
       summary,
       columns,
       format,
-      grain,
+      // The period, as the radio buttons bind it.
+      period: computed({
+        get: () => props.grain,
+        set: (value) => emit('update:grain', value),
+      }),
       GRAINS,
       emptyText: computed(
           () => props.year === currentYear() ?
@@ -321,17 +321,17 @@ const HabitCumulativeChart = {
       scopeText: computed(
           () => t(
               ' {scope} · avg ', {scope: t('in {year}', {year: props.year})})),
-      daysText: computed(() => {
-        const n = summary.value.activeDays;
-        return n === 1 ? t(' on 1 active day · best day ') :
-                         t(' on {n} active days · best day ', {n});
-      }),
+      daysText: computed(
+          () => plural(
+              summary.value.activeDays,
+              ' on {n} active day · best day ',
+              ' on {n} active days · best day ')),
       // Average per day with an entry.
       average: computed(
           () => Math.round(summary.value.total / summary.value.activeDays)),
       chartStyle: computed(() => ({
                              '--cols': String(columns.value.length),
-                             '--bar-min': GRAINS[grain.value].barMin,
+                             '--bar-min': GRAINS[props.grain].barMin,
                            })),
     };
   },
@@ -352,7 +352,7 @@ const HabitCumulativeChart = {
             :key="key"
           >
             <input
-              v-model="grain"
+              v-model="period"
               type="radio"
               name="habit-cumulative-chart-grain"
               :value="key"
@@ -449,10 +449,16 @@ export const TheHabitView = {
     const habit =
         computed(() => route.view === 'habit' ? habitById(route.id) : null);
     const shownId = computed(() => habit.value?.id ?? null);
+    // The year the heatmap and the cumulative chart show, e.g. "2025", and
+    // the period of the chart's bars; both are kept for the session only.
+    const shownYear = ref('');
+    const grain = ref('month');
 
     // Another habit opens with the current year. The tooltip's target is
     // about to be replaced; the heatmap is scrolled to today once it shows
     // another habit or year.
+    /** @type {?string} */
+    let shownFor = null;
     watch(shownId, (id) => {
       if (id && id !== shownFor) {
         shownFor = id;
@@ -464,11 +470,9 @@ export const TheHabitView = {
       await nextTick();
       if (root.value) centreToday(root.value);
     });
-    onMounted(() => {
-      initChartTooltips(
-          root.value,
-          '.heatmap-day[data-date], .habit-cumulative-chart-column[data-tip]');
-    });
+    useChartTooltips(
+        root,
+        '.heatmap-day[data-date], .habit-cumulative-chart-column[data-tip]');
 
     const range = computed(() => yearRange([habit.value]));
 
@@ -477,6 +481,7 @@ export const TheHabitView = {
       root,
       habit,
       shownYear,
+      grain,
       range,
       // The habit's colour for the view.
       colorStyle: computed(
@@ -515,14 +520,14 @@ export const TheHabitView = {
                },
     ]),
       back: goHome,
-      edit: () => actions.editHabit(habit.value.id),
+      edit: () => openHabitEditor(habit.value),
       /**
        * Runs an action of the overflow menu.
        * @param {string} action
        */
       onMenu: (action) => {
         const id = habit.value.id;
-        if (action === 'skip') actions.skipDays(id);
+        if (action === 'skip') openSkipEditor(habit.value);
         if (action === 'archive') actions.toggleArchive(id);
         if (action === 'delete') actions.deleteHabit(id);
       },
@@ -568,6 +573,7 @@ export const TheHabitView = {
         <habit-cumulative-chart
           v-if="isCountable(habit)"
           :key="habit.id"
+          v-model:grain="grain"
           :habit="habit"
           :year="shownYear"
         />

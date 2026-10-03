@@ -1,14 +1,17 @@
 /**
  * @fileoverview Page for skipping a range of days, e.g. a holiday: of one habit
- * or of all that are not archived. It passes the input to its caller and stays
+ * or of all that are not archived. It skips them through actions.js and stays
  * open with the error message if skipping fails.
  */
 
+import * as actions from '../data/actions.js';
 import {state} from '../data/state.js';
-import {closePage, openPage} from '../ui/page-stack.js';
-import {errorText} from '../ui/toast.js';
+import {createPage} from '../ui/page-stack.js';
 import {addDays} from '../util/dates.js';
-import {nextTick, onMounted, reactive, ref, watch} from '../vue.js';
+import {reactive, ref, shallowRef, watch} from '../vue.js';
+
+/** @import {Habit} from '../data/state.js' */
+/** @import {Ref} from '../vue.js' */
 
 /**
  * The range of days to skip and the habits; no habitIds means all habits.
@@ -24,47 +27,32 @@ const form = reactive({from: '', to: '', scope: 'one'});
 
 /**
  * The habit the page was opened for, or null for all habits.
- * @type {{value: ?Habit}}
+ * @type {!Ref<?Habit>}
  */
-const habit = ref(null);
+const habit = shallowRef(null);
 
-/** The message of a failed skip, or "". */
-const error = ref('');
-
-/** Whether the days are being skipped. */
-const busy = ref(false);
+/** The page. */
+const page = createPage();
 
 /**
- * Skips the days; set when the page opens.
- * @type {?function(!SkipInput): !Promise<void>}
+ * The first day's field, focused when the page opens.
+ * @type {!Ref<?HTMLInputElement>}
  */
-let onSubmit = null;
-
-/**
- * The page, once mounted.
- * @type {?HTMLDialogElement}
- */
-let dialog = null;
+const fromInput = shallowRef(null);
 
 /**
  * Opens the page for `target`, with the choice of all habits, or for all
- * habits if `target` is null. `handler` receives {from, to, habitIds}; no
- * habitIds means all habits.
+ * habits if `target` is null, and skips the days it sends.
  * @param {?Habit} target
- * @param {function(!SkipInput): !Promise<void>} handler
+ * @return {!Promise<*>} resolves once the page is closed
  */
-export async function openSkipDialog(target, handler) {
+export function openSkipEditor(target) {
   habit.value = target;
-  onSubmit = handler;
   // A week from today, the usual holiday.
   form.from = state.today;
   form.to = addDays(state.today, 6);
   form.scope = 'one';
-  await nextTick();
-  error.value = '';
-
-  openPage(dialog);
-  dialog.querySelector('input[name="from"]').focus();
+  return page.open(() => fromInput.value.focus());
 }
 
 /**
@@ -76,48 +64,41 @@ function collect() {
   return {from: form.from, to: form.to, habitIds: one ? [habit.value.id] : []};
 }
 
-/** The page for skipping days (see openSkipDialog). */
+/** The page for skipping days (see openSkipEditor). */
 export const TheSkipEditor = {
   name: 'TheSkipEditor',
   /** @return {!Object<string, *>} the bindings of the template */
   setup() {
-    const el = ref(null);
     const formEl = ref(null);
-    const errorEl = ref(null);
-    onMounted(() => {
-      dialog = el.value;
-    });
 
     // Any change of the input hides the error message.
     watch(form, () => {
-      error.value = '';
+      page.error.value = '';
     });
     // The last day cannot lie before the first.
     watch(() => form.from, (from) => {
       if (form.to < from) form.to = from;
     });
 
-    /**
-     * Skips the days and closes the page, or shows why it failed. The page
-     * stays open until the server accepts the input.
-     */
-    const submit = async () => {
-      if (!formEl.value.reportValidity()) return;
-      busy.value = true;
-      try {
-        await onSubmit(collect());
-        closePage(dialog, {force: true});
-      } catch (err) {
-        error.value = errorText(err);
-        // The error message may be outside the visible area.
-        await nextTick();
-        errorEl.value?.scrollIntoView({block: 'nearest'});
-      } finally {
-        busy.value = false;
-      }
+    return {
+      el: page.el,
+      errorEl: page.errorEl,
+      error: page.error,
+      busy: page.busy,
+      fromInput,
+      formEl,
+      form,
+      habit,
+      /**
+       * Skips the days and closes the page, or shows why it failed. The page
+       * stays open until the server accepts the input.
+       */
+      submit: () => {
+        if (!formEl.value.reportValidity()) return;
+        const input = collect();
+        page.run(() => actions.skipDays(input));
+      },
     };
-
-    return {el, formEl, errorEl, form, habit, error, busy, submit};
   },
   template: `
     <dialog
@@ -133,10 +114,10 @@ export const TheSkipEditor = {
       >
         <header class="page-head">
           <button
+            v-tooltip="t('Close')"
             type="button"
             class="icon-button"
             data-page-back
-            :title="t('Close')"
             :aria-label="t('Close')"
           >
             <app-icon name="close"/>
@@ -155,6 +136,7 @@ export const TheSkipEditor = {
             <label class="grow">
               <span class="field-label">{{ t('From') }}</span>
               <input
+                ref="fromInput"
                 v-model="form.from"
                 name="from"
                 type="date"

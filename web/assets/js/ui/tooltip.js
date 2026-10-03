@@ -5,10 +5,13 @@
  * leaving, clicking, Escape and scrolling. Touch shows none: a tap triggers the
  * element, and a long press has its own meaning on the board.
  *
- * Elements keep using plain title attributes. When first pointed at or focused,
- * the title moves to data-tooltip, so the browser does not show its own tooltip
- * as well. The pane is a popover, so it is drawn above dialogs.
+ * Templates give an element its tooltip with the directive v-tooltip, which
+ * keeps the text in data-tooltip; there are no title attributes, so the
+ * browser shows no tooltip of its own. The pane is a popover, so it is drawn
+ * above dialogs.
  */
+
+/** @import {Directive} from '../vue.js' */
 
 /** Rest time before the first tooltip appears, in ms. */
 const DELAY = 450;
@@ -31,9 +34,9 @@ let pane = null;
 let owner = null;
 /**
  * The timer of a tooltip about to appear.
- * @type {number}
+ * @type {ReturnType<typeof setTimeout>|undefined}
  */
-let timer = 0;
+let timer;
 /**
  * Until when the next tooltip appears at once, as performance.now().
  * @type {number}
@@ -41,30 +44,66 @@ let timer = 0;
 let warmUntil = 0;
 
 /**
- * Follows the title of the element whose title tooltip is shown: a view sets
- * it again when what the element shows changes, e.g. a day's value, and the
- * tooltip takes the new text instead of showing the old one.
- * @type {!MutationObserver}
+ * Gives an element the tooltip `value`; an empty value gives it none. An
+ * element without an accessible name of its own (aria-label or
+ * aria-labelledby) gets the text as its description, for screen readers. A
+ * tooltip shown takes a new text at once, e.g. a day cell's new value.
+ * @type {!Directive<!HTMLElement, (string|undefined)>}
  */
-const retitled = new MutationObserver((records) => {
-  for (const {target} of records) {
-    if (target === owner && target.hasAttribute('title')) {
-      showTitle(target);
-    }
-  }
-});
+export const vTooltip = {
+  mounted: (el, {value}) => setTooltip(el, value),
+  updated: (el, {value, oldValue}) => {
+    if (value !== oldValue) setTooltip(el, value);
+  },
+  unmounted: (el) => {
+    if (el === owner) hideTooltip();
+  },
+};
 
-/** Registers the listeners for title tooltips. */
+/**
+ * Sets the tooltip text of `el` (see vTooltip).
+ * @param {!HTMLElement} el
+ * @param {string|undefined} text
+ */
+function setTooltip(el, text) {
+  const labelled =
+      el.hasAttribute('aria-label') || el.hasAttribute('aria-labelledby');
+  if (text) {
+    el.dataset.tooltip = text;
+    if (!labelled) el.setAttribute('aria-description', text);
+  } else {
+    delete el.dataset.tooltip;
+    if (!labelled) el.removeAttribute('aria-description');
+  }
+  if (el !== owner || !pane?.matches(':popover-open')) return;
+  if (text) {
+    showTooltip(el, text);
+  } else {
+    hideTooltip();
+  }
+}
+
+/**
+ * Returns the element with a tooltip that `target` lies in, or null.
+ * @param {?EventTarget} target
+ * @return {?HTMLElement}
+ */
+function tooltipOwner(target) {
+  if (!(target instanceof Element)) return null;
+  const el = target.closest('[data-tooltip]');
+  return el instanceof HTMLElement ? el : null;
+}
+
+/** Registers the listeners for the tooltips of v-tooltip. */
 export function initTooltips() {
   document.addEventListener('pointerover', (event) => {
     if (event.pointerType !== 'mouse') return;
-    const el = event.target.closest?.('[title], [data-tooltip]');
+    const el = tooltipOwner(event.target);
     if (!el || el === owner) return;
-    if (!takeTitle(el)) return;
     hideTooltip();
     owner = el;
     /** Shows the tooltip of the element under the pointer. */
-    const show = () => showTitle(el);
+    const show = () => showOwn(el);
     if (performance.now() < warmUntil) {
       show();
     } else {
@@ -73,22 +112,21 @@ export function initTooltips() {
   });
 
   document.addEventListener('pointerout', (event) => {
-    if (owner && event.target.closest?.('[data-tooltip]') === owner &&
-        !owner.contains(event.relatedTarget)) {
+    if (owner && tooltipOwner(event.target) === owner &&
+        !(event.relatedTarget instanceof Node &&
+          owner.contains(event.relatedTarget))) {
       hideTooltip();
     }
   });
 
   document.addEventListener('focusin', (event) => {
     const el = event.target;
-    if (!el.matches?.(':focus-visible')) return;
-    const text =
-        el.closest('[title], [data-tooltip]') === el ? takeTitle(el) : '';
-    if (!text) return;
+    if (!(el instanceof HTMLElement) || !el.matches(':focus-visible')) return;
+    if (tooltipOwner(el) !== el) return;
     // In the next task: the focus may come from a closing popover, which
     // returns it to its button, and no popover can open until that is done.
     setTimeout(() => {
-      if (document.activeElement === el) showTitle(el);
+      if (document.activeElement === el) showOwn(el);
     });
   });
 
@@ -100,6 +138,15 @@ export function initTooltips() {
   document.addEventListener('keydown', (event) => {
     if (event.key === 'Escape') hideTooltip();
   });
+}
+
+/**
+ * Shows the tooltip of `el`, with the text it has now.
+ * @param {!HTMLElement} el
+ */
+function showOwn(el) {
+  const text = el.dataset.tooltip;
+  if (text) showTooltip(el, text);
 }
 
 /**
@@ -135,23 +182,9 @@ export function showTooltip(anchor, content) {
   tip.style.top = `${Math.round(top)}px`;
 }
 
-/**
- * Shows the title of `el` as its tooltip, with the text it has now, and
- * follows later changes of it.
- * @param {!Element} el
- */
-function showTitle(el) {
-  const text = takeTitle(el);
-  if (!text) return;
-  showTooltip(el, text);
-  retitled.disconnect();
-  retitled.observe(el, {attributes: true, attributeFilter: ['title']});
-}
-
 /** Hides the tooltip, and cancels one that is about to appear. */
 export function hideTooltip() {
   clearTimeout(timer);
-  retitled.disconnect();
   owner = null;
   if (pane?.matches(':popover-open')) {
     pane.hidePopover();
@@ -173,23 +206,4 @@ function paneElement() {
     document.body.append(pane);
   }
   return pane;
-}
-
-/**
- * Moves the title of `el` to data-tooltip and returns the tooltip text. A
- * title set again later (e.g. when a toggle changes) replaces the old text.
- * @param {!Element} el
- * @return {string}
- */
-function takeTitle(el) {
-  const title = el.getAttribute('title');
-  if (title !== null) {
-    el.removeAttribute('title');
-    el.dataset.tooltip = title;
-    // Keep the text for screen readers if the title was the only source.
-    const labelled =
-        el.hasAttribute('aria-label') || el.hasAttribute('aria-labelledby');
-    if (!labelled) el.setAttribute('aria-description', title);
-  }
-  return el.dataset.tooltip ?? '';
 }

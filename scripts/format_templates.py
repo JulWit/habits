@@ -8,7 +8,7 @@ Rewrites the `template: `...`` strings after the Vue style guide:
 - A start tag with more than one attribute has one attribute per line and
   its closing bracket on a line of its own.
 - Attributes follow the guide's order: v-for, v-if, id, ref and key,
-  v-model, other attributes, events.
+  v-model, other directives, other attributes, events.
 - Lines stay within 80 columns where whitespace allows it; indentation
   follows the nesting, two spaces per level.
 
@@ -259,10 +259,13 @@ def attribute_rank(attr):
     if name.startswith("v-model"):
         return 8
     if name.startswith(("@", "v-on")):
-        return 10
-    if name in ("v-html", "v-text"):
         return 11
-    return 9
+    if name in ("v-html", "v-text"):
+        return 12
+    # Other directives, such as v-tooltip, before the other attributes.
+    if name.startswith("v-") and not name.startswith("v-bind"):
+        return 9
+    return 10
 
 
 def ordered(attrs):

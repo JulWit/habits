@@ -7,11 +7,14 @@
 
 import {state} from '../data/state.js';
 import {addDays, dayOfMonth, daysBetween, formatDayMonth, formatFull, MONTH_SHORT, monthIndex, startOfWeek} from '../util/dates.js';
-import {t} from '../util/i18n.js';
-import {computed, nextTick, ref} from '../vue.js';
+import {plural, t} from '../util/i18n.js';
+import {computed, nextTick, onMounted, onUnmounted, ref} from '../vue.js';
 
 import {percent} from './stat-panels.js';
 import {hideTooltip, showTooltip} from './tooltip.js';
+
+/** @import {DayTotal, Habit} from '../data/state.js' */
+/** @import {Ref} from '../vue.js' */
 
 /**
  * Returns the current year, e.g. "2026".
@@ -96,7 +99,8 @@ export const AppYearNavigation = {
        * @param {!Event} event
        */
       show: async (delta, event) => {
-        const button = event.currentTarget;
+        const button =
+            /** @type {!HTMLButtonElement} */ (event.currentTarget);
         const next = Math.min(
             props.last, Math.max(props.first, Number(props.year) + delta));
         emit('update:year', String(next));
@@ -115,10 +119,10 @@ export const AppYearNavigation = {
       <h3>{{ t('Year {year}', {year}) }}</h3>
       <div class="app-year-navigation-buttons">
         <button
+          v-tooltip="t('Previous year')"
           type="button"
           class="icon-button"
           data-action="year-earlier"
-          :title="t('Previous year')"
           :aria-label="t('Previous year')"
           :disabled="Number(year) <= first"
           @click="show(-1, $event)"
@@ -126,10 +130,10 @@ export const AppYearNavigation = {
           <app-icon name="chevronLeft"/>
         </button>
         <button
+          v-tooltip="t('Next year')"
           type="button"
           class="icon-button"
           data-action="year-later"
-          :title="t('Next year')"
           :aria-label="t('Next year')"
           :disabled="Number(year) >= last"
           @click="show(1, $event)"
@@ -223,9 +227,7 @@ export const AppYearGrid = {
  */
 function dayStatus(due, done, ahead) {
   if (due === 0) return t('Nothing due on this day');
-  if (ahead) {
-    return due === 1 ? t('1 habit due') : t('{n} habits due', {n: due});
-  }
+  if (ahead) return plural(due, '{n} habit due', '{n} habits due');
   return `${t('{done} of {due} done', {done, due})} · ${percent(done / due)}`;
 }
 
@@ -342,28 +344,53 @@ function tipLine(className, text) {
 }
 
 /**
- * Shows a tooltip at once for the chart elements below `container` that match
+ * Shows a tooltip at once for the chart elements below `root` that match
  * `selector`: their data-tip, or for a heatmap square its date, above their
- * data-status.
- * @param {!Element} container
+ * data-status. The listeners are removed when the calling component is
+ * unmounted.
+ * @param {!Ref<?HTMLElement>} root
  * @param {string} selector
  */
-export function initChartTooltips(container, selector) {
-  container.addEventListener('mouseover', (event) => {
-    const target = event.target.closest(selector);
-    if (!target) return;
+export function useChartTooltips(root, selector) {
+  /**
+   * Shows the tooltip of the chart element under the mouse.
+   * @param {!MouseEvent} event
+   */
+  const onOver = (event) => {
+    const target = /** @type {!Element} */ (event.target).closest(selector);
+    if (!(target instanceof HTMLElement)) return;
     showTooltip(target, [
       tipLine(
           'tooltip-date',
           target.dataset.tip ?? formatFull(target.dataset.date)),
       tipLine('tooltip-status', target.dataset.status),
     ]);
+  };
+  /**
+   * Hides the tooltip when the mouse leaves a chart element.
+   * @param {!MouseEvent} event
+   */
+  const onOut = (event) => {
+    if (/** @type {!Element} */ (event.target).closest(selector)) {
+      hideTooltip();
+    }
+  };
+  // Also hidden when a chart scrolls.
+  const scrolling = {capture: true, passive: true};
+
+  onMounted(() => {
+    const container = root.value;
+    container.addEventListener('mouseover', onOver);
+    container.addEventListener('mouseout', onOut);
+    container.addEventListener('scroll', hideTooltip, scrolling);
+    container.addEventListener('mouseleave', hideTooltip);
   });
-  container.addEventListener('mouseout', (event) => {
-    if (event.target.closest(selector)) hideTooltip();
+  onUnmounted(() => {
+    const container = root.value;
+    if (!container) return;
+    container.removeEventListener('mouseover', onOver);
+    container.removeEventListener('mouseout', onOut);
+    container.removeEventListener('scroll', hideTooltip, scrolling);
+    container.removeEventListener('mouseleave', hideTooltip);
   });
-  // Hide the tooltip when a chart scrolls.
-  container.addEventListener(
-      'scroll', hideTooltip, {capture: true, passive: true});
-  container.addEventListener('mouseleave', hideTooltip);
 }

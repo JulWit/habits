@@ -6,7 +6,9 @@
  * queued write later is safe: for each day the last value wins.
  */
 
-import {t} from '../util/i18n.js';
+import {plural, t} from '../util/i18n.js';
+
+/** @import {Habit, LoadedState} from './state.js' */
 
 /** Prefix of the localStorage key of a user's outbox. */
 const OUTBOX = 'habits.outbox';
@@ -126,7 +128,9 @@ const stateKey = () => `${STATE}.${user}`;
  * @param {!LoadedState} loaded
  */
 export function rememberState(loaded) {
-  user = loaded.user?.id ?? '';
+  const next = loaded.user?.id ?? '';
+  if (next !== user) outbox = null;
+  user = next;
   write(`${STATE}.user`, user);
   write(stateKey(), loaded);
 }
@@ -144,19 +148,52 @@ export function rememberedState() {
  */
 export function forget() {
   write(stateKey(), null);
-  write(outboxKey(), null);
+  storeOutbox([]);
   onStatus();
 }
 
 // ---------- the outbox ----------
 
 /**
- * Returns the waiting writes: [{habitId, date, value}], oldest first.
- * @return {!Array<{habitId: string, date: string, value: number}>}
+ * A write waiting in the outbox.
+ * @typedef {{habitId: string, date: string, value: number}}
+ */
+export let Write;
+
+/**
+ * The outbox as last read or written, so that it is parsed once rather than
+ * on every call; null until it is read. Another tab of the app writes the same
+ * storage, which drops the copy (see the storage listener below).
+ * @type {?Array<!Write>}
+ */
+let outbox = null;
+
+/**
+ * Returns the waiting writes, oldest first. The list is a copy.
+ * @return {!Array<!Write>}
  */
 export function pending() {
-  return read(outboxKey(), []);
+  outbox ??= read(outboxKey(), []);
+  return [...outbox];
 }
+
+/**
+ * Stores the waiting writes.
+ * @param {!Array<!Write>} list
+ * @return {boolean} whether they were stored
+ */
+function storeOutbox(list) {
+  outbox = list;
+  return write(outboxKey(), list.length > 0 ? list : null);
+}
+
+// Another tab sent or queued writes: read the outbox again on next use.
+globalThis.addEventListener?.('storage', (event) => {
+  if (event.key === null || event.key === outboxKey()) {
+    outbox = null;
+    onStatus();
+  }
+});
 
 /**
  * Queues a write. A newer write to the same day replaces the older one.
@@ -170,7 +207,7 @@ export function enqueue(habitId, date, value) {
   const list =
       pending().filter((w) => !(w.habitId === habitId && w.date === date));
   list.push({habitId, date, value});
-  const ok = write(outboxKey(), list);
+  const ok = storeOutbox(list);
   onStatus();
   return ok;
 }
@@ -190,25 +227,33 @@ export function discard(habitId, date, value) {
           !(w.habitId === habitId && w.date === date &&
             (value === undefined || w.value === value)));
   if (rest.length === list.length) return;
-  write(outboxKey(), rest.length ? rest : null);
+  storeOutbox(rest);
   onStatus();
 }
 
 /**
- * Lays the waiting writes over a loaded state as pending writes (see
- * isPending in habit-helpers.js), so they stay visible until they are sent.
- * Writes to habits that no longer exist are left out.
- * @param {!LoadedState} loaded
- * @return {!LoadedState} `loaded`
+ * Lays the waiting writes over the habits of a loaded state as pending writes
+ * (see isPending in habit-helpers.js), so they stay visible until they are
+ * sent. Writes to habits that no longer exist are left out. Returns `loaded`
+ * with copies of the habits that have waiting writes; the habits passed in are
+ * left as they are, as those of the state are frozen.
+ * @param {T} loaded
+ * @return {T}
+ * @template {{habits?: !Array<!Habit>}} T
  */
 export function overlay(loaded) {
-  for (const w of pending()) {
-    const habit = loaded.habits?.find((h) => h.id === w.habitId);
-    if (!habit) continue;
-    habit.pending ??= {};
-    habit.pending[w.date] = {value: w.value, skipped: false};
-  }
-  return loaded;
+  const waiting = pending();
+  if (waiting.length === 0 || !loaded.habits) return loaded;
+  const habits = loaded.habits.map((habit) => {
+    const own = waiting.filter((w) => w.habitId === habit.id);
+    if (own.length === 0) return habit;
+    const pendingWrites = {...habit.pending};
+    for (const w of own) {
+      pendingWrites[w.date] = {value: w.value, skipped: false};
+    }
+    return {...habit, pending: pendingWrites};
+  });
+  return {...loaded, habits};
 }
 
 /**
@@ -223,8 +268,7 @@ let flushing = null;
  * write the server rejects is dropped and reported with `onRejected`.
  * Resolves to the number of writes sent.
  * @param {function(string, string, number): !Promise<*>} send
- * @param {function(*, {habitId: string, date: string, value: number}): void}
- *     onRejected
+ * @param {function(*, !Write): void} onRejected
  * @return {!Promise<number>}
  */
 export function flush(send, onRejected) {
@@ -261,7 +305,6 @@ export function flush(send, onRejected) {
  */
 export function statusText() {
   const n = pending().length;
-  if (n === 1) return t('1 change waiting');
-  if (n > 1) return t('{n} changes waiting', {n});
+  if (n > 0) return plural(n, '{n} change waiting', '{n} changes waiting');
   return offline ? t('Offline') : '';
 }

@@ -1,12 +1,16 @@
 /**
- * @fileoverview Category picker, a page opened on top of the habit editor.
+ * @fileoverview Category picker, a page opened on top of the habit editor. It
+ * can create a category, through actions.js, and choose it.
  */
 
+import * as actions from '../data/actions.js';
 import {state} from '../data/state.js';
-import {closePage, openPage} from '../ui/page-stack.js';
+import {createPage} from '../ui/page-stack.js';
 import {errorText} from '../ui/toast.js';
 import {t} from '../util/i18n.js';
-import {computed, onMounted, ref} from '../vue.js';
+import {computed, ref, shallowRef} from '../vue.js';
+
+/** @import {Ref} from '../vue.js' */
 
 /**
  * The value of "no category".
@@ -20,62 +24,24 @@ const current = ref(NONE);
 /** The name typed for a new category. */
 const newName = ref('');
 
-/** The message of a failed creation, or "". */
-const error = ref('');
+/** The page. */
+const page = createPage();
 
 /**
- * Creates a category from its name; set when the picker opens.
- * @type {?function(string): !Promise<(!Category|undefined)>}
+ * The field for a new category's name.
+ * @type {!Ref<?HTMLInputElement>}
  */
-let onCreate = null;
-
-/**
- * Resolves the promise returned by openCategoryPicker.
- * @type {?function(?string): void}
- */
-let settle = null;
-
-/**
- * The page, once mounted.
- * @type {?HTMLDialogElement}
- */
-let dialog = null;
+const nameInput = shallowRef(null);
 
 /**
  * Opens the category picker.
  * @param {string} selected the current category ID, "" for none
- * @param {function(string): !Promise<(!Category|undefined)>} create creates a
- *     category from its name; rejects if that fails, and the picker shows why
  * @return {!Promise<?string>} the chosen ID, or null if cancelled
  */
-export function openCategoryPicker(selected, create) {
-  onCreate = create;
+export function openCategoryPicker(selected) {
   current.value = selected ?? NONE;
-  error.value = '';
   newName.value = '';
-  openPage(dialog);
-  return new Promise((resolve) => {
-    settle = resolve;
-  });
-}
-
-/**
- * Resolves the open picker's promise, once.
- * @param {?string} value
- */
-function finish(value) {
-  const resolve = settle;
-  settle = null;
-  if (resolve) resolve(value);
-}
-
-/**
- * Chooses a category and closes the picker.
- * @param {string} value
- */
-function choose(value) {
-  finish(value);
-  closePage(dialog);
+  return page.open();
 }
 
 /** The category picker (see openCategoryPicker). */
@@ -83,19 +49,16 @@ export const TheCategoryPicker = {
   name: 'TheCategoryPicker',
   /** @return {!Object<string, *>} the bindings of the template */
   setup() {
-    const el = ref(null);
-    const nameInput = ref(null);
     const creating = ref(false);
-
-    onMounted(() => {
-      dialog = el.value;
-    });
 
     // "No category" first.
     const options = computed(
         () => [{id: NONE, name: t('No category')}, ...state.categories]);
 
-    /** Creates a category from the form and chooses it. */
+    /**
+     * Creates a category from the form and chooses it. The page covers the
+     * toasts, so it shows why creating failed itself.
+     */
     const create = async () => {
       const name = newName.value.trim();
       if (!name) {
@@ -104,27 +67,30 @@ export const TheCategoryPicker = {
       }
       creating.value = true;
       try {
-        const created = await onCreate(name);
+        const created = await actions.createCategory(name);
         // Select the newly created category.
-        if (created) choose(created.id);
+        if (created) page.close(created.id);
       } catch (err) {
-        error.value = errorText(err);
+        page.error.value = errorText(err);
       } finally {
         creating.value = false;
       }
     };
 
     return {
-      el,
+      el: page.el,
+      error: page.error,
       nameInput,
       creating,
       current,
       newName,
-      error,
       options,
-      choose,
+      /**
+       * Chooses a category and closes the picker.
+       * @param {string} id
+       */
+      choose: (id) => page.close(id),
       create,
-      finish,
     };
   },
   // Leaving the page by its back button, Escape or the system back cancels.
@@ -135,14 +101,13 @@ export const TheCategoryPicker = {
       ref="el"
       class="dialog page is-floating"
       aria-labelledby="category-picker-title"
-      @close="finish(null)"
     >
       <header class="page-head">
         <button
+          v-tooltip="t('Back')"
           type="button"
           class="icon-button"
           data-page-back
-          :title="t('Back')"
           :aria-label="t('Back')"
         >
           <app-icon name="arrowLeft"/>

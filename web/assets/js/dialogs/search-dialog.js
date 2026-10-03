@@ -3,21 +3,24 @@
  * bar or with "/". Selecting a result opens it.
  */
 
+import * as habitHelpers from '../data/habit-helpers.js';
 import {openCategory, openHabit} from '../data/route.js';
 import {groupedHabits} from '../data/state.js';
 import {colorValue, hasHabitIcon} from '../ui/icons.js';
-import {closePage, openPage} from '../ui/page-stack.js';
-import * as habitHelpers from '../util/habit-helpers.js';
-import {t} from '../util/i18n.js';
-import {computed, nextTick, onMounted, ref, watch} from '../vue.js';
+import {createPage} from '../ui/page-stack.js';
+import {plural} from '../util/i18n.js';
+import {computed, nextTick, ref, shallowRef, watch} from '../vue.js';
+
+/** @import {Category, Habit} from '../data/state.js' */
+/** @import {Ref} from '../vue.js' */
 
 /**
  * A search result: a habit with its category, or a category with its habits.
  * @typedef {{
  *   kind: string,
  *   item: (!Habit|!Category),
- *   category: (?Category|undefined),
- *   habits: (!Array<!Habit>|undefined),
+ *   category?: ?Category,
+ *   habits?: !Array<!Habit>,
  * }}
  */
 let SearchEntry;
@@ -31,22 +34,24 @@ const active = ref(0);
 /** Counts the openings, so the list is measured once it can be. */
 const openings = ref(0);
 
+/** The dialog. */
+const page = createPage();
+
 /**
- * The dialog, once mounted.
- * @type {?HTMLDialogElement}
+ * The search field.
+ * @type {!Ref<?HTMLInputElement>}
  */
-let dialog = null;
+const input = shallowRef(null);
 
 /**
  * Opens the search with an empty query.
  */
 export function openSearch() {
-  if (dialog.open) return;
+  if (page.el.value?.open) return;
   query.value = '';
   active.value = 0;
-  openPage(dialog);
   openings.value++;
-  dialog.querySelector('input').focus();
+  page.open(() => input.value.focus());
 }
 
 /**
@@ -88,10 +93,11 @@ function matches(entry, text) {
  */
 function meta(entry) {
   if (entry.kind === 'habit') {
-    return entry.category?.name ?? habitHelpers.describeHabit(entry.item);
+    return entry.category?.name ??
+        habitHelpers.describeHabit(/** @type {!Habit} */ (entry.item));
   }
-  const n = entry.habits.length;
-  return n === 1 ? t('Category · 1 habit') : t('Category · {n} habits', {n});
+  return plural(
+      entry.habits.length, 'Category · {n} habit', 'Category · {n} habits');
 }
 
 /**
@@ -111,7 +117,7 @@ function optionId(index) {
 async function choose(entry) {
   if (!entry) return;
   // The view takes the search's place in the history once its entry is gone.
-  await closePage(dialog);
+  await page.close();
   if (entry.kind === 'habit') {
     openHabit(entry.item.id);
   } else {
@@ -124,13 +130,8 @@ export const TheSearchDialog = {
   name: 'TheSearchDialog',
   /** @return {!Object<string, *>} the bindings of the template */
   setup() {
-    const el = ref(null);
-    const input = ref(null);
     const list = ref(null);
     const scrolling = ref(false);
-    onMounted(() => {
-      dialog = el.value;
-    });
 
     const results = computed(() => {
       const text = query.value.trim().toLowerCase();
@@ -174,7 +175,7 @@ export const TheSearchDialog = {
     };
 
     return {
-      el,
+      el: page.el,
       input,
       list,
       scrolling,
@@ -191,8 +192,8 @@ export const TheSearchDialog = {
        * @param {!SearchEntry} entry
        * @return {boolean}
        */
-      isArchived: (entry) =>
-          entry.kind === 'habit' && Boolean(entry.item.archivedAt),
+      isArchived: (entry) => entry.kind === 'habit' &&
+          Boolean(/** @type {!Habit} */ (entry.item).archivedAt),
       meta,
       choose,
       onKey,
@@ -207,7 +208,7 @@ export const TheSearchDialog = {
        * @param {!MouseEvent} event
        */
       onBackdrop: (event) => {
-        if (event.target === el.value) closePage(el.value);
+        if (event.target === page.el.value) page.cancel();
       },
     };
   },
@@ -248,9 +249,9 @@ export const TheSearchDialog = {
         >
         <button
           v-if="query !== ''"
+          v-tooltip="t('Clear search')"
           class="icon-button search-clear"
           type="button"
-          :title="t('Clear search')"
           :aria-label="t('Clear search')"
           @click="clear"
         >

@@ -12,6 +12,8 @@ import {api} from './api.js';
 import {isConnectionError, isOffline, overlay, pending, rememberedState, rememberState, setOffline, setStatusHandler, statusText} from './outbox.js';
 import {replaceState, state, stateRevision, upsertHabit} from './state.js';
 
+/** @import {LoadedState} from './state.js' */
+
 /**
  * The sync status for the title bar: the number of waiting writes or
  * "Offline" as `text`, "" when all is sent.
@@ -41,15 +43,25 @@ let dayEndsAt = Infinity;
 
 /**
  * The timer that reloads the state when the loaded `today` ends.
- * @type {number|undefined}
+ * @type {ReturnType<typeof setTimeout>|undefined}
  */
 let dayTimer;
 
 /**
  * How often refresh loads the state when it changed on the screen while it
- * loaded; after that, the state shown is kept.
+ * loaded; after that, the state shown is kept for now and loaded again after
+ * RELOAD_LATER_MS.
  */
 const MAX_LOADS = 3;
+
+/** How long to wait before loading again after MAX_LOADS conflicts, in ms. */
+const RELOAD_LATER_MS = 2000;
+
+/**
+ * The timer of a reload after MAX_LOADS conflicts.
+ * @type {ReturnType<typeof setTimeout>|undefined}
+ */
+let laterTimer;
 
 /**
  * Loads the state from the server. Writes still waiting in the outbox are laid
@@ -58,13 +70,16 @@ const MAX_LOADS = 3;
  *
  * A change shown while the state loads, such as a tap answered by the server
  * meanwhile, may be missing from the loaded state, which would take it back on
- * the screen. The state is then loaded again.
+ * the screen. The state is then loaded again, up to MAX_LOADS times; if the
+ * screen keeps changing, the state shown is kept and loaded again a little
+ * later, and the reload at the end of the day stays scheduled.
  * @return {!Promise<void>}
  */
 export async function refresh() {
+  clearTimeout(laterTimer);
+  let loaded;
   for (let load = 1; load <= MAX_LOADS; load++) {
     const shown = stateRevision();
-    let loaded;
     try {
       loaded = await api.loadState(historyFrom);
     } catch (err) {
@@ -76,6 +91,8 @@ export async function refresh() {
       return;
     }
   }
+  reloadAtNextDay(loaded.nextDayIn);
+  laterTimer = setTimeout(refresh, RELOAD_LATER_MS);
 }
 
 /**
@@ -95,7 +112,7 @@ function showUnloaded(err) {
     toast(t('Offline — showing the last loaded state'));
   } else if (state.user) {
     // Keep the current state, with writes queued since (e.g. by undo).
-    replaceState(overlay({habits: state.habits}));
+    replaceState(overlay({habits: [...state.habits]}));
   } else {
     toast(errorText(err), {error: true, timeout: 12000});
   }

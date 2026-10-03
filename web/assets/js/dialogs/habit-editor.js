@@ -1,30 +1,64 @@
 /**
- * @fileoverview Habit page for creating and editing. It builds the request body
- * and passes it to its caller, and stays open with the error message if saving
- * fails.
+ * @fileoverview Habit page for creating and editing. It saves the input
+ * through actions.js and stays open with the error message if saving fails.
  */
 
+import * as actions from '../data/actions.js';
+import * as habitHelpers from '../data/habit-helpers.js';
 import {categoryById, state} from '../data/state.js';
 import {AppColorSwatches, AppIconChoices, colorValue} from '../ui/icons.js';
-import {closePage, guardPage, openPage} from '../ui/page-stack.js';
-import {errorText} from '../ui/toast.js';
+import {createPage} from '../ui/page-stack.js';
 import {WEEKDAY_LONG, WEEKDAY_SHORT} from '../util/dates.js';
-import * as habitHelpers from '../util/habit-helpers.js';
 import {t} from '../util/i18n.js';
-import {computed, nextTick, onMounted, reactive, ref, watch} from '../vue.js';
+import {computed, reactive, ref, shallowRef, watch} from '../vue.js';
 
 import {openCategoryPicker} from './category-picker.js';
 
+/** @import {Frequency, Habit, HabitInput} from '../data/state.js' */
+/** @import {Ref} from '../vue.js' */
+
 /**
- * The default targets of the measured kinds, in input units. Each measured
- * kind has its own target and step field, so switching the kind keeps what
- * was typed for the others; an empty step field means the kind's default step.
- * @const {!Object<string, number>}
+ * A measured kind as the form shows it: its default target in input units,
+ * the labels of its target as a target and as a limit, the label and
+ * placeholder of its step, and the suffix of its fields' names.
+ * @typedef {{
+ *   target: number,
+ *   targetLabels: !Array<string>,
+ *   stepLabel: string,
+ *   stepPlaceholder: string,
+ *   name: string,
+ * }}
  */
-const DEFAULT_TARGETS = {
-  count: 8,
-  time: 20,
-  distance: 5,
+let MeasuredKind;
+
+/**
+ * The measured kinds. Each has its own target and step field, so switching
+ * the kind keeps what was typed for the others; an empty step field means the
+ * kind's default step.
+ * @const {!Object<string, !MeasuredKind>}
+ */
+const MEASURED_KINDS = {
+  count: {
+    target: 8,
+    targetLabels: [t('Daily target'), t('Daily limit')],
+    stepLabel: t('Step'),
+    stepPlaceholder: t('e.g. 1'),
+    name: 'Count',
+  },
+  time: {
+    target: 20,
+    targetLabels: [t('Daily target in minutes'), t('Daily limit in minutes')],
+    stepLabel: t('Step in minutes'),
+    stepPlaceholder: t('e.g. 5'),
+    name: 'Time',
+  },
+  distance: {
+    target: 5,
+    targetLabels: [t('Daily target in km'), t('Daily limit in km')],
+    stepLabel: t('Step in km'),
+    stepPlaceholder: t('e.g. 0.5'),
+    name: 'Distance',
+  },
 };
 
 /**
@@ -40,13 +74,19 @@ function bounds(kind) {
 }
 
 /**
- * Labels of the target fields, as a target and as a limit.
- * @const {!Object<string, !Array<string>>}
+ * The frequency of a new habit.
+ * @const {!Frequency}
  */
-const TARGET_LABELS = {
-  count: [t('Daily target'), t('Daily limit')],
-  time: [t('Daily target in minutes'), t('Daily limit in minutes')],
-  distance: [t('Daily target in km'), t('Daily limit in km')],
+const DAILY = {
+  kind: 'daily',
+  timesPerWeek: 0,
+  timesPerMonth: 0,
+  timesAtMost: false,
+  weekdays: 0,
+  intervalDays: 0,
+  weekInterval: 0,
+  weekOfMonth: 0,
+  anchorDate: '',
 };
 
 /**
@@ -125,27 +165,9 @@ const form = reactive({
 
 /**
  * The habit being edited, or null when creating one.
- * @type {{value: ?Habit}}
+ * @type {!Ref<?Habit>}
  */
-const editing = ref(null);
-
-/** The message of a failed save, or "". */
-const error = ref('');
-
-/** Whether the input is being saved. */
-const busy = ref(false);
-
-/**
- * Saves the input; set when the editor opens.
- * @type {?function(!HabitInput): !Promise<void>}
- */
-let onSubmit = null;
-
-/**
- * Creates a category for the category picker; set when the editor opens.
- * @type {?function(string): !Promise<(!Category|undefined)>}
- */
-let onCreateCategory = null;
+const editing = shallowRef(null);
 
 /** The input as opened, to detect unsaved changes. */
 let initial = '';
@@ -153,11 +175,14 @@ let initial = '';
 /** Target and frequency as opened, to offer applying a change retroactively. */
 let initialSchedule = '';
 
+/** The page; it asks before closing with unsaved changes. */
+const page = createPage({dirty: () => JSON.stringify(collect()) !== initial});
+
 /**
- * The page, once mounted.
- * @type {?HTMLDialogElement}
+ * The name field, focused when the page opens.
+ * @type {!Ref<?HTMLInputElement>}
  */
-let dialog = null;
+const nameInput = shallowRef(null);
 
 /**
  * Reports whether the target is a limit (at most) of a measured kind. A limit
@@ -185,6 +210,7 @@ function countsDays(freq) {
  */
 function collect() {
   const kind = form.kind;
+  /** @type {!HabitInput} */
   const input = {
     name: form.name.trim(),
     color: form.color,
@@ -196,6 +222,7 @@ function collect() {
     unit: kind === 'count' ? form.unit.trim() : '',
     targetValue: 1,
     targetType: 'at_least',
+    stepValue: undefined,
     frequency: {
       kind: form.freq,
       timesPerWeek: 0,
@@ -207,11 +234,12 @@ function collect() {
       weekOfMonth: 0,
       anchorDate: '',
     },
+    retroactive: undefined,
   };
 
   // Typed values are converted to stored units. An empty step field sends 0,
   // i.e. the kind's default step.
-  if (kind in DEFAULT_TARGETS) {
+  if (kind in MEASURED_KINDS) {
     const scale = habitHelpers.scale(kind);
     input.targetValue = Math.round(Number(form.targets[kind]) * scale);
     input.stepValue = Math.round(Number(form.steps[kind]) * scale);
@@ -279,15 +307,12 @@ function offersRetroactive(input) {
 }
 
 /**
- * Opens the habit page.
- * @param {?Habit} habit the habit to edit, or null to create one
- * @param {function(!HabitInput): !Promise<void>} handler saves the input
- * @param {function(string): !Promise<(!Category|undefined)>} createCategory
- *     creates a category in the category picker
+ * Opens the habit page and saves what it sends: a change of `habit`, or a new
+ * habit for null.
+ * @param {?Habit} habit
+ * @return {!Promise<*>} resolves once the page is closed
  */
-export async function openEditor(habit, handler, createCategory) {
-  onSubmit = handler;
-  onCreateCategory = createCategory;
+export function openHabitEditor(habit) {
   editing.value = habit;
   const schedule = habit ? habitHelpers.currentSchedule(habit) : null;
 
@@ -297,15 +322,15 @@ export async function openEditor(habit, handler, createCategory) {
   form.categoryId = habit?.categoryId ?? '';
   form.kind = habit?.kind ?? 'check';
   form.targetType = schedule?.targetType === 'at_most' ? 'at_most' : 'at_least';
-  for (const [kind, defaultTarget] of Object.entries(DEFAULT_TARGETS)) {
+  for (const [kind, measured] of Object.entries(MEASURED_KINDS)) {
     const scale = habitHelpers.scale(kind);
     const own = habit?.kind === kind;
-    form.targets[kind] = own ? schedule.targetValue / scale : defaultTarget;
+    form.targets[kind] = own ? schedule.targetValue / scale : measured.target;
     form.steps[kind] = own && habit.stepValue ? habit.stepValue / scale : '';
   }
   form.unit = habit?.kind === 'count' ? habit.unit : '';
 
-  const freq = schedule?.frequency ?? {kind: 'daily'};
+  const freq = schedule?.frequency ?? DAILY;
   form.freq = freq.kind;
   form.timesPerWeek = freq.timesPerWeek || 3;
   form.timesPerMonth = freq.timesPerMonth || 2;
@@ -333,26 +358,16 @@ export async function openEditor(habit, handler, createCategory) {
 
   initialSchedule = scheduleKey(collect());
   initial = JSON.stringify(collect());
-  await nextTick();
-  error.value = '';
-  openPage(dialog);
-  dialog.querySelector('input[name="name"]').focus();
+  return page.open(() => nameInput.value.focus());
 }
 
-/** The habit page (see openEditor). */
+/** The habit page (see openHabitEditor). */
 export const TheHabitEditor = {
   name: 'TheHabitEditor',
   components: {AppColorSwatches, AppIconChoices},
   /** @return {!Object<string, *>} the bindings of the template */
   setup() {
-    const el = ref(null);
     const formEl = ref(null);
-    const errorEl = ref(null);
-
-    onMounted(() => {
-      dialog = el.value;
-      guardPage(dialog, () => JSON.stringify(collect()) !== initial);
-    });
 
     const limit = computed(isLimit);
     // A limit leaves the frequencies with fixed days.
@@ -365,82 +380,71 @@ export const TheHabitEditor = {
     });
     // Any change of the input hides the error message.
     watch(form, () => {
-      error.value = '';
+      page.error.value = '';
     }, {deep: true});
-
-    /**
-     * Shows an error message; it may be outside the visible area.
-     * @param {string} message
-     */
-    const showError = async (message) => {
-      error.value = message;
-      await nextTick();
-      errorEl.value?.scrollIntoView({block: 'nearest'});
-    };
 
     /**
      * Saves the input and closes the editor, or shows why it failed. The page
      * stays open until the server accepts the input.
      */
-    const submit = async () => {
+    const submit = () => {
       if (!formEl.value.reportValidity()) return;
       const input = collect();
       if (input.frequency.kind === 'weekdays' &&
           input.frequency.weekdays === 0) {
-        showError(t('Please select at least one weekday.'));
+        page.fail(t('Please select at least one weekday.'));
         return;
       }
-      busy.value = true;
-      try {
-        await onSubmit(input);
-        closePage(dialog, {force: true});
-      } catch (err) {
-        showError(errorText(err));
-      } finally {
-        busy.value = false;
-      }
+      const habit = editing.value;
+      page.run(
+          () => habit ? actions.updateHabit(habit.id, input) :
+                        actions.createHabit(input));
     };
 
     /** Lets the user choose the category on the picker page. */
     const chooseCategory = async () => {
       // null means the picker was cancelled.
-      const chosen =
-          await openCategoryPicker(form.categoryId, onCreateCategory);
+      const chosen = await openCategoryPicker(form.categoryId);
       if (chosen !== null) form.categoryId = chosen;
     };
 
     const category = computed(() => categoryById(form.categoryId));
-    const categoryName =
-        computed(() => category.value?.name ?? t('No category'));
+    // The fields of the chosen measured kind, null for a check.
+    const measured = computed(() => MEASURED_KINDS[form.kind] ?? null);
 
     return {
-      el,
+      el: page.el,
+      errorEl: page.errorEl,
+      error: page.error,
+      busy: page.busy,
+      nameInput,
       formEl,
-      errorEl,
       form,
       state,
       editing,
-      error,
-      busy,
       limit,
       retroactive,
       category,
-      categoryName,
+      categoryName: computed(() => category.value?.name ?? t('No category')),
+      measured,
+      // The range of the chosen kind's target and step, in input units.
+      range: computed(() => (measured.value ? bounds(form.kind) : null)),
+      targetLabel: computed(
+          () => measured.value?.targetLabels[limit.value ? 1 : 0] ?? ''),
       countsDays,
       KINDS,
       FREQUENCIES,
-      bounds,
       WEEKDAY_SHORT,
       WEEKDAY_LONG,
       colorValue,
-      targetLabel: (kind) => TARGET_LABELS[kind][limit.value ? 1 : 0],
       submit,
       chooseCategory,
     };
   },
   // On wide screens the page floats as a dialog (is-floating). Only the
   // fields of the chosen kind and frequency are shown. The icons are drawn in
-  // the chosen colour.
+  // the chosen colour. A count has a unit beside its target and its step
+  // below; time and distance have their step beside the target.
   template: `
     <dialog
       id="habit-editor"
@@ -455,10 +459,10 @@ export const TheHabitEditor = {
       >
         <header class="page-head">
           <button
+            v-tooltip="t('Close')"
             type="button"
             class="icon-button"
             data-page-back
-            :title="t('Close')"
             :aria-label="t('Close')"
           >
             <app-icon name="close"/>
@@ -478,6 +482,7 @@ export const TheHabitEditor = {
           <label class="field">
             <span class="field-label">{{ t('Name') }}</span>
             <input
+              ref="nameInput"
               v-model="form.name"
               name="name"
               type="text"
@@ -559,149 +564,102 @@ export const TheHabitEditor = {
               </label>
             </div>
           </fieldset>
-          <!-- A target to reach or a limit to stay within, for measured
-               kinds. -->
-          <fieldset
-            v-if="form.kind !== 'check'"
-            class="field"
-          >
-            <legend class="field-label">{{ t('Goal') }}</legend>
+          <template v-if="measured">
+            <!-- A target to reach or a limit to stay within. -->
+            <fieldset class="field">
+              <legend class="field-label">{{ t('Goal') }}</legend>
+              <div
+                class="segmented"
+                role="radiogroup"
+                :aria-label="t('Goal')"
+              >
+                <label>
+                  <input
+                    v-model="form.targetType"
+                    type="radio"
+                    name="targetType"
+                    value="at_least"
+                  >
+                  <span>{{ t('At least') }}</span>
+                </label>
+                <label>
+                  <input
+                    v-model="form.targetType"
+                    type="radio"
+                    name="targetType"
+                    value="at_most"
+                  >
+                  <span>{{ t('At most') }}</span>
+                </label>
+              </div>
+            </fieldset>
+            <!-- step="any" allows any decimal value. -->
             <div
-              class="segmented"
-              role="radiogroup"
-              :aria-label="t('Goal')"
+              :key="form.kind"
+              class="field row"
+            >
+              <label class="grow">
+                <span class="field-label">{{ targetLabel }}</span>
+                <input
+                  v-model="form.targets[form.kind]"
+                  :name="'target' + measured.name"
+                  type="number"
+                  :min="limit ? '0' : range.min"
+                  :max="range.max"
+                  step="any"
+                  inputmode="decimal"
+                >
+              </label>
+              <label
+                v-if="form.kind === 'count'"
+                class="grow"
+              >
+                <span class="field-label">{{ t('Unit') }}</span>
+                <input
+                  v-model="form.unit"
+                  name="unit"
+                  type="text"
+                  maxlength="16"
+                  :placeholder="t('e.g. glasses')"
+                  autocomplete="off"
+                >
+              </label>
+              <label
+                v-else
+                class="grow"
+              >
+                <span class="field-label">{{ measured.stepLabel }}</span>
+                <input
+                  v-model="form.steps[form.kind]"
+                  :name="'step' + measured.name"
+                  type="number"
+                  :min="range.min"
+                  :max="range.max"
+                  step="any"
+                  :placeholder="measured.stepPlaceholder"
+                  inputmode="decimal"
+                >
+              </label>
+            </div>
+            <div
+              v-if="form.kind === 'count'"
+              class="field"
             >
               <label>
+                <span class="field-label">{{ measured.stepLabel }}</span>
                 <input
-                  v-model="form.targetType"
-                  type="radio"
-                  name="targetType"
-                  value="at_least"
-                >
-                <span>{{ t('At least') }}</span>
-              </label>
-              <label>
-                <input
-                  v-model="form.targetType"
-                  type="radio"
-                  name="targetType"
-                  value="at_most"
-                >
-                <span>{{ t('At most') }}</span>
-              </label>
-            </div>
-          </fieldset>
-          <div
-            v-if="form.kind === 'count'"
-            class="field row"
-          >
-            <label class="grow">
-              <span class="field-label">{{ targetLabel('count') }}</span>
-              <input
-                v-model="form.targets.count"
-                name="targetCount"
-                type="number"
-                :min="limit ? '0' : bounds('count').min"
-                :max="bounds('count').max"
-                step="any"
-                inputmode="decimal"
-              >
-            </label>
-            <label class="grow">
-              <span class="field-label">{{ t('Unit') }}</span>
-              <input
-                v-model="form.unit"
-                name="unit"
-                type="text"
-                maxlength="16"
-                :placeholder="t('e.g. glasses')"
-                autocomplete="off"
-              >
-            </label>
-          </div>
-          <div
-            v-if="form.kind === 'count'"
-            class="field"
-          >
-            <label>
-              <span class="field-label">{{ t('Step') }}</span>
-              <input
-                v-model="form.steps.count"
-                name="stepCount"
-                type="number"
-                :min="bounds('count').min"
-                :max="bounds('count').max"
-                step="any"
-                :placeholder="t('e.g. 1')"
-                inputmode="decimal"
-              >
-            </label>
-          </div>
-          <div
-            v-if="form.kind === 'time'"
-            class="field"
-          >
-            <div class="field-row">
-              <label class="grow">
-                <span class="field-label">{{ targetLabel('time') }}</span>
-                <input
-                  v-model="form.targets.time"
-                  name="targetTime"
+                  v-model="form.steps.count"
+                  name="stepCount"
                   type="number"
-                  :min="limit ? '0' : bounds('time').min"
-                  :max="bounds('time').max"
+                  :min="range.min"
+                  :max="range.max"
                   step="any"
-                  inputmode="decimal"
-                >
-              </label>
-              <label class="grow">
-                <span class="field-label">{{ t('Step in minutes') }}</span>
-                <input
-                  v-model="form.steps.time"
-                  name="stepTime"
-                  type="number"
-                  :min="bounds('time').min"
-                  :max="bounds('time').max"
-                  step="any"
-                  :placeholder="t('e.g. 5')"
+                  :placeholder="measured.stepPlaceholder"
                   inputmode="decimal"
                 >
               </label>
             </div>
-          </div>
-          <div
-            v-if="form.kind === 'distance'"
-            class="field"
-          >
-            <!-- step="any" allows any decimal value. -->
-            <div class="field-row">
-              <label class="grow">
-                <span class="field-label">{{ targetLabel('distance') }}</span>
-                <input
-                  v-model="form.targets.distance"
-                  name="targetDistance"
-                  type="number"
-                  :min="limit ? '0' : bounds('distance').min"
-                  :max="bounds('distance').max"
-                  step="any"
-                  inputmode="decimal"
-                >
-              </label>
-              <label class="grow">
-                <span class="field-label">{{ t('Step in km') }}</span>
-                <input
-                  v-model="form.steps.distance"
-                  name="stepDistance"
-                  type="number"
-                  :min="bounds('distance').min"
-                  :max="bounds('distance').max"
-                  step="any"
-                  :placeholder="t('e.g. 0.5')"
-                  inputmode="decimal"
-                >
-              </label>
-            </div>
-          </div>
+          </template>
           <fieldset class="field">
             <legend class="field-label">{{ t('Frequency') }}</legend>
             <div

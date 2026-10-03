@@ -3,7 +3,7 @@
  * is done in UTC.
  */
 
-import {lang, t, userTimeZone} from './i18n.js';
+import {lang, t} from './i18n.js';
 
 /** Milliseconds per day; dates are computed in UTC, which has no DST. */
 const DAY_MS = 86400000;
@@ -271,16 +271,17 @@ export function formatRelative(iso, today) {
 }
 
 /**
- * Returns the ISO date of a timestamp in the user's time zone. en-CA formats
- * dates as YYYY-MM-DD.
- * @param {number|!Date} stamp
+ * Returns the ISO date of a timestamp in `timeZone`, by default the browser's.
+ * en-CA formats dates as YYYY-MM-DD.
+ * @param {number|string|!Date} stamp
+ * @param {string=} timeZone
  * @return {string}
  */
-export function localISO(stamp) {
+export function localISO(stamp, timeZone = undefined) {
   return new Date(stamp).toLocaleDateString('en-CA', {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
-    timeZone: userTimeZone(),
+    timeZone,
   });
 }

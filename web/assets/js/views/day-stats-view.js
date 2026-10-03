@@ -7,29 +7,27 @@
  */
 
 import {api} from '../data/api.js';
-import {remote} from '../data/remote-stats.js';
+import {useRemote} from '../data/remote-stats.js';
 import {goHome, route} from '../data/route.js';
 import {state} from '../data/state.js';
 import {AppBar} from '../ui/app-bar.js';
 import {AppFactsPanel, AppStatRow, factItem, percent} from '../ui/stat-panels.js';
 import {hideTooltip} from '../ui/tooltip.js';
-import {AppDayHeatmap, AppYearNavigation, centreToday, currentYear, initChartTooltips, sinceLabel, streakLabel, yearRange} from '../ui/year-grid.js';
+import {AppDayHeatmap, AppYearNavigation, centreToday, currentYear, sinceLabel, streakLabel, useChartTooltips, yearRange} from '../ui/year-grid.js';
 import {MONTH_LONG, MONTH_SHORT, WEEKDAY_LONG, WEEKDAY_SHORT} from '../util/dates.js';
-import {t} from '../util/i18n.js';
-import {computed, nextTick, onMounted, ref, watch} from '../vue.js';
+import {plural, t} from '../util/i18n.js';
+import {computed, nextTick, ref, watch} from '../vue.js';
 
-/**
- * The year shown, e.g. "2025", or "" for the current one. Kept for the
- * session only.
- */
-const chosenYear = ref('');
+/** @import {Days, DayStats} from '../data/state.js' */
+/** @import {Fact} from '../ui/stat-panels.js' */
+/** @import {Ref} from '../vue.js' */
 
 /**
  * Formats a number of days.
  * @param {number} n
  * @return {string}
  */
-const dayCount = (n) => (n === 1 ? t('1 day') : t('{n} days', {n}));
+const dayCount = (n) => plural(n, '{n} day', '{n} days');
 
 /**
  * Returns the stat tiles of a year.
@@ -147,6 +145,9 @@ export const TheDayStatsView = {
   setup() {
     const root = ref(null);
     const shown = computed(() => route.view === 'days');
+    // The year chosen, e.g. "2025", or "" for the current one. Kept for the
+    // session only.
+    const chosenYear = ref('');
     const year = computed({
       get: () => chosenYear.value || currentYear(),
       set: (value) => {
@@ -159,13 +160,11 @@ export const TheDayStatsView = {
     // Nothing is loaded while the view is hidden, nor before the state is.
     // While another year loads, the last one stays; everything is labelled
     // with the year of the answer shown.
-    let previous;
-    const data = computed(() => {
-      if (!shown.value || !state.today) return undefined;
-      const loaded = remote(`days|${year.value}`, () => api.days(year.value));
-      previous = loaded ?? previous;
-      return previous;
-    });
+    /** @type {{data: !Ref<(!Days|undefined)>}} */
+    const {data} = useRemote(
+        () => shown.value && state.today ? `days|${year.value}` : null,
+        (signal) => api.days(year.value, undefined, signal),
+        {keep: () => true});
     const shownYear = computed(() => String(data.value?.year ?? ''));
 
     // The tooltip's target is replaced; the heatmap is scrolled to today once
@@ -176,11 +175,8 @@ export const TheDayStatsView = {
       await nextTick();
       centreToday(root.value);
     });
-    onMounted(() => {
-      initChartTooltips(
-          root.value,
-          '.heatmap-day[data-date], .day-stats-bar-panel-bar[data-tip]');
-    });
+    useChartTooltips(
+        root, '.heatmap-day[data-date], .day-stats-bar-panel-bar[data-tip]');
 
     return {
       root,

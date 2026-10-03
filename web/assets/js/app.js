@@ -12,16 +12,18 @@ import {redoLast, undoLast} from './data/undo.js';
 import {TheCategoryEditor} from './dialogs/category-editor.js';
 import {TheCategoryPicker} from './dialogs/category-picker.js';
 import {TheDayEditor} from './dialogs/day-editor.js';
-import {TheHabitEditor} from './dialogs/habit-editor.js';
+import {openHabitEditor, TheHabitEditor} from './dialogs/habit-editor.js';
 import {openSearch, TheSearchDialog} from './dialogs/search-dialog.js';
 import {openSettings, reopenSettings, TheSettingsDialog} from './dialogs/settings-dialog.js';
 import {TheSkipEditor} from './dialogs/skip-editor.js';
+import {onlyOpen, toggleFilter} from './ui/board-state.js';
 import {AppIcon, AppIconBadge} from './ui/icons.js';
+import {TheDiscardDialog} from './ui/page-stack.js';
 import {definePatterns} from './ui/patterns.js';
 import {errorText, TheToastList, toast} from './ui/toast.js';
-import {initTooltips} from './ui/tooltip.js';
+import {initTooltips, vTooltip} from './ui/tooltip.js';
 import {t} from './util/i18n.js';
-import {onlyOpen, TheBoardView, toggleFilter} from './views/board-view.js';
+import {TheBoardView} from './views/board-view.js';
 import {TheCategoryView} from './views/category-view.js';
 import {TheDayStatsView} from './views/day-stats-view.js';
 import {TheHabitView} from './views/habit-view.js';
@@ -52,6 +54,7 @@ const App = {
     TheCategoryView,
     TheDayEditor,
     TheDayStatsView,
+    TheDiscardDialog,
     TheHabitEditor,
     TheHabitView,
     TheSearchDialog,
@@ -78,7 +81,7 @@ const App = {
       // readers would still read it out.
       searchTitle: matchMedia('(pointer: coarse)').matches ? t('Search') :
                                                              t('Search (/)'),
-      createHabit: actions.createHabit,
+      createHabit: () => openHabitEditor(null),
       openSearch,
       openSettings,
       toggleFilter,
@@ -124,18 +127,18 @@ const App = {
             {{ syncStatus.text }}
           </span>
           <button
+            v-tooltip="t('New habit')"
             class="icon-button"
             type="button"
-            :title="t('New habit')"
             :aria-label="t('New habit')"
             @click="createHabit"
           >
             <app-icon name="plus"/>
           </button>
           <button
+            v-tooltip="searchTitle"
             class="icon-button"
             type="button"
-            :title="searchTitle"
             :aria-label="t('Search')"
             aria-haspopup="dialog"
             @click="openSearch"
@@ -144,9 +147,9 @@ const App = {
           </button>
           <button
             id="filter-open-habits"
+            v-tooltip="t('Show only open')"
             class="icon-button"
             type="button"
-            :title="t('Show only open')"
             :aria-label="t('Show only open')"
             :aria-pressed="String(onlyOpen)"
             @click="toggleFilter"
@@ -155,9 +158,9 @@ const App = {
           </button>
           <button
             id="open-settings"
+            v-tooltip="t('Settings')"
             class="icon-button"
             type="button"
-            :title="t('Settings')"
             :aria-label="t('Settings')"
             aria-haspopup="dialog"
             @click="openSettings"
@@ -193,38 +196,8 @@ const App = {
     <the-skip-editor/>
     <the-search-dialog/>
     <the-day-editor/>
-    <!-- Asks before an editor with unsaved changes closes (see page-stack.js).
-         The first button, keeping the changes, gets the focus. -->
-    <dialog
-      id="discard-dialog"
-      class="dialog compact"
-      aria-labelledby="discard-title"
-    >
-      <form method="dialog">
-        <h2
-          id="discard-title"
-          class="dialog-head"
-        >
-          {{ t('Discard changes?') }}
-        </h2>
-        <footer class="dialog-foot">
-          <button
-            type="submit"
-            class="button ghost"
-            value="keep"
-          >
-            {{ t('Keep editing') }}
-          </button>
-          <button
-            type="submit"
-            class="button primary"
-            value="discard"
-          >
-            {{ t('Discard') }}
-          </button>
-        </footer>
-      </form>
-    </dialog>
+    <!-- Asks before an editor with unsaved changes closes. -->
+    <the-discard-dialog/>
     <the-toast-list/>
     <!-- Live region announcing the result of a tap on the board. -->
     <div
@@ -295,9 +268,11 @@ async function main() {
   // Before the board, which measures its width depending on these settings.
   initAppearance();
   const app = createApp(App);
-  // What every template may use: the icons and t() for the UI texts.
+  // What every template may use: the icons, tooltips and t() for the UI
+  // texts.
   app.component('AppIcon', AppIcon);
   app.component('AppIconBadge', AppIconBadge);
+  app.directive('tooltip', vTooltip);
   app.config.globalProperties.t = t;
   app.mount('#app-root');
   initRouting();
@@ -377,7 +352,8 @@ const THEME_COLORS = {
  * @param {string} theme
  */
 function applyThemeColor(theme) {
-  for (const meta of document.querySelectorAll('meta[name="theme-color"]')) {
+  const metas = document.querySelectorAll('meta[name="theme-color"]');
+  for (const meta of /** @type {!NodeListOf<!HTMLMetaElement>} */ (metas)) {
     const scheme = meta.media.includes('dark') ? 'dark' : 'light';
     meta.content = THEME_COLORS[theme === 'system' ? scheme : theme];
   }
@@ -391,8 +367,9 @@ function applyThemeColor(theme) {
 function initShortcuts() {
   document.addEventListener('keydown', (event) => {
     if (event.defaultPrevented) return;
-    const inField = event.target.closest?.('input, textarea, select');
-    const inDialog = event.target.closest?.('dialog');
+    const target = event.target instanceof Element ? event.target : null;
+    const inField = target?.closest('input, textarea, select');
+    const inDialog = target?.closest('dialog');
     const mod = event.ctrlKey || event.metaKey;
     const key = event.key.toLowerCase();
 
@@ -410,7 +387,7 @@ function initShortcuts() {
       redoLast();
     } else if (key === 'n' && !mod && !inField && !inDialog) {
       event.preventDefault();
-      actions.createHabit();
+      openHabitEditor(null);
     } else if (
         ((key === '/' && !mod) || (mod && key === 'k')) && !inField &&
         !inDialog) {

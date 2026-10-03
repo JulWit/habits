@@ -2,13 +2,16 @@
  * @fileoverview Presentation helpers shared by the overview and the detail
  * view. How a day stands (due, done, over a limit, skipped) comes from the
  * server as one status per day (`days` from `daysFrom`, see domain.DayStatus);
- * nothing here judges a day.
+ * nothing here judges a day. In data/, as it reads the loaded state: the kinds
+ * the server describes and today.
  */
 
-import {state} from '../data/state.js';
+import {daysBetween, formatDayMonth, WEEKDAY_SHORT, yearOf} from '../util/dates.js';
+import {locale, t} from '../util/i18n.js';
 
-import {daysBetween, formatDayMonth, WEEKDAY_SHORT, yearOf} from './dates.js';
-import {locale, t} from './i18n.js';
+import {state} from './state.js';
+
+/** @import {Entry, Frequency, Habit, Schedule} from './state.js' */
 
 /**
  * The statuses of domain.DayStatus.

@@ -2,6 +2,11 @@
  * @fileoverview Client-side copy of the server state. Every change goes to the
  * server first; its response replaces the local state. The state is reactive,
  * so the Vue components render again whenever it changes.
+ *
+ * Habits and categories are frozen: they are never changed in place but
+ * replaced by a changed copy (see changeHabit). Vue leaves frozen objects as
+ * they are, so a habit's history is not wrapped in proxies, and a component
+ * receiving a habit as a prop renders again only when it was replaced.
  */
 
 import {reactive, ref} from '../vue.js';
@@ -76,7 +81,9 @@ export let Stats;
  *   daysFrom: string,
  *   days: string,
  *   historyStart: string,
- *   pending: (!Object<string, !Entry>|undefined),
+ *   createdAt: string,
+ *   updatedAt: string,
+ *   pending?: !Object<string, !Entry>,
  * }}
  */
 export let Habit;
@@ -90,6 +97,8 @@ export let Habit;
  *   color: string,
  *   showProgress: boolean,
  *   position: number,
+ *   createdAt: string,
+ *   updatedAt: string,
  * }}
  */
 export let Category;
@@ -113,9 +122,9 @@ export let Block;
  *   unit: string,
  *   targetValue: number,
  *   targetType: string,
- *   stepValue: (number|undefined),
+ *   stepValue?: number,
  *   frequency: !Frequency,
- *   retroactive: (boolean|undefined),
+ *   retroactive?: boolean,
  * }}
  */
 export let HabitInput;
@@ -239,12 +248,26 @@ function notify() {
 }
 
 /**
- * Replaces the state, or some of its fields, with what the server sent.
+ * Replaces the state, or some of its fields, with what the server sent. The
+ * habits and categories are frozen (see the file overview).
  * @param {!Object<string, *>} next
  */
 export function replaceState(next) {
-  Object.assign(state, next);
+  const fields = {...next};
+  if (next.habits) fields.habits = next.habits.map(freeze);
+  if (next.categories) fields.categories = next.categories.map(freeze);
+  Object.assign(state, fields);
   notify();
+}
+
+/**
+ * Freezes a habit or category, which is then replaced rather than changed.
+ * @param {T} record
+ * @return {T} `record`
+ * @template T
+ */
+function freeze(record) {
+  return Object.freeze(record);
 }
 
 /**
@@ -262,9 +285,9 @@ export function habitById(id) {
 export function upsertHabit(view) {
   const i = state.habits.findIndex((h) => h.id === view.id);
   if (i === -1) {
-    state.habits.push(view);
+    state.habits.push(freeze({...view}));
   } else {
-    state.habits[i] = {...state.habits[i], ...view};
+    state.habits[i] = freeze({...state.habits[i], ...view});
   }
   notify();
 }
@@ -281,22 +304,22 @@ export function reorderHabitsLocal(ids) {
 
 /**
  * Returns `items` sorted by `ids`, followed by the items missing from `ids`,
- * and renumbers their positions.
+ * with their positions renumbered. An item whose position changes is replaced
+ * by a copy.
  * @param {!Array<T>} items
  * @param {!Array<string>} ids
  * @return {!Array<T>}
- * @template T
+ * @template {{id: string, position: number}} T
  */
-function inOrder(items, ids) {
+export function inOrder(items, ids) {
   const byId = new Map(items.map((item) => [item.id, item]));
-  const sorted = ids.map((id) => byId.get(id)).filter(Boolean);
-  for (const item of items) {
-    if (!ids.includes(item.id)) sorted.push(item);
-  }
-  sorted.forEach((item, i) => {
-    item.position = i;
-  });
-  return sorted;
+  const wanted = new Set(ids);
+  const sorted = [
+    ...ids.map((id) => byId.get(id)).filter(Boolean),
+    ...items.filter((item) => !wanted.has(item.id)),
+  ];
+  return sorted.map(
+      (item, i) => item.position === i ? item : freeze({...item, position: i}));
 }
 
 /**
@@ -310,9 +333,9 @@ export function removeHabit(id) {
 }
 
 /**
- * Replaces a habit by a copy that `change` modifies. Habits are never changed
- * in place, so that a view can tell a changed habit by its identity (see the
- * memoised rows in board-view.js).
+ * Replaces a habit by a copy that `change` modifies. Habits are frozen and
+ * never changed in place, so that a component can tell a changed habit by its
+ * identity.
  * @param {string} id
  * @param {function(!Habit): void} change
  */
@@ -321,7 +344,7 @@ function changeHabit(id, change) {
   if (i === -1) return;
   const next = {...state.habits[i]};
   change(next);
-  state.habits[i] = next;
+  state.habits[i] = freeze(next);
   notify();
 }
 
@@ -366,11 +389,10 @@ export function applyEntryAnswer(date, view) {
 }
 
 /**
- * Returns a copy of `map` without `key`.
- * @param {?Object<string, T>|undefined} map
+ * Returns a copy of the pending writes `map` without `key`.
+ * @param {?Object<string, !Entry>|undefined} map
  * @param {string} key
- * @return {!Object<string, T>}
- * @template T
+ * @return {!Object<string, !Entry>}
  */
 function withoutKey(map, key) {
   const {[key]: _, ...rest} = map ?? {};
@@ -392,9 +414,9 @@ export function categoryById(id) {
 export function upsertCategory(category) {
   const i = state.categories.findIndex((c) => c.id === category.id);
   if (i === -1) {
-    state.categories.push(category);
+    state.categories.push(freeze({...category}));
   } else {
-    state.categories[i] = category;
+    state.categories[i] = freeze({...category});
   }
   notify();
 }
@@ -432,7 +454,7 @@ export function archivedCount() {
  * order, followed by the uncategorised habits. Habits of deleted categories
  * count as uncategorised. Archived habits are included if `archived` is set,
  * by default if the showArchived setting is on.
- * @param {{archived: (boolean|undefined)}=} options
+ * @param {{archived?: boolean}=} options
  * @return {!Array<!Block>}
  */
 export function groupedHabits({archived = state.settings.showArchived} = {}) {
@@ -446,4 +468,22 @@ export function groupedHabits({archived = state.settings.showArchived} = {}) {
   }
   if (loose.habits.length > 0) blocks.push(loose);
   return blocks.filter((b) => b.habits.length > 0 || b.category !== null);
+}
+
+/**
+ * Returns the user's time zone, else the server's, or undefined (the
+ * browser's own) if the browser knows neither.
+ * @return {string|undefined}
+ */
+export function userTimeZone() {
+  for (const zone of [state.settings?.timeZone, state.serverTimeZone]) {
+    if (!zone) continue;
+    try {
+      new Intl.DateTimeFormat('en', {timeZone: zone});
+      return zone;
+    } catch {
+      // Unknown to the browser; try the next one.
+    }
+  }
+  return undefined;
 }

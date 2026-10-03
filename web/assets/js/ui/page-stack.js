@@ -6,12 +6,20 @@
  * Firefox on Android has no close watcher, so without the entry the system back
  * would leave the view behind the dialog instead of closing it.
  *
- * A page with a guard (guardPage) asks before it closes with unsaved changes,
- * however it is closed: its close button, Escape, the system back gesture or
- * the browser's back button.
+ * A page with a guard asks before it closes with unsaved changes, however it
+ * is closed: its close button, Escape, the system back gesture or the
+ * browser's back button. The question is TheDiscardDialog.
  *
- * The pages are rendered by Vue; this module only opens and closes them.
+ * The pages are rendered by Vue; this module opens and closes them. A dialog
+ * module keeps its page in a controller (createPage), which opens it, resolves
+ * once it is closed and runs its saving.
  */
+
+import {nextTick, ref, shallowRef} from '../vue.js';
+
+import {errorText} from './toast.js';
+
+/** @import {Ref} from '../vue.js' */
 
 /**
  * Open pages, bottom first.
@@ -82,7 +90,7 @@ export function guardPage(dialog, dirty) {
  * the history has gone back, so a view opened then is not removed by the step
  * back.
  * @param {!HTMLDialogElement} dialog
- * @param {{force: (boolean|undefined)}=} options
+ * @param {{force?: boolean}=} options
  * @return {!Promise<void>}
  */
 export function closePage(dialog, {force = false} = {}) {
@@ -98,6 +106,7 @@ export function closePage(dialog, {force = false} = {}) {
   }
   const count = stack.length - index;
   drop(index);
+  /** @type {!Promise<void>} */
   const done = new Promise((resolve) => ownPops.push(resolve));
   history.go(-count);
   return done;
@@ -127,22 +136,6 @@ function isDirty(page) {
  */
 async function askToDiscard(page) {
   if (await confirmDiscard()) closePage(page, {force: true});
-}
-
-/**
- * Resolves to true if the user chooses to discard the changes.
- * @return {!Promise<boolean>}
- */
-function confirmDiscard() {
-  const dialog = document.getElementById('discard-dialog');
-  if (dialog.open) return Promise.resolve(false);
-  // Escape leaves the value empty, i.e. keeps editing.
-  dialog.returnValue = '';
-  dialog.showModal();
-  return new Promise((resolve) => {
-    dialog.addEventListener(
-        'close', () => resolve(dialog.returnValue === 'discard'), {once: true});
-  });
 }
 
 /**
@@ -181,11 +174,235 @@ window.addEventListener('popstate', (event) => {
 
 // Back buttons in the page headers, and rows that open another page.
 document.addEventListener('click', (event) => {
-  const back = event.target.closest?.('.page [data-page-back]');
+  const target = /** @type {?Element} */ (event.target);
+  const back = target?.closest?.('.page [data-page-back]');
   if (back) {
-    closePage(back.closest('.page'));
+    closePage(/** @type {!HTMLDialogElement} */ (back.closest('.page')));
     return;
   }
-  const link = event.target.closest?.('[data-open-page]');
-  if (link) openPage(document.getElementById(link.dataset.openPage));
+  const link = target?.closest?.('[data-open-page]');
+  if (link instanceof HTMLElement) {
+    openPage(/** @type {!HTMLDialogElement} */ (
+        document.getElementById(link.dataset.openPage)));
+  }
 });
+
+// ---------- the question before discarding ----------
+
+/**
+ * The dialog asking whether to discard unsaved changes, once mounted.
+ * @type {?HTMLDialogElement}
+ */
+let discardDialog = null;
+
+/**
+ * Resolves to true if the user chooses to discard the changes.
+ * @return {!Promise<boolean>}
+ */
+function confirmDiscard() {
+  const dialog = discardDialog;
+  if (!dialog || dialog.open) return Promise.resolve(false);
+  // Escape leaves the value empty, i.e. keeps editing.
+  dialog.returnValue = '';
+  dialog.showModal();
+  return new Promise((resolve) => {
+    dialog.addEventListener(
+        'close', () => resolve(dialog.returnValue === 'discard'), {once: true});
+  });
+}
+
+/**
+ * Asks before a page with unsaved changes closes. The first button, keeping
+ * the changes, gets the focus.
+ */
+export const TheDiscardDialog = {
+  name: 'TheDiscardDialog',
+  /** @return {!Object<string, *>} the bindings of the template */
+  setup() {
+    return {
+      /**
+       * Keeps the element, which confirmDiscard opens.
+       * @param {?Element} el
+       */
+      setDialog: (el) => {
+        discardDialog = /** @type {?HTMLDialogElement} */ (el);
+      },
+    };
+  },
+  template: `
+    <dialog
+      id="discard-dialog"
+      :ref="setDialog"
+      class="dialog compact"
+      aria-labelledby="discard-title"
+    >
+      <form method="dialog">
+        <h2
+          id="discard-title"
+          class="dialog-head"
+        >
+          {{ t('Discard changes?') }}
+        </h2>
+        <footer class="dialog-foot">
+          <button
+            type="submit"
+            class="button ghost"
+            value="keep"
+          >
+            {{ t('Keep editing') }}
+          </button>
+          <button
+            type="submit"
+            class="button primary"
+            value="discard"
+          >
+            {{ t('Discard') }}
+          </button>
+        </footer>
+      </form>
+    </dialog>`,
+};
+
+// ---------- the controller of a page ----------
+
+/**
+ * What a page was closed with, e.g. the chosen category's ID; null if it
+ * was cancelled.
+ * @typedef {?(string|boolean)}
+ */
+export let PageResult;
+
+/**
+ * What a page does once it is open, e.g. focus a field.
+ * @typedef {function(): void}
+ */
+export let AfterOpen;
+
+/**
+ * A page as its dialog module keeps it (see createPage). `el` and `errorEl`
+ * are bound as template refs: the dialog and the error message.
+ * @typedef {{
+ *   el: !Ref<?HTMLDialogElement>,
+ *   errorEl: !Ref<?HTMLElement>,
+ *   error: !Ref<string>,
+ *   busy: !Ref<boolean>,
+ *   open: function(AfterOpen=): !Promise<*>,
+ *   close: function(PageResult=): !Promise<void>,
+ *   cancel: function(): !Promise<void>,
+ *   fail: function(string): !Promise<void>,
+ *   run: function(function(): !Promise<*>): !Promise<void>,
+ * }}
+ */
+export let Page;
+
+/**
+ * Creates the controller of a page: it opens the page and resolves with the
+ * result it was closed with, null if it was cancelled (back button, Escape,
+ * system back); it runs the page's saving, which closes it on success and
+ * shows the error otherwise. `dirty`, if given, guards the page against
+ * closing with unsaved changes.
+ * @param {{dirty?: function(): boolean}=} options
+ * @return {!Page}
+ */
+export function createPage({dirty} = {}) {
+  /** @type {!Ref<?HTMLDialogElement>} */
+  const el = shallowRef(null);
+  /** @type {!Ref<?HTMLElement>} */
+  const errorEl = shallowRef(null);
+  const error = ref('');
+  const busy = ref(false);
+  /** @type {?function(*): void} */
+  let settle = null;
+  /** @type {*} */
+  let result = null;
+  /** @type {?HTMLDialogElement} */
+  let prepared = null;
+
+  /**
+   * Watches the dialog's closing, once: the open promise resolves then.
+   * @param {!HTMLDialogElement} dialog
+   */
+  const prepare = (dialog) => {
+    if (prepared === dialog) return;
+    prepared = dialog;
+    if (dirty) guardPage(dialog, dirty);
+    dialog.addEventListener('close', () => {
+      // The event is queued, so the page may have been opened again.
+      if (dialog.open) return;
+      const resolve = settle;
+      settle = null;
+      resolve?.(result);
+    });
+  };
+
+  /**
+   * Opens the page once the module's state is rendered, then calls
+   * `afterOpen`, e.g. to focus a field. Resolves once the page is closed.
+   * @param {!AfterOpen=} afterOpen
+   * @return {!Promise<*>} what the page was closed with, null if cancelled
+   */
+  const open = async (afterOpen = undefined) => {
+    await nextTick();
+    const dialog = el.value;
+    prepare(dialog);
+    error.value = '';
+    result = null;
+    const closed = new Promise((resolve) => {
+      settle = resolve;
+    });
+    openPage(dialog);
+    afterOpen?.();
+    return closed;
+  };
+
+  /**
+   * Closes the page, without asking, and resolves the open promise with
+   * `value`.
+   * @param {!PageResult=} value
+   * @return {!Promise<void>}
+   */
+  const close = (value = null) => {
+    result = value;
+    return closePage(el.value, {force: true});
+  };
+
+  /**
+   * Closes the page as its back button does: asks first if it has unsaved
+   * changes.
+   * @return {!Promise<void>}
+   */
+  const cancel = () => closePage(el.value);
+
+  /**
+   * Shows `message` as the page's error, scrolled into view, as it may lie
+   * outside the visible area.
+   * @param {string} message
+   * @return {!Promise<void>}
+   */
+  const fail = async (message) => {
+    error.value = message;
+    await nextTick();
+    errorEl.value?.scrollIntoView({block: 'nearest'});
+  };
+
+  /**
+   * Runs `task`, e.g. saving the input. Closes the page with its result if it
+   * succeeds; otherwise the page stays open and shows the error.
+   * @param {function(): !Promise<*>} task
+   * @return {!Promise<void>}
+   */
+  const run = async (task) => {
+    if (busy.value) return;
+    busy.value = true;
+    try {
+      const value = await task();
+      await close(value ?? true);
+    } catch (err) {
+      await fail(errorText(err));
+    } finally {
+      busy.value = false;
+    }
+  };
+
+  return {el, errorEl, error, busy, open, close, cancel, fail, run};
+}

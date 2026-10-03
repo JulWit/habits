@@ -4,12 +4,14 @@
  * them.
  */
 
+import * as habitHelpers from '../data/habit-helpers.js';
 import {state} from '../data/state.js';
 import {colorValue} from '../ui/icons.js';
 import {dayOfMonth, formatLong, formatRelative, WEEKDAY_SHORT, weekdayIndex} from '../util/dates.js';
-import * as habitHelpers from '../util/habit-helpers.js';
 import {t} from '../util/i18n.js';
 import {computed} from '../vue.js';
+
+/** @import {Entry, Habit} from '../data/state.js' */
 
 /** The check mark of a completed check habit's cell, as SVG markup. */
 const CHECK_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path
@@ -19,18 +21,20 @@ const CHECK_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path
 /**
  * A day in the header. `active` is the highlighted day (is-today), by default
  * today; the actual today keeps is-current. With `selectable`, the day is a
- * button that makes its day the active one.
+ * button that makes its day the active one; `tabIndex` makes it the tab stop
+ * of the header (0) or not (-1).
  */
 export const BoardHeadDay = {
   name: 'BoardHeadDay',
   props: {
     iso: {type: String, required: true},
-    active: String,
+    active: {type: String, default: undefined},
     selectable: Boolean,
+    tabIndex: {type: Number, default: undefined},
   },
   /**
-   * @param {{iso: string, active: (string|undefined), selectable:
-   *     boolean}} props
+   * @param {{iso: string, active?: string, selectable: boolean,
+   *     tabIndex?: number}} props
    * @return {!Object<string, *>} the bindings of the template
    */
   setup(props) {
@@ -49,12 +53,13 @@ export const BoardHeadDay = {
   template: `
     <button
       v-if="selectable"
+      v-tooltip="title"
       type="button"
       class="board-head-day is-selectable"
       :class="{'is-today': isActive, 'is-current': iso === state.today}"
-      :title="title"
       data-role="select-day"
       :data-date="iso"
+      :tabindex="tabIndex"
       :aria-pressed="String(isActive)"
     >
       <span class="board-head-day-weekday">{{ weekday }}</span>
@@ -62,9 +67,9 @@ export const BoardHeadDay = {
     </button>
     <div
       v-else
+      v-tooltip="title"
       class="board-head-day"
       :class="{'is-today': isActive, 'is-current': iso === state.today}"
-      :title="title"
     >
       <span class="board-head-day-weekday">{{ weekday }}</span>
       <span class="board-head-day-date">{{ day }}</span>
@@ -97,12 +102,12 @@ export const BoardHabitLabel = {
   // The streak is always shown, even when it is 0.
   template: `
     <button
+      v-tooltip="title"
       type="button"
       class="board-habit-label"
       :class="{'is-archived': habit.archivedAt}"
       data-role="open"
       :data-habit="habit.id"
-      :title="title"
     >
       <app-icon-badge
         class="habit-icon"
@@ -124,18 +129,20 @@ export const BoardHabitLabel = {
 /**
  * The cell of a day in a row; `active` is the day of the band. The cell shows
  * the server's status of the day (habit-helpers.js); a write still waiting
- * for the server is shown with its value only. Its user handles clicks.
+ * for the server is shown with its value only. `tabIndex` makes it the tab
+ * stop of the board (0) or not (-1). Its user handles clicks.
  */
 export const BoardDayCell = {
   name: 'BoardDayCell',
   props: {
     habit: {type: Object, required: true},
     iso: {type: String, required: true},
-    active: String,
+    active: {type: String, default: undefined},
+    tabIndex: {type: Number, default: undefined},
   },
   /**
-   * @param {{habit: !Habit, iso: string, active: (string|undefined)}}
-   *     props
+   * @param {{habit: !Habit, iso: string, active?: string,
+   *     tabIndex?: number}} props
    * @return {!Object<string, *>} the bindings of the template
    */
   setup(props) {
@@ -150,15 +157,16 @@ export const BoardDayCell = {
   // colour and pattern alone (e.g. hatched: planned ahead).
   template: `
     <button
+      v-tooltip="cell.label"
       type="button"
       class="board-day-cell"
       :class="{'is-today': isActive}"
       data-role="cell"
       :data-habit="habit.id"
       :data-date="iso"
+      :tabindex="tabIndex"
       :style="{'--habit-color': color}"
       :aria-label="cell.label"
-      :title="cell.label"
       :disabled="cell.disabled"
     >
       <span
@@ -232,8 +240,7 @@ function describeCell(habit, iso) {
   ];
   const view = {
     label: cellLabel(habit, iso, entry, flags),
-    // Unscheduled days are disabled unless they hold something to clear.
-    disabled: !scheduled && habitHelpers.isEmpty(entry),
+    disabled: isCellDisabled(habit, iso),
     mark,
     progress: habitHelpers.progress(habit, iso, value),
     streak: 0,
@@ -263,6 +270,18 @@ function describeCell(habit, iso) {
     view.number = habitHelpers.cellValue(habit, value);
   }
   return view;
+}
+
+/**
+ * Reports whether the cell of `habit` on `iso` is disabled: an unscheduled day
+ * is, unless it holds something to clear.
+ * @param {!Habit} habit
+ * @param {string} iso
+ * @return {boolean}
+ */
+export function isCellDisabled(habit, iso) {
+  return !habitHelpers.isScheduled(habit, iso) &&
+      habitHelpers.isEmpty(habitHelpers.entryOn(habit, iso));
 }
 
 /**

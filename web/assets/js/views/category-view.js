@@ -6,7 +6,8 @@
 
 import * as actions from '../data/actions.js';
 import {api} from '../data/api.js';
-import {remote} from '../data/remote-stats.js';
+import * as habitHelpers from '../data/habit-helpers.js';
+import {useRemote} from '../data/remote-stats.js';
 import {goHome, openHabit, route} from '../data/route.js';
 import {categoryById, state} from '../data/state.js';
 import {openCategoryEditor} from '../dialogs/category-editor.js';
@@ -14,19 +15,12 @@ import {AppBar} from '../ui/app-bar.js';
 import {colorValue, hasHabitIcon} from '../ui/icons.js';
 import {AppFactsPanel, AppStatRow, changedItem, createdItem, factItem, percent, rateLabel} from '../ui/stat-panels.js';
 import {hideTooltip} from '../ui/tooltip.js';
-import {AppDayHeatmap, AppYearNavigation, centreToday, currentYear, initChartTooltips, sinceLabel, streakLabel, yearRange} from '../ui/year-grid.js';
-import * as habitHelpers from '../util/habit-helpers.js';
-import {t} from '../util/i18n.js';
-import {computed, nextTick, onMounted, ref, watch} from '../vue.js';
+import {AppDayHeatmap, AppYearNavigation, centreToday, currentYear, sinceLabel, streakLabel, useChartTooltips, yearRange} from '../ui/year-grid.js';
+import {plural, t} from '../util/i18n.js';
+import {computed, nextTick, ref, watch} from '../vue.js';
 
-/**
- * The year shown, e.g. "2025", and the category it was chosen for. Another
- * category opens with the current year; the choice is not kept beyond the
- * session.
- */
-const shownYear = ref('');
-/** @type {?string} */
-let shownFor = null;
+/** @import {Days} from '../data/state.js' */
+/** @import {Ref} from '../vue.js' */
 
 /**
  * Returns the stat tiles from the server's day statistics of the category's
@@ -55,7 +49,7 @@ function statTiles(s, year) {
   return [
     [
       streakLabel(year),
-      currentStreak === 1 ? t('1 day') : t('{n} days', {n: currentStreak}),
+      plural(currentStreak, '{n} day', '{n} days'),
       'streak',
     ],
     [
@@ -69,16 +63,24 @@ function statTiles(s, year) {
 }
 
 /**
+ * Returns the category of a key of the day statistics ("category|id|year").
+ * @param {string} key
+ * @return {string}
+ */
+function categoryOfKey(key) {
+  return key.split('|')[1];
+}
+
+/**
  * Formats the current streak shortly: "1 day", "5 days", "3 wk", "2 mo".
  * @param {{currentStreak: number, streakUnit: string}} stats
  * @return {string}
  */
 function shortStreak({currentStreak, streakUnit}) {
-  // Singular/plural for days; "wk" and "mo" need no plural.
-  let unit = currentStreak === 1 ? t('day') : t('days');
-  if (streakUnit === 'weeks') unit = t('wk');
-  if (streakUnit === 'months') unit = t('mo');
-  return `${currentStreak} ${unit}`;
+  // "wk" and "mo" need no plural.
+  if (streakUnit === 'weeks') return `${currentStreak} ${t('wk')}`;
+  if (streakUnit === 'months') return `${currentStreak} ${t('mo')}`;
+  return plural(currentStreak, '{n} day', '{n} days');
 }
 
 /**
@@ -99,7 +101,11 @@ export const TheCategoryView = {
         () => state.habits.filter(
             (h) => h.categoryId === category.value?.id && !h.archivedAt));
 
-    // Another category opens with the current year.
+    // The year shown, e.g. "2025"; another category opens with the current
+    // year. The choice is kept for the session only.
+    const shownYear = ref('');
+    /** @type {?string} */
+    let shownFor = null;
     watch(() => category.value?.id, (id) => {
       if (id && id !== shownFor) {
         shownFor = id;
@@ -108,16 +114,13 @@ export const TheCategoryView = {
     }, {immediate: true, flush: 'sync'});
     // The day statistics of the shown year; while another year of the same
     // category loads, the last one stays.
-    /** @type {?{id: string, days: !Days}} */
-    let previous = null;
-    const days = computed(() => {
-      if (!category.value) return undefined;
-      const {id} = category.value;
-      const year = shownYear.value;
-      const loaded = remote(`category|${id}|${year}`, () => api.days(year, id));
-      if (loaded) previous = {id, days: loaded};
-      return previous?.id === id ? previous.days : undefined;
-    });
+    /** @type {{data: !Ref<(!Days|undefined)>}} */
+    const {data: days} = useRemote(
+        () => category.value ?
+            `category|${category.value.id}|${shownYear.value}` :
+            null,
+        (signal) => api.days(shownYear.value, category.value.id, signal),
+        {keep: (shown, next) => categoryOfKey(shown) === categoryOfKey(next)});
 
     // The tooltip's target is replaced; the heatmap is scrolled to today once
     // it shows another year.
@@ -126,9 +129,7 @@ export const TheCategoryView = {
       await nextTick();
       if (root.value) centreToday(root.value);
     });
-    onMounted(() => {
-      initChartTooltips(root.value, '.heatmap-day[data-date]');
-    });
+    useChartTooltips(root, '.heatmap-day[data-date]');
 
     return {
       root,
@@ -159,10 +160,7 @@ export const TheCategoryView = {
       menu:
           [{action: 'delete', label: t('Delete'), icon: 'trash', danger: true}],
       back: goHome,
-      edit: () => {
-        const id = category.value.id;
-        openCategoryEditor(id, (input) => actions.updateCategory(id, input));
-      },
+      edit: () => openCategoryEditor(category.value.id),
       remove: () => actions.deleteCategory(category.value.id),
       openHabit,
     };

@@ -23,16 +23,18 @@ const MAX_SCROLL = 14;
  * the selector `item`, by their drag handles (the selector `handle`). `key`
  * names the dataset field holding an entry's ID. `onStart` is called when a
  * drag starts, `onDrop` with the new order if it changed, and `onCancel` if
- * the order did not change or the drag was aborted.
+ * the order did not change or the drag was aborted. Returns a function that
+ * disables the reordering again, removing its listeners.
  * @param {{
  *   container: !HTMLElement,
  *   item: string,
  *   handle: string,
  *   key: string,
- *   onStart: (function(): void|undefined),
+ *   onStart?: function(): void,
  *   onDrop: function(!Array<string>): void,
- *   onCancel: (function(): void|undefined),
+ *   onCancel?: function(): void,
  * }} options
+ * @return {function(): void}
  */
 export function enableDragReorder(
     {container, item, handle, key, onStart, onDrop, onCancel}) {
@@ -48,10 +50,10 @@ export function enableDragReorder(
    *   startY: number,
    *   pointerY: number,
    *   active: boolean,
-   *   order: (!Array<!HTMLElement>|undefined),
-   *   list: (!HTMLElement|undefined),
-   *   anchor: (?Node|undefined),
-   *   frame: (number|undefined),
+   *   order?: !Array<!HTMLElement>,
+   *   list?: !HTMLElement,
+   *   anchor?: ?Node,
+   *   frame?: number,
    * }}
    */
   let drag = null;
@@ -61,16 +63,20 @@ export function enableDragReorder(
    * moved between lists.
    * @return {!Array<!HTMLElement>}
    */
-  const items =
-      () => [...(drag?.element.parentElement ?? container).children].filter(
-          (node) => node.matches(item));
+  const items = () => /** @type {!Array<!HTMLElement>} */ ([
+    ...(drag?.element.parentElement ?? container).children,
+  ].filter((node) => node.matches(item)));
 
-  container.addEventListener('pointerdown', (event) => {
+  /**
+   * Starts a drag on a press on a handle.
+   * @param {!PointerEvent} event
+   */
+  const onPointerDown = (event) => {
     // Primary button or touch only.
     if (event.button !== 0 || drag) return;
-    const grip = event.target.closest(handle);
+    const grip = /** @type {!Element} */ (event.target).closest(handle);
     const element = grip?.closest(item);
-    if (!element) return;
+    if (!(element instanceof HTMLElement)) return;
 
     drag = {
       element,
@@ -87,12 +93,14 @@ export function enableDragReorder(
     } catch {
       // Continue without capture.
     }
-  });
+  };
 
-  // On the document, not the container: moving the dragged element in the DOM
-  // (settle) releases the pointer capture, after which the events go to
-  // whatever lies under the pointer, which may be outside the container.
-  document.addEventListener('pointermove', (event) => {
+  /**
+   * Starts the drag once the pointer has moved far enough, and moves the
+   * dragged element with it.
+   * @param {!PointerEvent} event
+   */
+  const onPointerMove = (event) => {
     if (!drag || event.pointerId !== drag.pointerId) return;
     drag.pointerY = event.clientY;
 
@@ -111,7 +119,7 @@ export function enableDragReorder(
     }
     event.preventDefault();
     follow();
-  });
+  };
 
   /**
    * Returns how far the pointer has moved on the page since the drag started,
@@ -147,19 +155,24 @@ export function enableDragReorder(
     drag.frame = requestAnimationFrame(scrollAtEdges);
   };
 
-  for (const type of ['pointerup', 'pointercancel']) {
-    document.addEventListener(type, (event) => {
-      if (!drag || event.pointerId !== drag.pointerId) return;
-      finish(type === 'pointerup');
-    });
-  }
+  /**
+   * Ends the drag when the pointer is released (committed) or cancelled.
+   * @param {!PointerEvent} event
+   */
+  const onPointerEnd = (event) => {
+    if (!drag || event.pointerId !== drag.pointerId) return;
+    finish(event.type === 'pointerup');
+  };
 
-  // Escape cancels the drag.
-  document.addEventListener('keydown', (event) => {
+  /**
+   * Escape cancels the drag.
+   * @param {!KeyboardEvent} event
+   */
+  const onKeydown = (event) => {
     if (event.key !== 'Escape' || !drag?.active) return;
     event.preventDefault();
     finish(false);
-  });
+  };
 
   /**
    * Moves the dragged element past every neighbour whose middle it crossed.
@@ -230,6 +243,24 @@ export function enableDragReorder(
     } else {
       onCancel?.();
     }
+  };
+
+  // The moves and ends on the document, not the container: moving the
+  // dragged element in the DOM (settle) releases the pointer capture, after
+  // which the events go to whatever lies under the pointer, which may be
+  // outside the container.
+  container.addEventListener('pointerdown', onPointerDown);
+  document.addEventListener('pointermove', onPointerMove);
+  document.addEventListener('pointerup', onPointerEnd);
+  document.addEventListener('pointercancel', onPointerEnd);
+  document.addEventListener('keydown', onKeydown);
+  return () => {
+    if (drag) finish(false);
+    container.removeEventListener('pointerdown', onPointerDown);
+    document.removeEventListener('pointermove', onPointerMove);
+    document.removeEventListener('pointerup', onPointerEnd);
+    document.removeEventListener('pointercancel', onPointerEnd);
+    document.removeEventListener('keydown', onKeydown);
   };
 }
 

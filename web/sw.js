@@ -8,7 +8,7 @@
  * Name of the cache; raising the version drops the caches of older workers on
  * activation.
  */
-const CACHE = 'habits-v10';
+const CACHE = 'habits-v11';
 
 /**
  * Files cached on install. Other files are cached on first use.
@@ -61,17 +61,20 @@ self.addEventListener('fetch', (event) => {
   if (url.origin !== self.location.origin) return;
   if (url.pathname.startsWith('/api/')) return;
 
-  event.respondWith(
-      fetch(request)
-          .then((response) => {
-            // Only cache successful same-origin responses (no redirects).
-            if (response.ok && response.type === 'basic') {
-              const copy = response.clone();
-              caches.open(CACHE).then((cache) => cache.put(request, copy));
-            }
-            return response;
-          })
-          // Offline: fall back to the cache.
-          .catch(() => caches.match(request)),
-  );
+  event.respondWith((async () => {
+    try {
+      const response = await fetch(request);
+      // Only cache successful same-origin responses (no redirects). The
+      // worker is kept alive until the copy is stored.
+      if (response.ok && response.type === 'basic') {
+        const copy = response.clone();
+        event.waitUntil(
+            caches.open(CACHE).then((cache) => cache.put(request, copy)));
+      }
+      return response;
+    } catch {
+      // Offline: fall back to the cache.
+      return (await caches.match(request)) ?? Response.error();
+    }
+  })());
 });

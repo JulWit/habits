@@ -448,6 +448,7 @@ function parseIcon(svg) {
   if (!parsed) {
     const [, attrText, body] =
         svg.trim().match(/^<svg([^>]*)>([\s\S]*)<\/svg>$/);
+    /** @type {!Object<string, string>} */
     const attrs = {};
     for (const [, name, value] of attrText.matchAll(/([\w:-]+)="([^"]*)"/g)) {
       attrs[name] = value;
@@ -467,7 +468,7 @@ export const AppIcon = {
   name: 'AppIcon',
   props: {name: String, svg: String},
   /**
-   * @param {{name: (string|undefined), svg: (string|undefined)}} props
+   * @param {{name?: string, svg?: string}} props
    * @return {function(): *} the render function
    */
   setup(props) {
@@ -498,7 +499,7 @@ export const AppIconBadge = {
   name: 'AppIconBadge',
   props: {icon: String, color: String},
   /**
-   * @param {{icon: (string|undefined), color: (string|undefined)}} props
+   * @param {{icon?: string, color?: string}} props
    * @return {!Object<string, *>} the bindings of the template
    */
   setup(props) {
@@ -578,6 +579,7 @@ export const AppColorSwatches = {
       <button
         v-for="color in colors"
         :key="color"
+        v-tooltip="name(color)"
         type="button"
         class="app-color-swatches-item"
         :class="{'is-none': !color}"
@@ -585,7 +587,6 @@ export const AppColorSwatches = {
         role="radio"
         :aria-checked="String(color === modelValue)"
         :aria-label="label(color)"
-        :title="name(color)"
         @click="$emit('update:modelValue', color)"
       ></button>
     </div>`,
@@ -604,7 +605,7 @@ export const AppIconChoices = {
   },
   emits: ['update:modelValue'],
   /**
-   * @param {{names: !Array<string>, modelValue: (string|undefined)}}
+   * @param {{names: !Array<string>, modelValue?: string}}
    *     props
    * @return {!Object<string, *>} the bindings of the template
    */
@@ -638,13 +639,13 @@ export const AppIconChoices = {
       <button
         v-for="name in offered"
         :key="name"
+        v-tooltip="title(name)"
         type="button"
         class="app-icon-choices-item"
         :class="{'is-none': !name}"
         role="radio"
         :aria-checked="String(name === modelValue)"
         :aria-label="label(name)"
-        :title="title(name)"
         @click="$emit('update:modelValue', name)"
       >
         <app-icon

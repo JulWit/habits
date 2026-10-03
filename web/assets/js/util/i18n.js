@@ -2,16 +2,16 @@
  * @fileoverview Translation of the UI. The English text is the key;
  * untranslated texts are shown in English. Placeholders are written {name}.
  *
- * The language is taken from <html lang> and changes only on reload.
+ * The language is taken from <html lang> and changes only on reload. Outside a
+ * browser (the unit tests in test/js) there is no <html>, and it is English.
  */
-
-import {state} from '../data/state.js';
 
 /**
  * The UI language, "de" or "en".
  * @const {string}
  */
-export const lang = document.documentElement.lang === 'de' ? 'de' : 'en';
+export const lang =
+    globalThis.document?.documentElement.lang === 'de' ? 'de' : 'en';
 
 /**
  * Locale for formatting numbers and dates.
@@ -20,8 +20,15 @@ export const lang = document.documentElement.lang === 'de' ? 'de' : 'en';
 export const locale = lang === 'de' ? 'de-DE' : 'en-GB';
 
 /**
- * German translations, keyed by the English text. An array holds singular and
- * plural, selected by `n`.
+ * The plural rules of the UI language, which pick the form for a count.
+ * @const {!Intl.PluralRules}
+ */
+const pluralRules = new Intl.PluralRules(locale);
+
+/**
+ * German translations, keyed by the English text. An array holds the forms
+ * for one and for other counts of `n`, keyed by the English plural (see
+ * plural()).
  * @const {!Object<string, (string|!Array<string>)>}
  */
 const DE = {
@@ -156,7 +163,10 @@ const DE = {
   'Nothing to skip: the days are not due or already have an entry.':
       'Nichts zu überspringen: Die Tage sind nicht fällig oder haben schon einen Eintrag.',
   '1 day skipped': '1 Tag übersprungen',
-  '{n} days skipped': '{n} Tage übersprungen',
+  '{n} days skipped': [
+    '{n} Tag übersprungen',
+    '{n} Tage übersprungen',
+  ],
   'Which one in the month': 'Welcher im Monat',
   'First': 'Erster',
   'Second': 'Zweiter',
@@ -246,8 +256,10 @@ const DE = {
   'The overview shows whole calendar weeks, including the remaining days of this week.':
       'Die Übersicht zeigt ganze Kalenderwochen, einschließlich der restlichen Tage dieser Woche.',
   'Show archived habits': 'Archivierte Gewohnheiten zeigen',
-  '1 habit is archived.': '1 Gewohnheit ist archiviert.',
-  '{n} habits are archived.': '{n} Gewohnheiten sind archiviert.',
+  '{n} habits are archived.': [
+    '{n} Gewohnheit ist archiviert.',
+    '{n} Gewohnheiten sind archiviert.',
+  ],
   'Language': 'Sprache',
   'Browser language': 'Sprache des Browsers',
   'The page reloads to switch the language.':
@@ -276,16 +288,23 @@ const DE = {
   'The file is not an export of the habits.':
       'Die Datei ist kein Export der Gewohnheiten.',
   'The file is larger than {max} MB.': 'Die Datei ist größer als {max} MB.',
-  '1 habit imported.': '1 Gewohnheit importiert.',
-  '{n} habits imported.': '{n} Gewohnheiten importiert.',
+  '{n} habits imported.': [
+    '{n} Gewohnheit importiert.',
+    '{n} Gewohnheiten importiert.',
+  ],
   '1 habit imported': '1 Gewohnheit importiert',
-  '{n} habits imported': '{n} Gewohnheiten importiert',
-  '1 category created.': '1 Kategorie angelegt.',
-  '{n} categories created.': '{n} Kategorien angelegt.',
-  '1 habit already existed and was skipped.':
-      '1 Gewohnheit gab es schon; sie wurde übersprungen.',
-  '{n} habits already existed and were skipped.':
-      '{n} Gewohnheiten gab es schon; sie wurden übersprungen.',
+  '{n} habits imported': [
+    '{n} Gewohnheit importiert',
+    '{n} Gewohnheiten importiert',
+  ],
+  '{n} categories created.': [
+    '{n} Kategorie angelegt.',
+    '{n} Kategorien angelegt.',
+  ],
+  '{n} habits already existed and were skipped.': [
+    '{n} Gewohnheit gab es schon; sie wurde übersprungen.',
+    '{n} Gewohnheiten gab es schon; sie wurden übersprungen.',
+  ],
   '"{name}": {message}': '„{name}“: {message}',
   'Deletes all your habits with their recorded days, your categories and your settings. This cannot be undone; export your habits first to keep them.':
       'Löscht alle deine Gewohnheiten mit ihren erfassten Tagen, deine Kategorien und deine Einstellungen. Das lässt sich nicht rückgängig machen; exportiere deine Gewohnheiten vorher, um sie zu behalten.',
@@ -314,8 +333,10 @@ const DE = {
   'Day statistics': 'Tagesstatistik',
   'Show day statistics': 'Tagesstatistik anzeigen',
   'Average per day': 'Ø pro Tag',
-  '1 habit due': '1 Gewohnheit fällig',
-  '{n} habits due': '{n} Gewohnheiten fällig',
+  '{n} habits due': [
+    '{n} Gewohnheit fällig',
+    '{n} Gewohnheiten fällig',
+  ],
   'Nothing due': 'Nichts fällig',
   'Perfect days: {n}': 'Perfekte Tage: {n}',
   'By weekday': 'Nach Wochentag',
@@ -327,8 +348,6 @@ const DE = {
   'Best month': 'Bester Monat',
   'wk': 'Wo.',
   'mo': 'Mon.',
-  'day': 'Tag',
-  'days': 'Tage',
 
   // ---------- search ----------
   'Search habits and categories': 'Gewohnheiten und Kategorien suchen',
@@ -336,8 +355,10 @@ const DE = {
   'Clear search': 'Suche leeren',
   'Results': 'Ergebnisse',
   'No habit or category matches.': 'Keine Gewohnheit oder Kategorie passt.',
-  'Category · 1 habit': 'Kategorie · 1 Gewohnheit',
-  'Category · {n} habits': 'Kategorie · {n} Gewohnheiten',
+  'Category · {n} habits': [
+    'Kategorie · {n} Gewohnheit',
+    'Kategorie · {n} Gewohnheiten',
+  ],
 
   // ---------- value dialog ----------
   'Less': 'Weniger',
@@ -443,12 +464,18 @@ const DE = {
   'Discard changes?': 'Änderungen verwerfen?',
   'Keep editing': 'Weiter bearbeiten',
   'Discard': 'Verwerfen',
-  '1 day': '1 Tag',
-  '{n} days': '{n} Tage',
-  '1 week': '1 Woche',
-  '{n} weeks': '{n} Wochen',
-  '1 month': '1 Monat',
-  '{n} months': '{n} Monate',
+  '{n} days': [
+    '{n} Tag',
+    '{n} Tage',
+  ],
+  '{n} weeks': [
+    '{n} Woche',
+    '{n} Wochen',
+  ],
+  '{n} months': [
+    '{n} Monat',
+    '{n} Monate',
+  ],
   'Current streak': 'Aktuelle Serie',
   'Streak at the end of {year}': 'Serie am Ende von {year}',
   'Best streak': 'Beste Serie',
@@ -470,15 +497,19 @@ const DE = {
   'Last done': 'Zuletzt erledigt',
   'Not yet': 'Noch nie',
   'Last changed': 'Zuletzt geändert',
-  '1 change waiting': '1 Änderung wartet',
-  '{n} changes waiting': '{n} Änderungen warten',
+  '{n} changes waiting': [
+    '{n} Änderung wartet',
+    '{n} Änderungen warten',
+  ],
   'Offline': 'Offline',
   'Offline — changes are kept on this device and sent later.':
       'Offline — Änderungen bleiben auf diesem Gerät und werden später gesendet.',
   'Session expired — changes are kept on this device and sent after you reload the page.':
       'Sitzung abgelaufen — Änderungen bleiben auf diesem Gerät und werden gesendet, sobald du die Seite neu lädst.',
-  'Back online — 1 change sent': 'Wieder online — 1 Änderung gesendet',
-  'Back online — {n} changes sent': 'Wieder online — {n} Änderungen gesendet',
+  'Back online — {n} changes sent': [
+    'Wieder online — {n} Änderung gesendet',
+    'Wieder online — {n} Änderungen gesendet',
+  ],
   'Not sent: {name}, {date}: {error}':
       'Nicht gesendet: {name}, {date}: {error}',
   'deleted habit': 'gelöschte Gewohnheit',
@@ -500,8 +531,10 @@ const DE = {
   'No entries in {year} yet.': '{year} gibt es noch keine Einträge.',
   'in {year}': 'im Jahr {year}',
   ' {scope} · avg ': ' {scope} · Ø ',
-  ' on 1 active day · best day ': ' an 1 aktiven Tag · bester Tag ',
-  ' on {n} active days · best day ': ' an {n} aktiven Tagen · bester Tag ',
+  ' on {n} active days · best day ': [
+    ' an {n} aktiven Tag · bester Tag ',
+    ' an {n} aktiven Tagen · bester Tag ',
+  ],
   '{total} · of that +{sum}': '{total} · davon +{sum}',
   '{total} · nothing added': '{total} · nichts dazugekommen',
   'End of {month}': 'Ende {month}',
@@ -662,7 +695,9 @@ const dictionary = lang === 'de' ? DE : {};
 /**
  * Translates `text` and fills in its {placeholders} from `vars`. Unknown texts
  * are returned unchanged. `vars.context` selects a variant of an ambiguous
- * text, keyed as "context|text" (e.g. "verb|Archive").
+ * text, keyed as "context|text" (e.g. "verb|Archive"). A translation with
+ * forms per count picks one by `vars.n`, which may also be a number already
+ * formatted (an undo label's parameter).
  * @param {string} text
  * @param {!Object<string, *>=} vars
  * @return {string}
@@ -671,25 +706,34 @@ export function t(text, vars = {}) {
   const inContext =
       vars.context ? dictionary[`${vars.context}|${text}`] : undefined;
   let out = inContext ?? dictionary[text] ?? text;
-  if (Array.isArray(out)) out = out[vars.n === 1 ? 0 : 1];
+  if (Array.isArray(out)) out = out[isOne(vars.n) ? 0 : 1];
   return out.replace(
       /\{(\w+)\}/g, (whole, key) => (key in vars ? String(vars[key]) : whole));
 }
 
 /**
- * Returns the user's time zone, the server's, or undefined (browser default)
- * if the browser does not know either.
- * @return {string|undefined}
+ * Translates a text about `n` things in the form the count needs: `one` or
+ * `other` in English, and the German forms stored under `other`. Fills in
+ * {n}, formatted for the locale, and the other {placeholders} from `vars`.
+ * @param {number} n
+ * @param {string} one the English text for one, e.g. "{n} day"
+ * @param {string} other the English text for other counts, e.g. "{n} days"
+ * @param {!Object<string, *>=} vars
+ * @return {string}
  */
-export function userTimeZone() {
-  for (const zone of [state.settings?.timeZone, state.serverTimeZone]) {
-    if (!zone) continue;
-    try {
-      new Intl.DateTimeFormat('en', {timeZone: zone});
-      return zone;
-    } catch {
-      // Unknown to the browser; try the next one.
-    }
-  }
-  return undefined;
+export function plural(n, one, other, vars = {}) {
+  const text = lang === 'en' && isOne(n) ? one : other;
+  return t(text, {...vars, n: n.toLocaleString(locale)});
+}
+
+/**
+ * Reports whether the UI language uses its form for one with the count `n`.
+ * @param {*} n a number, or a number formatted for the locale
+ * @return {boolean}
+ */
+function isOne(n) {
+  if (n === undefined || n === null) return false;
+  const count =
+      typeof n === 'number' ? n : Number(String(n).replace(/\D/g, ''));
+  return pluralRules.select(count) === 'one';
 }

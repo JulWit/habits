@@ -4,14 +4,16 @@
  * translated.
  */
 
+import {STREAK_LEVELS} from '../data/habit-helpers.js';
 import {state} from '../data/state.js';
 import {colorValue} from '../ui/icons.js';
 import {AppYearNavigation, currentYear} from '../ui/year-grid.js';
 import {addDays, daysBetween, weekdayIndex} from '../util/dates.js';
-import {STREAK_LEVELS} from '../util/habit-helpers.js';
 import {computed, onMounted, ref} from '../vue.js';
 
 import {BoardDayCell, BoardHabitLabel, BoardHeadDay} from './board-cells.js';
+
+/** @import {Habit, Schedule} from '../data/state.js' */
 
 /**
  * Returns the date `back` days before today.
@@ -40,7 +42,7 @@ function withDays(habit, isDue = () => true) {
       days += value >= habit.schedules[0].targetValue ? 'c' : 'o';
     }
   }
-  return {...habit, daysFrom: from, days};
+  return /** @type {!Habit} */ ({...habit, daysFrom: from, days});
 }
 
 /**
@@ -63,6 +65,7 @@ function samples() {
       kind: 'daily',
       timesPerWeek: 0,
       timesPerMonth: 0,
+      timesAtMost: false,
       weekdays: 0,
       intervalDays: 0,
       weekInterval: 0,
@@ -191,6 +194,7 @@ function tokenNames() {
       continue;
     }
     for (const rule of rules) {
+      if (!(rule instanceof CSSStyleRule)) continue;
       if (!rule.selectorText || !/:root/.test(rule.selectorText)) continue;
       for (const prop of rule.style) {
         if (prop.startsWith('--') && !names.includes(prop)) names.push(prop);

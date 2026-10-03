@@ -4,9 +4,9 @@
  * the facts of when something was created and changed.
  */
 
-import {state} from '../data/state.js';
+import {state, userTimeZone} from '../data/state.js';
 import {daysBetween, formatLong, localISO} from '../util/dates.js';
-import {locale, t, userTimeZone} from '../util/i18n.js';
+import {locale, t} from '../util/i18n.js';
 
 /**
  * Labels the completion rate with the window it covers, which the server
@@ -58,7 +58,7 @@ export const AppStatRow = {
  * A labelled fact, with an optional note after the value.
  * @typedef {{label: string, value: string, note: string}}
  */
-let Fact;
+export let Fact;
 
 /**
  * Returns a fact for AppFactsPanel.
@@ -105,7 +105,7 @@ export const AppFactsPanel = {
  * @return {!Fact}
  */
 export function createdItem(stamp) {
-  const day = localISO(stamp);
+  const day = localISO(stamp, userTimeZone());
   return factItem(t('Created'), formatLong(day), daysAgo(day));
 }
 
@@ -140,7 +140,7 @@ function formatStamp(stamp) {
   const at = new Date(stamp);
   const time = at.toLocaleTimeString(
       locale, {hour: '2-digit', minute: '2-digit', timeZone: userTimeZone()});
-  return `${formatLong(localISO(stamp))}, ${time}`;
+  return `${formatLong(localISO(stamp, userTimeZone()))}, ${time}`;
 }
 
 /**
@@ -153,5 +153,5 @@ function timeAgo(stamp) {
   if (minutes < 1) return t('just now');
   if (minutes < 60) return t('{n} min ago', {n: minutes});
   if (minutes < 24 * 60) return t('{n} h ago', {n: Math.floor(minutes / 60)});
-  return daysAgo(localISO(stamp));
+  return daysAgo(localISO(stamp, userTimeZone()));
 }

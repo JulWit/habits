@@ -1,6 +1,24 @@
 /**
- * @fileoverview Client for the JSON API. Errors are thrown as ApiError.
+ * @fileoverview Client for the JSON API. Errors are thrown as ApiError; a
+ * request aborted through its signal rejects with the browser's AbortError.
  */
+
+/**
+ * @import {Category, CategoryInput, Days, Habit, HabitInput, LoadedState,
+ * Totals} from './state.js'
+ */
+
+/**
+ * The undo step a write recorded, if any (see withChange).
+ * @typedef {{changeId?: number}}
+ */
+export let Changed;
+
+/**
+ * An undo step as undo, redo and deleting a category answer with it.
+ * @typedef {{id: number, label: string, params: ?Object<string, *>}}
+ */
+export let Step;
 
 /** An error answer of the API, or a failed request. */
 class ApiError extends Error {
@@ -8,9 +26,9 @@ class ApiError extends Error {
    * @param {string} message the English message
    * @param {number} status the HTTP status, 0 without a connection
    * @param {{
-   *   cause: (*|undefined),
-   *   code: (string|undefined),
-   *   params: (?Object<string, *>|undefined),
+   *   cause?: *,
+   *   code?: string,
+   *   params?: ?Object<string, *>,
    * }=} options code and params of the problem, by which errorText
    *     translates it
    */
@@ -43,15 +61,17 @@ function sessionExpired(res) {
 }
 
 /**
- * Sends a request, with `body` as JSON.
+ * Sends a request, with `body` as JSON. `signal` aborts it, e.g. once a view
+ * no longer needs the answer.
  * @param {string} method
  * @param {string} path
  * @param {*=} body
- * @return {!Promise<?Object<string, *>>} the answer, with `changeId` if the
- *     write recorded an undo step
+ * @param {!AbortSignal=} signal
+ * @return {!Promise<*>} the answer, with `changeId` if the write recorded an
+ *     undo step
  * @throws {!ApiError}
  */
-async function request(method, path, body) {
+async function request(method, path, body = undefined, signal = undefined) {
   let res;
   try {
     res = await fetch(path, {
@@ -63,8 +83,10 @@ async function request(method, path, body) {
       // The API never redirects; a redirect comes from the reverse proxy (see
       // sessionExpired).
       redirect: 'manual',
+      signal,
     });
   } catch (cause) {
+    if (signal?.aborted) throw cause;
     throw new ApiError(
         'No connection to the server', 0, {cause, code: 'offline'});
   }
@@ -117,6 +139,22 @@ function withChange(data, changeId) {
 }
 
 /**
+ * Returns `path` with the query parameters `params`, leaving out the empty
+ * ones.
+ * @param {string} path
+ * @param {!Object<string, (string|undefined)>} params
+ * @return {string}
+ */
+function withQuery(path, params) {
+  const query = new URLSearchParams();
+  for (const [name, value] of Object.entries(params)) {
+    if (value) query.set(name, value);
+  }
+  const text = query.toString();
+  return text ? `${path}?${text}` : path;
+}
+
+/**
  * The endpoints of the API; see docs/API.md. Each resolves to the answer, or
  * rejects with an ApiError.
  */
@@ -126,9 +164,7 @@ export const api = {
    * @param {string=} from
    * @return {!Promise<!LoadedState>}
    */
-  loadState: (from) => request(
-      'GET',
-      from ? `/api/state?from=${encodeURIComponent(from)}` : '/api/state'),
+  loadState: (from) => request('GET', withQuery('/api/state', {from})),
 
   /**
    * Loads a habit with its full history.
@@ -142,29 +178,32 @@ export const api = {
    * @param {string} id
    * @param {string} year
    * @param {string} grain day, week or month
+   * @param {!AbortSignal=} signal
    * @return {!Promise<!Totals>}
    */
-  habitTotals: (id, year, grain) => {
-    const path = `/api/habits/${encodeURIComponent(id)}/totals`;
-    return request('GET', `${path}?year=${year}&grain=${grain}`);
-  },
+  habitTotals: (id, year, grain, signal = undefined) => request(
+      'GET',
+      withQuery(`/api/habits/${encodeURIComponent(id)}/totals`, {year, grain}),
+      undefined,
+      signal),
 
   /**
    * Loads the day statistics of `year`, of the habits of `categoryId` if
    * given.
    * @param {string} year
    * @param {string=} categoryId
+   * @param {!AbortSignal=} signal
    * @return {!Promise<!Days>}
    */
-  days: (year, categoryId) => request(
+  days: (year, categoryId = undefined, signal = undefined) => request(
       'GET',
-      categoryId ?
-          `/api/days?year=${year}&category=${encodeURIComponent(categoryId)}` :
-          `/api/days?year=${year}`),
+      withQuery('/api/days', {year, category: categoryId}),
+      undefined,
+      signal),
 
   /**
    * @param {!HabitInput} input
-   * @return {!Promise<!Habit>}
+   * @return {!Promise<Habit & Changed>}
    */
   createHabit: (input) => request('POST', '/api/habits', input),
 
@@ -173,7 +212,7 @@ export const api = {
    * unless `retroactive` is set. The kind cannot change.
    * @param {string} id
    * @param {!HabitInput} input
-   * @return {!Promise<!Habit>}
+   * @return {!Promise<Habit & Changed>}
    */
   updateHabit: (id, input) =>
       request('PATCH', `/api/habits/${encodeURIComponent(id)}`, input),
@@ -181,7 +220,7 @@ export const api = {
   /**
    * @param {string} id
    * @param {boolean} archived
-   * @return {!Promise<!Habit>}
+   * @return {!Promise<Habit & Changed>}
    */
   archiveHabit: (id, archived) =>
       request('PATCH', `/api/habits/${encodeURIComponent(id)}`, {archived}),
@@ -204,10 +243,9 @@ export const api = {
    * the habit's full view.
    * @param {string} habitId
    * @param {string} date
-   * @param {{value: (number|undefined), skipped: (boolean|undefined), add:
-   *     (number|undefined)}} change `add` is a step added to the value the
-   *     server has
-   * @return {!Promise<!Habit>}
+   * @param {{value?: number, skipped?: boolean, add?: number}} change `add`
+   *     is a step added to the value the server has
+   * @return {!Promise<Habit & Changed>}
    */
   setEntry: (habitId, date, change) => {
     const habit = encodeURIComponent(habitId);
@@ -218,23 +256,23 @@ export const api = {
   /**
    * Skips the due days without a value from `from` to `to` of the habits
    * `habitIds`, or of all; answers with the number of days skipped.
-   * @param {{from: string, to: string, habitIds: (!Array<string>|undefined)}}
+   * @param {{from: string, to: string, habitIds?: !Array<string>}}
    *     input
-   * @return {!Promise<{skipped: number}>}
+   * @return {!Promise<{skipped: number, changeId?: number}>}
    */
   skipDays: (input) => request('POST', '/api/skips', input),
 
   /**
    * Undoes the undo step `id`, or the latest.
    * @param {number=} id
-   * @return {!Promise<{id: number, label: string, params: ?Object<string, *>}>}
+   * @return {!Promise<!Step>}
    */
   undo: (id = 0) => request('POST', '/api/undo', {id}),
 
   /**
    * Redoes the undo step `id`, or the one undone last.
    * @param {number=} id
-   * @return {!Promise<{id: number, label: string, params: ?Object<string, *>}>}
+   * @return {!Promise<!Step>}
    */
   redo: (id = 0) => request('POST', '/api/redo', {id}),
 
@@ -253,7 +291,8 @@ export const api = {
 
   /**
    * @param {!Object<string, *>} file an export
-   * @return {!Promise<{habits: number, categories: number, skipped: number}>}
+   * @return {!Promise<{habits: number, categories: number, skipped: number,
+   *     changeId?: number}>}
    */
   importHabits: (file) => request('POST', '/api/import', file),
 
@@ -265,14 +304,14 @@ export const api = {
 
   /**
    * @param {{name: string}} input
-   * @return {!Promise<!Category>}
+   * @return {!Promise<Category & Changed>}
    */
   createCategory: (input) => request('POST', '/api/categories', input),
 
   /**
    * @param {string} id
    * @param {!CategoryInput} input
-   * @return {!Promise<!Category>}
+   * @return {!Promise<Category & Changed>}
    */
   updateCategory: (id, input) =>
       request('PATCH', `/api/categories/${encodeURIComponent(id)}`, input),
@@ -280,7 +319,7 @@ export const api = {
   /**
    * Deletes a category; answers with the undo step it recorded.
    * @param {string} id
-   * @return {!Promise<{id: number, label: string, params: ?Object<string, *>}>}
+   * @return {!Promise<!Step>}
    */
   deleteCategory: (id) =>
       request('DELETE', `/api/categories/${encodeURIComponent(id)}`),

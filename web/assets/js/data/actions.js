@@ -1,24 +1,43 @@
 /**
  * @fileoverview All data changes. The server keeps an undo step for each change
  * that can be undone; its answer carries the step's ID (changeId), which the
- * toast offers to undo (see undo.js).
+ * toast offers to undo (see undo.js). The dialogs that ask for a change call
+ * these functions; nothing here opens a dialog.
  */
 
-import {openDayDialog} from '../dialogs/day-editor.js';
-import {openEditor} from '../dialogs/habit-editor.js';
-import {openSkipDialog} from '../dialogs/skip-editor.js';
 import {errorText, toast} from '../ui/toast.js';
 import {formatRelative} from '../util/dates.js';
-import * as habitHelpers from '../util/habit-helpers.js';
-import {t} from '../util/i18n.js';
+import {plural, t} from '../util/i18n.js';
 import {ref} from '../vue.js';
 
 import {api} from './api.js';
+import * as habitHelpers from './habit-helpers.js';
 import {refresh} from './loader.js';
 import {discard, enqueue, flush, isConnectionError, isOffline, isSessionExpired, pending, setOffline} from './outbox.js';
 import {currentHabitId, goHome} from './route.js';
 import {applyEntryAnswer, categoryById, dropPending, groupedHabits, habitById, removeCategory, removeHabit, reorderCategoriesLocal, reorderHabitsLocal, showPending, state, upsertCategory, upsertHabit} from './state.js';
 import {offerUndo, stepLabel} from './undo.js';
+
+/**
+ * @import {Category, CategoryInput, Entry, Habit, HabitInput} from './state.js'
+ */
+
+/**
+ * A change of a day's entry: the parts that differ.
+ * @typedef {{value?: number, skipped?: boolean}}
+ */
+export let EntryChange;
+
+/**
+ * What a write of a day's entry sends: a change, or for a tap a step that the
+ * server adds to the value it has.
+ * @typedef {{
+ *   value?: number,
+ *   skipped?: boolean,
+ *   add?: number,
+ * }}
+ */
+let EntryRequest;
 
 /**
  * The text of the live region that announces the result of a tap on the
@@ -28,7 +47,7 @@ export const announcement = ref('');
 
 /**
  * The timer that fills in the live region.
- * @type {number|undefined}
+ * @type {ReturnType<typeof setTimeout>|undefined}
  */
 let announceTimer;
 
@@ -47,11 +66,12 @@ function announce(text) {
 
 /**
  * Returns an answer without the ID of its undo step, as kept in the state.
- * @param {{changeId: (number|undefined)}} answer
- * @return {!Object<string, *>}
+ * @param {T & {changeId?: number}} answer
+ * @return {T}
+ * @template T
  */
 function withoutChange({changeId, ...rest}) {
-  return rest;
+  return /** @type {T} */ (rest);
 }
 
 // ---------- entries ----------
@@ -80,19 +100,16 @@ export function tapEntry(habitId, iso) {
 }
 
 /**
- * Handles a long press or right-click: opens the day dialog with the value
- * and the skip. A day that is not due only opens with something to clear.
+ * Changes a day's entry as the day dialog asks; `change` holds the parts that
+ * differ. Errors are shown in a toast.
  * @param {string} habitId
  * @param {string} iso
+ * @param {!EntryChange} change
+ * @return {!Promise<void>}
  */
-export function editEntry(habitId, iso) {
+export async function changeEntry(habitId, iso, change) {
   const habit = habitById(habitId);
-  if (!habit) return;
-  if (!habitHelpers.isScheduled(habit, iso) &&
-      habitHelpers.isEmpty(habitHelpers.entryOn(habit, iso))) {
-    return;
-  }
-  openDayDialog(habit, iso, (change) => writeEntry(habit, iso, change));
+  if (habit) await writeEntry(habit, iso, change);
 }
 
 /**
@@ -108,8 +125,9 @@ function clearClosedDay(habit, iso) {
 
 /**
  * The last request per cell. Each write waits for the previous one to the same
- * day, so they reach the server in order.
- * @type {!Map<string, !Promise<*>>}
+ * day, so they reach the server in order. A cell's entry is dropped once its
+ * last request has settled.
+ * @type {!Map<string, !Promise<void>>}
  */
 const inFlight = new Map();
 
@@ -123,20 +141,22 @@ const inFlight = new Map();
 function serialize(key, task) {
   const previous = inFlight.get(key) ?? Promise.resolve();
   const request = previous.then(task);
-  // Stored without its failure, so the next write still runs.
-  inFlight.set(key, request.catch(() => {}));
+  // Kept without its failure, so the next write still runs.
+  const settled = request.then(() => {}, () => {}).then(() => {
+    if (inFlight.get(key) === settled) inFlight.delete(key);
+  });
+  inFlight.set(key, settled);
   return request;
 }
 
 /**
- * Returns `entry` with `change` ({value?, skipped?}) applied: what the cell
- * shows until the server answers. A value ends a skip, a skip clears the
- * value.
+ * Returns `entry` with `change` applied: what the cell shows until the server
+ * answers. A value ends a skip, a skip clears the value.
  * @param {!Entry} entry
- * @param {{value: (number|undefined), skipped: (boolean|undefined)}} change
+ * @param {!EntryChange} change
  * @return {!Entry}
  */
-function applied(entry, change) {
+export function applied(entry, change) {
   const next = {...entry};
   if ('value' in change) {
     next.value = change.value;
@@ -152,7 +172,7 @@ function applied(entry, change) {
 /**
  * Reports whether `change` sets the value only, the one change the outbox
  * keeps.
- * @param {{value: (number|undefined), skipped: (boolean|undefined)}} change
+ * @param {!EntryChange} change
  * @return {boolean}
  */
 function isValueOnly(change) {
@@ -168,10 +188,9 @@ function isValueOnly(change) {
  * server records an undo step only if the change changed something.
  * @param {!Habit} habit
  * @param {string} iso
- * @param {{value: (number|undefined), skipped: (boolean|undefined)}} change
- *     what is shown until the server answers, and what waits in the outbox
- * @param {{value: (number|undefined), skipped: (boolean|undefined), add:
- *     (number|undefined)}=} request what is sent, if not `change`: a step to
+ * @param {!EntryChange} change what is shown until the server answers, and
+ *     what waits in the outbox
+ * @param {!EntryRequest=} request what is sent, if not `change`: a step to
  *     add, for a tap
  * @return {!Promise<void>}
  */
@@ -323,58 +342,49 @@ export async function syncOutbox() {
           {error: true}),
   );
   if (n === 0) return;
-  toast(
-      n === 1 ? t('Back online — 1 change sent') :
-                t('Back online — {n} changes sent', {n}));
+  toast(plural(
+      n, 'Back online — {n} change sent', 'Back online — {n} changes sent'));
   await refresh();
 }
 
 /**
- * Opens the page for skipping days of a habit, or of all for null, and skips
- * the range it sends as one undo step. Errors are thrown for the page to
- * display.
- * @param {?string} habitId
+ * Skips the days of the range `input` names as one undo step. Errors are
+ * thrown for the page that asked to display.
+ * @param {{from: string, to: string, habitIds: !Array<string>}} input no
+ *     habitIds means all habits
+ * @return {!Promise<void>}
  */
-export function skipDays(habitId) {
-  const habit = habitId ? habitById(habitId) : null;
-  openSkipDialog(habit, async (input) => {
-    const {skipped, changeId} = await api.skipDays(input);
-    if (skipped === 0) {
-      toast(
-          t('Nothing to skip: the days are not due or already have an entry.'));
-      return;
-    }
-    await refresh();
-    offerUndo(
-        changeId,
-        skipped === 1 ? t('1 day skipped') :
-                        t('{n} days skipped', {n: skipped}));
-  });
+export async function skipDays(input) {
+  const {skipped, changeId} = await api.skipDays(input);
+  if (skipped === 0) {
+    toast(t('Nothing to skip: the days are not due or already have an entry.'));
+    return;
+  }
+  await refresh();
+  offerUndo(changeId, plural(skipped, '{n} day skipped', '{n} days skipped'));
 }
 
 // ---------- habits ----------
 
 /**
- * Opens the editor for a new habit and creates what it sends.
+ * Creates a habit. Errors are thrown for the editor to display.
+ * @param {!HabitInput} input
+ * @return {!Promise<void>}
  */
-export function createHabit() {
-  openEditor(null, async (input) => {
-    const created = withoutChange(await api.createHabit(input));
-    upsertHabit(created);
-    toast(t('"{name}" created', {name: created.name}));
-  }, createCategory);
+export async function createHabit(input) {
+  const created = withoutChange(await api.createHabit(input));
+  upsertHabit(created);
+  toast(t('"{name}" created', {name: created.name}));
 }
 
 /**
- * Opens the editor for a habit and saves what it sends.
+ * Saves a habit. Errors are thrown for the editor to display.
  * @param {string} id
+ * @param {!HabitInput} input
+ * @return {!Promise<void>}
  */
-export function editHabit(id) {
-  const habit = habitById(id);
-  if (!habit) return;
-  openEditor(habit, async (input) => {
-    upsertHabit(withoutChange(await api.updateHabit(id, input)));
-  }, createCategory);
+export async function updateHabit(id, input) {
+  upsertHabit(withoutChange(await api.updateHabit(id, input)));
 }
 
 /**
@@ -432,14 +442,13 @@ export async function toggleArchive(id) {
  * @return {!Promise<(!Category|undefined)>} the new category, or undefined
  *     for an empty name
  */
-async function createCategory(name) {
+export async function createCategory(name) {
   const wanted = (name ?? '').trim();
-  if (!wanted) return;
+  if (!wanted) return undefined;
 
   const created = withoutChange(await api.createCategory({name: wanted}));
   upsertCategory(created);
   toast(t('Category "{name}" created', {name: created.name}));
-  // Returned so the picker can select it.
   return created;
 }
 
@@ -542,8 +551,7 @@ export async function setCategoryOrder(ids) {
 /**
  * Updates a category. Errors are thrown for the dialog to display.
  * @param {string} id
- * @param {{name: string, color: string, icon: string, showProgress: boolean}}
- *     input
+ * @param {!CategoryInput} input
  * @return {!Promise<void>}
  */
 export async function updateCategory(id, {name, color, icon, showProgress}) {

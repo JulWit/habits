@@ -150,6 +150,26 @@ function serialize(key, task) {
 }
 
 /**
+ * Returns `loaded` with the writes still on their way to the server laid over
+ * its habits as pending, as the habits shown have them: a state loaded while
+ * a write is on its way may lack it, which would take the cell back until the
+ * write's answer arrives. The habits passed in are copied, not changed.
+ * @param {T} loaded
+ * @return {T}
+ * @template {{habits?: !Array<!Habit>}} T
+ */
+export function keepInFlight(loaded) {
+  if (inFlight.size === 0 || !loaded.habits) return loaded;
+  const habits = loaded.habits.map((habit) => {
+    const shown = Object.entries(habitById(habit.id)?.pending ?? {});
+    const own = shown.filter(([date]) => inFlight.has(`${habit.id}|${date}`));
+    if (own.length === 0) return habit;
+    return {...habit, pending: {...habit.pending, ...Object.fromEntries(own)}};
+  });
+  return {...loaded, habits};
+}
+
+/**
  * Returns `entry` with `change` applied: what the cell shows until the server
  * answers. A value ends a skip, a skip clears the value.
  * @param {!Entry} entry

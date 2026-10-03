@@ -73,3 +73,76 @@ export function installStorage() {
   };
   return values;
 }
+
+/**
+ * A request the fake fetch received; the test answers it with `respond` or
+
+ * * fails it, as a lost connection does, with `fail`.
+ * @typedef {{
+ * method:
+ * string,
+ *   path: string,
+ *   body: *,
+ *   respond: function(number, *=):
+ * void,
+ *   fail: function(): void,
+ * }}
+ */
+let FakeRequest;
+
+/**
+ * Installs a fetch that keeps each request until the test answers it, and
+
+ * * returns the requests received so far, oldest first.
+
+ * * @return {!Array<!FakeRequest>}
+ */
+export function installFetch() {
+  const requests = [];
+  globalThis.fetch = (path, init = {}) => new Promise((resolve, reject) => {
+    requests.push({
+      method: init.method ?? 'GET',
+      path: String(path),
+      body: init.body === undefined ? undefined : JSON.parse(init.body),
+      respond: (status, body = undefined) => resolve(new Response(
+          body === undefined ? null : JSON.stringify(body),
+          {status, headers: {'Content-Type': 'application/json'}})),
+      fail: () => reject(new TypeError('NetworkError')),
+    });
+  });
+  return requests;
+}
+
+/**
+ * Waits until the promises and timers queued so far have run.
+
+ * * @return {!Promise<void>}
+ */
+export function settle() {
+  return new Promise((resolve) => setTimeout(resolve, 0));
+}
+
+/**
+ * Returns a state as GET /api/state sends it, with `habits`.
+
+ * * @param {!Array<!Object<string, *>>} habits
+ * @return {!Object<string, *>}
+
+ */
+export function loadedState(habits) {
+  return {
+    user: {id: 'u1', name: '', email: ''},
+    settings: {showArchived: false},
+    today: TODAY,
+    categories: [],
+    habits,
+    colors: [],
+    icons: [],
+    kinds: KINDS,
+    entriesFrom: '2026-01-01',
+    earliestEntry: '',
+    serverTimeZone: 'UTC',
+    build: {},
+    options: {},
+  };
+}

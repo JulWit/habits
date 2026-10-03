@@ -35,6 +35,13 @@ let historyFrom = null;
  */
 let syncOutbox = async () => {};
 
+/**
+ * Lays the writes still on their way to the server over a loaded state
+ * (actions.keepInFlight); set by initSync, passed in like syncOutbox.
+ * @type {function(!LoadedState): !LoadedState}
+ */
+let keepInFlight = (loaded) => loaded;
+
 /** When the state was last loaded (Date.now()), 0 before the first load. */
 let lastLoaded = 0;
 
@@ -64,9 +71,45 @@ const RELOAD_LATER_MS = 2000;
 let laterTimer;
 
 /**
+ * The running load, which a refresh asked for meanwhile waits for; null if
+ * none runs.
+ * @type {?Promise<void>}
+ */
+let loading = null;
+
+/** Whether a refresh was asked for while a load ran, so another one follows. */
+let loadAgain = false;
+
+/**
  * Loads the state from the server. Writes still waiting in the outbox are laid
  * over it and sent. Without a connection, the last loaded state is shown
  * instead (on startup), or the current one is kept.
+ *
+ * One load runs at a time. A refresh asked for while one runs waits for it
+ * and for one more load after it, which surely sees the change the caller
+ * made before asking; further calls meanwhile join that one.
+ * @return {!Promise<void>}
+ */
+export function refresh() {
+  if (loading) {
+    loadAgain = true;
+    return loading;
+  }
+  loading = (async () => {
+    try {
+      do {
+        loadAgain = false;
+        await load();
+      } while (loadAgain);
+    } finally {
+      loading = null;
+    }
+  })();
+  return loading;
+}
+
+/**
+ * Loads the state once (see refresh).
  *
  * A change shown while the state loads, such as a tap answered by the server
  * meanwhile, may be missing from the loaded state, which would take it back on
@@ -75,7 +118,7 @@ let laterTimer;
  * later, and the reload at the end of the day stays scheduled.
  * @return {!Promise<void>}
  */
-export async function refresh() {
+async function load() {
   clearTimeout(laterTimer);
   let loaded;
   for (let load = 1; load <= MAX_LOADS; load++) {
@@ -119,8 +162,10 @@ function showUnloaded(err) {
 }
 
 /**
- * Shows a loaded state, with the writes still waiting in the outbox laid over
- * it, and sends them.
+ * Shows a loaded state, with the writes still on their way to the server and
+ * those waiting in the outbox laid over it, and sends the waiting ones. A
+ * write on its way may have reached the server after the state was read, so
+ * the cell keeps showing it until its answer arrives.
  * @param {!LoadedState} loaded
  */
 function show(loaded) {
@@ -130,7 +175,7 @@ function show(loaded) {
   reloadAtNextDay(loaded.nextDayIn);
   // The reloaded state only contains the entry window again.
   fullHistoryLoaded.clear();
-  replaceState(overlay(loaded));
+  replaceState(overlay(keepInFlight(loaded)));
   if (pending().length > 0) syncOutbox();
 }
 
@@ -174,9 +219,12 @@ const RETRY_MS = 30_000;
  * something is pending. A page that becomes visible also reloads a state that
  * may be outdated (isStale).
  * @param {function(): !Promise<void>} send sends the waiting writes
+ * @param {function(!LoadedState): !LoadedState} keep lays the writes on their
+ *     way to the server over a loaded state
  */
-export function initSync(send) {
+export function initSync(send, keep) {
   syncOutbox = send;
+  keepInFlight = keep;
   /** Shows the current sync status. */
   const paint = () => {
     syncStatus.text = statusText();

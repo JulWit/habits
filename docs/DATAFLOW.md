@@ -99,7 +99,15 @@ A reload replaces the habits of the state. If the state changes on the screen
 while it loads, e.g. by a tap the server has answered meanwhile, the loaded
 state may lack that change and would take it back; the client then loads it
 again (`refresh` in `loader.js`, at most three times, after which it keeps
-what it shows).
+what it shows). A write still on its way to the server is laid over every
+loaded state as pending (`keepInFlight` in `actions.js`), as the server may
+have read the state before the write arrived; the cell keeps showing it
+until the write's answer comes.
+
+One load runs at a time. A reload asked for while one runs (after an undo,
+when the page becomes visible, at midnight) waits for it and for one more
+load after it, which surely sees the change made before asking; further
+requests meanwhile join that one.
 
 ## Day statuses
 

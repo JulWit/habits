@@ -280,7 +280,7 @@ async function main() {
   initServiceWorker();
   initShortcuts();
   initTooltips();
-  initSync(actions.syncOutbox);
+  initSync(actions.syncOutbox, actions.keepInFlight);
   await refresh();
   reopenSettings();
 }

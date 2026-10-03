@@ -21,7 +21,8 @@ internal/domain             The rules of the tracker (no I/O)
   problem.go                  Validation errors with a code (Problem)
 internal/settings           User settings: defaults, options and rules
 internal/store              SQLite: transactions, schema, migrations, undo steps
-  store.go                    Opening the database, transactions per user (View,
+  store.go                    Opening the database (a writing connection and a
+                              read-only pool), backup, transactions per user (View,
                               Update), users, IDs
   schema.go                   Schema of new databases and the migrations
   habits.go                   Habits

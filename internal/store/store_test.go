@@ -233,6 +233,54 @@ func userVersion(t *testing.T, path string) int {
 	return version
 }
 
+// A View reads on connections that cannot write, and sees what an Update
+// committed before it.
+func TestViewReadsOnly(t *testing.T) {
+	st := openTestStore(t)
+	h := mustCreateHabit(t, st, "alice", countHabit(domain.KindCheck, 1))
+	err := st.View(t.Context(), "alice", func(tx *Tx) error {
+		if _, err := tx.Habit(t.Context(), h.ID); err != nil {
+			return err
+		}
+		_, err := tx.exec(t.Context(), `DELETE FROM habits`)
+		return err
+	})
+	if err == nil {
+		t.Error("a View deleted the habits, want an error")
+	}
+	habitOf(t, st, "alice", h.ID)
+}
+
+// A View does not wait for an Update that is still running.
+func TestViewDoesNotWaitForUpdate(t *testing.T) {
+	st := openTestStore(t)
+	h := mustCreateHabit(t, st, "alice", countHabit(domain.KindCheck, 1))
+	started, release := make(chan struct{}), make(chan struct{})
+	done := make(chan error, 1)
+	go func() {
+		_, err := st.Update(context.Background(), "alice", func(tx *Tx) error {
+			close(started)
+			<-release
+			return nil
+		})
+		done <- err
+	}()
+	<-started
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+	defer cancel()
+	err := st.View(ctx, "alice", func(tx *Tx) error {
+		_, err := tx.Habit(ctx, h.ID)
+		return err
+	})
+	close(release)
+	if err != nil {
+		t.Errorf("View during an Update: %v", err)
+	}
+	if err := <-done; err != nil {
+		t.Errorf("Update: %v", err)
+	}
+}
+
 // A failing Update writes nothing.
 func TestAFailingUpdateWritesNothing(t *testing.T) {
 	st := openTestStore(t)

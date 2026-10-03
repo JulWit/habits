@@ -184,8 +184,8 @@ func viewFor(h domain.Habit, hist history, entries map[domain.Date]domain.Entry,
 
 // habitData is what the view of a habit is computed from. Handlers load it in
 // their transaction and compute the view after it: the statistics walk the
-// habit's whole history day by day, and the store has a single connection,
-// which every other request waits for while a transaction holds it.
+// habit's whole history day by day, and an Update holds the store's single
+// writing connection, which every other write waits for.
 type habitData struct {
 	habit   domain.Habit
 	entries map[domain.Date]domain.Entry

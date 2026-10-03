@@ -36,9 +36,12 @@ once (`basis`: today in their time zone and the completion rate's window),
 reads what it needs, checks the change with `internal/domain` and writes it.
 Nothing another request changes in between can slip through between check and
 write. The statistics of the answer are computed after the transaction, from
-what it loaded (`habitData`): the store has a single connection, and a
-transaction holding it while the statistics walk years of history would keep
-every other request waiting.
+what it loaded (`habitData`), so that no transaction stays open while the
+statistics walk years of history. `store.Update` writes on a single
+connection, as SQLite allows only one writer, and an `Update` holding it
+would keep every other write waiting. `store.View` reads on a pool of
+read-only connections of its own, which see the last committed state (WAL),
+so reading requests do not wait for a running write such as an import.
 
 ## Loading the state
 

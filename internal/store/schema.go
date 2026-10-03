@@ -181,7 +181,7 @@ func (s *Store) migrate(ctx context.Context) error {
 
 	switch {
 	case version == 0:
-		return s.inTx(ctx, "creating the schema", func(tx *sql.Tx) error {
+		return inTx(ctx, s.db, "creating the schema", func(tx *sql.Tx) error {
 			if _, err := tx.ExecContext(ctx, schema); err != nil {
 				return fmt.Errorf("creating the schema: %w", err)
 			}
@@ -193,7 +193,7 @@ func (s *Store) migrate(ctx context.Context) error {
 		return fmt.Errorf("database has schema version %d, this binary migrates from %d on — open it with an older release first", version, oldestVersion)
 	}
 	for v := version; v < latestVersion; v++ {
-		if err := s.inTx(ctx, "migrating", func(tx *sql.Tx) error {
+		if err := inTx(ctx, s.db, "migrating", func(tx *sql.Tx) error {
 			if _, err := tx.ExecContext(ctx, migrations[v]); err != nil {
 				return fmt.Errorf("migration from version %d: %w", v, err)
 			}

@@ -29,12 +29,20 @@ var (
 
 // Store provides access to the database.
 type Store struct {
+	// db writes. It has a single connection, since SQLite allows only one
+	// writer.
 	db *sql.DB
+	// reader reads (View), on connections of its own: in WAL mode they see
+	// the last committed state while db writes, so a long write such as an
+	// import does not hold up the requests that only read.
+	reader *sql.DB
 }
 
+// readConns is the number of connections that read at the same time.
+const readConns = 4
+
 // Open opens the SQLite database at path, creating it if it does not exist,
-// and applies pending migrations. The pool uses a single connection, since
-// SQLite allows only one writer. The program has to register the driver
+// and applies pending migrations. The program has to register the driver
 // "sqlite" by importing modernc.org/sqlite.
 func Open(ctx context.Context, path string) (*Store, error) {
 	return open(ctx, path, true)
@@ -73,6 +81,14 @@ func open(ctx context.Context, path string, migrate bool) (*Store, error) {
 	} else {
 		err = s.requireLatest(ctx)
 	}
+	if err != nil {
+		db.Close()
+		return nil, err
+	}
+	// Opened after migrating, so readers only ever see the latest schema.
+	// query_only turns a write on them into an error instead of a second
+	// writer.
+	s.reader, err = openDB(ctx, dsn(path, "rw", "busy_timeout(5000)", "query_only(1)"), readConns)
 	if err != nil {
 		db.Close()
 		return nil, err
@@ -116,7 +132,7 @@ func openDB(ctx context.Context, dsn string, conns int) (*sql.DB, error) {
 }
 
 // Close closes the database.
-func (s *Store) Close() error { return s.db.Close() }
+func (s *Store) Close() error { return errors.Join(s.reader.Close(), s.db.Close()) }
 
 // Backup writes a consistent copy of the database at path to dst with VACUUM
 // INTO, also while a server writes to it. It opens the database read-only and
@@ -148,9 +164,10 @@ type Tx struct {
 	changes *changeLog
 }
 
-// View runs fn in a transaction that only reads.
+// View runs fn in a transaction that only reads, on a connection of its own
+// (see Store.reader).
 func (s *Store) View(ctx context.Context, userID string, fn func(*Tx) error) error {
-	return s.inTx(ctx, "reading", func(tx *sql.Tx) error {
+	return inTx(ctx, s.reader, "reading", func(tx *sql.Tx) error {
 		return fn(&Tx{tx: tx, userID: userID, now: time.Now().UTC()})
 	})
 }
@@ -163,7 +180,7 @@ func (s *Store) Update(ctx context.Context, userID string, fn func(*Tx) error) (
 		return 0, errors.New("no user")
 	}
 	var changeID int64
-	err := s.inTx(ctx, "saving", func(tx *sql.Tx) error {
+	err := inTx(ctx, s.db, "saving", func(tx *sql.Tx) error {
 		t := &Tx{tx: tx, userID: userID, now: time.Now().UTC(), changes: &changeLog{}}
 		if err := t.ensureUser(ctx); err != nil {
 			return err
@@ -181,10 +198,11 @@ func (s *Store) Update(ctx context.Context, userID string, fn func(*Tx) error) (
 	return changeID, nil
 }
 
-// inTx runs fn in a transaction and commits it. what describes the work for
-// errors; errors of the domain and ErrNotFound are passed on unwrapped.
-func (s *Store) inTx(ctx context.Context, what string, fn func(*sql.Tx) error) error {
-	tx, err := s.db.BeginTx(ctx, nil)
+// inTx runs fn in a transaction of db and commits it. what describes the
+// work for errors; errors of the domain and ErrNotFound are passed on
+// unwrapped.
+func inTx(ctx context.Context, db *sql.DB, what string, fn func(*sql.Tx) error) error {
+	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("%s: %w", what, err)
 	}
@@ -246,7 +264,7 @@ func (s *Store) MoveUser(ctx context.Context, from, to string) error {
 	if from == to {
 		return fmt.Errorf("moving user %q: source and target are the same", from)
 	}
-	return s.inTx(ctx, "moving user", func(tx *sql.Tx) error {
+	return inTx(ctx, s.db, "moving user", func(tx *sql.Tx) error {
 		var exists bool
 		if err := tx.QueryRowContext(ctx,
 			`SELECT EXISTS (SELECT 1 FROM users WHERE id = ?)`, from).Scan(&exists); err != nil {

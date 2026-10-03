@@ -61,8 +61,3 @@ see [Deployment](docs/DEPLOYMENT.md).
 | [STRUCTURE.md](docs/STRUCTURE.md) | Code layout of the Go packages and the frontend |
 | [EXTENDING.md](docs/EXTENDING.md) | Adding migrations, fields, kinds, icons, colours, endpoints, settings |
 | [AGENTS.md](AGENTS.md) | Principles, rules and conventions for contributors (people and coding agents) |
-
-## Known limitations
-
-- The SQLite pool uses a single connection. If read throughput becomes an
-  issue, add a separate read-only pool.

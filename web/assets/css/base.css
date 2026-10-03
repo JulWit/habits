@@ -780,7 +780,7 @@ html[data-scrolled='on'] .board-view-day-header-backdrop {
 
 /* The title bar is as wide as the board (plus its gutter on each side). Not in
    the detail view. */
-html:not(.route-detail):not(.route-styleguide) .topbar-inner {
+html:not(.route-detail) .topbar-inner {
   max-width: calc(var(--board-width) + 2 * var(--gutter));
 }
 

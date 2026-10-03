@@ -127,7 +127,7 @@ web/                        Frontend (Vue, ES modules, no build step)
       search-dialog.js            Search dialog
       settings-dialog.js          Settings menu, version and archive pages
       settings-page.js            What the settings pages share: frame, choice, saving
-      settings-look-dialog.js     Appearance settings
+      settings-look-dialog.js     Appearance settings, link to the style guide
       settings-board-dialog.js    Overview settings
       settings-region-dialog.js   Language and time zone settings
       settings-data-dialog.js     Export, import and deleting all data

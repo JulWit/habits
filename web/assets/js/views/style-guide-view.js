@@ -1,11 +1,13 @@
 /**
- * @fileoverview Style guide at #/styleguide: all UI building blocks in both
- * themes. It uses the same components as the overview. Its texts are not
- * translated.
+ * @fileoverview Style guide at #/styleguide, linked from the appearance
+ * settings: all UI building blocks in both themes. It uses the same components
+ * as the overview. Its texts, besides the title bar's, are not translated.
  */
 
 import {STREAK_LEVELS} from '../data/habit-helpers.js';
+import {goHome} from '../data/route.js';
 import {state} from '../data/state.js';
+import {AppBar} from '../ui/app-bar.js';
 import {colorValue} from '../ui/icons.js';
 import {AppYearNavigation, currentYear} from '../ui/year-grid.js';
 import {addDays, daysBetween, weekdayIndex} from '../util/dates.js';
@@ -665,22 +667,24 @@ const StyleGuidePanel = {
 /** The style guide: both themes side by side. */
 export const TheStyleGuideView = {
   name: 'TheStyleGuideView',
-  components: {StyleGuidePanel},
+  components: {AppBar, StyleGuidePanel},
   /** @return {!Object<string, *>} the bindings of the template */
   setup() {
     return {
+      back: goHome,
       names: tokenNames(),
       // The samples are dated relative to today.
       ready: computed(() => Boolean(state.today)),
     };
   },
   template: `
-    <header class="style-guide-view-head">
-      <h1>Building blocks</h1>
-      <p class="style-guide-view-note">Every building block of the application,
-        in both themes
-        side by side. Not linked — reachable at #/styleguide.</p>
-    </header>
+    <app-bar
+      :title="t('Style guide')"
+      :edit="false"
+      @back="back"
+    />
+    <p class="style-guide-view-note">Every building block of the application,
+      in both themes side by side.</p>
     <div
       v-if="ready"
       class="style-guide-view-themes"

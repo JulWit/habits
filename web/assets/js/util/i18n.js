@@ -224,6 +224,10 @@ const DE = {
       'Aus: Nur das heutige Datum in der Kopfzeile wird markiert.',
   'Band opacity': 'Deckkraft des Bands',
   'Background pattern': 'Hintergrundmuster',
+  'Style guide': 'Styleguide',
+  'Every building block of the app with its colours, in the light and dark theme side by side, with your font, density and accent colour. In English only.':
+      'Alle Bausteine der App mit ihren Farben, im hellen und dunklen Design nebeneinander, mit deiner Schrift, Dichte und Akzentfarbe. Nur auf Englisch.',
+  'Show style guide': 'Styleguide anzeigen',
   'Plain': 'Schlicht',
   'Grain': 'Körnung',
   'Dots': 'Punkte',

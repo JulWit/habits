@@ -57,7 +57,11 @@ its own, so the browser's back button closes them:
   days and streaks over all habits that are not archived, a heatmap of the
   year and the rates by weekday and month.
 
-`#/styleguide` shows the building blocks of the interface, for development.
+- The **style guide** (`#/styleguide`), opened with "Show style guide" at
+  the end of the appearance settings: every building block of the interface
+  with the colour tokens, in the light and dark theme side by side, with the
+  chosen font, density and accent colour; a preview of the appearance and a
+  reference for development. Its texts are in English only.
 
 **Offline**: The app can be installed from the browser and starts without a
 connection, with the data last loaded. Values recorded offline are shown as

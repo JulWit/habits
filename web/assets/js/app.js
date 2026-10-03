@@ -30,7 +30,8 @@ import {TheHabitView} from './views/habit-view.js';
 import {createApp, defineAsyncComponent, ref, watch, watchEffect} from './vue.js';
 
 /**
- * The style guide, loaded on first use: it is only reachable at #/styleguide.
+ * The style guide, loaded on first use: it is only opened from the appearance
+ * settings or at #/styleguide.
  */
 const TheStyleGuideView = defineAsyncComponent({
   loader: () => import('./views/style-guide-view.js')
@@ -252,11 +253,10 @@ function initRouting() {
   // have their own (see views.css).
   watchEffect(() => {
     const root = document.documentElement;
-    root.classList.toggle('route-styleguide', route.view === 'styleguide');
     root.classList.toggle(
         'route-detail',
         route.view === 'habit' || route.view === 'category' ||
-            route.view === 'days');
+            route.view === 'days' || route.view === 'styleguide');
   });
 }
 
@@ -397,6 +397,7 @@ function initShortcuts() {
                  'habit',
                  'category',
                  'days',
+                 'styleguide',
                ].includes(route.view)) {
       goHome();
     }

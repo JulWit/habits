@@ -65,6 +65,11 @@ export function openDays() {
   openView('#/days');
 }
 
+/** Opens the style guide. */
+export function openStyleGuide() {
+  openView('#/styleguide');
+}
+
 /**
  * Leaves the current view. A view opened in the app goes back one entry, as
  * the system back button does, so the next back does not return to it; this

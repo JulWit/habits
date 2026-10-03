@@ -1,8 +1,8 @@
 /**
- * @fileoverview Title bar of the habit, category and day statistics views, as
- * Material's top app bar: back, title, edit, and an overflow menu (⋮) for rare
- * and destructive actions. The app's own title bar is hidden on these views
- * (see views.css).
+ * @fileoverview Title bar of the habit, category, day statistics and style
+ * guide views, as Material's top app bar: back, title, edit, and an overflow
+ * menu (⋮) for rare and destructive actions. The app's own title bar is hidden
+ * on these views (see views.css).
  */
 
 import {onMounted, onUnmounted, ref} from '../vue.js';

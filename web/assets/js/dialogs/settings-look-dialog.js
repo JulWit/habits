@@ -1,13 +1,27 @@
 /**
  * @fileoverview The appearance page of the settings: theme, font, density,
- * accent colour, today band and background pattern.
+ * accent colour, today band and background pattern, and the link to the style
+ * guide, which previews them.
  */
 
+import {openStyleGuide} from '../data/route.js';
 import {state} from '../data/state.js';
 import {AppColorSwatches, NEUTRAL} from '../ui/icons.js';
+import {closePage} from '../ui/page-stack.js';
 import {computed, reactive} from '../vue.js';
 
 import {options, saveSetting, SettingsPage, SettingsSegmented} from './settings-page.js';
+
+/**
+ * Closes the settings and shows the style guide. It waits for the pages'
+ * history entries to be gone, so their step back does not leave the style
+ * guide again.
+ */
+async function showStyleGuide() {
+  const settings = document.getElementById('settings-dialog');
+  if (settings instanceof HTMLDialogElement) await closePage(settings);
+  openStyleGuide();
+}
 
 /** The appearance page. */
 export const SettingsLookPage = {
@@ -25,6 +39,7 @@ export const SettingsLookPage = {
       options,
       NEUTRAL,
       save: saveSetting,
+      showStyleGuide,
       // What the sliders show: the value while they move, else the setting.
       sliders: computed(
           () => ({
@@ -177,5 +192,19 @@ export const SettingsLookPage = {
           </option>
         </select>
       </label>
+      <div class="field">
+        <span class="field-label">{{ t('Style guide') }}</span>
+        <p class="field-hint">
+          {{ t('Every building block of the app with its colours, in the light and dark theme side by side, with your font, density and accent colour. In English only.') }}
+        </p>
+        <button
+          id="settings-look-style-guide"
+          type="button"
+          class="button"
+          @click="showStyleGuide"
+        >
+          <app-icon name="palette"/>{{ t('Show style guide') }}
+        </button>
+      </div>
     </settings-page>`,
 };

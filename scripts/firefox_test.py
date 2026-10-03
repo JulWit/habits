@@ -605,6 +605,21 @@ def settings(run, f):
     run.check("Escape closes the settings",
               not run.is_open("settings-dialog") and not run.is_open("settings-look"))
 
+    run.click("#open-settings")
+    time.sleep(0.4)
+    run.click('#settings-dialog [data-open-page="settings-look"]')
+    time.sleep(0.4)
+    run.click("#settings-look-style-guide")
+    time.sleep(1.5)
+    run.check("the appearance page opens the style guide and closes the settings",
+              run.shown("style-guide-view") and not run.is_open("settings-dialog")
+              and not run.is_open("settings-look"))
+    run.screenshot("style-guide")
+    run.keys(Keys.ESCAPE)
+    time.sleep(0.6)
+    run.check("Escape returns from the style guide to the board",
+              run.shown("board-view"))
+
 
 def import_undo(run, f):
     """An import on the data page can be undone right there."""

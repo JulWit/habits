@@ -4,8 +4,8 @@
 
 /* ---------- detail view ---------- */
 
-/* The habit and category views have their own title bar (app-bar.js), as
-   Material's top app bar, instead of the app's. */
+/* The habit, category, day statistics and style guide views have their own
+   title bar (app-bar.js), as Material's top app bar, instead of the app's. */
 .route-detail .topbar {
   display: none;
 }
@@ -261,20 +261,16 @@
 /* ---------- styleguide ----------
    Only used on #/styleguide. */
 
-.style-guide-view-head {
-  padding: calc(0.5 * var(--space)) 0 calc(1.5 * var(--space));
-}
-
-.style-guide-view-head h1 {
-  font-size: var(--text-xl);
-}
-
 .style-guide-view-note,
 .style-guide-section-note {
   color: var(--text-muted);
   font-size: var(--text-md);
   margin: calc(0.35 * var(--space)) 0 0;
   max-width: 46rem;
+}
+
+.style-guide-view-note {
+  margin-bottom: calc(1.25 * var(--space));
 }
 
 /* Light and dark panel side by side (stacked on narrow screens). Each panel has

@@ -259,6 +259,8 @@ Keep `README.md` short.
 
 ## Commits
 
+Do not create branches: commit directly to `main` and push it.
+
 One logical change per commit. The subject is a short imperative English
 sentence without a prefix or trailing period, e.g. `Add import and export of
 the habits`. Dependabot's pull requests are the exception: their subjects

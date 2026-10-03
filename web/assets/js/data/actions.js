@@ -240,13 +240,14 @@ async function writeEntry(habit, iso, change, request = change) {
   }
 
   const when = formatRelative(iso, state.today);
-  // Taps show no toast, so announce them.
-  announce(describeWrite(habit, when, after));
   const name = habit.name;
   if (after.skipped && !before.skipped) {
     offerUndo(changeId, t('Day skipped: {name}, {when}', {name, when}));
   } else if (after.value === 0 && !after.skipped && before.value > 0) {
     offerUndo(changeId, t('Entry cleared: {name}, {when}', {name, when}));
+  } else {
+    // Other writes show no toast, so announce them; a toast announces itself.
+    announce(describeWrite(habit, when, after));
   }
 }
 

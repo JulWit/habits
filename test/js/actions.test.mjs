@@ -89,6 +89,25 @@ test('a rejected write is taken back and the state reloaded', async () => {
   assert.equal(requests[1].path, '/api/state');
 });
 
+test(
+    'a write is announced once: by its toast, or else by the board',
+    async () => {
+      show(makeHabit());
+      actions.tapEntry('h1', TODAY);
+      await settle();
+      requests[0].respond(200, makeHabit({entries: {[TODAY]: 1}}));
+      await new Promise((resolve) => setTimeout(resolve, 60));
+      assert.equal(actions.announcement.value, 'Water, today: 1×');
+
+      // Clearing the day offers to undo it in a toast.
+      actions.announcement.value = '';
+      actions.tapEntry('h1', TODAY);
+      await settle();
+      requests[1].respond(200, makeHabit());
+      await new Promise((resolve) => setTimeout(resolve, 60));
+      assert.equal(actions.announcement.value, '');
+    });
+
 test('a write on its way stays shown when a reload lacks it', async () => {
   show(makeHabit());
   actions.tapEntry('h1', TODAY);

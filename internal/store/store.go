@@ -14,6 +14,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 )
@@ -31,48 +32,107 @@ type Store struct {
 	db *sql.DB
 }
 
-// Open opens the SQLite database at path and applies pending migrations. The
-// pool uses a single connection, since SQLite allows only one writer. The
-// program has to register the driver "sqlite" by importing
-// modernc.org/sqlite.
+// Open opens the SQLite database at path, creating it if it does not exist,
+// and applies pending migrations. The pool uses a single connection, since
+// SQLite allows only one writer. The program has to register the driver
+// "sqlite" by importing modernc.org/sqlite.
 func Open(ctx context.Context, path string) (*Store, error) {
-	dsn := "file:" + url.PathEscape(path) + "?" + url.Values{
-		"_pragma": {
-			"journal_mode(WAL)",
-			"busy_timeout(5000)",
-			"foreign_keys(1)",
-			"synchronous(NORMAL)",
-		},
-	}.Encode()
+	return open(ctx, path, true)
+}
 
-	db, err := sql.Open("sqlite", dsn)
-	if err != nil {
-		return nil, fmt.Errorf("opening the database: %w", err)
+// OpenExisting opens the existing SQLite database at path without migrating
+// it, for the subcommands that change data while a server may still run: a
+// database of another schema version is refused instead of being migrated
+// under that server.
+func OpenExisting(ctx context.Context, path string) (*Store, error) {
+	return open(ctx, path, false)
+}
+
+// open opens the database at path. With migrate it creates a missing
+// database and migrates an older one; without, the database has to exist in
+// the latest version.
+func open(ctx context.Context, path string, migrate bool) (*Store, error) {
+	mode := "rw"
+	if migrate {
+		mode = "rwc"
+	} else if err := requireFile(path); err != nil {
+		return nil, err
 	}
-	db.SetMaxOpenConns(1)
-	db.SetMaxIdleConns(1)
-	db.SetConnMaxLifetime(0)
-
-	if err := db.PingContext(ctx); err != nil {
-		db.Close()
-		return nil, fmt.Errorf("reaching the database: %w", err)
+	db, err := openDB(ctx, dsn(path, mode,
+		"journal_mode(WAL)",
+		"busy_timeout(5000)",
+		"foreign_keys(1)",
+		"synchronous(NORMAL)",
+	), 1)
+	if err != nil {
+		return nil, err
 	}
 	s := &Store{db: db}
-	if err := s.migrate(ctx); err != nil {
+	if migrate {
+		err = s.migrate(ctx)
+	} else {
+		err = s.requireLatest(ctx)
+	}
+	if err != nil {
 		db.Close()
 		return nil, err
 	}
 	return s, nil
 }
 
+// requireFile returns an error naming path if it does not exist, which reads
+// better than SQLite's "unable to open database file".
+func requireFile(path string) error {
+	if _, err := os.Stat(path); err != nil {
+		return fmt.Errorf("opening the database: %w", err)
+	}
+	return nil
+}
+
+// dsn returns the data source name of the database at path, opened in mode
+// (an SQLite URI mode: ro, rw or rwc) with the given pragmas, in their order.
+func dsn(path, mode string, pragmas ...string) string {
+	return "file:" + url.PathEscape(path) + "?" + url.Values{
+		"mode":    {mode},
+		"_pragma": pragmas,
+	}.Encode()
+}
+
+// openDB opens a pool of at most conns connections and checks that it reaches
+// the database.
+func openDB(ctx context.Context, dsn string, conns int) (*sql.DB, error) {
+	db, err := sql.Open("sqlite", dsn)
+	if err != nil {
+		return nil, fmt.Errorf("opening the database: %w", err)
+	}
+	db.SetMaxOpenConns(conns)
+	db.SetMaxIdleConns(conns)
+	db.SetConnMaxLifetime(0)
+	if err := db.PingContext(ctx); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("reaching the database: %w", err)
+	}
+	return db, nil
+}
+
 // Close closes the database.
 func (s *Store) Close() error { return s.db.Close() }
 
-// Backup writes a consistent copy of the database to path with VACUUM INTO,
-// also while a server writes to it. path must not exist yet.
-func (s *Store) Backup(ctx context.Context, path string) error {
-	if _, err := s.db.ExecContext(ctx, `VACUUM INTO ?`, path); err != nil {
-		return fmt.Errorf("backing up to %s: %w", path, err)
+// Backup writes a consistent copy of the database at path to dst with VACUUM
+// INTO, also while a server writes to it. It opens the database read-only and
+// does not migrate it, so it backs up a database of any schema version, e.g.
+// before an upgrade. dst must not exist yet.
+func Backup(ctx context.Context, path, dst string) error {
+	if err := requireFile(path); err != nil {
+		return err
+	}
+	db, err := openDB(ctx, dsn(path, "ro", "busy_timeout(5000)"), 1)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+	if _, err := db.ExecContext(ctx, `VACUUM INTO ?`, dst); err != nil {
+		return fmt.Errorf("backing up to %s: %w", dst, err)
 	}
 	return nil
 }

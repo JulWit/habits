@@ -120,7 +120,9 @@ single-user mode still belongs to `local` and the signed-in user starts empty.
 `habits move-user FROM TO` hands all data of one user (settings, categories,
 habits and their entries) to another, who must not have data of their own.
 `TO` is lower-cased, as the IDs read from the header are. The undo history of
-`FROM` is dropped. Stop the server first and back up the database:
+`FROM` is dropped. The command does not migrate the database: it has to be
+in the schema version of the binary, so start the server of a new release
+once before. Stop the server first and back up the database:
 
 ```bash
 docker compose stop habits
@@ -134,7 +136,10 @@ The database is a single SQLite file (`HABITS_DB`, with its `-wal` and `-shm`
 files while the server runs). Copying it while the server runs can catch a
 half-written state; `habits backup PATH` writes a consistent copy instead
 (SQLite's `VACUUM INTO`), also while the server runs, and refuses to overwrite
-an existing file. In the container, write it to the volume and copy it out:
+an existing file. It opens the database read-only and neither creates nor
+migrates it, so the binary of a new release can back up the database of the
+old server before the upgrade. In the container, write it to the volume and
+copy it out:
 
 ```bash
 docker compose exec habits /habits backup /data/backup-2026-10-01.db

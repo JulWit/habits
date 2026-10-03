@@ -2,7 +2,9 @@ package store
 
 import (
 	"context"
+	"database/sql"
 	"errors"
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -126,21 +128,26 @@ func TestReopeningKeepsTheData(t *testing.T) {
 	habitOf(t, second, "alice", h.ID)
 }
 
-// A failing Update writes nothing.
-// A backup holds the data at its time and opens as a database of its own; it
-// does not overwrite an existing file.
+// A backup holds the data at its time and opens as a database of its own,
+// also while the store is open; it does not overwrite an existing file.
 func TestBackup(t *testing.T) {
-	st := openTestStore(t)
+	dir := t.TempDir()
+	path := filepath.Join(dir, "habits.db")
+	st, err := Open(t.Context(), path)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	defer st.Close()
 	h := mustCreateHabit(t, st, "alice", countHabit(domain.KindCheck, 1))
-	path := filepath.Join(t.TempDir(), "backup.db")
-	if err := st.Backup(t.Context(), path); err != nil {
+	dst := filepath.Join(dir, "backup.db")
+	if err := Backup(t.Context(), path, dst); err != nil {
 		t.Fatalf("Backup: %v", err)
 	}
-	if err := st.Backup(t.Context(), path); err == nil {
+	if err := Backup(t.Context(), path, dst); err == nil {
 		t.Error("a second Backup to the same file succeeded, want an error")
 	}
 
-	copied, err := Open(t.Context(), path)
+	copied, err := Open(t.Context(), dst)
 	if err != nil {
 		t.Fatalf("Open(backup): %v", err)
 	}
@@ -150,6 +157,83 @@ func TestBackup(t *testing.T) {
 	}
 }
 
+// A backup neither creates a missing database nor migrates an older one, so a
+// newer binary can back up the database of a server before upgrading it.
+func TestBackupLeavesTheDatabaseAsItIs(t *testing.T) {
+	dir := t.TempDir()
+	missing := filepath.Join(dir, "missing.db")
+	if err := Backup(t.Context(), missing, filepath.Join(dir, "a.db")); err == nil {
+		t.Error("Backup of a missing database succeeded, want an error")
+	}
+	if _, err := os.Stat(missing); !errors.Is(err, os.ErrNotExist) {
+		t.Errorf("Backup created the missing database: %v", err)
+	}
+
+	old := filepath.Join(dir, "v3.db")
+	oldDatabase(t, old, schemaV3, `PRAGMA user_version = 3`)
+	dst := filepath.Join(dir, "b.db")
+	if err := Backup(t.Context(), old, dst); err != nil {
+		t.Fatalf("Backup of a version 3 database: %v", err)
+	}
+	for _, path := range []string{old, dst} {
+		if got := userVersion(t, path); got != 3 {
+			t.Errorf("schema version of %s = %d, want 3", filepath.Base(path), got)
+		}
+	}
+}
+
+// OpenExisting opens a database of the latest version, and refuses a missing
+// one or one of another version without changing it.
+func TestOpenExisting(t *testing.T) {
+	dir := t.TempDir()
+	current := filepath.Join(dir, "current.db")
+	st, err := Open(t.Context(), current)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	st.Close()
+	if st, err := OpenExisting(t.Context(), current); err != nil {
+		t.Errorf("OpenExisting of a current database: %v", err)
+	} else {
+		st.Close()
+	}
+
+	missing := filepath.Join(dir, "missing.db")
+	if st, err := OpenExisting(t.Context(), missing); err == nil {
+		st.Close()
+		t.Error("OpenExisting of a missing database succeeded, want an error")
+	}
+	if _, err := os.Stat(missing); !errors.Is(err, os.ErrNotExist) {
+		t.Errorf("OpenExisting created the missing database: %v", err)
+	}
+
+	old := filepath.Join(dir, "v3.db")
+	oldDatabase(t, old, schemaV3, `PRAGMA user_version = 3`)
+	if st, err := OpenExisting(t.Context(), old); err == nil {
+		st.Close()
+		t.Error("OpenExisting of a version 3 database succeeded, want an error")
+	}
+	if got := userVersion(t, old); got != 3 {
+		t.Errorf("OpenExisting migrated the database to version %d", got)
+	}
+}
+
+// userVersion returns the schema version of the database at path.
+func userVersion(t *testing.T, path string) int {
+	t.Helper()
+	db, err := sql.Open("sqlite", "file:"+path+"?mode=ro")
+	if err != nil {
+		t.Fatalf("sql.Open: %v", err)
+	}
+	defer db.Close()
+	var version int
+	if err := db.QueryRow(`PRAGMA user_version`).Scan(&version); err != nil {
+		t.Fatalf("reading user_version: %v", err)
+	}
+	return version
+}
+
+// A failing Update writes nothing.
 func TestAFailingUpdateWritesNothing(t *testing.T) {
 	st := openTestStore(t)
 	boom := errors.New("boom")

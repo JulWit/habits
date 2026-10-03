@@ -174,9 +174,9 @@ const latestVersion = 6
 // migrate creates the schema in an empty database, or applies the migrations
 // an existing one is missing, each in its own transaction.
 func (s *Store) migrate(ctx context.Context) error {
-	var version int
-	if err := s.db.QueryRowContext(ctx, "PRAGMA user_version").Scan(&version); err != nil {
-		return fmt.Errorf("reading schema version: %w", err)
+	version, err := s.version(ctx)
+	if err != nil {
+		return err
 	}
 
 	switch {
@@ -203,6 +203,30 @@ func (s *Store) migrate(ctx context.Context) error {
 		}
 	}
 	return nil
+}
+
+// requireLatest returns an error unless the database has the schema version
+// of this binary.
+func (s *Store) requireLatest(ctx context.Context) error {
+	version, err := s.version(ctx)
+	if err != nil {
+		return err
+	}
+	if version != latestVersion {
+		return fmt.Errorf("database has schema version %d, this binary expects %d — "+
+			"start the server of this binary once to migrate it, or use the binary of that version",
+			version, latestVersion)
+	}
+	return nil
+}
+
+// version returns the database's schema version, 0 for an empty database.
+func (s *Store) version(ctx context.Context) (int, error) {
+	var version int
+	if err := s.db.QueryRowContext(ctx, "PRAGMA user_version").Scan(&version); err != nil {
+		return 0, fmt.Errorf("reading schema version: %w", err)
+	}
+	return version, nil
 }
 
 // setVersion sets the database's user_version. PRAGMA does not support

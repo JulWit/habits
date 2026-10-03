@@ -194,7 +194,8 @@ func healthcheck() error {
 // "habits move-user FROM TO", e.g. from the user of single-user mode to the
 // ID a reverse proxy signs in. TO is lower-cased, as trusted-header mode
 // lower-cases the IDs it reads. The server should be stopped meanwhile, so no
-// open page keeps writing as FROM.
+// open page keeps writing as FROM. The database is not migrated: it has to be
+// in the schema version of this binary.
 func moveUser(args []string) error {
 	if len(args) != 2 {
 		return errors.New("usage: habits move-user FROM TO")
@@ -209,7 +210,7 @@ func moveUser(args []string) error {
 		return err
 	}
 	ctx := context.Background()
-	st, err := store.Open(ctx, cfg.DatabasePath)
+	st, err := store.OpenExisting(ctx, cfg.DatabasePath)
 	if err != nil {
 		return err
 	}
@@ -223,7 +224,9 @@ func moveUser(args []string) error {
 
 // backup writes a consistent copy of the database to PATH (store.Backup), for
 // "habits backup PATH". Unlike copying the file, it is safe while the server
-// runs, and the image has no sqlite3 to do it otherwise.
+// runs, and the image has no sqlite3 to do it otherwise. It neither creates
+// nor migrates the database, so a newer binary can back up the database of an
+// older server before it is upgraded.
 func backup(args []string) error {
 	if len(args) != 1 || strings.TrimSpace(args[0]) == "" {
 		return errors.New("usage: habits backup PATH")
@@ -232,13 +235,7 @@ func backup(args []string) error {
 	if err != nil {
 		return err
 	}
-	ctx := context.Background()
-	st, err := store.Open(ctx, cfg.DatabasePath)
-	if err != nil {
-		return err
-	}
-	defer st.Close()
-	if err := st.Backup(ctx, args[0]); err != nil {
+	if err := store.Backup(context.Background(), cfg.DatabasePath, args[0]); err != nil {
 		return err
 	}
 	fmt.Printf("backed up %s to %s\n", cfg.DatabasePath, args[0])

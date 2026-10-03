@@ -80,7 +80,7 @@ func (s *server) handleSkipDays(w http.ResponseWriter, r *http.Request, user aut
 		return nil
 	})
 	if err != nil {
-		s.writeStoreError(w, err, "skipping days")
+		s.writeStoreError(w, r, err, "skipping days")
 		return
 	}
 	writeChange(w, changeID)

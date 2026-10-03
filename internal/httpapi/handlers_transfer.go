@@ -118,7 +118,7 @@ func (s *server) handleExport(w http.ResponseWriter, r *http.Request, user auth.
 		return nil
 	})
 	if err != nil {
-		s.writeStoreError(w, err, "exporting")
+		s.writeStoreError(w, r, err, "exporting")
 		return
 	}
 	name := "habits-" + today.String() + ".json"
@@ -209,7 +209,7 @@ func (s *server) handleImport(w http.ResponseWriter, r *http.Request, user auth.
 		return
 	}
 	if err != nil {
-		s.writeStoreError(w, err, "importing")
+		s.writeStoreError(w, r, err, "importing")
 		return
 	}
 	writeChange(w, changeID)
@@ -343,10 +343,10 @@ func (s *server) handleDeleteData(w http.ResponseWriter, r *http.Request, user a
 		return tx.DeleteUser(ctx)
 	})
 	if err != nil {
-		s.writeStoreError(w, err, "deleting data")
+		s.writeStoreError(w, r, err, "deleting data")
 		return
 	}
-	s.log.Info("deleted all data", "user", user.ID)
+	s.logFor(ctx).Info("deleted all data")
 	w.WriteHeader(http.StatusNoContent)
 }
 

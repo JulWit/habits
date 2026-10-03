@@ -119,6 +119,8 @@ asked.
   is the key. Add the German translation to `DE` in `i18n.js`.
 - **Writing endpoints** require `Content-Type: application/json` (CSRF
   protection). Keep it that way.
+- **Logging** in a handler goes through `s.logFor(ctx)`, which adds the
+  request's ID and user; `writeStoreError` does so for errors.
 - **CSP** forbids inline scripts and external origins; it allows eval only
   for Vue's template compiler. Put JS in `web/assets/js/`, and embed fonts,
   images and libraries (`web/assets/vendor/`) instead of loading them.

@@ -69,6 +69,6 @@ func (s *server) handleManifest(w http.ResponseWriter, r *http.Request, user aut
 	w.Header().Set("Content-Type", "application/manifest+json")
 	w.Header().Set("Cache-Control", "no-cache")
 	if err := json.NewEncoder(w).Encode(m); err != nil {
-		s.log.Error("writing manifest failed", "error", err)
+		s.logFor(ctx).Error("writing manifest failed", "error", err)
 	}
 }

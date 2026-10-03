@@ -30,7 +30,7 @@ func (s *server) handleCreateCategory(w http.ResponseWriter, r *http.Request, us
 		return nil
 	})
 	if err != nil {
-		s.writeStoreError(w, err, "creating category")
+		s.writeStoreError(w, r, err, "creating category")
 		return
 	}
 	writeChange(w, changeID)
@@ -57,7 +57,7 @@ func (s *server) handleUpdateCategory(w http.ResponseWriter, r *http.Request, us
 		return tx.SaveCategory(ctx, &c)
 	})
 	if err != nil {
-		s.writeStoreError(w, err, "updating category")
+		s.writeStoreError(w, r, err, "updating category")
 		return
 	}
 	writeChange(w, changeID)
@@ -90,7 +90,7 @@ func (s *server) handleDeleteCategory(w http.ResponseWriter, r *http.Request, us
 		return tx.DeleteCategory(ctx, c.ID)
 	})
 	if err != nil {
-		s.writeStoreError(w, err, "deleting category")
+		s.writeStoreError(w, r, err, "deleting category")
 		return
 	}
 	writeChange(w, changeID)
@@ -110,7 +110,7 @@ func (s *server) handleReorderCategories(w http.ResponseWriter, r *http.Request,
 		return tx.ReorderCategories(ctx, body.IDs)
 	})
 	if err != nil {
-		s.writeStoreError(w, err, "saving order")
+		s.writeStoreError(w, r, err, "saving order")
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)

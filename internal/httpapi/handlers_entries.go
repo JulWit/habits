@@ -75,7 +75,7 @@ func (s *server) handleSetEntry(w http.ResponseWriter, r *http.Request, user aut
 		return nil
 	})
 	if err != nil {
-		s.writeStoreError(w, err, "saving entry")
+		s.writeStoreError(w, r, err, "saving entry")
 		return
 	}
 	writeChange(w, changeID)

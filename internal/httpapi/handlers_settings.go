@@ -20,7 +20,7 @@ func (s *server) handleGetSettings(w http.ResponseWriter, r *http.Request, user 
 		return err
 	})
 	if err != nil {
-		s.writeStoreError(w, err, "loading settings")
+		s.writeStoreError(w, r, err, "loading settings")
 		return
 	}
 	s.writeJSON(w, http.StatusOK, prefs)
@@ -56,7 +56,7 @@ func (s *server) handleUpdateSettings(w http.ResponseWriter, r *http.Request, us
 		return tx.SaveSettings(ctx, prefs)
 	})
 	if err != nil {
-		s.writeStoreError(w, err, "saving settings")
+		s.writeStoreError(w, r, err, "saving settings")
 		return
 	}
 	s.writeJSON(w, http.StatusOK, prefs)

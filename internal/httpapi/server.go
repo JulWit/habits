@@ -3,6 +3,7 @@ package httpapi
 
 import (
 	"context"
+	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
@@ -100,7 +101,7 @@ func New(cfg config.Config, st *store.Store, logger *slog.Logger, webFS fs.FS) (
 	})
 	root.Handle("/", s.authenticate(mux))
 
-	return s.recoverPanics(s.logRequests(securityHeaders(root))), nil
+	return s.logRequests(s.recoverPanics(securityHeaders(root))), nil
 }
 
 // contentSecurityPolicy is sent with every response. Inline styles are allowed
@@ -124,7 +125,7 @@ func (s *server) authenticate(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		user, err := auth.Resolve(s.cfg, r)
 		if refused, ok := errors.AsType[*auth.Error](err); ok {
-			s.log.Warn("authentication refused",
+			s.logFor(r.Context()).Warn("authentication refused",
 				"reason", refused.Reason,
 				"peer", r.RemoteAddr,
 				"path", r.URL.Path)
@@ -132,9 +133,12 @@ func (s *server) authenticate(next http.Handler) http.Handler {
 			return
 		}
 		if err != nil {
-			s.log.Error("authentication failed", "error", err, "path", r.URL.Path)
+			s.logFor(r.Context()).Error("authentication failed", "error", err, "path", r.URL.Path)
 			s.writeError(w, http.StatusInternalServerError, "internal", "Internal server error")
 			return
+		}
+		if info := requestInfoFrom(r.Context()); info != nil {
+			info.user = user.ID
 		}
 		next.ServeHTTP(w, r.WithContext(auth.WithUser(r.Context(), user)))
 	})
@@ -150,7 +154,7 @@ func (s *server) withUser(h userHandler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		user, ok := auth.UserFrom(r.Context())
 		if !ok {
-			s.log.Error("handler registered without authentication", "path", r.URL.Path)
+			s.logFor(r.Context()).Error("handler registered without authentication", "path", r.URL.Path)
 			s.writeError(w, http.StatusInternalServerError, "internal", "Internal server error")
 			return
 		}
@@ -185,7 +189,7 @@ func (s *server) handleIndex(w http.ResponseWriter, r *http.Request, user auth.U
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-store")
 	if err := s.shell.Execute(w, data); err != nil {
-		s.log.Error("rendering index failed", "error", err)
+		s.logFor(ctx).Error("rendering index failed", "error", err)
 	}
 }
 
@@ -245,7 +249,7 @@ func (s *server) settingsOf(ctx context.Context, userID string) settings.Setting
 		return err
 	})
 	if err != nil {
-		s.log.Error("loading settings failed", "error", err, "user", userID)
+		s.logFor(ctx).Error("loading settings failed", "error", err)
 		return settings.Default()
 	}
 	return prefs
@@ -267,10 +271,54 @@ func resolveLanguage(chosen, acceptLanguage string) string {
 	return "en"
 }
 
-// logRequests logs every request with its status and duration.
+// requestInfo identifies a request in the log, so that the lines of one
+// request can be told apart from those of another.
+type requestInfo struct {
+	// id is random, and sent in the header X-Request-Id.
+	id string
+	// user is the ID of the request's user, set by authenticate; "" before
+	// and for refused requests.
+	user string
+}
+
+// requestInfoKey is the context key of a request's *requestInfo.
+type requestInfoKey struct{}
+
+// requestInfoFrom returns the requestInfo logRequests stored in ctx, or nil.
+func requestInfoFrom(ctx context.Context) *requestInfo {
+	info, _ := ctx.Value(requestInfoKey{}).(*requestInfo)
+	return info
+}
+
+// logFor returns the logger for the request of ctx: s.log with the request's
+// ID and user, so a handler's error can be matched to its request line.
+func (s *server) logFor(ctx context.Context) *slog.Logger {
+	info := requestInfoFrom(ctx)
+	if info == nil {
+		return s.log
+	}
+	if info.user == "" {
+		return s.log.With("request", info.id)
+	}
+	return s.log.With("request", info.id, "user", info.user)
+}
+
+// newRequestID returns a random ID of a request.
+func newRequestID() string {
+	var b [8]byte
+	rand.Read(b[:]) // never fails since Go 1.24
+	return hex.EncodeToString(b[:])
+}
+
+// logRequests logs every request with its ID, user, status and duration. The
+// ID goes into the request's context (requestInfo) and into the header
+// X-Request-Id of the response.
 func (s *server) logRequests(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
+		info := &requestInfo{id: newRequestID()}
+		w.Header().Set("X-Request-Id", info.id)
+		r = r.WithContext(context.WithValue(r.Context(), requestInfoKey{}, info))
 		rec := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
 		next.ServeHTTP(rec, r)
 		// The container's health check asks every 30 seconds; its answers are not
@@ -282,7 +330,7 @@ func (s *server) logRequests(next http.Handler) http.Handler {
 		if rec.status >= 500 {
 			level = slog.LevelError
 		}
-		s.log.Log(r.Context(), level, "request",
+		s.logFor(r.Context()).Log(r.Context(), level, "request",
 			"method", r.Method,
 			"path", r.URL.Path,
 			"status", rec.status,
@@ -290,7 +338,8 @@ func (s *server) logRequests(next http.Handler) http.Handler {
 	})
 }
 
-// recoverPanics logs a panicking handler and answers with status 500.
+// recoverPanics logs a panicking handler and answers with status 500. It
+// runs inside logRequests, so the request is logged with that status.
 func (s *server) recoverPanics(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
@@ -299,7 +348,7 @@ func (s *server) recoverPanics(next http.Handler) http.Handler {
 				if v == http.ErrAbortHandler {
 					panic(v)
 				}
-				s.log.Error("panic in handler",
+				s.logFor(r.Context()).Error("panic in handler",
 					"value", v, "path", r.URL.Path, "stack", string(debug.Stack()))
 				s.writeError(w, http.StatusInternalServerError, "internal", "Internal server error")
 			}

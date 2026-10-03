@@ -76,7 +76,7 @@ func (s *server) handleDays(w http.ResponseWriter, r *http.Request, user auth.Us
 		return err
 	})
 	if err != nil {
-		s.writeStoreError(w, err, "loading day statistics")
+		s.writeStoreError(w, r, err, "loading day statistics")
 		return
 	}
 
@@ -141,7 +141,7 @@ func (s *server) handleHabitTotals(w http.ResponseWriter, r *http.Request, user 
 		return err
 	})
 	if err != nil {
-		s.writeStoreError(w, err, "loading totals")
+		s.writeStoreError(w, r, err, "loading totals")
 		return
 	}
 	// Computed after the transaction, see habitData.

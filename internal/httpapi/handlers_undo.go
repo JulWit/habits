@@ -52,7 +52,7 @@ func (s *server) turnStep(w http.ResponseWriter, r *http.Request, user auth.User
 	case errors.Is(err, store.ErrConflict):
 		s.writeError(w, http.StatusConflict, "changed_since", "The data was changed in the meantime")
 	case err != nil:
-		s.writeStoreError(w, err, "undoing")
+		s.writeStoreError(w, r, err, "undoing")
 	default:
 		s.writeJSON(w, http.StatusOK, step)
 	}

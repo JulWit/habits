@@ -325,6 +325,30 @@ func TestRefusedAuthenticationIsAProblem(t *testing.T) {
 	}
 }
 
+// Every response carries the ID of its request, and the request's log lines
+// carry the ID and the user, the error of a handler included.
+func TestRequestsAreLoggedWithIDAndUser(t *testing.T) {
+	var log strings.Builder
+	h := newTestServerLogging(t, &log)
+	w := do(t, h, "GET", "/api/habits/unknown", "", "")
+	id := w.Header().Get("X-Request-Id")
+	if len(id) != 16 {
+		t.Fatalf("X-Request-Id = %q, want 16 hex digits", id)
+	}
+	line := ""
+	for l := range strings.Lines(log.String()) {
+		if strings.Contains(l, "/api/habits/unknown") {
+			line = l
+		}
+	}
+	if !strings.Contains(line, "request="+id) || !strings.Contains(line, "user=alice") {
+		t.Errorf("request line without ID %s and user alice: %q", id, line)
+	}
+	if other := do(t, h, "GET", "/api/state", "", "").Header().Get("X-Request-Id"); other == id {
+		t.Errorf("two requests share the ID %s", id)
+	}
+}
+
 // statusRecorder hands the ResponseWriter it wraps to
 // http.ResponseController, which flushes through it.
 func TestStatusRecorderUnwraps(t *testing.T) {

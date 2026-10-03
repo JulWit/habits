@@ -104,16 +104,17 @@ func (s *server) decodeJSONLimit(w http.ResponseWriter, r *http.Request, dst any
 	return true
 }
 
-// writeStoreError writes an error response for err: 404 for store.ErrNotFound,
-// 422 for validation errors and 500 otherwise.
-func (s *server) writeStoreError(w http.ResponseWriter, err error, action string) {
+// writeStoreError writes an error response for err of the request r: 404 for
+// store.ErrNotFound, 422 for validation errors and 500 otherwise, which is
+// logged with the request's ID and user.
+func (s *server) writeStoreError(w http.ResponseWriter, r *http.Request, err error, action string) {
 	switch {
 	case errors.Is(err, store.ErrNotFound):
 		s.writeError(w, http.StatusNotFound, "not_found", "Not found")
 	case errors.Is(err, domain.ErrValidation):
 		s.writeProblem(w, http.StatusUnprocessableEntity, err)
 	default:
-		s.log.Error(action, "error", err)
+		s.logFor(r.Context()).Error(action, "error", err)
 		s.writeError(w, http.StatusInternalServerError, "internal", "Internal server error")
 	}
 }

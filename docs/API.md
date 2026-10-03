@@ -32,6 +32,9 @@ only `/healthz` outside `/api` does not.
 Writing endpoints require `Content-Type: application/json`. This forces a CORS
 preflight and protects against CSRF.
 
+Every response carries the header `X-Request-Id`, which the server's log
+lines of that request carry as `request`, along with the `user`.
+
 ## Errors
 
 Errors are problem details (RFC 9457, `application/problem+json`) with two

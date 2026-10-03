@@ -98,7 +98,7 @@ func (s *server) handleState(w http.ResponseWriter, r *http.Request, user auth.U
 		return err
 	})
 	if err != nil {
-		s.writeStoreError(w, err, "loading the state")
+		s.writeStoreError(w, r, err, "loading the state")
 		return
 	}
 
@@ -225,7 +225,7 @@ func (s *server) handleGetHabit(w http.ResponseWriter, r *http.Request, user aut
 		return err
 	})
 	if err != nil {
-		s.writeStoreError(w, err, "loading habit")
+		s.writeStoreError(w, r, err, "loading habit")
 		return
 	}
 	s.writeJSON(w, http.StatusOK, data.fullView())
@@ -262,7 +262,7 @@ func (s *server) handleCreateHabit(w http.ResponseWriter, r *http.Request, user 
 		return nil
 	})
 	if err != nil {
-		s.writeStoreError(w, err, "creating habit")
+		s.writeStoreError(w, r, err, "creating habit")
 		return
 	}
 	writeChange(w, changeID)
@@ -315,7 +315,7 @@ func (s *server) handleUpdateHabit(w http.ResponseWriter, r *http.Request, user 
 		return nil
 	})
 	if err != nil {
-		s.writeStoreError(w, err, "updating habit")
+		s.writeStoreError(w, r, err, "updating habit")
 		return
 	}
 	writeChange(w, changeID)
@@ -334,7 +334,7 @@ func (s *server) handleDeleteHabit(w http.ResponseWriter, r *http.Request, user 
 		return tx.DeleteHabit(ctx, h.ID)
 	})
 	if err != nil {
-		s.writeStoreError(w, err, "deleting habit")
+		s.writeStoreError(w, r, err, "deleting habit")
 		return
 	}
 	writeChange(w, changeID)
@@ -354,7 +354,7 @@ func (s *server) handleReorderHabits(w http.ResponseWriter, r *http.Request, use
 		return tx.ReorderHabits(ctx, body.IDs)
 	})
 	if err != nil {
-		s.writeStoreError(w, err, "saving order")
+		s.writeStoreError(w, r, err, "saving order")
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)

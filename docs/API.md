@@ -185,7 +185,9 @@ to it (`""` for none). `entries` holds the value of each day with one,
 `skipped` the skipped days; values are in stored units. Their dates are
 bounded like recorded ones (422 `entry_too_early`, `entry_too_far_ahead`), and
 so is the `from` of each schedule (422 `schedule_start_out_of_range`), as the
-first one starts the history. A file of another
+first one starts the history, and the date of `createdAt` (422
+`created_out_of_range`); a missing `createdAt` becomes the time of the
+import. A file of another
 `format` or `version` is 422 `import_format`. The import answers with the
 numbers of `habits` and `categories` added and of the habits `skipped`, as
 one of that name exists.

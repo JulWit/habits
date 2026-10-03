@@ -276,11 +276,17 @@ func importFile(ctx context.Context, tx *store.Tx, in exportFile, today domain.D
 // slow.
 func importHabit(ctx context.Context, tx *store.Tx, eh exportHabit, catByKey map[string]string, today domain.Date) error {
 	for _, s := range eh.Schedules {
-		if s.From.Before(domain.EarliestEntry()) || s.From.After(today.AddDays(domain.EntryHorizonDays)) {
+		if !importDateInRange(s.From, today) {
 			return domain.Invalid("schedule_start_out_of_range",
 				"schedules may not start before {year} or more than one year ahead",
 				"year", strconv.Itoa(domain.EarliestEntry().Year))
 		}
+	}
+	// A missing creation time becomes the time of the import (CreateHabit).
+	if !eh.CreatedAt.IsZero() && !importDateInRange(domain.DateFromTime(eh.CreatedAt.UTC()), today) {
+		return domain.Invalid("created_out_of_range",
+			"the creation date may not lie before {year} or more than one year ahead",
+			"year", strconv.Itoa(domain.EarliestEntry().Year))
 	}
 	h := domain.Habit{
 		Name:  eh.Name,
@@ -319,6 +325,13 @@ func importHabit(ctx context.Context, tx *store.Tx, eh exportHabit, catByKey map
 		entries[d] = domain.Entry{Skipped: true}
 	}
 	return tx.SetEntries(ctx, &h, entries)
+}
+
+// importDateInRange reports whether a date of an imported habit lies within
+// the bounds of recorded days (checkRecordDate): not before
+// domain.EarliestEntry and at most domain.EntryHorizonDays after today.
+func importDateInRange(d, today domain.Date) bool {
+	return !d.Before(domain.EarliestEntry()) && !d.After(today.AddDays(domain.EntryHorizonDays))
 }
 
 // handleDeleteData removes all of the user's data: habits with their entries,

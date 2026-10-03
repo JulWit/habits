@@ -150,21 +150,25 @@ func TestImportIsAllOrNothing(t *testing.T) {
 	}
 }
 
-// Imported entries and schedule starts are bounded like recorded days, so the
-// history never reaches centuries back; the creation time does not count.
+// Imported entries, schedule starts and creation times are bounded like
+// recorded days, so the history never reaches centuries back. A missing
+// creation time (Go's zero time) is the time of the import.
 func TestImportBoundsTheHistory(t *testing.T) {
 	h := newTestServer(t)
-	habit := func(from, entries string) string {
+	habit := func(created, from, entries string) string {
 		return `{"format":"habits","version":2,"categories":[],"habits":[
-			{"name":"Read","kind":"check","color":"red","createdAt":"0001-01-01T00:00:00Z",
+			{"name":"Read","kind":"check","color":"red","createdAt":"` + created + `",
 			 "schedules":[{"from":"` + from + `","targetValue":1,"frequency":{"kind":"daily"}}],
 			 "entries":` + entries + `}]}`
 	}
+	const zero, created = "0001-01-01T00:00:00Z", "2026-01-01T08:00:00Z"
 	for _, file := range []string{
-		habit("2026-01-01", `{"1500-01-01":1}`),
-		habit("2026-01-01", `{"9999-01-01":1}`),
-		habit("1500-01-01", `{}`),
-		habit("9999-01-01", `{}`),
+		habit(created, "2026-01-01", `{"1500-01-01":1}`),
+		habit(created, "2026-01-01", `{"9999-01-01":1}`),
+		habit(created, "1500-01-01", `{}`),
+		habit(created, "9999-01-01", `{}`),
+		habit("1500-01-01T00:00:00Z", "2026-01-01", `{}`),
+		habit("9999-01-01T00:00:00Z", "2026-01-01", `{}`),
 	} {
 		w := do(t, h, "POST", "/api/import", file, "application/json")
 		if w.Code != http.StatusUnprocessableEntity {
@@ -172,7 +176,7 @@ func TestImportBoundsTheHistory(t *testing.T) {
 		}
 	}
 
-	mustDo(t, h, "POST", "/api/import", habit("2026-01-01", `{}`), http.StatusOK)
+	mustDo(t, h, "POST", "/api/import", habit(zero, "2026-01-01", `{}`), http.StatusOK)
 	var state struct {
 		Habits []struct {
 			HistoryStart domain.Date `json:"historyStart"`

@@ -209,7 +209,31 @@ export let Days;
  */
 export let LoadedState;
 
-/** The loaded state; empty until the first load. */
+/**
+ * The state the client keeps: a loaded state without the fields only loading
+ * needs. `user` and `build` are null until the first load.
+ * @typedef {{
+ *   user: ?{id: string, name: string, email: string},
+ *   settings: !Object<string, *>,
+ *   today: string,
+ *   categories: !Array<!Category>,
+ *   habits: !Array<!Habit>,
+ *   colors: !Array<string>,
+ *   icons: !Array<string>,
+ *   kinds: !Object<string, !Object<string, *>>,
+ *   entriesFrom: string,
+ *   earliestEntry: string,
+ *   serverTimeZone: string,
+ *   build: ?Object<string, *>,
+ *   options: !Object<string, !Array<!Object<string, string>>>,
+ * }}
+ */
+export let AppState;
+
+/**
+ * The loaded state; empty until the first load.
+ * @type {!AppState}
+ */
 export const state = reactive({
   user: null,
   // Complete once the state is loaded.
@@ -315,7 +339,7 @@ export function inOrder(items, ids) {
   const byId = new Map(items.map((item) => [item.id, item]));
   const wanted = new Set(ids);
   const sorted = [
-    ...ids.map((id) => byId.get(id)).filter(Boolean),
+    ...ids.flatMap((id) => byId.get(id) ?? []),
     ...items.filter((item) => !wanted.has(item.id)),
   ];
   return sorted.map(
@@ -458,8 +482,10 @@ export function archivedCount() {
  * @return {!Array<!Block>}
  */
 export function groupedHabits({archived = state.settings.showArchived} = {}) {
+  /** @type {!Array<!Block>} */
   const blocks = state.categories.map((category) => ({category, habits: []}));
-  const byId = new Map(blocks.map((b) => [b.category.id, b]));
+  const byId = new Map(blocks.map((b) => [b.category?.id, b]));
+  /** @type {!Block} */
   const loose = {category: null, habits: []};
 
   for (const habit of state.habits) {

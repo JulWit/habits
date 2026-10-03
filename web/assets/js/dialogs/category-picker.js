@@ -62,7 +62,7 @@ export const TheCategoryPicker = {
     const create = async () => {
       const name = newName.value.trim();
       if (!name) {
-        nameInput.value.focus();
+        nameInput.value?.focus();
         return;
       }
       creating.value = true;

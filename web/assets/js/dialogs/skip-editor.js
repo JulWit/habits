@@ -52,7 +52,7 @@ export function openSkipEditor(target) {
   form.from = state.today;
   form.to = addDays(state.today, 6);
   form.scope = 'one';
-  return page.open(() => fromInput.value.focus());
+  return page.open(() => fromInput.value?.focus());
 }
 
 /**
@@ -61,7 +61,8 @@ export function openSkipEditor(target) {
  */
 function collect() {
   const one = habit.value !== null && form.scope === 'one';
-  return {from: form.from, to: form.to, habitIds: one ? [habit.value.id] : []};
+  const habitIds = one && habit.value ? [habit.value.id] : [];
+  return {from: form.from, to: form.to, habitIds};
 }
 
 /** The page for skipping days (see openSkipEditor). */
@@ -69,6 +70,7 @@ export const TheSkipEditor = {
   name: 'TheSkipEditor',
   /** @return {!Object<string, *>} the bindings of the template */
   setup() {
+    /** @type {!Ref<?HTMLFormElement>} */
     const formEl = ref(null);
 
     // Any change of the input hides the error message.
@@ -94,7 +96,7 @@ export const TheSkipEditor = {
        * stays open until the server accepts the input.
        */
       submit: () => {
-        if (!formEl.value.reportValidity()) return;
+        if (!formEl.value?.reportValidity()) return;
         const input = collect();
         page.run(() => actions.skipDays(input));
       },

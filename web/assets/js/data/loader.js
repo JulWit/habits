@@ -81,7 +81,7 @@ export async function refresh() {
   for (let load = 1; load <= MAX_LOADS; load++) {
     const shown = stateRevision();
     try {
-      loaded = await api.loadState(historyFrom);
+      loaded = await api.loadState(historyFrom ?? undefined);
     } catch (err) {
       showUnloaded(err);
       return;
@@ -91,7 +91,7 @@ export async function refresh() {
       return;
     }
   }
-  reloadAtNextDay(loaded.nextDayIn);
+  reloadAtNextDay(loaded?.nextDayIn);
   laterTimer = setTimeout(refresh, RELOAD_LATER_MS);
 }
 

@@ -238,7 +238,8 @@ export function useBoardMeasure(boardEl, hasHabits) {
     // board's (--board-width) while the overview is hidden. A view becoming
     // visible again changes the container's size too.
     observer = new ResizeObserver(measure);
-    observer.observe(boardEl.value.parentElement);
+    const container = boardEl.value?.parentElement;
+    if (container) observer.observe(container);
     observer.observe(document.body);
     measure();
   });

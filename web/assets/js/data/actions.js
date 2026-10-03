@@ -158,11 +158,11 @@ function serialize(key, task) {
  */
 export function applied(entry, change) {
   const next = {...entry};
-  if ('value' in change) {
+  if (change.value !== undefined) {
     next.value = change.value;
     next.skipped = false;
   }
-  if ('skipped' in change) {
+  if (change.skipped !== undefined) {
     next.skipped = change.skipped;
     if (change.skipped) next.value = 0;
   }
@@ -199,7 +199,8 @@ async function writeEntry(habit, iso, change, request = change) {
   let after = applied(before, change);
   showPending(habit.id, iso, after);
 
-  let changeId = null;
+  /** @type {number|undefined} */
+  let changeId;
   try {
     const {changeId: id, ...view} = await serialize(
         `${habit.id}|${iso}`, () => api.setEntry(habit.id, iso, request));
@@ -207,7 +208,7 @@ async function writeEntry(habit, iso, change, request = change) {
     changeId = id;
     applyEntryAnswer(iso, view);
     // The entry as stored.
-    after = habitHelpers.entryOn(habitById(habit.id), iso);
+    after = habitHelpers.entryOn(habitById(habit.id) ?? habit, iso);
   } catch (err) {
     if (!canSendLater(err) || !isValueOnly(change)) {
       dropPending(habit.id, iso);

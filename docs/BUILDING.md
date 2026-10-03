@@ -68,7 +68,8 @@ go test ./internal/httpapi -run '^$' -bench BenchmarkState
 
 ### Frontend: types and unit tests
 
-The JSDoc types of the frontend are checked by TypeScript (`jsconfig.json`),
+The JSDoc types of the frontend are checked by TypeScript (`jsconfig.json`,
+with `strictNullChecks`, so a nullable `?T` must be checked before use),
 and its pure parts (dates, translations, the day statuses, the state, the
 outbox, the board's window and layout, `useRemote`) have unit tests in
 `test/js/`, run by Node's own test runner. Both are developer tools, not

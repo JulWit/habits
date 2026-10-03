@@ -305,8 +305,13 @@ const BoardBlock = {
        */
       tabDate: (habit) =>
           props.tabStop?.habit === habit.id ? props.tabStop.date : null,
-      openCategory: () => openCategory(category.value.id),
-      move: (delta) => actions.moveCategory(category.value.id, delta),
+      openCategory: () => category.value && openCategory(category.value.id),
+      /**
+       * Moves the category up (-1) or down (+1).
+       * @param {number} delta
+       */
+      move: (delta) =>
+          category.value && actions.moveCategory(category.value.id, delta),
     };
   },
   // Uncategorised habits have no category controls and no progress. Renaming
@@ -519,6 +524,7 @@ export const TheBoardView = {
     /** @type {function(): void} */
     let disableDragging = () => {};
     onMounted(() => {
+      if (!boardEl.value) return;
       disableDragging = enableDragging(
           boardEl.value,
           () => {

@@ -25,8 +25,8 @@ import {openSkipEditor} from './skip-editor.js';
  */
 function initials(name) {
   const words = name.split(/[\s._@-]+/).filter(Boolean);
-  const letters =
-      words.length > 1 ? [words[0], words.at(-1)] : words.slice(0, 1);
+  const letters = words.length > 1 ? [words[0], words[words.length - 1]] :
+                                     words.slice(0, 1);
   return letters.map((w) => [...w][0].toUpperCase()).join('');
 }
 
@@ -96,7 +96,7 @@ export const TheSettingsDialog = {
       settings: computed(() => state.settings),
       version,
       account: computed(() => {
-        const user = state.user ?? {};
+        const user = state.user ?? {id: '', name: '', email: ''};
         // Without a display name (e.g. single-user mode), the ID stands in.
         const name = user.name || user.id || t('Unknown');
         return {
@@ -264,7 +264,8 @@ function pageById(id) {
 /** Opens the settings. */
 export function openSettings() {
   clearError();
-  openPage(pageById('settings-dialog'));
+  const dialog = pageById('settings-dialog');
+  if (dialog) openPage(dialog);
 }
 
 /**

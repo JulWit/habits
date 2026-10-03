@@ -166,6 +166,7 @@ export const TheDayStatsView = {
         (signal) => api.days(year.value, undefined, signal),
         {keep: () => true});
     const shownYear = computed(() => String(data.value?.year ?? ''));
+    const stats = computed(() => data.value?.stats ?? null);
 
     // The tooltip's target is replaced; the heatmap is scrolled to today once
     // the statistics of a year are shown.
@@ -173,7 +174,7 @@ export const TheDayStatsView = {
       hideTooltip();
       if (!loaded) return;
       await nextTick();
-      centreToday(root.value);
+      if (root.value) centreToday(root.value);
     });
     useChartTooltips(
         root, '.heatmap-day[data-date], .day-stats-bar-panel-bar[data-tip]');
@@ -186,16 +187,19 @@ export const TheDayStatsView = {
       range,
       data,
       shownYear,
-      tiles: computed(() => statTiles(data.value.stats, shownYear.value)),
-      highlights: computed(() => highlights(data.value.stats)),
+      tiles: computed(
+          () => stats.value ? statTiles(stats.value, shownYear.value) : []),
+      highlights: computed(() => stats.value ? highlights(stats.value) : []),
       weekdays: computed(
-          () => data.value.stats.weekdays.map(
-              (group, i) => bar(
-                  {label: WEEKDAY_SHORT[i], name: WEEKDAY_LONG[i], ...group}))),
+          () => (stats.value?.weekdays ?? []).map((group, i) => bar({
+                                                    label: WEEKDAY_SHORT[i],
+                                                    name: WEEKDAY_LONG[i],
+                                                    ...group,
+                                                  }))),
       // The server's months run from the first with due habits; firstMonth
       // is 1 for January.
-      months: computed(() => (data.value.stats.months ?? []).map((group, i) => {
-        const month = data.value.stats.firstMonth - 1 + i;
+      months: computed(() => (stats.value?.months ?? []).map((group, i) => {
+        const month = (stats.value?.firstMonth ?? 1) - 1 + i;
         return bar(
             {label: MONTH_SHORT[month], name: MONTH_LONG[month], ...group});
       })),

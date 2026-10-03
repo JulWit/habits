@@ -446,8 +446,8 @@ const parsedIcons = new Map();
 function parseIcon(svg) {
   let parsed = parsedIcons.get(svg);
   if (!parsed) {
-    const [, attrText, body] =
-        svg.trim().match(/^<svg([^>]*)>([\s\S]*)<\/svg>$/);
+    const [, attrText = '', body = ''] =
+        svg.trim().match(/^<svg([^>]*)>([\s\S]*)<\/svg>$/) ?? [];
     /** @type {!Object<string, string>} */
     const attrs = {};
     for (const [, name, value] of attrText.matchAll(/([\w:-]+)="([^"]*)"/g)) {

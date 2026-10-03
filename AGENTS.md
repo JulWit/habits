@@ -204,7 +204,9 @@ asked.
   {string}`, `@return {?Habit}`); the shared data types are typedefs in
   `state.js`, imported where used with `/** @import {Habit} from … */`.
   Optional fields of a record type are written `name?: T`. Prefer a typedef
-  or record type to a bare `Object`; the type check must pass.
+  or record type to a bare `Object`; the type check must pass. It checks
+  null (`strictNullChecks`): a `?T` is checked before use, e.g. a template
+  ref (`/** @type {!Ref<?HTMLElement>} */`), which is null until mounted.
 - HTML (`index.html` and the templates) and CSS follow the [Google HTML/CSS
   style guide](https://google.github.io/styleguide/htmlcssguide.html):
   lowercase, double quotes around attribute values, no entity references

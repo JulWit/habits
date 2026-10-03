@@ -51,7 +51,7 @@ export function openSearch() {
   query.value = '';
   active.value = 0;
   openings.value++;
-  page.open(() => input.value.focus());
+  page.open(() => input.value?.focus());
 }
 
 /**
@@ -97,7 +97,9 @@ function meta(entry) {
         habitHelpers.describeHabit(/** @type {!Habit} */ (entry.item));
   }
   return plural(
-      entry.habits.length, 'Category · {n} habit', 'Category · {n} habits');
+      entry.habits?.length ?? 0,
+      'Category · {n} habit',
+      'Category · {n} habits');
 }
 
 /**
@@ -130,6 +132,7 @@ export const TheSearchDialog = {
   name: 'TheSearchDialog',
   /** @return {!Object<string, *>} the bindings of the template */
   setup() {
+    /** @type {!Ref<?HTMLElement>} */
     const list = ref(null);
     const scrolling = ref(false);
 
@@ -150,11 +153,12 @@ export const TheSearchDialog = {
     // without the class's padding), and the selection stays in view.
     watch([results, active, openings], async () => {
       await nextTick();
-      if (!list.value) return;
+      const el = list.value;
+      if (!el) return;
       scrolling.value = false;
       await nextTick();
-      scrolling.value = list.value.scrollHeight > list.value.clientHeight;
-      list.value.children[active.value]?.scrollIntoView({block: 'nearest'});
+      scrolling.value = el.scrollHeight > el.clientHeight;
+      el.children[active.value]?.scrollIntoView({block: 'nearest'});
     }, {flush: 'post'});
 
     /**
@@ -201,7 +205,7 @@ export const TheSearchDialog = {
       hasHabitIcon,
       clear: () => {
         query.value = '';
-        input.value.focus();
+        input.value?.focus();
       },
       /**
        * Closes the search on a click on the backdrop.

@@ -16,6 +16,7 @@ import {computed, onMounted, ref} from '../vue.js';
 import {BoardDayCell, BoardHabitLabel, BoardHeadDay} from './board-cells.js';
 
 /** @import {Habit, Schedule} from '../data/state.js' */
+/** @import {Ref} from '../vue.js' */
 
 /**
  * Returns the date `back` days before today.
@@ -264,9 +265,12 @@ const StyleGuidePanel = {
    * @return {!Object<string, *>} the bindings of the template
    */
   setup(props) {
+    /** @type {!Ref<?HTMLElement>} */
     const root = ref(null);
+    /** @type {!Ref<!Array<string>>} */
     const values = ref([]);
     onMounted(() => {
+      if (!root.value) return;
       const styles = getComputedStyle(root.value);
       // Collapsed to one line.
       values.value = props.names.map(

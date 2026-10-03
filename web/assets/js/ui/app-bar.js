@@ -47,6 +47,7 @@ export const AppBar = {
   setup(props, {emit}) {
     const menuId = `app-bar-menu-${++count}`;
     /** @type {!Ref<?HTMLButtonElement>} */
+    /** @type {!Ref<?HTMLElement>} */
     const menuButton = ref(null);
     /** @type {!Ref<?HTMLElement>} */
     const menuEl = ref(null);
@@ -58,9 +59,10 @@ export const AppBar = {
      */
     const onToggle = (event) => {
       expanded.value = event.newState === 'open';
-      if (!expanded.value) return;
-      place(menuEl.value, menuButton.value);
-      menuEl.value.querySelector('button')?.focus();
+      const menu = menuEl.value;
+      if (!expanded.value || !menu || !menuButton.value) return;
+      place(menu, menuButton.value);
+      menu.querySelector('button')?.focus();
     };
 
     /**
@@ -70,7 +72,7 @@ export const AppBar = {
      */
     const onBeforeToggle = (event) => {
       if (event.newState === 'closed' &&
-          menuEl.value.contains(document.activeElement)) {
+          menuEl.value?.contains(document.activeElement)) {
         menuButton.value?.focus({preventScroll: true});
       }
     };
@@ -80,7 +82,7 @@ export const AppBar = {
      * @param {!MenuItem} item
      */
     const choose = (item) => {
-      menuEl.value.hidePopover();
+      menuEl.value?.hidePopover();
       emit('action', item.action);
     };
 

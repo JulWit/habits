@@ -70,11 +70,13 @@ export function useLongPress(boardEl, onLongPress) {
     const target = /** @type {?HTMLButtonElement} */ (
         /** @type {!Element} */ (event.target).closest('[data-role="cell"]'));
     if (!target || target.disabled || event.button !== 0) return;
+    const {habit, date} = target.dataset;
+    if (!habit || !date) return;
     origin = {x: event.clientX, y: event.clientY};
     timer = setTimeout(() => {
       timer = undefined;
       suppressNextClick();
-      onLongPress(target.dataset.habit, target.dataset.date);
+      onLongPress(habit, date);
     }, LONG_PRESS_MS);
   };
 
@@ -95,6 +97,7 @@ export function useLongPress(boardEl, onLongPress) {
 
   onMounted(() => {
     const board = boardEl.value;
+    if (!board) return;
     board.addEventListener('pointerdown', onPointerDown);
     board.addEventListener('pointermove', onPointerMove);
     for (const type of ends) board.addEventListener(type, cancel);

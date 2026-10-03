@@ -199,7 +199,7 @@ export const BoardDayCell = {
  * @typedef {{
  *   label: string,
  *   disabled: boolean,
- *   mark: !Array<string>,
+ *   mark: !Array<(string|boolean)>,
  *   progress: number,
  *   streak: number,
  *   skipped: boolean,

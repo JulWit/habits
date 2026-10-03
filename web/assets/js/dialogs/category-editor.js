@@ -62,8 +62,8 @@ export async function openCategoryEditor(id) {
   form.showProgress = category.showProgress === true;
   initial = JSON.stringify(collect());
   return page.open(() => {
-    nameInput.value.focus();
-    nameInput.value.select();
+    nameInput.value?.focus();
+    nameInput.value?.select();
   });
 }
 
@@ -73,6 +73,7 @@ export const TheCategoryEditor = {
   components: {AppColorSwatches, AppIconChoices},
   /** @return {!Object<string, *>} the bindings of the template */
   setup() {
+    /** @type {!Ref<?HTMLFormElement>} */
     const formEl = ref(null);
 
     // Any change of the input hides the error message.
@@ -85,7 +86,7 @@ export const TheCategoryEditor = {
      * stays open until the server accepts the input.
      */
     const submit = () => {
-      if (!formEl.value.reportValidity()) return;
+      if (!formEl.value?.reportValidity()) return;
       const input = collect();
       page.run(() => actions.updateCategory(editingId, input));
     };

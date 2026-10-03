@@ -96,7 +96,8 @@ export const TheCategoryView = {
     const root = ref(null);
     // Nothing is shown, or loaded, while the view is hidden.
     const category = computed(
-        () => route.view === 'category' ? categoryById(route.id) : null);
+        () => route.view === 'category' && route.id ? categoryById(route.id) :
+                                                      null);
     const habits = computed(
         () => state.habits.filter(
             (h) => h.categoryId === category.value?.id && !h.archivedAt));
@@ -119,7 +120,7 @@ export const TheCategoryView = {
         () => category.value ?
             `category|${category.value.id}|${shownYear.value}` :
             null,
-        (signal) => api.days(shownYear.value, category.value.id, signal),
+        (signal) => api.days(shownYear.value, category.value?.id, signal),
         {keep: (shown, next) => categoryOfKey(shown) === categoryOfKey(next)});
 
     // The tooltip's target is replaced; the heatmap is scrolled to today once
@@ -145,23 +146,25 @@ export const TheCategoryView = {
       days,
       stats: computed(
           () => statTiles(
-              days.value,
+              days.value ?? null,
               days.value ? String(days.value.year) : shownYear.value)),
       details: computed(
           () => [factItem(
               t('Progress'),
-              category.value.showProgress ? t('Shown on the board') :
-                                            t('Not shown'))]),
+              category.value?.showProgress ? t('Shown on the board') :
+                                             t('Not shown'))]),
       activity: computed(
-          () =>
-              [createdItem(category.value.createdAt),
-               changedItem(category.value.updatedAt),
-    ]),
+          () => category.value ?
+              [
+                createdItem(category.value.createdAt),
+                changedItem(category.value.updatedAt),
+              ] :
+              []),
       menu:
           [{action: 'delete', label: t('Delete'), icon: 'trash', danger: true}],
       back: goHome,
-      edit: () => openCategoryEditor(category.value.id),
-      remove: () => actions.deleteCategory(category.value.id),
+      edit: () => category.value && openCategoryEditor(category.value.id),
+      remove: () => category.value && actions.deleteCategory(category.value.id),
       openHabit,
     };
   },

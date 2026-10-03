@@ -88,6 +88,7 @@ export const AppYearNavigation = {
    * @return {!Object<string, *>} the bindings of the template
    */
   setup(props, {emit}) {
+    /** @type {!Ref<?HTMLElement>} */
     const el = ref(null);
     return {
       el,
@@ -105,9 +106,8 @@ export const AppYearNavigation = {
             props.last, Math.max(props.first, Number(props.year) + delta));
         emit('update:year', String(next));
         await nextTick();
-        if (button.disabled) {
-          el.value.querySelector('button:not(:disabled)')?.focus();
-        }
+        const other = el.value?.querySelector('button:not(:disabled)');
+        if (button.disabled && other instanceof HTMLElement) other.focus();
       },
     };
   },
@@ -324,7 +324,7 @@ export const AppDayHeatmap = {
 export function centreToday(root) {
   const scroller = root.querySelector('.app-year-grid');
   const cell = scroller?.querySelector('.heatmap-day.is-today');
-  if (!cell) return;
+  if (!scroller || !cell) return;
   const box = scroller.getBoundingClientRect();
   const at = cell.getBoundingClientRect();
   scroller.scrollLeft += at.left - box.left - (box.width - at.width) / 2;
@@ -359,11 +359,10 @@ export function useChartTooltips(root, selector) {
   const onOver = (event) => {
     const target = /** @type {!Element} */ (event.target).closest(selector);
     if (!(target instanceof HTMLElement)) return;
+    const {tip, date, status} = target.dataset;
     showTooltip(target, [
-      tipLine(
-          'tooltip-date',
-          target.dataset.tip ?? formatFull(target.dataset.date)),
-      tipLine('tooltip-status', target.dataset.status),
+      tipLine('tooltip-date', tip ?? (date ? formatFull(date) : '')),
+      tipLine('tooltip-status', status ?? ''),
     ]);
   };
   /**
@@ -380,6 +379,7 @@ export function useChartTooltips(root, selector) {
 
   onMounted(() => {
     const container = root.value;
+    if (!container) return;
     container.addEventListener('mouseover', onOver);
     container.addEventListener('mouseout', onOut);
     container.addEventListener('scroll', hideTooltip, scrolling);

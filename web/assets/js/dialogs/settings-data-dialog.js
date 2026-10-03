@@ -89,10 +89,11 @@ export const SettingsDataPage = {
 
     /** Imports the chosen file. */
     const importFile = async () => {
-      const file = importInput.value.files[0];
+      const chooser = importInput.value;
+      const file = chooser?.files?.[0];
+      if (!chooser || !file) return;
       // Cleared, so that choosing the same file again fires "change".
-      importInput.value.value = '';
-      if (!file) return;
+      chooser.value = '';
       importResult.value = '';
       importChange.value = 0;
 
@@ -149,13 +150,15 @@ export const SettingsDataPage = {
 
     /** Asks before deleting all data; Escape leaves the answer empty. */
     const askToDeleteAll = () => {
-      deleteDialog.value.returnValue = '';
-      deleteDialog.value.showModal();
+      const dialog = deleteDialog.value;
+      if (!dialog) return;
+      dialog.returnValue = '';
+      dialog.showModal();
     };
 
     /** Deletes all data if the user confirmed it. */
     const deleteAll = async () => {
-      if (deleteDialog.value.returnValue !== 'delete') return;
+      if (deleteDialog.value?.returnValue !== 'delete') return;
       deleting.value = true;
       try {
         await api.deleteAllData();

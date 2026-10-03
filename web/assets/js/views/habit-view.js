@@ -73,7 +73,7 @@ function details(habit) {
   const all = habit.schedules;
   // With earlier schedules, the current one is dated.
   const since = all.length > 1 ?
-      t('since {date}', {date: formatLong(all.at(-1).from)}) :
+      t('since {date}', {date: formatLong(all[all.length - 1].from)}) :
       '';
   const items = [factItem(
       t('Frequency'),
@@ -272,6 +272,7 @@ const HabitCumulativeChart = {
    * @return {!Object<string, *>} the bindings of the template
    */
   setup(props, {emit}) {
+    /** @type {!Ref<?HTMLElement>} */
     const scroller = ref(null);
     // Until the first answer of a year and period, the chart is empty.
     const {data} = useRemote(
@@ -295,9 +296,8 @@ const HabitCumulativeChart = {
     const format = (value) => habitHelpers.formatTotal(props.habit, value);
     /** Scrolls the chart to its newest column. */
     const showNewest = () => {
-      if (scroller.value) {
-        scroller.value.scrollLeft = scroller.value.scrollWidth;
-      }
+      const el = scroller.value;
+      if (el) el.scrollLeft = el.scrollWidth;
     };
     watch(columns, showNewest, {flush: 'post', immediate: true});
 
@@ -323,12 +323,14 @@ const HabitCumulativeChart = {
               ' {scope} · avg ', {scope: t('in {year}', {year: props.year})})),
       daysText: computed(
           () => plural(
-              summary.value.activeDays,
+              summary.value?.activeDays ?? 0,
               ' on {n} active day · best day ',
               ' on {n} active days · best day ')),
       // Average per day with an entry.
       average: computed(
-          () => Math.round(summary.value.total / summary.value.activeDays)),
+          () => summary.value ?
+              Math.round(summary.value.total / summary.value.activeDays) :
+              0),
       chartStyle: computed(() => ({
                              '--cols': String(columns.value.length),
                              '--bar-min': GRAINS[props.grain].barMin,
@@ -446,8 +448,8 @@ export const TheHabitView = {
   setup() {
     const root = ref(null);
     // Nothing is shown, or loaded, while the view is hidden.
-    const habit =
-        computed(() => route.view === 'habit' ? habitById(route.id) : null);
+    const habit = computed(
+        () => route.view === 'habit' && route.id ? habitById(route.id) : null);
     const shownId = computed(() => habit.value?.id ?? null);
     // The year the heatmap and the cumulative chart show, e.g. "2025", and
     // the period of the chart's bars; both are kept for the session only.
@@ -474,7 +476,7 @@ export const TheHabitView = {
         root,
         '.heatmap-day[data-date], .habit-cumulative-chart-column[data-tip]');
 
-    const range = computed(() => yearRange([habit.value]));
+    const range = computed(() => yearRange(habit.value ? [habit.value] : []));
 
     const archived = computed(() => habit.value?.archivedAt != null);
     return {
@@ -489,10 +491,15 @@ export const TheHabitView = {
                               null),
       hasHabitIcon,
       isCountable: habitHelpers.isCountable,
-      stats: computed(() => statTiles(habit.value)),
-      details: computed(() => details(habit.value)),
-      activity: computed(() => activity(habit.value)),
-      square: (iso) => heatSquare(habit.value, iso),
+      stats: computed(() => habit.value ? statTiles(habit.value) : []),
+      details: computed(() => habit.value ? details(habit.value) : []),
+      activity: computed(() => habit.value ? activity(habit.value) : []),
+      /**
+       * Returns the heatmap square of `iso`.
+       * @param {string} iso
+       * @return {?Object<string, *>}
+       */
+      square: (iso) => habit.value ? heatSquare(habit.value, iso) : null,
       legendRange: computed(() => {
         const year = shownYear.value;
         // The grid covers the whole year.
@@ -526,6 +533,7 @@ export const TheHabitView = {
        * @param {string} action
        */
       onMenu: (action) => {
+        if (!habit.value) return;
         const id = habit.value.id;
         if (action === 'skip') openSkipEditor(habit.value);
         if (action === 'archive') actions.toggleArchive(id);

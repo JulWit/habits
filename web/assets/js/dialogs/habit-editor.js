@@ -324,7 +324,7 @@ export function openHabitEditor(habit) {
   form.targetType = schedule?.targetType === 'at_most' ? 'at_most' : 'at_least';
   for (const [kind, measured] of Object.entries(MEASURED_KINDS)) {
     const scale = habitHelpers.scale(kind);
-    const own = habit?.kind === kind;
+    const own = habit?.kind === kind && schedule !== null;
     form.targets[kind] = own ? schedule.targetValue / scale : measured.target;
     form.steps[kind] = own && habit.stepValue ? habit.stepValue / scale : '';
   }
@@ -358,7 +358,7 @@ export function openHabitEditor(habit) {
 
   initialSchedule = scheduleKey(collect());
   initial = JSON.stringify(collect());
-  return page.open(() => nameInput.value.focus());
+  return page.open(() => nameInput.value?.focus());
 }
 
 /** The habit page (see openHabitEditor). */
@@ -367,6 +367,7 @@ export const TheHabitEditor = {
   components: {AppColorSwatches, AppIconChoices},
   /** @return {!Object<string, *>} the bindings of the template */
   setup() {
+    /** @type {!Ref<?HTMLFormElement>} */
     const formEl = ref(null);
 
     const limit = computed(isLimit);
@@ -388,7 +389,7 @@ export const TheHabitEditor = {
      * stays open until the server accepts the input.
      */
     const submit = () => {
-      if (!formEl.value.reportValidity()) return;
+      if (!formEl.value?.reportValidity()) return;
       const input = collect();
       if (input.frequency.kind === 'weekdays' &&
           input.frequency.weekdays === 0) {

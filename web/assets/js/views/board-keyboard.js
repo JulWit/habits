@@ -137,7 +137,8 @@ export function useBoardKeyboard({boardEl, rows, dates, activeDay, page}) {
   const makeTabStop = (node) => {
     if (!(node instanceof HTMLElement)) return;
     const {role, habit, date} = node.dataset;
-    if (role === 'cell') lastCell.value = {habit, date};
+    if (!date) return;
+    if (role === 'cell' && habit) lastCell.value = {habit, date};
     if (role === 'select-day') lastHead.value = date;
   };
 
@@ -165,10 +166,11 @@ export function useBoardKeyboard({boardEl, rows, dates, activeDay, page}) {
   const moveFromCell = async (cell, {dx = 0, dy = 0, edge = 0}, ctrl) => {
     const board = boardEl.value;
     const row = cell.closest('.board-habit-row');
+    const date = cell.dataset.date ?? '';
+    if (!board || !row) return;
     const allRows = [...board.querySelectorAll('.board-habit-row')];
 
     if (dy) {
-      const date = cell.dataset.date;
       for (let i = allRows.indexOf(row) + dy; i >= 0 && i < allRows.length;
            i += dy) {
         const next = allRows[i].querySelector(
@@ -200,15 +202,15 @@ export function useBoardKeyboard({boardEl, rows, dates, activeDay, page}) {
     const pager = board.querySelector(
         `[data-role="${dx < 0 ? 'page-older' : 'page-newer'}"]`);
     if (!(pager instanceof HTMLButtonElement) || pager.disabled) return;
-    const habit = cell.dataset.habit;
+    const habit = cell.dataset.habit ?? '';
     await page(dx < 0 ? 1 : -1);
     const paged =
         board.querySelector(`.board-habit-row${byData('habit', habit)}`);
     if (!paged) return;
     // The nearest enabled day beyond the one left.
     const beyond = rowCells(paged).filter(
-        (c) => dx < 0 ? c.dataset.date < cell.dataset.date :
-                        c.dataset.date > cell.dataset.date);
+        (c) => dx < 0 ? (c.dataset.date ?? '') < date :
+                        (c.dataset.date ?? '') > date);
     rove(dx < 0 ? beyond.at(-1) : beyond[0]);
   };
 
@@ -227,8 +229,9 @@ export function useBoardKeyboard({boardEl, rows, dates, activeDay, page}) {
     if (!move || (role === 'select-day' && move.dy)) return;
     event.preventDefault();
     if (role === 'select-day') {
-      const heads =
-          [...boardEl.value.querySelectorAll('[data-role="select-day"]')];
+      const heads = [
+        ...boardEl.value?.querySelectorAll('[data-role="select-day"]') ?? [],
+      ];
       rove(heads[clampedStep(heads, heads.indexOf(target), move)]);
       return;
     }

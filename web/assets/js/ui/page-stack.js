@@ -152,7 +152,7 @@ function drop(index) {
 // page closes: the hash does not change.
 window.addEventListener('popstate', (event) => {
   if (ownPops.length > 0) {
-    ownPops.shift()();
+    ownPops.shift()?.();
     event.stopImmediatePropagation();
     return;
   }
@@ -181,7 +181,7 @@ document.addEventListener('click', (event) => {
     return;
   }
   const link = target?.closest?.('[data-open-page]');
-  if (link instanceof HTMLElement) {
+  if (link instanceof HTMLElement && link.dataset.openPage) {
     openPage(/** @type {!HTMLDialogElement} */ (
         document.getElementById(link.dataset.openPage)));
   }
@@ -344,6 +344,8 @@ export function createPage({dirty} = {}) {
   const open = async (afterOpen = undefined) => {
     await nextTick();
     const dialog = el.value;
+    // Not mounted: nothing to open.
+    if (!dialog) return null;
     prepare(dialog);
     error.value = '';
     result = null;
@@ -363,7 +365,7 @@ export function createPage({dirty} = {}) {
    */
   const close = (value = null) => {
     result = value;
-    return closePage(el.value, {force: true});
+    return el.value ? closePage(el.value, {force: true}) : Promise.resolve();
   };
 
   /**
@@ -371,7 +373,7 @@ export function createPage({dirty} = {}) {
    * changes.
    * @return {!Promise<void>}
    */
-  const cancel = () => closePage(el.value);
+  const cancel = () => el.value ? closePage(el.value) : Promise.resolve();
 
   /**
    * Shows `message` as the page's error, scrolled into view, as it may lie

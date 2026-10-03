@@ -65,7 +65,7 @@ function scheduleOn(habit, iso) {
  * @return {!Schedule}
  */
 export function currentSchedule(habit) {
-  return habit.schedules.at(-1);
+  return habit.schedules[habit.schedules.length - 1];
 }
 
 /**
@@ -209,7 +209,8 @@ export function isLimit(habit, iso) {
  * @return {{scale: number, step: number, max: number, unit: string}}
  */
 function kindInfo(kind) {
-  return state.kinds[kind];
+  return /** @type {{scale: number, step: number, max: number, unit: string}} */ (
+      state.kinds[kind]);
 }
 
 /**

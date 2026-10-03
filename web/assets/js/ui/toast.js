@@ -163,7 +163,7 @@ const ToastListItem = {
       // The action handler shows its own toast.
       act: () => {
         close();
-        props.toast.onAction();
+        props.toast.onAction?.();
       },
       onEnter: () => {
         hovered = true;

@@ -109,13 +109,13 @@ export async function openDayEditor(habitId, iso) {
   // The first control that can be used.
   return page.open(() => {
     if (day.closed) {
-      controls.clear.value.focus();
+      controls.clear.value?.focus();
     } else if (before.skipped) {
-      controls.skipped.value.focus();
+      controls.skipped.value?.focus();
     } else if (habit.kind === 'check') {
-      controls.done.value.focus();
+      controls.done.value?.focus();
     } else {
-      controls.value.value.select();
+      controls.value.value?.select();
     }
   });
 }
@@ -125,7 +125,7 @@ export async function openDayEditor(habitId, iso) {
  * @return {!Entry}
  */
 function collect() {
-  let value = day.habit.kind === 'check' ?
+  let value = day.habit?.kind === 'check' ?
       (day.done ? 1 : 0) :
       Math.max(0, Math.round((Number(day.value) || 0) * day.scale));
   if (day.skipped) value = 0;
@@ -148,7 +148,7 @@ async function submit(entry) {
   }
   const {habit, iso} = day;
   page.close(true);
-  if (Object.keys(change).length > 0) {
+  if (habit && Object.keys(change).length > 0) {
     await actions.changeEntry(habit.id, iso, change);
   }
 }
@@ -160,6 +160,7 @@ async function submit(entry) {
  */
 function hint() {
   const {habit, iso, step} = day;
+  if (!habit) return '';
   const amount =
       habitHelpers.formatValue(habit, habitHelpers.target(habit, iso));
   const goal = habitHelpers.isLimit(habit, iso) ?
@@ -190,14 +191,14 @@ export const TheDayEditor = {
     const setValue = (next) => {
       const inRange = Math.min(day.max, Math.max(0, next));
       day.value = String(Math.round(inRange * day.scale) / day.scale);
-      input.value.focus();
+      input.value?.focus();
     };
 
     const check = computed(() => day.habit?.kind === 'check');
     const unit = computed(
-        () => day.habit?.kind === 'distance' ?
-            'km' :
-            habitHelpers.unitLabel(day.habit));
+        () => day.habit?.kind === 'distance' ? 'km' :
+            day.habit ? habitHelpers.unitLabel(day.habit) :
+                        '');
 
     return {
       el: page.el,
@@ -241,16 +242,16 @@ export const TheDayEditor = {
         const entry = collect();
         const typed = Number(day.value) || 0;
         if (!check.value && !day.skipped && typed > 0 && entry.value === 0) {
-          input.value.setCustomValidity(t('The smallest value is {min}.', {
+          input.value?.setCustomValidity(t('The smallest value is {min}.', {
             min: (1 / day.scale).toLocaleString(locale),
           }));
-          input.value.reportValidity();
+          input.value?.reportValidity();
           return;
         }
         submit(entry);
       },
       /** A changed value drops the message about one too small. */
-      resetValidity: () => input.value.setCustomValidity(''),
+      resetValidity: () => input.value?.setCustomValidity(''),
       clear: () => submit({value: 0, skipped: false}),
       /**
        * A tap on the backdrop cancels, as in the search: without a keyboard

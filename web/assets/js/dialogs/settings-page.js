@@ -50,7 +50,7 @@ export function clearError() {
  * @return {!Array<!SettingOption>}
  */
 export function options(key) {
-  return state.options?.[key] ?? [];
+  return /** @type {!Array<!SettingOption>} */ (state.options?.[key] ?? []);
 }
 
 /**

@@ -62,17 +62,25 @@ On a Windows checkout with `core.autocrlf=true`, `gofmt -l` lists every file
 because of the CRLF line endings; that is not a formatting error. Check a file
 without them instead: `tr -d '\r' < path/file.go | gofmt -l`.
 
-There is no npm, no bundler and no JS test runner. Frontend changes are checked
-in the browser (`go run .`, then reload; assets are embedded, so restart the
-server after changing files in `web/`). `scripts/firefox_test.py` drives an
-installed Firefox through the main flows with mouse, keyboard and touch; run
-it against a server with a scratch database (see `docs/BUILDING.md`) and
-extend it along with the frontend.
+There is no npm and no bundler in the build. Two developer tools check the
+frontend's code, fetched by uv (see `docs/BUILDING.md`); both run in the CI:
+
+```bash
+uvx --from nodejs-wheel npx -y -p typescript@5.9 tsc -p jsconfig.json  # JSDoc types
+uvx --from nodejs-wheel node --test "test/js/*.test.mjs"               # unit tests
+```
+
+Pure frontend logic gets a unit test in `test/js/`. Frontend changes are
+also checked in the browser (`go run .`, then reload; assets are embedded, so
+restart the server after changing files in `web/`). `scripts/firefox_test.py`
+drives an installed Firefox through the main flows with mouse, keyboard and
+touch; run it against a server with a scratch database (see
+`docs/BUILDING.md`) and extend it along with the frontend.
 
 ## CI and release
 
-Every push to `main` runs `gofmt -l`, `go vet` and `go test` in
-`.github/workflows/image.yml`; once they pass, it builds the container image
+Every push to `main` runs `gofmt -l`, `go vet`, `go test` and the frontend's
+type check and unit tests in `.github/workflows/image.yml`; once they pass, it builds the container image
 and publishes it to ghcr.io as `:latest` and `:main`. A tag `v*` also
 publishes `:1.2.3` and `:1.2`. Pull requests are only tested. So every push
 to `main` ships: run the commands above before pushing, and tag only when
@@ -83,7 +91,7 @@ asked.
 - **The server owns the rules.** Frequencies, the status of each day, streaks,
   statistics and totals are computed only in `internal/domain`. The client
   reads `days` (the day statuses), `stats` and `streakRuns` from the API, or
-  loads a view's statistics with `remote()`; it never judges a day or counts
+  loads a view's statistics with `useRemote()`; it never judges a day or counts
   anything itself.
 - **`internal/domain` has no I/O.** It must not import the store or HTTP
   packages and is tested without them.
@@ -103,7 +111,9 @@ asked.
   `writeChange`; every store write method registers its rows with `watch`
   before changing them (`internal/store/changes.go`). In the frontend, every
   data change goes through `web/assets/js/data/actions.js`, which offers the
-  undo with `offerUndo(changeId, text)`.
+  undo with `offerUndo(changeId, text)`. `actions.js` never opens a dialog:
+  the view or dialog asking for a change opens it, and the dialog calls the
+  action.
 - **Export is a full backup.** A new field of a habit or category also goes
   into `exportHabit` or `exportCategory` in
   `internal/httpapi/handlers_transfer.go` and back out on import, or exports
@@ -128,8 +138,14 @@ asked.
   images and libraries (`web/assets/vendor/`) instead of loading them.
 - **Vue** is the embedded ESM browser build (`web/assets/vendor/`), imported
   through `web/assets/js/vue.js`. The state in `state.js` is reactive; views
-  read it and render again by themselves. Do not build DOM by hand; DOM code
-  is left for measuring, focus, drag and drop and animations.
+  read it and render again by themselves. Habits and categories in it are
+  frozen: replace them with a changed copy, never change them in place. Do
+  not build DOM by hand; DOM code is left for measuring, focus, drag and drop
+  and animations, and DOM state Vue renders (attributes, tabindex) stays in
+  the template. A computed has no side effects: loading goes into a watcher
+  or `useRemote`. Listeners, observers and timers a component starts are
+  removed when it is unmounted, best in a composable (`use…`) that does
+  both. Tooltips are given with `v-tooltip`, not `title`.
 - **Colours** are stored as palette names (`red`, `teal`, …), not CSS values.
   Use the tokens in `web/assets/css/base.css`.
 - No new dependencies (Go modules or frontend libraries) without asking.
@@ -176,13 +192,19 @@ asked.
   module constant (with `@const {type}` for objects and arrays), and no import
   cycles between modules: a module that must call back into one that imports
   it gets the function passed in (see `initSync` in `loader.js`). Format with
-  `uvx clang-format -i web/sw.js web/assets/js/*.js web/assets/js/*/*.js`
-  (`.clang-format`; a developer tool, not a build step). Long UI texts in
-  `t('…')` and `i18n.js` stay on one line, so they can be searched for.
+  `uvx clang-format -i web/sw.js web/assets/js/*.js web/assets/js/*/*.js
+  test/js/*.mjs` (`.clang-format`; a developer tool, not a build step). Long
+  UI texts in
+  `t('…')` and `i18n.js` stay on one line, so they can be searched for. A
+  text about a count uses `plural(n, one, other)`, translated under its form
+  for other counts; `test/js/translations.test.mjs` checks every text has a
+  German translation.
 - Every module starts with a `@fileoverview` JSDoc comment. Every function,
   `setup()` included, has a JSDoc comment with Closure types (`@param
   {string}`, `@return {?Habit}`); the shared data types are typedefs in
-  `state.js`. Prefer a typedef or record type to a bare `Object`.
+  `state.js`, imported where used with `/** @import {Habit} from … */`.
+  Optional fields of a record type are written `name?: T`. Prefer a typedef
+  or record type to a bare `Object`; the type check must pass.
 - HTML (`index.html` and the templates) and CSS follow the [Google HTML/CSS
   style guide](https://google.github.io/styleguide/htmlcssguide.html):
   lowercase, double quotes around attribute values, no entity references

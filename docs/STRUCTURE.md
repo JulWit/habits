@@ -54,6 +54,9 @@ scripts/firefox_test.py     Tests the frontend in Firefox with mouse, keyboard a
 scripts/format_templates.py Formats the Vue templates (Vue style guide)
 scripts/format_css.py       Formats the stylesheets (Google HTML/CSS style guide)
 .clang-format               Formatting of the frontend JS (Google style)
+jsconfig.json               Type check of the frontend JS (see BUILDING.md)
+types/                      Types of Vue for the type check; not embedded
+test/js/                    Unit tests of the frontend (node --test); not embedded
 Dockerfile                  Container image: cross-compiled binary on scratch
 .github/workflows/image.yml Tests, then builds and publishes the image (see DEPLOYMENT.md)
 .github/dependabot.yml      Weekly updates of Go modules and GitHub Actions
@@ -93,16 +96,22 @@ web/                        Frontend (Vue, ES modules, no build step)
     app.js                      Entry point: root component (shell), appearance, shortcuts
     vue.js                      Vue, imported from the vendor directory
     data/                       State, server and navigation; no components
-      state.js                    Reactive client-side state; typedefs Habit, Category, Entry, …
+      state.js                    Reactive client-side state with frozen habits and
+                                  categories; typedefs Habit, Category, Entry, …
       api.js                      API client
       actions.js                  All data changes
       loader.js                   Loads and reloads the state; sync status and retries
       outbox.js                   Offline: remembered state and waiting entry writes
       undo.js                     Undo/redo through the server
-      remote-stats.js             Statistics a view loads from the server
+      remote-stats.js             useRemote: statistics a view loads from the server
       route.js                    The shown view (reactive) and navigation between views
+      habit-helpers.js            Reads the day statuses; value, schedule and streak helpers
     views/                      The views (*-view) and the parts only they use
       board-view.js               Board with category blocks, day header and active day
+      board-window.js             The days the board shows, paging and month labels
+      board-measure.js            How many day columns fit; tight and stacked board
+      board-keyboard.js           Keyboard navigation and tab stops of the board
+      board-press.js              Long presses on the day cells
       board-cells.js              Header day, habit label and day cell of the board
       day-summary.js              Day summary with progress ring and the orbs flying into it
       habit-view.js               Habit detail view
@@ -116,7 +125,12 @@ web/                        Frontend (Vue, ES modules, no build step)
       day-editor.js               Day dialog: value and skip
       skip-editor.js              Page for skipping a range of days
       search-dialog.js            Search dialog
-      settings-dialog.js          Settings pages
+      settings-dialog.js          Settings menu, version and archive pages
+      settings-page.js            What the settings pages share: frame, choice, saving
+      settings-look-dialog.js     Appearance settings
+      settings-board-dialog.js    Overview settings
+      settings-region-dialog.js   Language and time zone settings
+      settings-data-dialog.js     Export, import and deleting all data
     ui/                         Building blocks shared by views and dialogs
       app-bar.js                  Title bar of the habit, category and day statistics views
       stat-panels.js              Stat tiles and fact panels of the statistics views
@@ -125,13 +139,14 @@ web/                        Frontend (Vue, ES modules, no build step)
       icons.js                    Inline SVG icons; icon, colour and icon choice components
       patterns.js                 Background patterns drawn as SVG tiles
       toast.js                    Toasts and the messages of errors
-      tooltip.js                  Tooltips
-      page-stack.js               Full-screen pages and dialogs, stacked with history entries
+      tooltip.js                  Tooltips (the directive v-tooltip)
+      page-stack.js               Full-screen pages and dialogs, stacked with history
+                                  entries; the page controller (createPage)
+      board-state.js              Arranging, the filter and the day count of the board
       drag-reorder.js             Drag and drop reordering
     util/                       Helpers without components or state of their own
       dates.js                    Date helpers
-      i18n.js                     Translations and time zone
-      habit-helpers.js            Reads the day statuses; value, schedule and streak helpers
+      i18n.js                     Translations and plurals
 ```
 
 `internal/domain` depends neither on the database nor on HTTP and is tested

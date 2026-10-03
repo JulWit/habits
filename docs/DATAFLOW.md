@@ -100,9 +100,10 @@ needs no client change beyond the editor.
 The views that summarise many days load what they show from the server when
 they open: the day statistics (`/api/days`), also of a category's habits
 (`/api/days?category=`), and a habit's totals per day, week or month
-(`/api/habits/{id}/totals`). `remote-stats.js` keeps the last answer and loads
-it again once the state has changed. A hidden view renders nothing, so it
-loads nothing either.
+(`/api/habits/{id}/totals`) with `useRemote` (`remote-stats.js`): it loads
+the answer for the view's key whenever the key or the state changes, aborts a
+request a newer one replaces, and keeps the latest answers, so a view shown
+again has them at once. A hidden view passes no key, so it loads nothing.
 
 ## Writing an entry
 
@@ -123,9 +124,11 @@ A tap or the day dialog is handled in `actions.js`:
 If the server rejects a write, the client drops the pending value, shows the
 error and reloads the state.
 
-The state replaces a habit object on every change instead of changing it in
-place, so the board, which memoises its rows by their habit (`v-memo`), only
-renders the rows of the habits that changed.
+Habits and categories in the state are frozen: every change replaces the
+object instead of changing it in place (`changeHabit` in `state.js`). Vue
+leaves frozen objects as they are, so a habit's history is not wrapped in
+proxies, and a row of the board, which gets its habit as a prop, renders
+again only when its habit was replaced.
 
 ## Other changes
 

@@ -53,7 +53,8 @@ with 2 instead of starting the server.
 
 ## Container
 
-Every push to `main` runs `gofmt`, `go vet` and the tests, and once they pass
+Every push to `main` runs `gofmt`, `go vet`, the tests and the frontend's
+type check and unit tests, and once they pass
 builds an image for `linux/amd64` and `linux/arm64` and publishes it to the
 GitHub Container Registry. Pull requests are only tested.
 

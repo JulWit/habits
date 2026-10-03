@@ -94,8 +94,9 @@ A field in `settings.Settings` (`internal/settings`), its default in
 `Default` and, unless any value is fine, its check in `Validate`:
 `checkOption(key, value)` with an entry in `options` for a choice (sent with
 the state as `options`; the settings page renders its choices from it), or a
-check function of its own. Then its control in the template of
-`settings-dialog.js`, and, if it changes the look before the state is loaded,
+check function of its own. Then its control in the settings page it belongs
+to (`settings-*-dialog.js`, saved with `saveSetting` from `settings-page.js`),
+and, if it changes the look before the state is loaded,
 an attribute in `index.html` and in `initAppearance` in `app.js`. No
 migration is needed; stored documents without the field get the default.
 
@@ -118,7 +119,7 @@ undo should cover needs its primary key in `primaryKeys`.
 
 Compute it in `internal/domain` and send it from the server, in the habit view
 or an endpoint of its own (see `handlers_stats.go`); a view loads the latter
-with `remote()` (`web/assets/js/data/remote-stats.js`). The client shows
+with `useRemote()` (`web/assets/js/data/remote-stats.js`). The client shows
 statistics, it does not compute them.
 
 ## New view or dialog
@@ -127,8 +128,12 @@ A component in a module of its own (`*-view.js`, or `*-editor.js`,
 `*-picker.js`, `*-dialog.js`), exported and placed in the template of `App` in
 `app.js`. A view shows itself when `route.view` names it (`route.js`, which
 also needs its hash) and renders nothing while hidden. A dialog renders its
-own `<dialog>`, keeps its input in reactive state at module level and exports
-the function that fills it and opens it with `openPage` (`page-stack.js`).
+own `<dialog>`, keeps its input in reactive state at module level and a page
+controller (`createPage` in `page-stack.js`), and exports the function that
+fills the input and opens the page; it resolves once the page is closed. The
+dialog saves through `actions.js` with the controller's `run`, which closes
+the page on success and shows the error otherwise. Data changes never open a
+dialog themselves: the view or dialog that asks for a change opens it.
 
 ## New tool
 

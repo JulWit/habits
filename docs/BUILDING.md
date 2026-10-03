@@ -35,7 +35,7 @@ guide](https://google.github.io/styleguide/htmlcssguide.html); see the style
 rules in `AGENTS.md`. The formatters are developer tools, not build steps:
 
 ```bash
-uvx clang-format -i web/sw.js web/assets/js/*.js web/assets/js/*/*.js
+uvx clang-format -i web/sw.js web/assets/js/*.js web/assets/js/*/*.js test/js/*.mjs
 uv run scripts/format_templates.py web/assets/js/*.js web/assets/js/*/*.js
 uv run scripts/format_css.py web/assets/css/*.css
 ```
@@ -65,6 +65,26 @@ the state in detail:
 ```bash
 go test ./internal/httpapi -run '^$' -bench BenchmarkState
 ```
+
+### Frontend: types and unit tests
+
+The JSDoc types of the frontend are checked by TypeScript (`jsconfig.json`),
+and its pure parts (dates, translations, the day statuses, the state, the
+outbox, the board's window and layout, `useRemote`) have unit tests in
+`test/js/`, run by Node's own test runner. Both are developer tools, not
+build steps, and run in the CI. [uv](https://docs.astral.sh/uv/) fetches
+Node and, through npx, TypeScript:
+
+```bash
+uvx --from nodejs-wheel npx -y -p typescript@5.9 tsc -p jsconfig.json
+uvx --from nodejs-wheel node --test "test/js/*.test.mjs"
+```
+
+Vue's embedded build has no declarations; `types/vue.esm-browser.prod.d.ts`
+describes the parts the frontend uses, mapped to it by `rootDirs`. Neither
+`types/` nor `test/` is embedded in the binary. The tests run the modules
+outside a browser, so a module must not touch the document when it is
+imported; outside a browser the UI language is English.
 
 ### Frontend in Firefox
 

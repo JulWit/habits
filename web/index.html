@@ -48,6 +48,11 @@
     <link rel="stylesheet" href="/assets/css/dialogs.css">
     <link rel="stylesheet" href="/assets/css/board.css">
     <link rel="stylesheet" href="/assets/css/views.css">
+
+    <!-- The modules app.js imports, so the browser fetches them at once
+         instead of one level of imports after the other (preload.go). -->
+    {{range .Preload}}<link rel="modulepreload" href="{{.}}">
+    {{end}}
   </head>
   <body>
     <!-- The app, rendered by Vue (see assets/js/app.js). -->

@@ -24,8 +24,10 @@ import (
 // testWeb is a minimal frontend with an index.html template.
 var testWeb = fstest.MapFS{
 	"index.html": &fstest.MapFile{Data: []byte(
-		`<!doctype html><html lang="{{.Lang}}" data-theme="{{.Theme}}" data-font="{{.Font}}"></html>`)},
-	"assets/js/app.js":        &fstest.MapFile{Data: []byte("export const x = 1;\n")},
+		`<!doctype html><html lang="{{.Lang}}" data-theme="{{.Theme}}" data-font="{{.Font}}">` +
+			`{{range .Preload}}<link rel="modulepreload" href="{{.}}">{{end}}</html>`)},
+	"assets/js/app.js":        &fstest.MapFile{Data: []byte("import {y} from './y.js';\nexport const x = y;\n")},
+	"assets/js/y.js":          &fstest.MapFile{Data: []byte("export const y = 1;\n")},
 	"assets/fonts/test.woff2": &fstest.MapFile{Data: []byte("wOF2")},
 	"manifest.webmanifest": &fstest.MapFile{Data: []byte(
 		`{"name":"Habits","theme_color":"#e6e8ec","background_color":"#e6e8ec"}`)},
@@ -120,6 +122,9 @@ func TestIndexCarriesTheStoredAppearance(t *testing.T) {
 	body := w.Body.String()
 	if !strings.Contains(body, `data-theme="dark"`) || !strings.Contains(body, `data-font="geist"`) {
 		t.Errorf("shell without the stored appearance: %s", body)
+	}
+	if !strings.Contains(body, `<link rel="modulepreload" href="/assets/js/y.js">`) {
+		t.Errorf("shell without the preload of y.js: %s", body)
 	}
 	if cc := w.Header().Get("Cache-Control"); cc != "no-store" {
 		t.Errorf("Cache-Control = %q, want no-store", cc)

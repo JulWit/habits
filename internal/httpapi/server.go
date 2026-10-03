@@ -30,11 +30,13 @@ import (
 
 // server holds the dependencies of the HTTP handlers.
 type server struct {
-	cfg    config.Config
-	store  *store.Store
-	log    *slog.Logger
-	shell  *template.Template
-	assets http.Handler
+	cfg   config.Config
+	store *store.Store
+	log   *slog.Logger
+	shell *template.Template
+	// preload lists the modules index.html preloads, see preloadModules.
+	preload []string
+	assets  http.Handler
 	// manifest is the parsed web app manifest, see handleManifest.
 	manifest map[string]any
 	// zones caches the users' time zones by name (see location), as
@@ -53,6 +55,10 @@ func New(cfg config.Config, st *store.Store, logger *slog.Logger, webFS fs.FS) (
 	if err != nil {
 		return nil, err
 	}
+	preload, err := preloadModules(webFS)
+	if err != nil {
+		return nil, err
+	}
 	assets, err := newAssetHandler(webFS)
 	if err != nil {
 		return nil, err
@@ -62,6 +68,7 @@ func New(cfg config.Config, st *store.Store, logger *slog.Logger, webFS fs.FS) (
 		store:    st,
 		log:      logger,
 		shell:    shell,
+		preload:  preload,
 		assets:   assets,
 		manifest: manifest,
 	}
@@ -239,10 +246,12 @@ func (s *server) handleIndex(w http.ResponseWriter, r *http.Request, user auth.U
 	prefs := s.settingsOf(ctx, user.ID)
 	data := struct {
 		settings.Settings
-		Lang string
+		Lang    string
+		Preload []string
 	}{
 		Settings: prefs,
 		Lang:     resolveLanguage(prefs.Language, r.Header.Get("Accept-Language")),
+		Preload:  s.preload,
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")

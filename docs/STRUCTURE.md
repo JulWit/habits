@@ -39,6 +39,8 @@ internal/httpapi            Routing, JSON API, frontend delivery
   json.go                     JSON bodies, error responses, 404 for unknown /api/ paths
   build.go                    Version and build information of the binary
   manifest.go                 GET /manifest.webmanifest
+  preload.go                  The modules index.html preloads: the static imports
+                              of app.js, followed through the modules
   handlers_habits.go          GET /api/state; GET, POST, PATCH, DELETE /api/habits…;
                               POST /api/habits/reorder; the habit views they share
   handlers_entries.go         PUT /api/habits/{id}/entries/{date}
@@ -63,7 +65,8 @@ Dockerfile                  Container image: cross-compiled binary on scratch
 docs/                       This documentation
 web/                        Frontend (Vue, ES modules, no build step)
   index.html                  App shell, rendered as a Go template: the appearance
-                              settings on <html> and the element Vue mounts into
+                              settings on <html>, the module preloads and the
+                              element Vue mounts into
   manifest.webmanifest        Web app manifest; served with the colours of the
                               user's theme (manifest.go)
   sw.js                       Service worker for offline start

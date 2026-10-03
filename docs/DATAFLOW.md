@@ -75,6 +75,12 @@ again.
 
 ## Loading the state
 
+`index.html` lists the modules `app.js` imports, directly or not, as
+`modulepreload` links (`preload.go`, computed once at start from the
+embedded files), so the browser requests them at once rather than one level
+of imports after the other. A module loaded on first use, like the style
+guide, is left out.
+
 On start, `loader.js` requests `/api/state` with the last 200 days of entries
 and keeps it in `state.js`. The state is reactive: the Vue components read it
 and render again when it changes. The detail view loads a habit's full

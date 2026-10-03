@@ -108,9 +108,9 @@ func (t *Tx) Habit(ctx context.Context, id string) (domain.Habit, error) {
 	return h, nil
 }
 
-// CreateHabit validates the habit and inserts it at the end of the user's
-// list, with a new ID, its position and timestamps; a creation time already
-// set is kept.
+// CreateHabit normalises and validates the habit (Habit.Normalize) and
+// inserts it at the end of the user's list, with a new ID, its position and
+// timestamps; a creation time already set is kept.
 func (t *Tx) CreateHabit(ctx context.Context, h *domain.Habit) error {
 	h.ID = NewID()
 	// An imported habit keeps the day it was created on.
@@ -118,7 +118,7 @@ func (t *Tx) CreateHabit(ctx context.Context, h *domain.Habit) error {
 		h.CreatedAt = t.now
 	}
 	h.UpdatedAt = t.now
-	if err := h.Validate(); err != nil {
+	if err := h.Normalize(); err != nil {
 		return err
 	}
 	if err := t.requireOwnCategory(ctx, h.CategoryID); err != nil {
@@ -145,11 +145,11 @@ func (t *Tx) CreateHabit(ctx context.Context, h *domain.Habit) error {
 	return t.saveSchedules(ctx, h)
 }
 
-// SaveHabit validates the habit and stores all its fields except the
-// position (see ReorderHabits), with its schedules.
+// SaveHabit normalises and validates the habit and stores all its fields
+// except the position (see ReorderHabits), with its schedules.
 func (t *Tx) SaveHabit(ctx context.Context, h *domain.Habit) error {
 	h.UpdatedAt = t.now
-	if err := h.Validate(); err != nil {
+	if err := h.Normalize(); err != nil {
 		return err
 	}
 	if err := t.requireOwnCategory(ctx, h.CategoryID); err != nil {

@@ -143,20 +143,20 @@ func TestWeeklyHabitJudgesOlderWeeksByTheirSchedule(t *testing.T) {
 	}
 }
 
-// Validate rejects schedules that are not in order, and a habit without any.
-func TestValidateRejectsUnorderedSchedules(t *testing.T) {
+// Normalize rejects schedules that are not in order, and a habit without any.
+func TestNormalizeRejectsUnorderedSchedules(t *testing.T) {
 	h := baseHabit()
 	h.Schedules = []Schedule{
 		{From: Date{2026, 9, 10}, TargetValue: 1, Frequency: Frequency{Kind: FreqDaily}},
 		{From: Date{2026, 9, 10}, TargetValue: 1, Frequency: Frequency{Kind: FreqDaily}},
 	}
-	if err := h.Validate(); !errors.Is(err, ErrValidation) {
-		t.Errorf("Validate = %v, want a validation error", err)
+	if err := h.Normalize(); !errors.Is(err, ErrValidation) {
+		t.Errorf("Normalize = %v, want a validation error", err)
 	}
 
 	h.Schedules = nil
-	if err := h.Validate(); !errors.Is(err, ErrValidation) {
-		t.Errorf("no schedule: Validate = %v, want a validation error", err)
+	if err := h.Normalize(); !errors.Is(err, ErrValidation) {
+		t.Errorf("no schedule: Normalize = %v, want a validation error", err)
 	}
 }
 
@@ -167,8 +167,8 @@ func TestLaterScheduleAnchorsAtItsStart(t *testing.T) {
 	start := h.Current().From.AddDays(10)
 	h.Schedules = append(h.Schedules,
 		Schedule{From: start, Frequency: Frequency{Kind: FreqCustomInterval, IntervalDays: 3}})
-	if err := h.Validate(); err != nil {
-		t.Fatalf("Validate: %v", err)
+	if err := h.Normalize(); err != nil {
+		t.Fatalf("Normalize: %v", err)
 	}
 	if h.Current().Frequency.AnchorDate != start {
 		t.Errorf("anchor = %v, want %v", h.Current().Frequency.AnchorDate, start)

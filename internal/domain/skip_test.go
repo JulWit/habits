@@ -84,8 +84,8 @@ func TestLimitCompletesDaysWithinIt(t *testing.T) {
 func TestLimitOfZero(t *testing.T) {
 	h := countHabit()
 	h.Schedules[0] = Schedule{From: friday, TargetValue: 0, TargetType: TargetAtMost, Frequency: Frequency{Kind: FreqDaily}}
-	if err := h.Validate(); err != nil {
-		t.Fatalf("Validate: %v", err)
+	if err := h.Normalize(); err != nil {
+		t.Fatalf("Normalize: %v", err)
 	}
 	if !h.IsComplete(friday, 0) || h.IsComplete(friday, 10) {
 		t.Error("a limit of 0 should be met by nothing and broken by anything")

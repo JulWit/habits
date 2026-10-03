@@ -19,14 +19,14 @@ func baseHabit() Habit {
 	}
 }
 
-func TestValidateNormalizes(t *testing.T) {
+func TestNormalizeNormalizes(t *testing.T) {
 	h := baseHabit()
 	h.Name = "  Lesen\tam\nAbend  "
 	h.Color = "Green"
 	h.Unit = "  Seiten  "
 
-	if err := h.Validate(); err != nil {
-		t.Fatalf("Validate: %v", err)
+	if err := h.Normalize(); err != nil {
+		t.Fatalf("Normalize: %v", err)
 	}
 	if h.Name != "Lesen am Abend" {
 		t.Errorf("name = %q, want trimmed, with spaces for the tab and line break", h.Name)
@@ -43,7 +43,7 @@ func TestValidateNormalizes(t *testing.T) {
 	}
 }
 
-func TestValidateRejects(t *testing.T) {
+func TestNormalizeRejects(t *testing.T) {
 	for _, tc := range []struct {
 		name   string
 		mutate func(*Habit)
@@ -85,9 +85,9 @@ func TestValidateRejects(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			h := baseHabit()
 			tc.mutate(&h)
-			err := h.Validate()
+			err := h.Normalize()
 			if err == nil {
-				t.Fatal("Validate accepted an invalid habit")
+				t.Fatal("Normalize accepted an invalid habit")
 			}
 			if !errors.Is(err, ErrValidation) {
 				t.Errorf("error is not ErrValidation: %v", err)
@@ -96,15 +96,15 @@ func TestValidateRejects(t *testing.T) {
 	}
 }
 
-// Validate resets fields not used by the frequency kind.
-func TestValidateClearsForeignFrequencyFields(t *testing.T) {
+// Normalize resets fields not used by the frequency kind.
+func TestNormalizeClearsForeignFrequencyFields(t *testing.T) {
 	h := baseHabit()
 	h.Schedules[0].Frequency = Frequency{
 		Kind: FreqDaily, TimesPerWeek: 3, TimesAtMost: true, Weekdays: 0b0000101,
 		IntervalDays: 9, AnchorDate: Date{2026, time.January, 1},
 	}
-	if err := h.Validate(); err != nil {
-		t.Fatalf("Validate: %v", err)
+	if err := h.Normalize(); err != nil {
+		t.Fatalf("Normalize: %v", err)
 	}
 	if h.Current().Frequency != (Frequency{Kind: FreqDaily}) {
 		t.Errorf("frequency = %+v, want only the kind", h.Current().Frequency)
@@ -112,11 +112,11 @@ func TestValidateClearsForeignFrequencyFields(t *testing.T) {
 }
 
 // A custom interval without an anchor is anchored at the schedule's first day.
-func TestValidateAnchorsCustomInterval(t *testing.T) {
+func TestNormalizeAnchorsCustomInterval(t *testing.T) {
 	h := baseHabit()
 	h.Schedules[0].Frequency = Frequency{Kind: FreqCustomInterval, IntervalDays: 3}
-	if err := h.Validate(); err != nil {
-		t.Fatalf("Validate: %v", err)
+	if err := h.Normalize(); err != nil {
+		t.Fatalf("Normalize: %v", err)
 	}
 	if want := h.Current().From; h.Current().Frequency.AnchorDate != want {
 		t.Errorf("anchor = %v, want %v", h.Current().Frequency.AnchorDate, want)
@@ -125,20 +125,20 @@ func TestValidateAnchorsCustomInterval(t *testing.T) {
 
 // A step below 1 falls back to the kind's step; a step above the maximum is an
 // error.
-func TestValidateStepValue(t *testing.T) {
+func TestNormalizeStepValue(t *testing.T) {
 	h := baseHabit()
 	h.Kind = KindTime
 	h.Schedules[0].TargetValue = 200
 	h.StepValue = 0
-	if err := h.Validate(); err != nil {
-		t.Fatalf("Validate: %v", err)
+	if err := h.Normalize(); err != nil {
+		t.Fatalf("Normalize: %v", err)
 	}
 	if h.StepValue != KindTime.Step() {
 		t.Errorf("step = %d, want the kind's own %d", h.StepValue, KindTime.Step())
 	}
 
 	h.StepValue = KindTime.MaxTarget() + 1
-	if err := h.Validate(); !errors.Is(err, ErrValidation) {
+	if err := h.Normalize(); !errors.Is(err, ErrValidation) {
 		t.Errorf("step too large: %v, want ErrValidation", err)
 	}
 }
@@ -209,7 +209,7 @@ func TestIsScheduledNarrowedWeekdays(t *testing.T) {
 	}
 }
 
-func TestValidateNarrowedWeekdays(t *testing.T) {
+func TestNormalizeNarrowedWeekdays(t *testing.T) {
 	for _, tc := range []struct {
 		name    string
 		freq    Frequency
@@ -223,8 +223,8 @@ func TestValidateNarrowedWeekdays(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			h := baseHabit()
 			h.Schedules[0].Frequency = tc.freq
-			if err := h.Validate(); (err != nil) != tc.wantErr {
-				t.Errorf("Validate = %v, want error %v", err, tc.wantErr)
+			if err := h.Normalize(); (err != nil) != tc.wantErr {
+				t.Errorf("Normalize = %v, want error %v", err, tc.wantErr)
 			}
 		})
 	}
@@ -232,8 +232,8 @@ func TestValidateNarrowedWeekdays(t *testing.T) {
 	// Week interval 0 means every week, without an anchor.
 	h := baseHabit()
 	h.Schedules[0].Frequency = Frequency{Kind: FreqWeekdays, Weekdays: 1, AnchorDate: Date{2026, time.January, 1}}
-	if err := h.Validate(); err != nil {
-		t.Fatalf("Validate: %v", err)
+	if err := h.Normalize(); err != nil {
+		t.Fatalf("Normalize: %v", err)
 	}
 	if h.Current().Frequency.WeekInterval != 1 || !h.Current().Frequency.AnchorDate.IsZero() {
 		t.Errorf("frequency = %+v, want interval 1 and no anchor", h.Current().Frequency)
@@ -242,8 +242,8 @@ func TestValidateNarrowedWeekdays(t *testing.T) {
 	// Without an anchor, the week interval starts at the schedule's first week.
 	h = baseHabit()
 	h.Schedules[0].Frequency = Frequency{Kind: FreqWeekdays, Weekdays: 1, WeekInterval: 4}
-	if err := h.Validate(); err != nil {
-		t.Fatalf("Validate: %v", err)
+	if err := h.Normalize(); err != nil {
+		t.Fatalf("Normalize: %v", err)
 	}
 	if want := h.Current().From; h.Current().Frequency.AnchorDate != want {
 		t.Errorf("anchor = %v, want %v", h.Current().Frequency.AnchorDate, want)
@@ -319,23 +319,23 @@ func TestKindsAreValidAndNothingElseIs(t *testing.T) {
 	}
 }
 
-func TestValidateIcon(t *testing.T) {
+func TestNormalizeIcon(t *testing.T) {
 	h := baseHabit()
 	h.Icon = " droplet "
-	if err := h.Validate(); err != nil {
-		t.Fatalf("Validate: %v", err)
+	if err := h.Normalize(); err != nil {
+		t.Fatalf("Normalize: %v", err)
 	}
 	if h.Icon != "droplet" {
 		t.Errorf("icon = %q, want trimmed", h.Icon)
 	}
 
 	h.Icon = ""
-	if err := h.Validate(); err != nil {
+	if err := h.Normalize(); err != nil {
 		t.Errorf("no icon rejected: %v", err)
 	}
 
 	h.Icon = "<svg>"
-	if err := h.Validate(); !errors.Is(err, ErrValidation) {
+	if err := h.Normalize(); !errors.Is(err, ErrValidation) {
 		t.Errorf("unknown icon: err = %v, want ErrValidation", err)
 	}
 }

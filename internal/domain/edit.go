@@ -71,7 +71,7 @@ func setIf[T any](dst *T, src *T) {
 
 // NewHabit returns a habit set up by e, whose first schedule starts today.
 // The target defaults to 1; the frequency is required and validated with the
-// habit (Habit.Validate).
+// habit (Habit.Normalize).
 func NewHabit(e HabitEdit, today Date) Habit {
 	var h Habit
 	e.applyFields(&h)
@@ -87,7 +87,7 @@ func NewHabit(e HabitEdit, today Date) Habit {
 // the recorded days and the targets are only meaningful in its unit; e may
 // repeat it, as the editor sends every field. A new target or frequency
 // starts a new schedule from today on, or replaces the history with
-// Retroactive (Reschedule). h is validated when it is saved.
+// Retroactive (Reschedule). h is normalised and validated when it is saved.
 func (h *Habit) Apply(e HabitEdit, today Date) error {
 	if e.Kind != nil && *e.Kind != h.Kind {
 		return Invalid("kind_unchangeable", "the kind of a habit cannot be changed")

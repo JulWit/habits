@@ -76,12 +76,13 @@ func (t *Tx) CountHabits(ctx context.Context, id string) (int, error) {
 	return n, nil
 }
 
-// CreateCategory validates the category and inserts it at the end of the
-// user's list, with a new ID, its position and timestamps.
+// CreateCategory normalises and validates the category (Category.Normalize)
+// and inserts it at the end of the user's list, with a new ID, its position
+// and timestamps.
 func (t *Tx) CreateCategory(ctx context.Context, c *domain.Category) error {
 	c.ID = NewID()
 	c.CreatedAt, c.UpdatedAt = t.now, t.now
-	if err := c.Validate(); err != nil {
+	if err := c.Normalize(); err != nil {
 		return err
 	}
 	var last sql.NullInt64
@@ -103,11 +104,11 @@ func (t *Tx) CreateCategory(ctx context.Context, c *domain.Category) error {
 	return nil
 }
 
-// SaveCategory validates the category and stores all its fields except the
-// position (see ReorderCategories).
+// SaveCategory normalises and validates the category and stores all its
+// fields except the position (see ReorderCategories).
 func (t *Tx) SaveCategory(ctx context.Context, c *domain.Category) error {
 	c.UpdatedAt = t.now
-	if err := c.Validate(); err != nil {
+	if err := c.Normalize(); err != nil {
 		return err
 	}
 	if err := t.watch(ctx, "categories", "id = ?", c.ID); err != nil {

@@ -142,7 +142,7 @@ func (w Weekdays) Has(d time.Weekday) bool {
 }
 
 // Frequency is the schedule of a habit. Only the fields used by Kind are set;
-// Validate resets the others to zero.
+// Normalize resets the others to zero.
 type Frequency struct {
 	Kind          FrequencyKind `json:"kind"`
 	TimesPerWeek  int           `json:"timesPerWeek"`
@@ -261,9 +261,10 @@ func valueTooLarge(k Kind) error {
 	return Invalid("value_too_large", "value may be at most {max}", "max", limit)
 }
 
-// Validate normalises h in place and returns a validation error if h is
-// invalid.
-func (h *Habit) Validate() error {
+// Normalize puts h into its canonical form in place: trimmed name and unit,
+// the default colour and step, the kind's fixed unit and normalised
+// schedules. It returns a validation error if h is invalid then.
+func (h *Habit) Normalize() error {
 	h.Name = cleanText(h.Name)
 	h.Unit = cleanText(h.Unit)
 

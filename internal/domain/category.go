@@ -32,7 +32,7 @@ type CategoryEdit struct {
 	ShowProgress *bool `json:"showProgress"`
 }
 
-// Apply copies the set fields of e to c. c is validated when it is saved.
+// Apply copies the set fields of e to c. c is normalised and validated when it is saved.
 func (e CategoryEdit) Apply(c *Category) {
 	setIf(&c.Name, e.Name)
 	setIf(&c.Icon, e.Icon)
@@ -43,9 +43,9 @@ func (e CategoryEdit) Apply(c *Category) {
 // MaxCategoryNameLen is the maximum length of a category name, in characters.
 const MaxCategoryNameLen = 60
 
-// Validate normalises c in place and returns a validation error if c is
-// invalid.
-func (c *Category) Validate() error {
+// Normalize puts c into its canonical form in place: trimmed name and icon,
+// lower-case colour. It returns a validation error if c is invalid then.
+func (c *Category) Normalize() error {
 	c.Name = cleanText(c.Name)
 	if c.Name == "" {
 		return Invalid("category_name_empty", "category name must not be empty")

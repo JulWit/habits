@@ -292,6 +292,16 @@ export function unitLabel(habit) {
 }
 
 /**
+ * Formats metres, and kilometres with at most one decimal, in the UI locale.
+ * @const {{metres: !Intl.NumberFormat, kilometres: !Intl.NumberFormat}}
+ */
+const DISTANCE_FORMATS = {
+  metres: new Intl.NumberFormat(locale, {style: 'unit', unit: 'meter'}),
+  kilometres: new Intl.NumberFormat(
+      locale, {style: 'unit', unit: 'kilometer', maximumFractionDigits: 1}),
+};
+
+/**
  * Formats metres: "800 m", "5 km", "12.5 km". Kilometres are rounded down to
  * one decimal, so a distance short of its target never reads as reaching it
  * (4999 m: "4.9 km").
@@ -299,8 +309,8 @@ export function unitLabel(habit) {
  * @return {string}
  */
 function formatDistance(metres) {
-  if (metres < 1000) return `${metres} m`;
-  return `${(Math.floor(metres / 100) / 10).toLocaleString(locale)} km`;
+  if (metres < 1000) return DISTANCE_FORMATS.metres.format(metres);
+  return DISTANCE_FORMATS.kilometres.format(Math.floor(metres / 100) / 10);
 }
 
 /**

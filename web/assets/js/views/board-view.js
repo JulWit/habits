@@ -1,7 +1,8 @@
 /**
- * @fileoverview Overview: one block per category with a row per habit and a
- * column per day. All blocks share the same grid, so a single day header aligns
- * with all of them. The days shown are in board-window.js, how many fit in
+ * @fileoverview Overview: one block per category, or a single one without
+ * heading if it is not grouped by category, with a row per habit and a column
+ * per day. All blocks share the same grid, so a single day header aligns with
+ * all of them. The days shown are in board-window.js, how many fit in
  * board-measure.js, the keyboard navigation in board-keyboard.js and long
  * presses in board-press.js.
  */
@@ -9,7 +10,7 @@
 import * as actions from '../data/actions.js';
 import * as habitHelpers from '../data/habit-helpers.js';
 import {openCategory, openDays, openHabit} from '../data/route.js';
-import {groupedHabits, state} from '../data/state.js';
+import {boardBlocks, state} from '../data/state.js';
 import {openDayEditor} from '../dialogs/day-editor.js';
 import {openHabitEditor} from '../dialogs/habit-editor.js';
 import {arranging, onlyOpen, setArranging, shownDays} from '../ui/board-state.js';
@@ -458,7 +459,7 @@ export const TheBoardView = {
   setup() {
     /** @type {!Ref<?HTMLElement>} */
     const boardEl = ref(null);
-    const all = computed(() => groupedHabits());
+    const all = computed(() => boardBlocks());
     const everyHabit = computed(() => all.value.flatMap((b) => b.habits));
     const board = useBoardWindow(shownDays);
     const {activeDay, dates} = board;
@@ -565,7 +566,8 @@ export const TheBoardView = {
       noMatch: computed(
           () => onlyOpen.value && all.value.length > 0 &&
               blocks.value.length === 0),
-      // A single uncategorised block is shown without heading.
+      // A single uncategorised block, as the board shows when it is not
+      // grouped, is shown without heading.
       labelled: computed(
           () => all.value.length > 1 || all.value[0]?.category !== null),
       monthLabels: board.months,

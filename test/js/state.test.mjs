@@ -13,6 +13,7 @@ const {enqueue, overlay} = await import('../../web/assets/js/data/outbox.js');
 const stateModule = await import('../../web/assets/js/data/state.js');
 const {
   applyEntryAnswer,
+  boardBlocks,
   groupedHabits,
   habitById,
   inOrder,
@@ -108,6 +109,33 @@ test('groupedHabits groups by category, the rest last', () => {
       [['c1', ['b']], [null, ['a', 'c']]]);
   const all = groupedHabits({archived: true});
   assert.deepEqual(all[1].habits.map((h) => h.id), ['a', 'c', 'd']);
+});
+
+test('boardBlocks lists all habits in their order unless grouped', () => {
+  const categories = [{id: 'c1', name: 'Sport', position: 0}];
+  const habits = [
+    makeHabit({id: 'a'}),
+    makeHabit({id: 'b', categoryId: 'c1'}),
+    makeHabit({id: 'c', archivedAt: '2026-09-01T00:00:00Z'}),
+  ];
+  replaceState({settings: {showArchived: false}, categories, habits});
+  assert.deepEqual(boardBlocks(), groupedHabits());
+
+  replaceState({
+    settings: {showArchived: false, groupByCategory: false},
+    categories,
+    habits,
+  });
+  assert.deepEqual(
+      boardBlocks().map((b) => [b.category, b.habits.map((h) => h.id)]),
+      [[null, ['a', 'b']]]);
+
+  replaceState({
+    settings: {showArchived: false, groupByCategory: false},
+    categories,
+    habits: [],
+  });
+  assert.deepEqual(boardBlocks(), []);
 });
 
 test('overlay copies the habits with waiting writes', () => {

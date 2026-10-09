@@ -110,7 +110,8 @@ web/                        Frontend (Vue, ES modules, no build step)
       route.js                    The shown view (reactive) and navigation between views
       habit-helpers.js            Reads the day statuses; value, schedule and streak helpers
     views/                      The views (*-view) and the parts only they use
-      board-view.js               Board with category blocks, day header and active day
+      board-view.js               Board with category blocks (or one list), day header
+                                  and active day
       board-window.js             The days the board shows, paging and month labels
       board-measure.js            How many day columns fit; tight board
       board-keyboard.js           Keyboard navigation and tab stops of the board

@@ -20,6 +20,7 @@
 | Settings | Gear in the header |
 | Assign or create a category | "Category" field in the habit editor |
 | Edit or delete a category | Click the category heading, then "Edit" or "Delete" |
+| Show all habits in one list | Settings → "Overview" → "Group by category" off: the category headings and their progress bars disappear, and the habits follow their own order across the categories, which "Arrange" then sets |
 | Reorder habits and categories | Settings → "Arrange"; then by drag and drop or with arrow buttons (`reorderMode`). Dragging near the top or bottom edge scrolls the page along. "Finish arranging" at the bottom of the screen ends it. Arranging turns the "only open" filter off, and turning the filter on ends arranging, as it would hide habits and handles |
 | Close the detail view | `Esc` |
 | Skip several days (holiday, illness) | Settings → "Skip days" for all habits; "Skip days…" in the menu of a habit's detail view for one or all |
@@ -143,6 +144,7 @@ immediately. Missing or invalid values fall back to their defaults.
 | `overviewDays` | 0 (automatic) or 3–90 | Day columns on the board |
 | `alignWeeks` | bool | Align the board to calendar weeks |
 | `showArchived` | bool | Show archived habits |
+| `groupByCategory` | bool | Show the board as a block per category (default); off, all habits form one list without headings |
 | `reorderMode` | `drag`, `buttons` | Reorder by drag and drop or with arrow buttons |
 | `pattern` | `none`, `grain`, `dots`, `grid`, `lines`, `icons`, `halftone` | Page background; `grain` is a rough texture, `icons` the habit icons in a staggered grid, `halftone` dots in halftone waves |
 | `bandColor` | `neutral` or a palette colour | Colour of the day marker and band (on the active day) |

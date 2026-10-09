@@ -192,7 +192,8 @@ const DE = {
   'Language & time': 'Sprache & Zeit',
   'Theme, font, colours and background':
       'Design, Schrift, Farben und Hintergrund',
-  'Reordering and days shown': 'Anordnen und angezeigte Tage',
+  'Reordering, grouping and days shown':
+      'Anordnen, Gruppierung und angezeigte Tage',
   'Language and time zone': 'Sprache und Zeitzone',
   'Archived habits': 'Archivierte Gewohnheiten',
   'Current user': 'Aktueller Benutzer',
@@ -246,6 +247,12 @@ const DE = {
       'Kategorien und Gewohnheiten werden an ihrem Griff verschoben.',
   'Categories and habits are moved with arrows — by keyboard too.':
       'Kategorien und Gewohnheiten werden mit Pfeilen verschoben — auch per Tastatur.',
+  'Categories': 'Kategorien',
+  'Group by category': 'Nach Kategorien gruppieren',
+  'Each category is a block with its heading and progress.':
+      'Jede Kategorie ist ein Block mit Überschrift und Fortschritt.',
+  'All habits are one list without headings; arranging sets their order across the categories.':
+      'Alle Gewohnheiten stehen in einer Liste ohne Überschriften; Anordnen legt ihre Reihenfolge über die Kategorien hinweg fest.',
   'Days in the overview': 'Tage in der Übersicht',
   'Automatic': 'Automatisch',
   'As many days are shown as fit in the window — currently {n}.':

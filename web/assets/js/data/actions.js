@@ -15,7 +15,7 @@ import * as habitHelpers from './habit-helpers.js';
 import {refresh} from './loader.js';
 import {discard, enqueue, flush, isConnectionError, isOffline, isSessionExpired, pending, setOffline} from './outbox.js';
 import {goHome, showsHabit} from './route.js';
-import {applyEntryAnswer, categoryById, dropPending, groupedHabits, habitById, removeCategory, removeHabit, reorderCategoriesLocal, reorderHabitsLocal, showPending, state, upsertCategory, upsertHabit} from './state.js';
+import {applyEntryAnswer, boardBlocks, categoryById, dropPending, habitById, removeCategory, removeHabit, reorderCategoriesLocal, reorderHabitsLocal, showPending, state, upsertCategory, upsertHabit} from './state.js';
 import {offerUndo, stepLabel} from './undo.js';
 
 /**
@@ -475,16 +475,17 @@ export async function createCategory(name) {
 }
 
 /**
- * Saves a new order of the habits of one category. Habits of other categories
- * keep their positions: the category's slots are refilled in the new order.
+ * Saves a new order of the habits of one block of the board (a category, or
+ * all habits shown). Habits of other blocks keep their positions: the block's
+ * slots are refilled in the new order.
  * @param {!Array<string>} ids
  */
 export function setHabitOrder(ids) {
-  const inCategory = new Set(ids);
+  const inBlock = new Set(ids);
   const after = [];
   let next = 0;
   for (const habit of state.habits) {
-    if (inCategory.has(habit.id)) {
+    if (inBlock.has(habit.id)) {
       after.push(ids[next]);
       next++;
     } else {
@@ -495,13 +496,13 @@ export function setHabitOrder(ids) {
 }
 
 /**
- * Moves a habit one place up (-1) or down (+1) within its category, as shown
- * on the board.
+ * Moves a habit one place up (-1) or down (+1) within its block on the board:
+ * its category, or all habits if the board is not grouped by category.
  * @param {string} id
  * @param {number} delta
  */
 export function moveHabit(id, delta) {
-  const block = groupedHabits().find((b) => b.habits.some((h) => h.id === id));
+  const block = boardBlocks().find((b) => b.habits.some((h) => h.id === id));
   if (!block) return;
   const at = block.habits.findIndex((h) => h.id === id);
   const neighbour = block.habits[at + delta];

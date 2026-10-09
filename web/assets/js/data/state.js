@@ -497,6 +497,20 @@ export function groupedHabits({archived = state.settings.showArchived} = {}) {
 }
 
 /**
+ * Returns the blocks of the overview: by category (groupedHabits), or, with
+ * the groupByCategory setting off, a single block without category holding
+ * all habits shown in their own order, none if there are none.
+ * @return {!Array<!Block>}
+ */
+export function boardBlocks() {
+  // A state remembered before the setting existed lacks it.
+  if (state.settings.groupByCategory !== false) return groupedHabits();
+  const habits =
+      state.habits.filter((h) => !h.archivedAt || state.settings.showArchived);
+  return habits.length > 0 ? [{category: null, habits}] : [];
+}
+
+/**
  * Returns the user's time zone, else the server's, or undefined (the
  * browser's own) if the browser knows neither.
  * @return {string|undefined}

@@ -210,6 +210,7 @@ def desktop(run, f):
     statistics_years(run, f)
     category_picker(run, f)
     arranging(run, f)
+    grouping(run, f)
     settings(run, f)
     import_undo(run, f)
 
@@ -586,6 +587,33 @@ def arranging(run, f):
     run.check("the filter ends arranging", run.js(filter_on) and editing == "off", editing)
     run.click("#filter-open-habits")
     time.sleep(0.4)
+
+
+def grouping(run, f):
+    """Without grouping by category, the board is one list without headings."""
+    headings = "return document.querySelectorAll('#board-grid .board-block-head').length;"
+    run.click("#open-settings")
+    time.sleep(0.4)
+    run.click('#settings-dialog [data-page="settings-board"]')
+    time.sleep(0.4)
+    run.click("#settings-board-group")
+    time.sleep(0.8)
+    run.check("turning grouping off is saved",
+              run.api("GET", "/api/settings")["groupByCategory"] is False)
+    run.keys(Keys.ESCAPE)
+    time.sleep(0.3)
+    run.keys(Keys.ESCAPE)
+    time.sleep(0.5)
+    rows = run.js("return document.querySelectorAll('#board-grid .board-habit-row').length;")
+    run.check("the board shows all habits in one list without headings",
+              run.js(headings) == 0 and run.js(f"""return !!document.querySelector(
+                  '.board-habit-row[data-habit="{f.check_habit}"]');""") and rows >= 2,
+              f"{run.js(headings)} headings, {rows} rows")
+    run.screenshot("board-ungrouped")
+
+    run.api("PATCH", "/api/settings", {"groupByCategory": True})
+    run.load()
+    run.check("grouped again, the categories have their headings", run.js(headings) > 0)
 
 
 def settings(run, f):

@@ -1,6 +1,6 @@
 /**
  * @fileoverview The overview page of the settings: arranging and how it is
- * done, the days shown and the completion rate's window.
+ * done, grouping by category, the days shown and the completion rate's window.
  */
 
 import {refresh} from '../data/loader.js';
@@ -63,6 +63,10 @@ export const SettingsBoardPage = {
         return t(
             'The overview shows whole calendar weeks, including the remaining days of this week.');
       }),
+      groupHint: computed(
+          () => settings.value.groupByCategory ?
+              t('Each category is a block with its heading and progress.') :
+              t('All habits are one list without headings; arranging sets their order across the categories.')),
       reorderHint: computed(
           () => settings.value.reorderMode === 'drag' ?
               t('Categories and habits are moved by their handle.') :
@@ -106,6 +110,20 @@ export const SettingsBoardPage = {
         <p class="field-hint">
           {{ reorderHint }}
         </p>
+      </fieldset>
+      <fieldset class="field">
+        <legend class="field-label">{{ t('Categories') }}</legend>
+        <label class="switch">
+          <input
+            id="settings-board-group"
+            type="checkbox"
+            autocomplete="off"
+            :checked="settings.groupByCategory"
+            @change="save({groupByCategory: $event.target.checked})"
+          >
+          <span>{{ t('Group by category') }}</span>
+        </label>
+        <p class="field-hint">{{ groupHint }}</p>
       </fieldset>
       <fieldset class="field">
         <legend class="field-label">{{ t('Days in the overview') }}</legend>

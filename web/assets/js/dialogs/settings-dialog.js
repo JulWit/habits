@@ -183,7 +183,7 @@ export const TheSettingsDialog = {
           page="settings-board"
           icon="board"
           :title="t('Overview')"
-          :hint="t('Reordering and days shown')"
+          :hint="t('Reordering, grouping and days shown')"
         />
         <settings-menu-item
           page="settings-region"

@@ -98,7 +98,7 @@ language is English.
 
 `scripts/firefox_test.py` tests the frontend in an installed Firefox with real
 input: mouse and keyboard at desktop width, touch at 500 px (the narrowest
-window Firefox allows; the stacked layout of a phone is checked on a narrowed
+window Firefox allows; the tight layout of a phone is checked on a narrowed
 board). It needs [uv](https://docs.astral.sh/uv/), which installs Selenium from
 the script's inline metadata; Selenium Manager fetches geckodriver. It is a
 developer tool, not part of the build.

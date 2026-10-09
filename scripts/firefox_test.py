@@ -673,25 +673,22 @@ def phone(run, f):
                                page: document.documentElement.scrollWidth};""")
     run.check("no horizontal scrolling", layout["page"] <= layout["view"], str(layout))
 
-    # A phone is narrower still: a board container of a phone's width stacks
-    # the names above the days, which keep at least their normal width for
-    # touch, and a wider one shows more days again.
+    # A phone is narrower still: a board container of a phone's width shows
+    # the tight layout, names beside the days, and a wider one more days again.
     tight = run.js("""
         const main = document.getElementById('board-view');
         const days = () => getComputedStyle(document.documentElement).getPropertyValue('--days').trim();
         main.style.maxWidth = '375px';
         await new Promise((r) => setTimeout(r, 600));
-        const out = {days: days(), stacked: document.documentElement.hasAttribute('data-stacked'),
-                     cell: document.querySelector('[data-role="cell"]').offsetWidth,
+        const out = {days: days(), tight: document.documentElement.hasAttribute('data-tight'),
                      board: document.getElementById('board-grid').offsetWidth,
                      room: main.clientWidth};
         main.style.maxWidth = '';
         await new Promise((r) => setTimeout(r, 600));
         out.wider = days();
         return out;""")
-    run.check("at 375 px: seven days, stacked, cells of 40 px at least, fitting",
-              tight["days"] == "7" and tight["stacked"] and tight["cell"] >= 40
-              and tight["board"] <= tight["room"],
+    run.check("at 375 px: seven days, tight, fitting",
+              tight["days"] == "7" and tight["tight"] and tight["board"] <= tight["room"],
               str(tight))
     run.check("wider again: more days", int(tight["wider"]) > 7, str(tight))
     run.screenshot("phone-board")

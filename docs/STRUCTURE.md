@@ -87,7 +87,7 @@ web/                        Frontend (Vue, ES modules, no build step)
     dialogs.css                 Dialog and page frames, settings, search,
                                 category picker, day dialog
     board.css                   The overview: day header, cards, rows, day cells,
-                                day summary, tight and stacked board, edit mode
+                                day summary, tight board, edit mode
     views.css                   Habit, category and day statistics views, the
                                 cumulative chart, the style guide
   assets/fonts/               Embedded woff2 fonts and their licences
@@ -112,7 +112,7 @@ web/                        Frontend (Vue, ES modules, no build step)
     views/                      The views (*-view) and the parts only they use
       board-view.js               Board with category blocks, day header and active day
       board-window.js             The days the board shows, paging and month labels
-      board-measure.js            How many day columns fit; tight and stacked board
+      board-measure.js            How many day columns fit; tight board
       board-keyboard.js           Keyboard navigation and tab stops of the board
       board-press.js              Long presses on the day cells
       board-cells.js              Header day, habit label and day cell of the board

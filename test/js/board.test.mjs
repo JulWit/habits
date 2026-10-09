@@ -72,19 +72,19 @@ test('a wide window shows as many days as fit, or the setting', () => {
   assert.equal(layoutFor(1200, 14, TOKENS).days, 14);
 });
 
-test('a narrow window shows a week, stacked if the days stay large', () => {
+test('a narrow window shows a week, names beside the days', () => {
   const phone = layoutFor(400, 0, TOKENS);
   assert.equal(phone.days, 7);
-  assert.equal(phone.mode, 'stacked');
-  assert.equal(phone.label, 0);
-  assert.ok(phone.cell >= TOKENS.cell && phone.cell <= 48);
+  assert.equal(phone.mode, 'tight');
+  assert.ok(phone.label >= TOKENS.labelTightMin);
+  assert.ok(phone.cell >= TOKENS.cellTightMin && phone.cell <= TOKENS.cell);
 });
 
-test('narrower still, the board is tight', () => {
+test('narrower still, the days shrink to their minimum', () => {
   const narrow = layoutFor(280, 0, TOKENS);
   assert.equal(narrow.days, 7);
   assert.equal(narrow.mode, 'tight');
-  assert.ok(narrow.cell >= TOKENS.cellTightMin);
+  assert.equal(narrow.cell, TOKENS.cellTightMin);
 });
 
 test('a fixed setting below a week is kept', () => {

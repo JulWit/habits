@@ -79,12 +79,6 @@ html[data-tight] .habit-meta {
   font-size: var(--text-xs);
 }
 
-/* On a stacked board (data-stacked) the name has a line of its own, so the
-   second line need not shrink. */
-html[data-stacked] .habit-meta {
-  flex: none;
-}
-
 /* ---------- app bar of the detail views ---------- */
 
 /* Sticky, on the page background like the pages' title bars, and across the

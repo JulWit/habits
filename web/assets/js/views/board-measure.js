@@ -1,8 +1,8 @@
 /**
  * @fileoverview How many day columns fit on the overview, measured on the
  * window and the size tokens of the stylesheet. Fewer than a week tighten the
- * board: stacked (names above their days) or tight (smaller columns), set on
- * <html> together with the size tokens, as the day header uses them too.
+ * board (smaller columns), set on <html> together with the size tokens, as the
+ * day header uses them too.
  */
 
 import {route} from '../data/route.js';
@@ -14,12 +14,6 @@ import {onMounted, onUnmounted, watch} from '../vue.js';
 
 /** Minimum number of day columns. */
 const MIN_DAYS = 7;
-
-/**
- * Widest day column of a stacked board, in px: the touch target size of
- * Material Design (48dp), more than Apple's 44pt.
- */
-const STACKED_CELL_MAX = 48;
 
 /**
  * The size tokens the columns are computed from, in px (see base.css and
@@ -106,12 +100,11 @@ export let BoardLayout;
 /**
  * Returns the layout of `width`: the setting `wanted` (0 for as many as fit),
  * limited to what fits. At least a week is shown, tightening the board if
- * needed; a fixed setting below seven is respected. A tightened board is
- * preferably stacked: each habit's name takes a line of its own above its
- * days, which then share the whole width, as long as that keeps the days at
- * least at their normal size, for touch. Otherwise the names stay beside the
- * days, and both shrink: first the day columns down to their tight minimum,
- * then the name column.
+ * needed; a fixed setting below seven is respected. A tightened board keeps
+ * the names beside the days, one line per habit, and both shrink: first the
+ * day columns down to their tight minimum, then the name column. The days may
+ * then be narrower than the touch target size, which keeps the board compact
+ * on a phone.
  * @param {number} width
  * @param {number} wanted
  * @param {!Tokens} tokens at the normal sizes
@@ -126,11 +119,6 @@ export function layoutFor(width, wanted, tokens) {
   const least = wanted > 0 ? Math.min(wanted, MIN_DAYS) : MIN_DAYS;
   if (count >= least) return {days: count, mode: 'normal'};
 
-  // Stacked, the name column has no width; each day column keeps its gap.
-  const stacked = Math.min(STACKED_CELL_MAX, Math.floor(room / least) - 2);
-  if (stacked >= tokens.cell) {
-    return {days: least, mode: 'stacked', cell: stacked, label: 0};
-  }
   // The widest cell that leaves the name column its minimum width.
   const widest = Math.floor((room - tokens.labelTightMin) / least) - 2;
   const cell = Math.max(tokens.cellTightMin, Math.min(tokens.cell, widest));
@@ -145,7 +133,6 @@ export function layoutFor(width, wanted, tokens) {
  */
 function applyLayout(layout) {
   const root = document.documentElement;
-  root.toggleAttribute('data-stacked', layout.mode === 'stacked');
   root.toggleAttribute('data-tight', layout.mode === 'tight');
   /**
    * Sets a custom property, or removes it for undefined.
@@ -171,11 +158,8 @@ function applyLayout(layout) {
  */
 function loosen() {
   const root = document.documentElement;
-  if (!root.hasAttribute('data-tight') && !root.hasAttribute('data-stacked')) {
-    return;
-  }
+  if (!root.hasAttribute('data-tight')) return;
   root.removeAttribute('data-tight');
-  root.removeAttribute('data-stacked');
   root.style.removeProperty('--cell');
   root.style.removeProperty('--label-min');
 }

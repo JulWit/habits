@@ -627,9 +627,9 @@ def grouping(run, f):
     run.keys(Keys.ESCAPE)
     time.sleep(0.5)
     line = run.js(f"""return getComputedStyle(document.querySelector(
-        '.board-block[data-category="{f.category}"]'), '::after').boxShadow;""")
+        '.board-block[data-category="{f.category}"]'), '::after').backgroundImage;""")
     run.check("compact categories have a line instead of a heading",
-              run.js(headings) == 0 and "inset" in line, line)
+              run.js(headings) == 0 and "linear-gradient" in line, line)
     run.screenshot("board-compact")
     run.api("PATCH", "/api/settings", {"compactCategories": False})
     run.load()

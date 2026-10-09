@@ -56,6 +56,23 @@
   white-space: nowrap;
 }
 
+/* Names in the habit's colour (the colorNames setting), where an ancestor
+   sets --habit-color. The fallback for browsers without relative colours is
+   the shade as it is. */
+html[data-color-names='on'] .habit-name {
+  color: var(--habit-color, inherit);
+}
+
+/* At one lightness limit per theme, darker on light and lighter on dark, so
+   every colour reads at 4.5:1 or more on the card and its hover fill. */
+@supports (color: oklch(from red l c h)) {
+  html[data-color-names='on'] .habit-name {
+    color: light-dark(
+        oklch(from var(--habit-color) min(l, 0.5) c h),
+        oklch(from var(--habit-color) max(l, 0.7) c h));
+  }
+}
+
 .habit-meta {
   color: var(--text-faint);
   font-size: var(--text-xs);

@@ -216,6 +216,10 @@ const DE = {
   'Comfortable': 'Großzügig',
   'Spacing inside and around every element, and how heavy its emphasis is set.':
       'Abstände in und um jedes Element und wie kräftig Hervorhebungen gesetzt sind.',
+  'Habit names': 'Namen der Gewohnheiten',
+  'In the habit\'s colour': 'In der Farbe der Gewohnheit',
+  'On the overview and in the category view, a little darker or lighter where the colour itself would be hard to read.':
+      'Auf der Übersicht und in der Kategorieansicht, etwas dunkler oder heller, wo die Farbe selbst schwer zu lesen wäre.',
   'Accent colour': 'Akzentfarbe',
   'Opacity': 'Deckkraft',
   'Neutral': 'Neutral',

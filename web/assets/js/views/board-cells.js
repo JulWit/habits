@@ -97,7 +97,12 @@ export const BoardHabitLabel = {
       ].filter(Boolean).join(' · ');
       return `${props.habit.name}\n${meta}`;
     });
-    return {described, title};
+    return {
+      described,
+      title,
+      // For the name, if it is shown in the habit's colour.
+      style: computed(() => ({'--habit-color': colorValue(props.habit.color)})),
+    };
   },
   // The streak is always shown, even when it is 0.
   template: `
@@ -108,6 +113,7 @@ export const BoardHabitLabel = {
       :class="{'is-archived': habit.archivedAt}"
       data-role="open"
       :data-habit="habit.id"
+      :style="style"
     >
       <app-icon-badge
         class="habit-icon"

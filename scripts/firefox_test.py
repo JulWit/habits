@@ -636,6 +636,16 @@ def settings(run, f):
     saved = run.api("GET", "/api/settings")["bandOpacity"]
     run.check("a slider saves on release", saved != f.settings["bandOpacity"],
               f"{f.settings['bandOpacity']} -> {saved}")
+
+    name_color = f"""return getComputedStyle(document.querySelector(
+        '.board-habit-row[data-habit="{f.check_habit}"] .habit-name')).color;"""
+    plain = run.js(name_color)
+    run.click("#settings-look-color-names")
+    time.sleep(0.8)
+    colored = run.js(name_color)
+    run.check("habit names take their colour at once, and it is saved",
+              colored != plain and run.api("GET", "/api/settings")["colorNames"],
+              f"{plain} -> {colored}")
     run.keys(Keys.ESCAPE)
     time.sleep(0.3)
     run.keys(Keys.ESCAPE)

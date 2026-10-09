@@ -40,8 +40,10 @@ type Settings struct {
 	// percent.
 	BandFillOpacity int `json:"bandFillOpacity"`
 	// ShowBand shows the today band in the cards.
-	ShowBand bool   `json:"showBand"`
-	Language string `json:"language"`
+	ShowBand bool `json:"showBand"`
+	// ColorNames shows the names of the habits in their colour.
+	ColorNames bool   `json:"colorNames"`
+	Language   string `json:"language"`
 	// TimeZone is an IANA time zone name, or "" for the server's HABITS_TZ.
 	TimeZone string `json:"timeZone"`
 	// RateWindow is the number of days the completion rate covers, or "all"

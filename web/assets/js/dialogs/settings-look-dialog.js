@@ -1,7 +1,7 @@
 /**
  * @fileoverview The appearance page of the settings: theme, font, density,
- * accent colour, today band and background pattern, and the link to the style
- * guide, which previews them.
+ * habit names in colour, accent colour, today band and background pattern, and
+ * the link to the style guide, which previews them.
  */
 
 import {openStyleGuide} from '../data/route.js';
@@ -115,6 +115,22 @@ export const SettingsLookPage = {
         />
         <p class="field-hint">
           {{ t('Spacing inside and around every element, and how heavy its emphasis is set.') }}
+        </p>
+      </fieldset>
+      <fieldset class="field">
+        <legend class="field-label">{{ t('Habit names') }}</legend>
+        <label class="switch">
+          <input
+            id="settings-look-color-names"
+            type="checkbox"
+            autocomplete="off"
+            :checked="settings.colorNames"
+            @change="save({colorNames: $event.target.checked})"
+          >
+          <span>{{ t("In the habit's colour") }}</span>
+        </label>
+        <p class="field-hint">
+          {{ t('On the overview and in the category view, a little darker or lighter where the colour itself would be hard to read.') }}
         </p>
       </fieldset>
       <fieldset class="field">

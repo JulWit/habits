@@ -151,6 +151,7 @@ immediately. Missing or invalid values fall back to their defaults.
 | `bandOpacity` | 0–100 | Opacity of the day marker in the header |
 | `bandFillOpacity` | 0–100 | Opacity of the band in the cards |
 | `showBand` | bool | Show the band in the cards |
+| `colorNames` | bool | Show the habit names on the board and in the category view in the habit's colour, darkened on light and lightened on dark where needed to stay readable |
 | `language` | `system`, `en`, `de` | UI language; `system` uses the browser's `Accept-Language`, falling back to English |
 | `timeZone` | `""` or an IANA name | Time zone for "today"; `""` uses `HABITS_TZ` |
 | `rateWindow` | `7`, `30`, `90`, `365`, `all` | Days the completion rate covers ("Completion rate over" in the overview settings); `all` covers the whole history |

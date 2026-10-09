@@ -312,6 +312,7 @@ function initAppearance() {
     root.dataset.reorder = settings.reorderMode;
     root.dataset.band = settings.bandColor;
     root.dataset.todayBand = settings.showBand ? 'on' : 'off';
+    root.dataset.colorNames = settings.colorNames ? 'on' : 'off';
 
     // Custom properties, as the stylesheet computes with them.
     root.style.setProperty('--today-opacity', `${settings.bandOpacity}%`);

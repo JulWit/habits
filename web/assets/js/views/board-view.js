@@ -15,6 +15,7 @@ import {openDayEditor} from '../dialogs/day-editor.js';
 import {openHabitEditor} from '../dialogs/habit-editor.js';
 import {arranging, onlyOpen, setArranging, shownDays} from '../ui/board-state.js';
 import {enableDragReorder} from '../ui/drag-reorder.js';
+import {colorValue} from '../ui/icons.js';
 import {dayOfMonth, formatLong} from '../util/dates.js';
 import {t} from '../util/i18n.js';
 import {computed, inject, nextTick, onMounted, onUnmounted, provide, reactive, ref, watch} from '../vue.js';
@@ -268,7 +269,8 @@ const BoardHabitRow = {
  * The block of a category: its heading with progress and reorder controls,
  * and the rows of the habits that pass the filter. `block.habits` are all
  * habits of the category, `block.visible` those shown; `tabStop` is the day
- * cell that is the board's tab stop.
+ * cell that is the board's tab stop. `labelled` shows the heading; `striped`
+ * marks the block by a line in the category's colour instead.
  */
 const BoardBlock = {
   name: 'BoardBlock',
@@ -276,6 +278,7 @@ const BoardBlock = {
   props: {
     block: {type: Object, required: true},
     labelled: Boolean,
+    striped: Boolean,
     dates: {type: Array, required: true},
     active: {type: String, required: true},
     tabStop: {type: Object, default: null},
@@ -285,6 +288,7 @@ const BoardBlock = {
    *   block: {category: ?Category, habits: !Array<!Habit>, visible:
    *       !Array<!Habit>},
    *   labelled: boolean,
+   *   striped: boolean,
    *   dates: !Array<string>,
    *   active: string,
    *   tabStop: ?CellKey,
@@ -297,6 +301,11 @@ const BoardBlock = {
       state,
       byDragging,
       category,
+      // The colour of the line; neutral without one (see board.css).
+      stripeStyle: computed(
+          () => props.striped && category.value?.color ?
+              {'--category-color': colorValue(category.value.color)} :
+              null),
       // The place of the category among all, for the arrow buttons.
       at: computed(
           () => state.categories.findIndex((c) => c.id === category.value?.id)),
@@ -322,7 +331,9 @@ const BoardBlock = {
   template: `
     <section
       class="board-block"
+      :class="{'is-striped': striped}"
       :data-category="category?.id"
+      :style="stripeStyle"
     >
       <header
         v-if="labelled"
@@ -486,12 +497,24 @@ export const TheBoardView = {
     const dragging = ref(false);
     /** @type {!Array<!BoardBlockData>} */
     let frozen = [];
+    // A single uncategorised block, as the board shows when it is not
+    // grouped, has no heading.
+    const grouped =
+        computed(() => all.value.length > 1 || all.value[0]?.category !== null);
+    // Compact categories have a line in their colour instead of a heading,
+    // except while arranging, where the heading tells which card is moved
+    // and carries its handles.
+    const striped = computed(
+        () => grouped.value && state.settings.compactCategories === true &&
+            !arranging.value);
     // Blocks keep all habits for the progress bar, plus the filtered habits
-    // for the rows.
+    // for the rows. Without a heading, an empty block would not tell which
+    // category it is, so it is left out.
     const blocks = computed(() => {
       if (dragging.value) return frozen;
+      const keepEmpty = !onlyOpen.value && !striped.value;
       return all.value.map((b) => ({...b, visible: b.habits.filter(matches)}))
-          .filter((b) => !onlyOpen.value || b.visible.length > 0);
+          .filter((b) => keepEmpty || b.visible.length > 0);
     });
 
     const keyboard = useBoardKeyboard({
@@ -566,10 +589,8 @@ export const TheBoardView = {
       noMatch: computed(
           () => onlyOpen.value && all.value.length > 0 &&
               blocks.value.length === 0),
-      // A single uncategorised block, as the board shows when it is not
-      // grouped, is shown without heading.
-      labelled: computed(
-          () => all.value.length > 1 || all.value[0]?.category !== null),
+      labelled: computed(() => grouped.value && !striped.value),
+      striped,
       monthLabels: board.months,
       offset: board.offset,
       selectedDay: board.selectedDay,
@@ -667,6 +688,7 @@ export const TheBoardView = {
           :key="block.category?.id ?? ''"
           :block="block"
           :labelled="labelled"
+          :striped="striped"
           :dates="dates"
           :active="active"
           :tab-stop="cellStop"

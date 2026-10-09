@@ -65,7 +65,7 @@ export const SettingsBoardPage = {
       }),
       groupHint: computed(
           () => settings.value.groupByCategory ?
-              t('Each category is a block with its heading and progress.') :
+              t('Each category is a block of its own.') :
               t('All habits are one list without headings; arranging sets their order across the categories.')),
       reorderHint: computed(
           () => settings.value.reorderMode === 'drag' ?
@@ -124,6 +124,22 @@ export const SettingsBoardPage = {
           <span>{{ t('Group by category') }}</span>
         </label>
         <p class="field-hint">{{ groupHint }}</p>
+        <!-- Only while grouped, as the single list has no headings. -->
+        <template v-if="settings.groupByCategory">
+          <label class="switch">
+            <input
+              id="settings-board-compact"
+              type="checkbox"
+              autocomplete="off"
+              :checked="settings.compactCategories"
+              @change="save({compactCategories: $event.target.checked})"
+            >
+            <span>{{ t('Compact categories') }}</span>
+          </label>
+          <p class="field-hint">
+            {{ t("Instead of a heading with name, icon and progress, a line in the category's colour marks each block. Empty categories are left out; while arranging, the headings are shown.") }}
+          </p>
+        </template>
       </fieldset>
       <fieldset class="field">
         <legend class="field-label">{{ t('Days in the overview') }}</legend>

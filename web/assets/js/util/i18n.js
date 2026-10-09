@@ -253,8 +253,11 @@ const DE = {
       'Kategorien und Gewohnheiten werden mit Pfeilen verschoben — auch per Tastatur.',
   'Categories': 'Kategorien',
   'Group by category': 'Nach Kategorien gruppieren',
-  'Each category is a block with its heading and progress.':
-      'Jede Kategorie ist ein Block mit Überschrift und Fortschritt.',
+  'Each category is a block of its own.':
+      'Jede Kategorie ist ein eigener Block.',
+  'Compact categories': 'Kompakte Kategorien',
+  'Instead of a heading with name, icon and progress, a line in the category\'s colour marks each block. Empty categories are left out; while arranging, the headings are shown.':
+      'Statt einer Überschrift mit Name, Symbol und Fortschritt markiert ein Strich in der Farbe der Kategorie jeden Block. Leere Kategorien entfallen; beim Anordnen werden die Überschriften gezeigt.',
   'All habits are one list without headings; arranging sets their order across the categories.':
       'Alle Gewohnheiten stehen in einer Liste ohne Überschriften; Anordnen legt ihre Reihenfolge über die Kategorien hinweg fest.',
   'Days in the overview': 'Tage in der Übersicht',

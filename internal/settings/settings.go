@@ -23,11 +23,14 @@ type Settings struct {
 	ShowArchived bool `json:"showArchived"`
 	// GroupByCategory shows the overview as a block per category; off, it is
 	// a single list of all habits in their own order.
-	GroupByCategory bool   `json:"groupByCategory"`
-	Font            string `json:"font"`
-	Density         string `json:"density"`
-	ReorderMode     string `json:"reorderMode"`
-	Pattern         string `json:"pattern"`
+	GroupByCategory bool `json:"groupByCategory"`
+	// CompactCategories marks the blocks of the overview by a line in the
+	// category's colour instead of a heading.
+	CompactCategories bool   `json:"compactCategories"`
+	Font              string `json:"font"`
+	Density           string `json:"density"`
+	ReorderMode       string `json:"reorderMode"`
+	Pattern           string `json:"pattern"`
 	// AlignWeeks starts the overview on a Monday instead of ending it today.
 	AlignWeeks bool `json:"alignWeeks"`
 	// BandColor is the colour of the today highlight: NeutralBand or one of

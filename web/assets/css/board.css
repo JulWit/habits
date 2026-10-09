@@ -206,6 +206,14 @@ html[data-scrolled='on'] .board-view-day-header-backdrop {
   z-index: -2;
 }
 
+/* A compact category (the compactCategories setting) has no heading, but a
+   line in its colour along the card's left edge, following the rounded
+   corners; neutral for a category without colour and the uncategorised
+   habits. */
+.board-block.is-striped::after {
+  box-shadow: inset 4px 0 0 var(--category-color, var(--border-strong));
+}
+
 .board-block-head {
   align-items: center;
   /* Dotted separator below the heading. */

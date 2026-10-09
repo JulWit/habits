@@ -615,6 +615,25 @@ def grouping(run, f):
     run.load()
     run.check("grouped again, the categories have their headings", run.js(headings) > 0)
 
+    # Compact categories: a line in the category's colour instead of a heading.
+    run.click("#open-settings")
+    time.sleep(0.4)
+    run.click('#settings-dialog [data-page="settings-board"]')
+    time.sleep(0.4)
+    run.click("#settings-board-compact")
+    time.sleep(0.8)
+    run.keys(Keys.ESCAPE)
+    time.sleep(0.3)
+    run.keys(Keys.ESCAPE)
+    time.sleep(0.5)
+    line = run.js(f"""return getComputedStyle(document.querySelector(
+        '.board-block[data-category="{f.category}"]'), '::after').boxShadow;""")
+    run.check("compact categories have a line instead of a heading",
+              run.js(headings) == 0 and "inset" in line, line)
+    run.screenshot("board-compact")
+    run.api("PATCH", "/api/settings", {"compactCategories": False})
+    run.load()
+
 
 def settings(run, f):
     """Settings take effect at once and are saved."""

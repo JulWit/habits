@@ -207,10 +207,11 @@ html[data-scrolled='on'] .board-view-day-header-backdrop {
 }
 
 /* A compact category (the compactCategories setting) has no heading, but a
-   line in its colour along the card's left edge, following the rounded
-   corners; neutral for a category without colour and the uncategorised
-   habits. */
+   straight line in its colour along the card's left edge, whose corners are
+   square for it; neutral for a category without colour and the uncategorised
+   habits. Drawn inside the surface, so the card keeps its width. */
 .board-block.is-striped::after {
+  border-radius: 0 var(--radius) var(--radius) 0;
   box-shadow: inset 4px 0 0 var(--category-color, var(--border-strong));
 }
 
